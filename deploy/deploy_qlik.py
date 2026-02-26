@@ -1000,6 +1000,95 @@ class DeployReport:
         return fail
 
 
+def print_checklist(report, enabled, log):
+    """Print a post-deployment checklist of manual steps still required.
+
+    Maps each automated component to any follow-up UI configuration
+    steps that cannot be done via API.
+    """
+    log.section("POST-DEPLOYMENT CHECKLIST")
+
+    # Determine which components succeeded
+    ok_steps = {s["step"].lower() for s in report.steps if s["status"] == "OK"}
+
+    # Manual steps keyed by component — only shown if that component deployed OK
+    manual_steps = {
+        "spaces": [
+            "Assign users/groups to shared and managed spaces",
+            "Verify space permissions for demo presenters",
+        ],
+        "connections": [
+            "Test each data connection (click 'Test Connection' in the UI)",
+            "Verify tables/topics are visible through each connection",
+            "Configure CDC replication for PostgreSQL (requires DMG)",
+        ],
+        "apps": [
+            "Open each app and verify data loads correctly",
+            "Set up scheduled reloads for each app",
+            "Publish apps from Development → Published space",
+        ],
+        "knowledge": [
+            "Wait for document indexing to complete (5-10 min)",
+            "Verify upload count matches expected 25 documents",
+        ],
+        "assistant": [
+            "Test each conversation starter in the Qlik Answers UI",
+            "Verify answers reference correct source documents",
+        ],
+        "automations": [
+            "Open each automation in the Automation Designer",
+            "Configure block details (see deploy/automation_guide.md)",
+            "Set Teams webhook URLs in webhook blocks",
+            "Enable automations and test with 'Run Now'",
+        ],
+        "dataproducts": [
+            "Verify data products have data flowing from Gold tables",
+            "Enable API sharing for key data products",
+            "Configure refresh schedules",
+        ],
+        "glossary": [
+            "Review and approve glossary terms",
+            "Link terms to relevant data products and datasets",
+        ],
+    }
+
+    # Always-shown manual steps (not tied to a specific component)
+    always_manual = [
+        ("Open Lakehouse",      "Configure Bronze/Silver/Gold layers in Qlik Cloud UI"),
+        ("Data Flows",          "Build 8 transformation routes in Talend Pipeline Designer"),
+        ("Table Recipes",       "Create Gold-layer table recipes from Silver tables"),
+        ("Qlik Predict",       "Create AutoML experiments for Spoilage Risk & SLA Prediction"),
+        ("Stewardship",         "Create 4 stewardship campaigns (see demo_checklist.md Phase 8)"),
+        ("Discovery Agent",     "Enable Discovery Agent on data products and set alert thresholds"),
+        ("MCP Server",          "Install and configure Qlik MCP server (see setup_guide.md §13)"),
+    ]
+
+    idx = 1
+
+    # Component-specific manual follow-ups
+    for key, label in COMPONENTS:
+        if not enabled.get(key, False):
+            continue
+        steps = manual_steps.get(key, [])
+        # Only show if the component deployed successfully
+        component_ok = any(key in s for s in ok_steps)
+        if not steps or not component_ok:
+            continue
+        print(f"\n  {label}:")
+        for step in steps:
+            print(f"    {idx:>2}. [ ] {step}")
+            idx += 1
+
+    # Always-needed manual steps
+    print("\n  Manual Configuration (UI-only — not automated):")
+    for label, desc in always_manual:
+        print(f"    {idx:>2}. [ ] {label}: {desc}")
+        idx += 1
+
+    print(f"\n  Total manual steps remaining: {idx - 1}")
+    print(f"  See deploy/demo_checklist.md for the full 13-phase checklist.\n")
+
+
 # ---------------------------------------------------------------------------
 #  File discovery
 # ---------------------------------------------------------------------------
