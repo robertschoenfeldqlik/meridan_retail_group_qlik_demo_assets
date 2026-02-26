@@ -101,6 +101,41 @@ Master checklist of everything required to stand up the full Meridian Commerce G
 
 ---
 
+## Phase 3b: Data Catalog, Lineage & Profiling
+
+### Data Catalog
+- [ ] Verify all Bronze/Silver/Gold tables auto-discovered in Catalog
+- [ ] Review technical metadata for completeness
+- [ ] Add business metadata descriptions to Gold-layer assets
+- [ ] Tag data products with business domains (Inventory, Supply Chain, Compliance, etc.)
+- [ ] Configure custom semantic types for MCG-specific fields (e.g., MCG order IDs, lot numbers)
+
+### Data Lineage
+- [ ] Verify field-level lineage visible from source → Bronze → Silver → Gold
+- [ ] Walk through lineage for `gold.supply_chain_health` (traces back to PostgreSQL CDC)
+- [ ] Walk through lineage for `gold.cold_chain_compliance` (traces back to Kafka IoT)
+- [ ] Verify Talend data flow routes appear in lineage graphs
+
+### Impact Analysis
+- [ ] Test impact analysis on `silver.inventory_reconciled` → should show downstream Gold tables + apps
+- [ ] Test impact analysis on a Bronze table → should show all Silver routes and Gold products affected
+- [ ] Verify ML experiment dependencies appear in impact analysis
+
+### Data Profiling
+- [ ] Run profiling on `bronze.sf_contacts` → verify 11% format issues, 6% truncation detected
+- [ ] Run profiling on `bronze.inventory_positions` → verify null lot numbers flagged for perishables
+- [ ] Run profiling on `silver.products_harmonized` → verify missing weight_kg identified
+- [ ] Capture profiling results for demo screenshots
+
+### Trust Score
+- [ ] Enable Trust Score on all 7 Gold-layer data products
+- [ ] Verify Trust Score dimensions: Validity, Completeness, Discoverability, Usage
+- [ ] Enable Trust Score for AI (Accuracy, Diversity, Timeliness) if Enterprise edition
+- [ ] Verify Trust Score drops visibly when pipeline failure is simulated (DC-RTD-01 scenario)
+- [ ] Configure Trust Score historization for trend tracking
+
+---
+
 ## Phase 4: Data Products & API Sharing
 
 ### Register Data Products
@@ -119,6 +154,11 @@ Master checklist of everything required to stand up the full Meridian Commerce G
 - [ ] API sharing enabled for "Product Master 360"
 - [ ] Test API endpoint returns data (curl or Postman)
 
+### Data Marketplace
+- [ ] Enable Data Marketplace on Gold-layer data products
+- [ ] Verify data products appear in self-service discovery portal
+- [ ] Test: business user can browse, search, and request access to data products
+
 ---
 
 ## Phase 5: Analytics Apps (Qlik Sense)
@@ -132,10 +172,71 @@ Master checklist of everything required to stand up the full Meridian Commerce G
 - [ ] Compliance & Recall Readiness Dashboard (connect to `gold.compliance_readiness`)
 - [ ] Executive Cost Impact Dashboard (connect to `gold.operational_cost_impact`)
 
+### Insight Advisor & Business Logic
+- [ ] Configure Business Logic Logical Model in each app (define dimensions, measures, relationships)
+- [ ] Configure Business Logic Vocabulary (map: "phantom" → inventory_accuracy, "WISMO" → wismo_rate, etc.)
+- [ ] Test Insight Advisor Search: "Show inventory accuracy by distribution center"
+- [ ] Test Insight Advisor Chat: "Which carriers miss SLAs most in APAC?"
+- [ ] Add Natural Language Insights (NLI) objects to key sheets (auto-generated narrative summaries)
+
+### Section Access (Row-Level Security)
+- [ ] Configure Section Access in Supply Chain Health app (regional VPs see only their DCs)
+- [ ] Configure Section Access in Last Mile Performance app (carrier partners see only their shipments)
+- [ ] Test with demo user accounts to verify data reduction works correctly
+
+### Custom Theme & Extensions
+- [ ] Create MCG custom theme (Navy #1B2A4A, Teal #0D7C8F, Gold #C4922E, Calibri font)
+- [ ] Upload theme at tenant level (Administration → Themes)
+- [ ] Apply MCG theme to all 7 analytics apps
+- [ ] Import any custom visualization extensions needed for supply chain charts
+
 ### App Publishing
 - [ ] All apps published to "MCG Demo - Published" managed space
 - [ ] Verify app reloads work on schedule
 - [ ] Place .qvf export files in `deploy/apps/` directory (for automated re-deployment)
+
+---
+
+## Phase 5b: Native Alerting & Reporting
+
+### Native Data Alerts
+- [ ] Create alert: "IRA Below 85%" on Supply Chain Health app (triggers when IRA drops below 85% for any DC)
+- [ ] Create alert: "WISMO Rate Spike" on Customer Delivery Experience app (triggers when WISMO > 40% for any carrier)
+- [ ] Create alert: "Cold Chain Exceedance" on Cold Chain Monitoring app (triggers on temperature > 8°C for 15+ min)
+- [ ] Configure notification channels: web, email (push if mobile app installed)
+- [ ] Share alerts with relevant team members
+- [ ] Test alerts by simulating a pipeline failure / temperature exceedance
+
+### Reporting Service
+- [ ] Create PixelPerfect report template: "Weekly Compliance Summary" (PDF, banded layout)
+- [ ] Create Tabular report template: "Daily Inventory Summary" (Excel export by DC)
+- [ ] Configure subscription: Weekly compliance PDF emailed to regulatory team (Monday 08:00)
+- [ ] Configure subscription: Daily inventory Excel emailed to DC managers (06:30 UTC)
+- [ ] Test on-demand report: user sets selections in app → downloads formatted report
+
+### Collaboration Features
+- [ ] Create sample Notes on Supply Chain Health dashboard (annotate the Rotterdam incident)
+- [ ] Create public Bookmarks for key selection states (e.g., "Rotterdam DC — Pipeline Failure Period")
+- [ ] Create a Collection: "MCG Demo Essentials" containing top 3 dashboards + key charts
+- [ ] Verify Notes and Bookmarks are visible in the "MCG Demo - Published" managed space
+
+---
+
+## Phase 5c: Embedded Analytics & Direct Query
+
+### Embedded Analytics
+- [ ] Create a sample HTML page with `<qlik-embed>` web components
+  - [ ] Embed Cold Chain Monitoring chart (temperature heatmap)
+  - [ ] Embed Supply Chain Health KPI card (inventory accuracy)
+- [ ] Configure OAuth2 authentication for embedded content
+- [ ] Optional: Create a React demo using `@qlik/embed-react`
+- [ ] Document embedding code snippets for demo walk-through
+
+### Direct Query
+- [ ] Create a Direct Query app connecting live to the Lakehouse (Snowflake / PostgreSQL)
+- [ ] Verify SQL pushdown — no data imported into engine memory
+- [ ] Test associative exploration on live-queried data
+- [ ] Optional: Link Direct Query app to an ODAG template for drill-down generation
 
 ---
 
@@ -176,6 +277,12 @@ Master checklist of everything required to stand up the full Meridian Commerce G
 - [ ] Link to knowledge base
 - [ ] Configure conversation starters (5 provided in config)
 - [ ] Test each starter question and verify quality of answers
+
+### Knowledge Mart (RAG Pipeline Automation)
+- [ ] Create Knowledge Mart task to automate document vectorization and incremental loading
+- [ ] Configure structured-to-document transformation for Gold-layer data (if applicable)
+- [ ] Verify incremental sync keeps Qlik Answers grounded in fresh data
+- [ ] Test: ask about data that was updated after initial indexing → verify Answers reflects latest
 
 ### Test Scenarios
 - [ ] "What is the procedure for goods receiving?" → Should reference SOP-WH-001
@@ -256,13 +363,26 @@ Master checklist of everything required to stand up the full Meridian Commerce G
 
 ---
 
-## Phase 12: MCP Server (AI Agent Integration)
+## Phase 12: MCP Server & Agentic AI
 
+### MCP Server
 - [ ] Install Qlik MCP server: `npx @qlik/mcp-server`
 - [ ] Set environment variables: `QLIK_TENANT_URL`, `QLIK_API_KEY`
 - [ ] Configure Claude Desktop or Claude Code (see `setup_guide.md` Section 13)
 - [ ] Test MCP connection: Ask Claude "List the spaces in my Qlik tenant"
 - [ ] Test data product query: Ask Claude "What is the current inventory accuracy at DC-RTD-01?"
+
+### Agentic Analytics (if available — GA early 2026)
+- [ ] Enable Agentic Analytics experience (combines Qlik Sense + Qlik Answers + LLM reasoning)
+- [ ] Test unified conversational interface: "Show me the inventory accuracy trend for Rotterdam, and what does the incident report say about it?"
+- [ ] Verify the agent can reason across both structured data and unstructured documents
+
+### Mobile Analytics
+- [ ] Install Qlik Analytics Mobile app (iOS/Android) on demo device
+- [ ] Log in with demo user account
+- [ ] Verify Supply Chain Health and Cold Chain dashboards load on mobile
+- [ ] Test offline mode: download an app, disconnect, verify exploration works
+- [ ] Verify push notifications from native alerts are received on mobile
 
 ---
 
@@ -277,13 +397,21 @@ Master checklist of everything required to stand up the full Meridian Commerce G
 
 ### Component Verification
 - [ ] Analytics apps load with data (no "missing data" errors)
+- [ ] Insight Advisor Chat responds to natural language questions
+- [ ] NLI objects display narrative summaries on key sheets
+- [ ] Native data alerts trigger correctly on test conditions
+- [ ] Reporting subscriptions deliver to email
 - [ ] Qlik Answers returns coherent answers to test questions
 - [ ] Predict models show predictions when queried
 - [ ] Stewardship campaigns show records needing review
 - [ ] Business glossary terms visible and linked
+- [ ] Data Catalog shows all assets with lineage
+- [ ] Trust Scores populated on Gold-layer data products
 - [ ] Automations execute without errors
 - [ ] Discovery Agent alerts populate
 - [ ] MCP connection responds from Claude
+- [ ] Mobile app loads dashboards and receives push alerts
+- [ ] Embedded analytics sample page renders correctly
 
 ### Demo Environment
 - [ ] Browser logged into Qlik Cloud with demo user
@@ -301,6 +429,7 @@ Files generated for this demo:
 |----------|------|-------------|
 | **Documents** | `documents/**/*.docx` (25 files) | DOCX docs for Qlik Answers KB |
 | **Presentation** | `MCG_Company_Profile_Data_Quality.pptx` | Executive overview deck |
+| | `MCG_Demo_Overview_Four_Stories.pptx` | Demo deck: Integration, Governance, Analytics, AI |
 | **Simulators** | `simulators/postgres_simulator.py` | PostgreSQL WMS data generator |
 | | `simulators/salesforce_simulator.py` | Salesforce CRM data generator |
 | **Deploy** | `deploy/deploy_qlik.py` | Python deployment automation script |
