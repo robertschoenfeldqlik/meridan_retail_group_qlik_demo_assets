@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+
+# Qlik deployment config (contains secrets)
+deploy/config.json
+
+# Temporary Office lock files
+~$*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Claude project files
+.claude/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# IDE
+.vscode/
+.idea/
+
+# Environment
+.env
+.env.local

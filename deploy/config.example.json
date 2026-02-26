@@ -1,0 +1,135 @@
+{
+  "tenant": {
+    "hostname": "your-tenant",
+    "region": "us.qlikcloud.com",
+    "comment_baseUrl": "Constructed as https://{hostname}.{region} — e.g. https://your-tenant.us.qlikcloud.com"
+  },
+
+  "auth": {
+    "method": "apikey",
+    "comment_method": "One of: 'apikey' or 'oauth'",
+
+    "apiKey": "YOUR_API_KEY_HERE",
+
+    "oauth": {
+      "clientId": "YOUR_OAUTH_CLIENT_ID",
+      "clientSecret": "YOUR_OAUTH_CLIENT_SECRET",
+      "tokenUrl": "https://your-tenant.us.qlikcloud.com/oauth/token"
+    }
+  },
+
+  "spaces": {
+    "shared": "MCG Demo - Development",
+    "managed": "MCG Demo - Published"
+  },
+
+  "enabledComponents": {
+    "spaces": true,
+    "connections": true,
+    "apps": true,
+    "knowledge": true,
+    "assistant": true,
+    "automations": true,
+    "dataproducts": true,
+    "glossary": true,
+    "comment_components": "Toggle individual deployment steps on/off"
+  },
+
+  "dataConnections": {
+    "postgresql": {
+      "name": "MCG WMS Database",
+      "host": "your-postgres-host.example.com",
+      "port": 5432,
+      "database": "mcg_wms",
+      "username": "qlik_reader",
+      "password": "YOUR_PASSWORD",
+      "schema": "public"
+    },
+    "salesforce": {
+      "name": "MCG Salesforce CRM",
+      "securityToken": "YOUR_SF_SECURITY_TOKEN",
+      "username": "integration@mcg-demo.com",
+      "password": "YOUR_SF_PASSWORD",
+      "isSandbox": true
+    },
+    "kafka": {
+      "name": "MCG IoT Telemetry",
+      "bootstrapServers": "your-kafka-broker:9092",
+      "topic": "mcg.iot.telemetry",
+      "securityProtocol": "SASL_SSL",
+      "saslMechanism": "PLAIN",
+      "saslUsername": "YOUR_KAFKA_USER",
+      "saslPassword": "YOUR_KAFKA_PASSWORD"
+    },
+    "s3": {
+      "name": "MCG Flat File Outputs",
+      "bucketName": "mcg-demo-outputs",
+      "region": "eu-west-1",
+      "accessKeyId": "YOUR_AWS_ACCESS_KEY",
+      "secretAccessKey": "YOUR_AWS_SECRET_KEY",
+      "prefix": "exports/"
+    }
+  },
+
+  "knowledgeBase": {
+    "name": "MCG Operations Knowledge Base",
+    "description": "Operational documents for Meridian Commerce Group — SOPs, policies, incident reports, contracts, and project documentation."
+  },
+
+  "assistant": {
+    "name": "MCG Operations Assistant",
+    "description": "AI assistant for Meridian Commerce Group operations. Ask about procedures, incidents, policies, carrier contracts, and Project CLARITY.",
+    "conversationStarters": [
+      "What is the procedure for goods receiving?",
+      "What happened during the Rotterdam pipeline failure?",
+      "What are the cold chain temperature requirements?",
+      "What is Project CLARITY?",
+      "What was the lettuce recall and what went wrong?"
+    ]
+  },
+
+  "dataProducts": {
+    "sourceFile": "./data_products.json",
+    "comment_sourceFile": "JSON file with Gold-layer data product definitions (7 products). Loaded automatically by deploy script."
+  },
+
+  "glossary": {
+    "sourceFile": "./glossary_terms.json",
+    "comment_sourceFile": "JSON file with 25 business glossary terms. Loaded automatically by deploy script."
+  },
+
+  "automations": {
+    "templateDir": "./automations",
+    "comment_templateDir": "Directory containing automation JSON templates (Teams alerts, pipeline health). Loaded automatically.",
+    "teamsWebhookUrl": "YOUR_TEAMS_WEBHOOK_URL",
+    "comment_teamsWebhookUrl": "Microsoft Teams incoming webhook URL for alert automations"
+  },
+
+  "documents": {
+    "sourceDir": "../documents",
+    "comment_sourceDir": "Relative path from the deploy/ directory to the documents folder containing .docx files"
+  },
+
+  "apps": {
+    "sourceDir": "./apps",
+    "comment_sourceDir": "Place .qvf app export files in this directory before running deploy"
+  },
+
+  "mcp": {
+    "comment_mcp": "Qlik MCP Server config — used by Claude Desktop/Code, not by this deploy script directly",
+    "tenantUrl": "https://your-tenant.us.qlikcloud.com",
+    "apiKey": "YOUR_API_KEY_HERE",
+    "installCommand": "npx @qlik/mcp-server",
+    "envVars": {
+      "QLIK_TENANT_URL": "https://your-tenant.us.qlikcloud.com",
+      "QLIK_API_KEY": "YOUR_API_KEY_HERE"
+    }
+  },
+
+  "options": {
+    "dryRun": false,
+    "verbose": true,
+    "continueOnError": true,
+    "comment_options": "dryRun=true will log actions without executing. continueOnError=true skips failed steps."
+  }
+}

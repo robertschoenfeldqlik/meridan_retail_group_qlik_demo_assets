@@ -1,0 +1,218 @@
+{
+  "glossary": {
+    "name": "MCG Supply Chain Glossary",
+    "description": "Business glossary for Meridian Commerce Group supply chain and data platform terms."
+  },
+  "terms": [
+    {
+      "name": "Phantom Inventory",
+      "definition": "Inventory that appears in ERP/WMS but does not physically exist in the warehouse. Caused by sync failures between systems. MCG's #1 data quality nightmare, costing $48M annually.",
+      "owner": "Henrik Jansen",
+      "category": "Inventory & Warehouse",
+      "relatedNightmare": "#1",
+      "relatedDatasets": ["inventory_positions", "warehouse_events"],
+      "relatedDocuments": ["INC-2025-04872", "SOP-WH-002"],
+      "tags": ["inventory", "data-quality", "nightmare-1"]
+    },
+    {
+      "name": "IRA (Inventory Record Accuracy)",
+      "definition": "Percentage of SKU/location combinations where system quantity matches physical count within tolerance. MCG current: 74%, target: 97%.",
+      "owner": "Henrik Jansen",
+      "category": "Inventory & Warehouse",
+      "relatedNightmare": "#1",
+      "relatedDatasets": ["gold.supply_chain_health"],
+      "tags": ["inventory", "kpi", "nightmare-1"]
+    },
+    {
+      "name": "Cycle Count",
+      "definition": "Physical count of inventory at a specific bin location to verify system accuracy. Performed per SOP-WH-002. Used to detect phantom inventory and trigger reconciliation.",
+      "owner": "Warehouse Operations",
+      "category": "Inventory & Warehouse",
+      "relatedNightmare": "#1",
+      "relatedDocuments": ["SOP-WH-002"],
+      "tags": ["inventory", "procedure"]
+    },
+    {
+      "name": "Goods Receipt",
+      "definition": "Process of receiving and validating incoming merchandise at a distribution center. Includes lot number capture, quality inspection, and putaway. Per SOP-WH-001.",
+      "owner": "Warehouse Operations",
+      "category": "Inventory & Warehouse",
+      "relatedNightmare": "#1, #7",
+      "relatedDocuments": ["SOP-WH-001"],
+      "tags": ["inventory", "procedure", "compliance"]
+    },
+    {
+      "name": "Lot Number",
+      "definition": "Unique identifier assigned to a batch of products from a single production run. Required for food traceability per EU Regulation EC 178/2002. Missing for 15% of MCG grocery inventory.",
+      "owner": "Quality",
+      "category": "Inventory & Warehouse",
+      "relatedNightmare": "#7",
+      "relatedDocuments": ["COMP-2025-NVWA", "MCG-POL-007"],
+      "tags": ["compliance", "traceability", "nightmare-7"]
+    },
+    {
+      "name": "WISMO",
+      "definition": "Where Is My Order — customer inquiry about delivery status. Accounts for 41% of MCG customer service calls at $2.30 per call. Driven by carrier tracking gaps and missed SLAs.",
+      "owner": "Lisa Park",
+      "category": "Supply Chain & Logistics",
+      "relatedNightmare": "#6",
+      "relatedDocuments": ["SOP-CS-001"],
+      "tags": ["customer-service", "carrier", "nightmare-6"]
+    },
+    {
+      "name": "SLA Breach",
+      "definition": "Failure to deliver within the promised delivery window communicated to the customer at checkout. APAC current breach rate: 22% (target: <8%). Governed by MCG-POL-020.",
+      "owner": "Thomas Brennan",
+      "category": "Supply Chain & Logistics",
+      "relatedNightmare": "#6",
+      "relatedDocuments": ["MCG-POL-020", "CARRIER-NV-2025"],
+      "tags": ["carrier", "sla", "nightmare-6"]
+    },
+    {
+      "name": "Cold Chain Exceedance",
+      "definition": "Temperature reading outside acceptable range for the product type. Thresholds: fresh produce >8°C for 30+ min, dairy >8°C for 15+ min, frozen any reading above -15°C.",
+      "owner": "Thomas Brennan",
+      "category": "Supply Chain & Logistics",
+      "relatedNightmare": "#4, #6",
+      "relatedDocuments": ["MCG-POL-012", "SOP-SC-002", "TRN-2025-002"],
+      "tags": ["cold-chain", "iot", "nightmare-4"]
+    },
+    {
+      "name": "Delivery Promise",
+      "definition": "Commitment shown to customer at checkout for expected delivery date. Must reflect current carrier SLA terms. Changes must be communicated within 24 hours per MCG-POL-020.",
+      "owner": "Sophie Müller",
+      "category": "Supply Chain & Logistics",
+      "relatedNightmare": "#6",
+      "relatedDocuments": ["MCG-POL-020"],
+      "tags": ["carrier", "customer-experience"]
+    },
+    {
+      "name": "Pre-Cool Compliance",
+      "definition": "Whether transport refrigeration unit reached target temperature (0°C since Oct 2025 update) before loading begins. Updated requirement after TransFrio spoilage incident INC-2025-05102.",
+      "owner": "Thomas Brennan",
+      "category": "Supply Chain & Logistics",
+      "relatedNightmare": "#6",
+      "relatedDocuments": ["TRN-2025-002", "INC-2025-05102"],
+      "tags": ["cold-chain", "compliance"]
+    },
+    {
+      "name": "CDC (Change Data Capture)",
+      "definition": "Technology that captures row-level insert/update/delete changes in a database and streams them to a target system in near-real-time. Used by Qlik Talend Cloud via Data Movement Gateway.",
+      "owner": "Marcus Chen",
+      "category": "Data & Technology",
+      "relatedNightmare": "#4",
+      "tags": ["technology", "integration", "nightmare-4"]
+    },
+    {
+      "name": "Data Movement Gateway",
+      "definition": "Qlik software installed on-premises or on a cloud VM that enables secure CDC connections from databases behind firewalls to Qlik Cloud. No inbound firewall rules required.",
+      "owner": "IT Operations",
+      "category": "Data & Technology",
+      "relatedNightmare": "#4",
+      "tags": ["technology", "infrastructure"]
+    },
+    {
+      "name": "Trust Score",
+      "definition": "Qlik-calculated score (0.0-1.0) indicating overall data reliability for a dataset or record. Combines 6 dimensions: Completeness, Accuracy, Timeliness, Consistency, Uniqueness, Validity.",
+      "owner": "Priya Ramanathan",
+      "category": "Data & Technology",
+      "relatedNightmare": "All",
+      "relatedDocuments": ["MCG-POL-015"],
+      "tags": ["data-quality", "governance"]
+    },
+    {
+      "name": "Data Product",
+      "definition": "A governed, documented, SLA-backed dataset in the Gold layer of the Open Lakehouse, published for consumption via API, Qlik Sense, or downstream feeds. MCG has 7 data products.",
+      "owner": "Priya Ramanathan",
+      "category": "Data & Technology",
+      "relatedNightmare": "All",
+      "tags": ["governance", "architecture"]
+    },
+    {
+      "name": "Table Recipe",
+      "definition": "A Qlik Talend Cloud data flow definition that reads from one Lakehouse layer, applies transformations, and writes to the next layer (Bronze→Silver or Silver→Gold).",
+      "owner": "Data Engineering",
+      "category": "Data & Technology",
+      "tags": ["technology", "integration"]
+    },
+    {
+      "name": "NVWA",
+      "definition": "Netherlands Food and Consumer Product Safety Authority (Nederlandse Voedsel- en Warenautoriteit). Issued citation NVWA-2025-CIT-04412 to MCG on 12 June 2025 during Rotterdam DC inspection.",
+      "owner": "Dr. Elena Vasquez",
+      "category": "Governance & Compliance",
+      "relatedNightmare": "#7",
+      "relatedDocuments": ["COMP-2025-NVWA", "RCL-2025-003"],
+      "tags": ["compliance", "regulatory", "nightmare-7"]
+    },
+    {
+      "name": "EC 178/2002",
+      "definition": "EU General Food Law Regulation establishing the European Food Safety Authority and requiring 'one step back, one step forward' traceability for all food products in the EU supply chain.",
+      "owner": "Dr. Elena Vasquez",
+      "category": "Governance & Compliance",
+      "relatedNightmare": "#7",
+      "tags": ["compliance", "regulatory"]
+    },
+    {
+      "name": "Sub-Tier Supplier",
+      "definition": "A supplier's supplier — e.g., the farm that supplies Fresh Direct NL, who supplies MCG. Currently 64% of MCG's food sub-tier suppliers are undocumented. Risk demonstrated by recall RCL-2025-003.",
+      "owner": "Procurement",
+      "category": "Governance & Compliance",
+      "relatedNightmare": "#7",
+      "relatedDocuments": ["SUPP-2025-FreshDirect", "RCL-2025-003"],
+      "tags": ["compliance", "supplier", "nightmare-7"]
+    },
+    {
+      "name": "GTIN/EAN",
+      "definition": "Global Trade Item Number / European Article Number. Universal product barcode identifier. Missing for 9% of MCG products (all from Americas legacy system). Key for product master harmonization.",
+      "owner": "Product Data Team",
+      "category": "Governance & Compliance",
+      "relatedNightmare": "#3",
+      "tags": ["product-master", "nightmare-3"]
+    },
+    {
+      "name": "Bronze Layer",
+      "definition": "Raw landing zone in the Qlik Open Lakehouse (Apache Iceberg). Preserves original dirty data as-is from source systems. For audit, lineage, and replayable transformations.",
+      "owner": "Data Engineering",
+      "category": "Architecture",
+      "tags": ["architecture", "lakehouse"]
+    },
+    {
+      "name": "Silver Layer",
+      "definition": "Cleansed, standardized data in the Open Lakehouse. Output of 8 transformation routes. Timestamps normalized, addresses standardized, statuses canonicalized. For analysts and data scientists.",
+      "owner": "Data Engineering",
+      "category": "Architecture",
+      "tags": ["architecture", "lakehouse"]
+    },
+    {
+      "name": "Gold Layer",
+      "definition": "Business-ready data products in the Open Lakehouse. Aggregated, enriched, governed datasets with SLA backing and API sharing. For executives, downstream consumers, and AI systems.",
+      "owner": "Data Engineering",
+      "category": "Architecture",
+      "tags": ["architecture", "lakehouse"]
+    },
+    {
+      "name": "Carrier Status Canonical",
+      "definition": "MCG's standardized shipment lifecycle status codes. Maps 6+ carrier-specific vocabularies (DELIVERED/Zugestellt/Completed/Objeto entregue) to a single canonical lifecycle: LABEL_CREATED → PICKED_UP → IN_TRANSIT → OUT_FOR_DELIVERY → DELIVERED.",
+      "owner": "Sophie Müller",
+      "category": "Architecture",
+      "relatedNightmare": "#6",
+      "tags": ["carrier", "standardization", "nightmare-6"]
+    },
+    {
+      "name": "Address Quality Score",
+      "definition": "Per-address score (0.0-1.0) calculated during address standardization. 1.0 = complete, validated. 0.7 = minor correction. 0.4 = truncated. 0.2 = incomplete. Predicts carrier delivery success rate.",
+      "owner": "Customer Data Team",
+      "category": "Architecture",
+      "relatedNightmare": "#2",
+      "tags": ["address", "data-quality", "nightmare-2"]
+    },
+    {
+      "name": "SKU (Stock Keeping Unit)",
+      "definition": "Unique product identifier. MCG has 3 coexisting schemes: MCG-* (global canonical), AM-* (Americas legacy), EU-* (EU legacy). Product Master Harmonization route (Route 4) resolves all to MCG-* canonical.",
+      "owner": "Product Data Team",
+      "category": "Inventory & Warehouse",
+      "relatedNightmare": "#3",
+      "tags": ["product-master", "nightmare-3"]
+    }
+  ]
+}

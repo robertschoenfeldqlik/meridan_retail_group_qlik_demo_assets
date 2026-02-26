@@ -1,0 +1,162 @@
+{
+  "dataProducts": [
+    {
+      "name": "Supply Chain Health",
+      "description": "Real-time inventory accuracy, phantom inventory detection, and pipeline health status across all 28 distribution centers. Updated every 15 minutes from PostgreSQL CDC.",
+      "sourceTable": "gold.supply_chain_health",
+      "owner": "Henrik Jansen",
+      "ownerTitle": "VP Warehouse Operations",
+      "tags": ["inventory", "phantom-inventory", "pipeline-health", "kpi"],
+      "sla": {
+        "refreshFrequency": "15 minutes",
+        "availability": "99.5%",
+        "trustScoreTarget": 0.85
+      },
+      "schema": [
+        {"name": "dc_id", "type": "VARCHAR(20)", "description": "Distribution center identifier (e.g., DC-RTD-01)"},
+        {"name": "sku", "type": "VARCHAR(30)", "description": "Canonical MCG product SKU"},
+        {"name": "qty_wms", "type": "INTEGER", "description": "Quantity per WMS (physical system of record)"},
+        {"name": "qty_erp", "type": "INTEGER", "description": "Quantity per ERP (SAP S/4HANA)"},
+        {"name": "variance", "type": "INTEGER", "description": "WMS - ERP quantity difference"},
+        {"name": "variance_pct", "type": "DECIMAL(5,2)", "description": "Variance as percentage of ERP qty"},
+        {"name": "phantom_flag", "type": "BOOLEAN", "description": "TRUE if ERP > WMS by >10%"},
+        {"name": "pipeline_status", "type": "VARCHAR(20)", "description": "CDC pipeline: HEALTHY / DEGRADED / FAILED"},
+        {"name": "last_sync_utc", "type": "TIMESTAMPTZ", "description": "Last successful CDC sync timestamp"},
+        {"name": "sync_lag_minutes", "type": "INTEGER", "description": "Minutes since last sync"},
+        {"name": "trust_score", "type": "DECIMAL(3,2)", "description": "Qlik Trust Score (0.0-1.0)"},
+        {"name": "snapshot_utc", "type": "TIMESTAMPTZ", "description": "When this record was calculated"}
+      ],
+      "nightmares": ["#1 Phantom Inventory", "#4 Silent Pipeline Failures"],
+      "apiSharing": true,
+      "consumers": ["Qlik Sense (Supply Chain Dashboard)", "Discovery Agent", "MCP Server"]
+    },
+    {
+      "name": "Last Mile Performance",
+      "description": "Carrier delivery SLA performance by region, with address quality scoring and WISMO correlation. Combines shipment tracking from 6 carriers with customer order data.",
+      "sourceTable": "gold.last_mile_performance",
+      "owner": "Sophie Müller",
+      "ownerTitle": "EU Logistics Manager",
+      "tags": ["carrier", "sla", "delivery", "wismo", "address-quality"],
+      "sla": {
+        "refreshFrequency": "30 minutes",
+        "availability": "99.5%",
+        "trustScoreTarget": 0.80
+      },
+      "schema": [
+        {"name": "carrier", "type": "VARCHAR(20)", "description": "Canonical carrier code (FEDEX, DPD, NINJAVAN, etc.)"},
+        {"name": "destination_country", "type": "VARCHAR(2)", "description": "ISO 3166-1 alpha-2 country code"},
+        {"name": "destination_region", "type": "VARCHAR(20)", "description": "MCG region: EU, AMERICAS, APAC, LATAM, AFRICA"},
+        {"name": "sla_target_hours", "type": "INTEGER", "description": "Contracted delivery SLA in hours"},
+        {"name": "sla_actual_hours", "type": "DECIMAL(6,1)", "description": "Actual order-to-delivery hours"},
+        {"name": "sla_met", "type": "BOOLEAN", "description": "TRUE if actual <= target"},
+        {"name": "on_time_pct", "type": "DECIMAL(5,2)", "description": "On-time delivery percentage for this carrier/region"},
+        {"name": "address_quality_score", "type": "DECIMAL(3,2)", "description": "Destination address quality (0.0-1.0)"},
+        {"name": "wismo_flag", "type": "BOOLEAN", "description": "Customer contacted about this delivery"},
+        {"name": "delivery_attempts", "type": "INTEGER", "description": "Number of delivery attempts"},
+        {"name": "exception_code_canonical", "type": "VARCHAR(30)", "description": "Standardized exception code"},
+        {"name": "weight_kg", "type": "DECIMAL(8,2)", "description": "Shipment weight in kg"},
+        {"name": "trust_score", "type": "DECIMAL(3,2)", "description": "Qlik Trust Score (0.0-1.0)"}
+      ],
+      "nightmares": ["#2 Address Catastrophe", "#6 Carrier Data Black Hole"],
+      "apiSharing": true,
+      "consumers": ["Qlik Sense (Last Mile Dashboard)", "Predict (SLA Model)", "Discovery Agent"]
+    },
+    {
+      "name": "Spoilage Risk",
+      "description": "Cold chain shipment risk assessment combining IoT telemetry with carrier and route context. Real-time updates from Kafka streaming pipeline. Feeds the Spoilage Risk Predictor model.",
+      "sourceTable": "gold.spoilage_risk",
+      "owner": "Thomas Brennan",
+      "ownerTitle": "VP Supply Chain",
+      "tags": ["cold-chain", "iot", "risk", "spoilage", "predict"],
+      "sla": {
+        "refreshFrequency": "Real-time (streaming)",
+        "availability": "99.0%",
+        "trustScoreTarget": 0.75
+      },
+      "schema": [
+        {"name": "shipment_id", "type": "VARCHAR(40)", "description": "Shipment identifier"},
+        {"name": "route", "type": "VARCHAR(20)", "description": "Route code (e.g., GRU-BA-001)"},
+        {"name": "carrier", "type": "VARCHAR(20)", "description": "Carrier code"},
+        {"name": "product_type", "type": "VARCHAR(20)", "description": "FRESH / DAIRY / FROZEN"},
+        {"name": "avg_temp_celsius", "type": "DECIMAL(4,1)", "description": "Average temperature across all readings"},
+        {"name": "max_temp_celsius", "type": "DECIMAL(4,1)", "description": "Maximum temperature recorded"},
+        {"name": "min_temp_celsius", "type": "DECIMAL(4,1)", "description": "Minimum temperature recorded"},
+        {"name": "exceedance_minutes", "type": "INTEGER", "description": "Total minutes above threshold"},
+        {"name": "pre_cool_compliant", "type": "BOOLEAN", "description": "Reefer reached 0°C before loading"},
+        {"name": "spoilage_flag", "type": "BOOLEAN", "description": "TRUE if product spoiled (historical) or predicted to spoil"},
+        {"name": "spoilage_probability", "type": "DECIMAL(3,2)", "description": "AutoML prediction (0.0-1.0)"},
+        {"name": "estimated_loss_usd", "type": "DECIMAL(10,2)", "description": "Estimated financial exposure"},
+        {"name": "sensor_count", "type": "INTEGER", "description": "Number of active sensors on this shipment"},
+        {"name": "data_gap_flag", "type": "BOOLEAN", "description": "TRUE if >30 min gap in sensor readings"},
+        {"name": "trust_score", "type": "DECIMAL(3,2)", "description": "Qlik Trust Score"}
+      ],
+      "nightmares": ["#4 Silent Pipelines", "#5 Timestamps", "#6 Carrier Data Black Hole"],
+      "apiSharing": true,
+      "consumers": ["Predict (Spoilage Model)", "Discovery Agent", "Teams Automation"]
+    },
+    {
+      "name": "Customer 360",
+      "description": "Unified customer view with deduplicated addresses, order history, WISMO frequency, and lifetime value. Fed by Salesforce CRM data through address standardization and fuzzy matching.",
+      "sourceTable": "gold.customer_360",
+      "owner": "Lisa Park",
+      "ownerTitle": "Head of Customer Experience",
+      "tags": ["customer", "address", "wismo", "ltv"],
+      "sla": {
+        "refreshFrequency": "1 hour",
+        "availability": "99.5%",
+        "trustScoreTarget": 0.85
+      },
+      "nightmares": ["#2 Address Catastrophe"],
+      "apiSharing": true,
+      "consumers": ["Qlik Sense (Customer Dashboard)", "Stewardship (Address Cleanup)"]
+    },
+    {
+      "name": "Compliance Traceability",
+      "description": "Farm-to-shelf product traceability for food items. Shows traceability completeness, lot capture rates, and sub-tier supplier visibility. Critical for NVWA compliance.",
+      "sourceTable": "gold.compliance_traceability",
+      "owner": "Dr. Elena Vasquez",
+      "ownerTitle": "Chief Compliance Officer",
+      "tags": ["compliance", "nvwa", "traceability", "lot-number", "food-safety"],
+      "sla": {
+        "refreshFrequency": "Daily",
+        "availability": "99.5%",
+        "trustScoreTarget": 0.90
+      },
+      "nightmares": ["#7 Compliance Traceability Gap"],
+      "apiSharing": true,
+      "consumers": ["Qlik Sense (Compliance Dashboard)", "NVWA Audit Evidence"]
+    },
+    {
+      "name": "B2B Inventory Feed",
+      "description": "Daily inventory availability for B2B wholesale customers. Includes Trust Score and data quality flags so consumers can filter by data reliability.",
+      "sourceTable": "gold.inventory_b2b_feed",
+      "owner": "Carlos Rivera",
+      "ownerTitle": "Director of Logistics, Americas",
+      "tags": ["b2b", "api", "inventory", "wholesale"],
+      "sla": {
+        "refreshFrequency": "Daily at 06:00 UTC",
+        "availability": "99.9%",
+        "trustScoreTarget": 0.80
+      },
+      "nightmares": ["#1 Phantom Inventory", "#3 Product Master Mess"],
+      "apiSharing": true,
+      "consumers": ["B2B Partner Portals", "EDI Feeds"]
+    },
+    {
+      "name": "Order Timeline",
+      "description": "End-to-end order lifecycle from placement to delivery. Unified timestamps, SLA calculations, and cold chain enrichment. Built by joining data from all 3 source systems.",
+      "sourceTable": "gold.order_timeline",
+      "owner": "Wei Lin Tan",
+      "ownerTitle": "Regional Logistics Manager, APAC",
+      "tags": ["order", "timeline", "sla", "end-to-end"],
+      "sla": {
+        "refreshFrequency": "30 minutes",
+        "availability": "99.5%",
+        "trustScoreTarget": 0.85
+      },
+      "nightmares": ["#5 Timestamp Tower of Babel", "#6 Carrier Data Black Hole"],
+      "apiSharing": true,
+      "consumers": ["Qlik Sense (Order Tracking)", "Qlik Answers", "Customer Service"]
+    }
+  ]
+}

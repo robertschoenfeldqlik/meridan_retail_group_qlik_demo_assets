@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Meridian Commerce Group — Letterhead</title>
+<style>
+  /* ============================================================
+     MCG Letterhead Template
+     Meridian Commerce Group — Corporate Stationery
+     ============================================================ */
+
+  /* --- Reset & Base --- */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  @page {
+    size: A4;
+    margin: 0;
+  }
+
+  html, body {
+    width: 210mm;
+    min-height: 297mm;
+    margin: 0 auto;
+    padding: 0;
+    font-family: 'Georgia', 'Times New Roman', 'Palatino Linotype', serif;
+    font-size: 11pt;
+    line-height: 1.55;
+    color: #2C2C2C;
+    background: #fff;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* --- Color Palette --- */
+  :root {
+    --navy:      #1B2A4A;
+    --teal:      #0D7C8F;
+    --gold:      #C4922E;
+    --light-gray:#F2F4F7;
+    --text:      #2C2C2C;
+    --text-light:#6B7280;
+    --rule-gray: #D1D5DB;
+  }
+
+  /* --- Page Container --- */
+  .page {
+    position: relative;
+    width: 210mm;
+    min-height: 297mm;
+    margin: 0 auto;
+    padding: 22mm 25mm 30mm 25mm;
+    background: #fff;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ============================================================
+     HEADER
+     ============================================================ */
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding-bottom: 14px;
+    margin-bottom: 0;
+  }
+
+  .header-left {
+    flex: 1;
+  }
+
+  /* Company Name */
+  .company-name {
+    font-family: 'Georgia', 'Times New Roman', serif;
+    font-size: 22pt;
+    letter-spacing: 3.5px;
+    line-height: 1.15;
+    color: var(--navy);
+    margin: 0;
+    padding: 0;
+  }
+
+  .company-name .word-meridian,
+  .company-name .word-group {
+    font-weight: 700;
+  }
+
+  .company-name .word-commerce {
+    font-weight: 400;
+    color: #3D5A80;
+  }
+
+  /* Tagline */
+  .tagline {
+    font-family: 'Georgia', 'Times New Roman', serif;
+    font-style: italic;
+    font-size: 8.5pt;
+    color: var(--text-light);
+    letter-spacing: 0.8px;
+    margin-top: 4px;
+  }
+
+  /* --- Teal Accent Rule --- */
+  .header-rule {
+    height: 2.5px;
+    background: linear-gradient(90deg, var(--teal) 0%, var(--teal) 60%, var(--gold) 100%);
+    margin-bottom: 6px;
+    border: none;
+  }
+
+  .header-rule-thin {
+    height: 0.5px;
+    background: var(--rule-gray);
+    margin-bottom: 28px;
+    border: none;
+  }
+
+  /* ============================================================
+     CSS LOGO MARK — Abstract Meridian / Compass Symbol
+     ============================================================ */
+  .logo-mark {
+    width: 62px;
+    height: 62px;
+    position: relative;
+    margin-left: 20px;
+    flex-shrink: 0;
+  }
+
+  /* Outer ring */
+  .logo-ring {
+    position: absolute;
+    top: 0; left: 0;
+    width: 62px;
+    height: 62px;
+    border: 2.5px solid var(--navy);
+    border-radius: 50%;
+  }
+
+  /* Inner teal ring */
+  .logo-ring-inner {
+    position: absolute;
+    top: 6px; left: 6px;
+    width: 50px;
+    height: 50px;
+    border: 1.5px solid var(--teal);
+    border-radius: 50%;
+  }
+
+  /* Meridian vertical line */
+  .logo-meridian-v {
+    position: absolute;
+    top: 5px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 1.5px;
+    height: 52px;
+    background: var(--navy);
+  }
+
+  /* Meridian horizontal line */
+  .logo-meridian-h {
+    position: absolute;
+    top: 50%;
+    left: 5px;
+    transform: translateY(-50%);
+    width: 52px;
+    height: 1.5px;
+    background: var(--navy);
+  }
+
+  /* Meridian curved arc — left */
+  .logo-arc-left {
+    position: absolute;
+    top: 5px;
+    left: 16px;
+    width: 20px;
+    height: 52px;
+    border: 1.5px solid var(--teal);
+    border-radius: 50%;
+    border-right-color: transparent;
+  }
+
+  /* Meridian curved arc — right */
+  .logo-arc-right {
+    position: absolute;
+    top: 5px;
+    right: 16px;
+    width: 20px;
+    height: 52px;
+    border: 1.5px solid var(--teal);
+    border-radius: 50%;
+    border-left-color: transparent;
+  }
+
+  /* Gold compass diamond at center */
+  .logo-diamond {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 10px;
+    height: 10px;
+    background: var(--gold);
+    transform: translate(-50%, -50%) rotate(45deg);
+  }
+
+  /* North pointer */
+  .logo-pointer-n {
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-bottom: 10px solid var(--gold);
+  }
+
+  /* South pointer */
+  .logo-pointer-s {
+    position: absolute;
+    bottom: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-top: 10px solid var(--navy);
+  }
+
+  /* ============================================================
+     BODY CONTENT
+     ============================================================ */
+  .body {
+    flex: 1;
+  }
+
+  .date-line {
+    font-size: 10.5pt;
+    color: var(--text);
+    margin-bottom: 28px;
+  }
+
+  .recipient-block {
+    margin-bottom: 24px;
+    line-height: 1.5;
+    font-size: 10.5pt;
+  }
+
+  .recipient-block .recipient-name {
+    font-weight: 700;
+    color: var(--navy);
+  }
+
+  .re-line {
+    margin-bottom: 22px;
+    font-size: 10.5pt;
+  }
+
+  .re-line strong {
+    font-family: 'Georgia', serif;
+    color: var(--navy);
+    letter-spacing: 0.5px;
+  }
+
+  .body-text {
+    font-size: 10.5pt;
+    line-height: 1.65;
+    color: var(--text);
+    text-align: justify;
+    hyphens: auto;
+  }
+
+  .body-text p {
+    margin-bottom: 14px;
+  }
+
+  .salutation {
+    margin-bottom: 14px;
+    font-size: 10.5pt;
+  }
+
+  .closing {
+    margin-top: 28px;
+    font-size: 10.5pt;
+  }
+
+  .signature-block {
+    margin-top: 48px;
+  }
+
+  .signature-line {
+    width: 200px;
+    border-top: 1px solid var(--navy);
+    padding-top: 6px;
+  }
+
+  .signature-name {
+    font-weight: 700;
+    color: var(--navy);
+    font-size: 10.5pt;
+    margin-bottom: 2px;
+  }
+
+  .signature-title {
+    font-size: 9pt;
+    color: var(--text-light);
+    line-height: 1.4;
+  }
+
+  /* ============================================================
+     FOOTER
+     ============================================================ */
+  .footer {
+    margin-top: auto;
+    padding-top: 0;
+  }
+
+  .footer-rule {
+    height: 2px;
+    background: linear-gradient(90deg, var(--teal) 0%, var(--teal) 60%, var(--gold) 100%);
+    margin-bottom: 10px;
+    border: none;
+  }
+
+  .footer-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+    font-size: 7.5pt;
+    color: var(--text-light);
+    line-height: 1.5;
+  }
+
+  .footer-left {
+    flex: 1;
+  }
+
+  .footer-left span {
+    display: inline;
+  }
+
+  .footer-left .sep {
+    margin: 0 6px;
+    color: var(--rule-gray);
+  }
+
+  .footer-right {
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  .footer-confidential {
+    font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+    font-size: 6.5pt;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--text-light);
+    margin-top: 8px;
+    text-align: center;
+    opacity: 0.7;
+  }
+
+  /* Watermark-style side marker */
+  .side-marker {
+    position: absolute;
+    right: 25mm;
+    top: 50%;
+    transform: translateY(-50%) rotate(90deg);
+    font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+    font-size: 5.5pt;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--light-gray);
+    white-space: nowrap;
+    opacity: 0.6;
+    pointer-events: none;
+  }
+
+  /* ============================================================
+     PRINT STYLES
+     ============================================================ */
+  @media print {
+    html, body {
+      width: 210mm;
+      min-height: 297mm;
+      margin: 0;
+      padding: 0;
+      background: #fff;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    .page {
+      width: 100%;
+      min-height: 100vh;
+      padding: 20mm 22mm 25mm 22mm;
+      margin: 0;
+      page-break-after: always;
+      page-break-inside: avoid;
+    }
+
+    .header, .footer {
+      page-break-inside: avoid;
+    }
+
+    .body {
+      page-break-inside: auto;
+    }
+
+    .body-text p {
+      orphans: 3;
+      widows: 3;
+    }
+
+    .signature-block {
+      page-break-inside: avoid;
+    }
+
+    /* Ensure colors print */
+    .header-rule, .footer-rule {
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    .logo-ring, .logo-ring-inner, .logo-meridian-v, .logo-meridian-h,
+    .logo-arc-left, .logo-arc-right, .logo-diamond,
+    .logo-pointer-n, .logo-pointer-s {
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+  }
+
+  /* --- US Letter compatibility --- */
+  @media print and (max-width: 216mm) {
+    .page {
+      width: 216mm;
+      min-height: 279mm;
+      padding: 18mm 22mm 22mm 22mm;
+    }
+  }
+
+  /* ============================================================
+     SCREEN-ONLY HELPERS
+     ============================================================ */
+  @media screen {
+    html {
+      background: #E5E7EB;
+    }
+
+    body {
+      background: #E5E7EB;
+    }
+
+    .page {
+      margin: 20px auto;
+      box-shadow:
+        0 1px 3px rgba(0,0,0,0.08),
+        0 8px 24px rgba(0,0,0,0.12);
+      border-radius: 2px;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <!-- ===== HEADER ===== -->
+  <header class="header">
+    <div class="header-left">
+      <h1 class="company-name">
+        <span class="word-meridian">MERIDIAN</span>
+        <span class="word-commerce">COMMERCE</span>
+        <span class="word-group">GROUP</span>
+      </h1>
+      <div class="tagline">The neighborhood store with global reach</div>
+    </div>
+
+    <!-- CSS Logo Mark — Abstract Globe / Meridian Compass -->
+    <div class="logo-mark" role="img" aria-label="Meridian Commerce Group logo">
+      <div class="logo-ring"></div>
+      <div class="logo-ring-inner"></div>
+      <div class="logo-meridian-v"></div>
+      <div class="logo-meridian-h"></div>
+      <div class="logo-arc-left"></div>
+      <div class="logo-arc-right"></div>
+      <div class="logo-diamond"></div>
+      <div class="logo-pointer-n"></div>
+      <div class="logo-pointer-s"></div>
+    </div>
+  </header>
+
+  <hr class="header-rule">
+  <hr class="header-rule-thin">
+
+  <!-- ===== BODY ===== -->
+  <main class="body">
+
+    <div class="date-line">February 25, 2026</div>
+
+    <div class="recipient-block">
+      <span class="recipient-name">Ms. Alexandra van der Berg</span><br>
+      Chief Procurement Officer<br>
+      NorthStar Retail Partners B.V.<br>
+      Coolsingel 120<br>
+      3011 AG Rotterdam, Netherlands
+    </div>
+
+    <div class="re-line">
+      <strong>RE:</strong>&ensp;Strategic Partnership Agreement &mdash; Q2 2026 Expansion Initiative
+    </div>
+
+    <div class="salutation">Dear Ms. van der Berg,</div>
+
+    <div class="body-text">
+      <p>Thank you for your continued partnership and the productive discussions held during our meeting on February 18. Meridian Commerce Group is pleased to present the enclosed terms for expanding our strategic collaboration into the Benelux corridor, effective Q2 2026.</p>
+
+      <p>As outlined in our previous correspondence, this initiative encompasses the integration of shared logistics infrastructure, unified inventory management systems, and co-branded retail operations across fourteen designated metropolitan areas. Our analysis projects a combined revenue uplift of 12&ndash;18% within the first fiscal year, with operational synergies reducing overhead by approximately &euro;4.2 million annually.</p>
+
+      <p>The enclosed documents include the revised Memorandum of Understanding, operational deployment timeline, and the financial projections prepared by our Strategy &amp; Analytics division. We have incorporated the amendments discussed during our last session and believe the current terms reflect a balanced and mutually beneficial framework.</p>
+
+      <p>We kindly request your review and written confirmation by March 15, 2026. Should you wish to discuss any provisions in further detail, please do not hesitate to contact my office directly.</p>
+
+      <p>We look forward to the next chapter of our partnership and to delivering exceptional value to the communities we serve together.</p>
+    </div>
+
+    <div class="closing">Yours sincerely,</div>
+
+    <div class="signature-block">
+      <div class="signature-line">
+        <div class="signature-name">Henrik J. de Vries</div>
+        <div class="signature-title">
+          Executive Vice President, Strategic Partnerships<br>
+          Meridian Commerce Group
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ===== FOOTER ===== -->
+  <footer class="footer">
+    <hr class="footer-rule">
+    <div class="footer-content">
+      <div class="footer-left">
+        <span>Weena 505, 3013 AL Rotterdam, Netherlands</span>
+        <span class="sep">|</span>
+        <span>+31 10 798 4000</span>
+        <span class="sep">|</span>
+        <span>www.meridiancommerce.com</span>
+        <span class="sep">|</span>
+        <span>info@meridiancommerce.com</span>
+      </div>
+      <div class="footer-right">
+        KvK 24412345<br>
+        BTW NL809876543B01
+      </div>
+    </div>
+    <div class="footer-confidential">
+      Confidential &mdash; This document and its contents are proprietary to Meridian Commerce Group
+    </div>
+  </footer>
+
+</div>
+
+</body>
+</html>

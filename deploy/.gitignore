@@ -1,0 +1,5 @@
+# Deployment secrets — never commit
+config.json
+
+# App exports can be large binaries
+apps/*.qvf

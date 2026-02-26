@@ -1,0 +1,134 @@
+{
+  "name": "MCG Cold Chain Alert → Teams",
+  "description": "Posts an alert to the #mcg-cold-chain-alerts Teams channel when IoT sensors detect a temperature exceedance lasting 15+ minutes on any cold chain shipment.",
+  "state": "disabled",
+  "trigger": {
+    "type": "scheduled",
+    "schedule": "*/5 * * * *",
+    "description": "Runs every 5 minutes, checks gold.spoilage_risk for new exceedances"
+  },
+  "blocks": [
+    {
+      "step": 1,
+      "type": "qlik_query",
+      "description": "Query gold.spoilage_risk for unalerted exceedances",
+      "config": {
+        "dataProduct": "Spoilage Risk",
+        "filter": "exceedance_minutes >= 15 AND alert_sent = false",
+        "fields": ["shipment_id", "route", "carrier", "max_temp_celsius", "exceedance_minutes", "estimated_loss_usd", "product_type", "sensor_count"]
+      }
+    },
+    {
+      "step": 2,
+      "type": "condition",
+      "description": "Check if any results returned",
+      "config": {
+        "condition": "result_count > 0"
+      }
+    },
+    {
+      "step": 3,
+      "type": "loop",
+      "description": "For each exceedance record",
+      "config": {
+        "iterateOver": "query_results"
+      }
+    },
+    {
+      "step": 4,
+      "type": "microsoft_teams",
+      "description": "Post Adaptive Card to Teams channel",
+      "config": {
+        "action": "post_adaptive_card",
+        "channel": "#mcg-cold-chain-alerts",
+        "card": {
+          "type": "AdaptiveCard",
+          "version": "1.4",
+          "body": [
+            {
+              "type": "TextBlock",
+              "text": "🚨 Cold Chain Alert — Temperature Exceedance",
+              "weight": "bolder",
+              "size": "large",
+              "color": "attention"
+            },
+            {
+              "type": "ColumnSet",
+              "columns": [
+                {
+                  "type": "Column",
+                  "items": [
+                    {"type": "TextBlock", "text": "Shipment", "weight": "bolder"},
+                    {"type": "TextBlock", "text": "Route"},
+                    {"type": "TextBlock", "text": "Carrier"},
+                    {"type": "TextBlock", "text": "Max Temperature"},
+                    {"type": "TextBlock", "text": "Duration"},
+                    {"type": "TextBlock", "text": "Product Type"},
+                    {"type": "TextBlock", "text": "Est. Exposure"}
+                  ]
+                },
+                {
+                  "type": "Column",
+                  "items": [
+                    {"type": "TextBlock", "text": "${shipment_id}"},
+                    {"type": "TextBlock", "text": "${route}"},
+                    {"type": "TextBlock", "text": "${carrier}"},
+                    {"type": "TextBlock", "text": "${max_temp_celsius}°C", "color": "attention"},
+                    {"type": "TextBlock", "text": "${exceedance_minutes} minutes", "color": "attention"},
+                    {"type": "TextBlock", "text": "${product_type}"},
+                    {"type": "TextBlock", "text": "$${estimated_loss_usd}", "color": "attention"}
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "TextBlock",
+              "text": "**Action Required:** Contact carrier immediately. See SOP-SC-002 Section 4.",
+              "wrap": true
+            }
+          ],
+          "actions": [
+            {
+              "type": "Action.OpenUrl",
+              "title": "📊 Open Cold Chain Dashboard",
+              "url": "https://${tenant_url}/sense/app/${cold_chain_app_id}"
+            },
+            {
+              "type": "Action.OpenUrl",
+              "title": "📋 View Procedure (SOP-SC-002)",
+              "url": "https://${tenant_url}/answers/kb/${kb_id}/search?q=cold+chain+procedure"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "step": 5,
+      "type": "qlik_update",
+      "description": "Mark alert as sent to prevent duplicate notifications",
+      "config": {
+        "dataProduct": "Spoilage Risk",
+        "update": {"alert_sent": true},
+        "filter": "shipment_id = '${shipment_id}'"
+      }
+    }
+  ],
+  "setupInstructions": {
+    "prerequisites": [
+      "Microsoft Teams connector configured in Qlik Application Automation (OAuth consent required)",
+      "Teams channel '#mcg-cold-chain-alerts' created in the MCG workspace",
+      "gold.spoilage_risk data product populated with streaming IoT data",
+      "Qlik Sense Cold Chain Monitor app published"
+    ],
+    "buildSteps": [
+      "1. In Qlik Cloud → Automations → Create New",
+      "2. Add trigger block: Scheduled (every 5 minutes)",
+      "3. Add Qlik Cloud block: Query data product 'Spoilage Risk' with filter",
+      "4. Add Condition block: Check result count > 0",
+      "5. Add Loop block: Iterate over results",
+      "6. Add Microsoft Teams block: Post Adaptive Card (paste template above)",
+      "7. Add Qlik Cloud block: Update alert_sent flag",
+      "8. Test with a manual exceedance record, then enable schedule"
+    ]
+  }
+}

@@ -1,0 +1,114 @@
+{
+  "name": "MCG Pipeline Health Daily Summary → Teams",
+  "description": "Posts a daily pipeline health summary to #mcg-data-engineering Teams channel at 07:00 UTC. Shows status of all CDC pipelines, data freshness, and Trust Scores.",
+  "state": "disabled",
+  "trigger": {
+    "type": "scheduled",
+    "schedule": "0 7 * * *",
+    "description": "Daily at 07:00 UTC"
+  },
+  "blocks": [
+    {
+      "step": 1,
+      "type": "qlik_query",
+      "description": "Get pipeline health status for all DCs",
+      "config": {
+        "dataProduct": "Supply Chain Health",
+        "aggregation": {
+          "groupBy": ["pipeline_status"],
+          "count": "dc_id",
+          "metrics": ["avg(trust_score)", "max(sync_lag_minutes)"]
+        }
+      }
+    },
+    {
+      "step": 2,
+      "type": "qlik_api",
+      "description": "Get source connection statuses",
+      "config": {
+        "endpoint": "GET /api/v1/data-connections",
+        "extractFields": ["name", "status", "lastSync"]
+      }
+    },
+    {
+      "step": 3,
+      "type": "microsoft_teams",
+      "description": "Post summary to Teams channel",
+      "config": {
+        "action": "post_adaptive_card",
+        "channel": "#mcg-data-engineering",
+        "card": {
+          "type": "AdaptiveCard",
+          "version": "1.4",
+          "body": [
+            {
+              "type": "TextBlock",
+              "text": "📊 MCG Pipeline Health — Daily Summary (${date})",
+              "weight": "bolder",
+              "size": "large"
+            },
+            {
+              "type": "FactSet",
+              "facts": [
+                {"title": "✅ Healthy", "value": "${healthy_count}/28 pipelines"},
+                {"title": "⚠️ Degraded", "value": "${degraded_count} (sync lag > 30 min)"},
+                {"title": "❌ Failed", "value": "${failed_count}"}
+              ]
+            },
+            {
+              "type": "TextBlock",
+              "text": "**Data Freshness:**",
+              "weight": "bolder"
+            },
+            {
+              "type": "FactSet",
+              "facts": [
+                {"title": "PostgreSQL (WMS)", "value": "Last sync: ${pg_last_sync} (${pg_lag} ago)"},
+                {"title": "Kafka (IoT)", "value": "Streaming: ${kafka_status}"},
+                {"title": "Salesforce (CRM)", "value": "Last sync: ${sf_last_sync} (${sf_lag} ago)"}
+              ]
+            },
+            {
+              "type": "TextBlock",
+              "text": "**Trust Scores:**",
+              "weight": "bolder"
+            },
+            {
+              "type": "FactSet",
+              "facts": [
+                {"title": "Inventory", "value": "${inv_trust_score}"},
+                {"title": "Addresses", "value": "${addr_trust_score}"},
+                {"title": "Products", "value": "${prod_trust_score}"},
+                {"title": "Shipments", "value": "${ship_trust_score}"}
+              ]
+            }
+          ],
+          "actions": [
+            {
+              "type": "Action.OpenUrl",
+              "title": "📊 Open Pipeline Monitor",
+              "url": "https://${tenant_url}/data-integration/pipelines"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "setupInstructions": {
+    "prerequisites": [
+      "Microsoft Teams connector configured in Qlik Application Automation",
+      "Teams channel '#mcg-data-engineering' created",
+      "gold.supply_chain_health populated",
+      "All 3 source connections active"
+    ],
+    "buildSteps": [
+      "1. In Qlik Cloud → Automations → Create New",
+      "2. Add trigger: Scheduled (daily at 07:00 UTC)",
+      "3. Add Qlik Cloud block: Query Supply Chain Health data product (aggregate by pipeline_status)",
+      "4. Add Qlik Cloud block: GET /api/v1/data-connections for source statuses",
+      "5. Add variable block: Calculate healthy/degraded/failed counts",
+      "6. Add Microsoft Teams block: Post Adaptive Card (paste template above)",
+      "7. Test manually, then enable schedule"
+    ]
+  }
+}
