@@ -13,5 +13,8 @@
   "dependencies": {
     "docx": "^9.6.0",
     "pptxgenjs": "^4.0.1"
+  },
+  "devDependencies": {
+    "sharp": "^0.34.5"
   }
 }

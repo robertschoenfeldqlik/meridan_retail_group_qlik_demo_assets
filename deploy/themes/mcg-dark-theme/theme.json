@@ -1,0 +1,215 @@
+{
+  "name": "MCG Dark Theme",
+  "version": "1.0.0",
+  "description": "Meridian Commerce Group dark theme — Navy, Teal, Gold color scheme matching MCG brand identity",
+  "author": "MCG Demo Team",
+  "type": "theme",
+  "dependencies": {
+    "qlik-sense": ">=2024.0.0"
+  },
+  "logo": {
+    "small": "mcg_icon.png",
+    "medium": "mcg_logo.png"
+  },
+  "theme": {
+    "customProperties": {},
+    "palettes": {
+      "data": [
+        {
+          "name": "MCG Dark Palette",
+          "translation": "MCG Dark Palette",
+          "propertyValue": "mcg-dark",
+          "type": "pyramid",
+          "scale": [
+            "#0D7C8F",
+            "#C4922E",
+            "#10CFC9",
+            "#93579C",
+            "#009845",
+            "#5BA3CF",
+            "#E8A838",
+            "#7EDBD2",
+            "#B87FCC",
+            "#4CAF6E",
+            "#3D8FA0",
+            "#D4A94A"
+          ]
+        }
+      ],
+      "ui": [
+        {
+          "name": "MCG Dark UI",
+          "translation": "MCG Dark UI",
+          "propertyValue": "mcg-dark-ui",
+          "scale": [
+            "#0D2137",
+            "#1B2A4A",
+            "#243656",
+            "#2D4268",
+            "#0D7C8F",
+            "#C4922E"
+          ]
+        }
+      ]
+    },
+    "scales": [],
+    "fontFamily": "Inter, 'Segoe UI', Calibri, sans-serif",
+    "fontSize": "13px",
+    "color": "#E8ECF1",
+    "backgroundColor": "#0D2137",
+
+    "_cards": "Cards — containers for KPIs and visualizations",
+    "object": {
+      "kpi": {
+        "value": {
+          "color": "#FFFFFF",
+          "fontSize": "32px",
+          "fontFamily": "Inter, sans-serif"
+        },
+        "title": {
+          "main": {
+            "color": "#A8B8CC",
+            "fontSize": "13px"
+          }
+        }
+      },
+      "listBox": {
+        "title": {
+          "main": {
+            "color": "#C4922E",
+            "fontSize": "13px",
+            "fontWeight": "600"
+          }
+        },
+        "content": {
+          "color": "#E8ECF1",
+          "fontSize": "12px"
+        }
+      },
+      "straightTable": {
+        "header": {
+          "fontSize": "12px",
+          "fontFamily": "Inter, sans-serif",
+          "color": "#C4922E",
+          "fontWeight": "600"
+        },
+        "content": {
+          "fontSize": "12px",
+          "fontFamily": "Inter, sans-serif",
+          "color": "#E8ECF1"
+        }
+      },
+      "pivotTable": {
+        "header": {
+          "fontSize": "12px",
+          "fontFamily": "Inter, sans-serif",
+          "color": "#C4922E",
+          "fontWeight": "600"
+        }
+      }
+    },
+
+    "_sheets": "Sheet-level styling",
+    "sheet": {
+      "backgroundColor": "#0D2137",
+      "title": {
+        "main": {
+          "color": "#FFFFFF",
+          "fontSize": "18px",
+          "fontWeight": "600",
+          "fontFamily": "Inter, sans-serif"
+        }
+      },
+      "description": {
+        "color": "#A8B8CC"
+      },
+      "list": {
+        "item": {
+          "backgroundColor": "#1B2A4A"
+        }
+      }
+    },
+
+    "_dataColors": "Core data visualization color assignments",
+    "dataColors": {
+      "primaryColor": "#0D7C8F",
+      "othersColor": "#3D5A7A",
+      "errorColor": "#DC2626",
+      "nullColor": "#3D5A7A",
+      "colorOrder": [
+        "#0D7C8F",
+        "#C4922E",
+        "#10CFC9",
+        "#93579C",
+        "#009845",
+        "#5BA3CF",
+        "#E8A838",
+        "#7EDBD2",
+        "#B87FCC",
+        "#4CAF6E"
+      ]
+    },
+
+    "_chart_general": "Chart-level defaults",
+    "axis": {
+      "title": {
+        "fontSize": "12px",
+        "fontFamily": "Inter, sans-serif",
+        "color": "#A8B8CC"
+      },
+      "label": {
+        "name": {
+          "color": "#8899AD",
+          "fontSize": "11px",
+          "fontFamily": "Inter, sans-serif"
+        }
+      },
+      "line": {
+        "major": {
+          "color": "#1E3A5C"
+        },
+        "minor": {
+          "color": "#162D4A"
+        }
+      }
+    },
+
+    "legend": {
+      "title": {
+        "color": "#A8B8CC",
+        "fontSize": "12px",
+        "fontFamily": "Inter, sans-serif"
+      },
+      "label": {
+        "color": "#8899AD",
+        "fontSize": "11px"
+      }
+    },
+
+    "tooltip": {
+      "backgroundColor": "#1B2A4A",
+      "color": "#E8ECF1",
+      "fontSize": "12px",
+      "borderColor": "#0D7C8F"
+    },
+
+    "_selections": "Selection states",
+    "selections": {
+      "selected": {
+        "color": "#0D7C8F"
+      },
+      "alternative": {
+        "color": "#3D5A7A"
+      },
+      "excluded": {
+        "color": "#1E2A3A"
+      },
+      "possible": {
+        "color": "#E8ECF1"
+      },
+      "selectedExcluded": {
+        "color": "#0D7C8F"
+      }
+    }
+  }
+}

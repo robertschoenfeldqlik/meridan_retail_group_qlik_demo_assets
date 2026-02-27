@@ -1,0 +1,14 @@
+{
+  "name": "MCG Dark Theme",
+  "description": "Meridian Commerce Group dark theme — Navy (#1B2A4A), Teal (#0D7C8F), Gold (#C4922E) color scheme",
+  "type": "theme",
+  "version": "1.0.0",
+  "author": "MCG Demo Team",
+  "homepage": "",
+  "keywords": "mcg, meridian, dark, navy, teal, gold, supply chain",
+  "license": "MIT",
+  "repository": "",
+  "dependencies": {
+    "qlik-sense": ">=2024.0.0"
+  }
+}
