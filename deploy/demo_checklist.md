@@ -203,30 +203,6 @@ Master checklist of everything required to stand up the full Meridian Commerce G
 - [ ] Configure subscription: Daily inventory Excel emailed to DC managers (06:30 UTC)
 - [ ] Test on-demand report: user sets selections in app → downloads formatted report
 
-### Collaboration Features
-- [ ] Create sample Notes on Supply Chain Health dashboard (annotate the Rotterdam incident)
-- [ ] Create public Bookmarks for key selection states (e.g., "Rotterdam DC — Pipeline Failure Period")
-- [ ] Create a Collection: "MCG Demo Essentials" containing top 3 dashboards + key charts
-- [ ] Verify Notes and Bookmarks are visible in the "MCG Demo - Published" managed space
-
----
-
-## Phase 5c: Embedded Analytics & Direct Query
-
-### Embedded Analytics
-- [ ] Create a sample HTML page with `<qlik-embed>` web components
-  - [ ] Embed Cold Chain Monitoring chart (temperature heatmap)
-  - [ ] Embed Supply Chain Health KPI card (inventory accuracy)
-- [ ] Configure OAuth2 authentication for embedded content
-- [ ] Optional: Create a React demo using `@qlik/embed-react`
-- [ ] Document embedding code snippets for demo walk-through
-
-### Direct Query
-- [ ] Create a Direct Query app connecting live to the Lakehouse (Snowflake / PostgreSQL)
-- [ ] Verify SQL pushdown — no data imported into engine memory
-- [ ] Test associative exploration on live-queried data
-- [ ] Optional: Link Direct Query app to an ODAG template for drill-down generation
-
 ---
 
 ## Phase 6: Qlik Predict (AutoML)
@@ -335,6 +311,9 @@ Master checklist of everything required to stand up the full Meridian Commerce G
 - [ ] **MCG Pipeline Health Daily Summary → Teams** — configured and enabled
   - Schedule: Daily 07:00 UTC
   - Posts health summary to data engineering channel
+- [ ] **WISMO Rate Alert → Customer Ops** — configured and enabled
+  - Trigger: WISMO rate exceeds 40% for any carrier
+  - Posts alert to `#mcg-customer-ops` channel
 - [ ] Test each automation with "Run Now" and verify Teams messages
 
 ---
@@ -368,13 +347,6 @@ Master checklist of everything required to stand up the full Meridian Commerce G
 - [ ] Confirm citations and explainability in Qlik Answers responses
 - [ ] Test contextual side-panel assistant within Qlik Cloud hub
 
-### Mobile Analytics
-- [ ] Install Qlik Analytics Mobile app (iOS/Android) on demo device
-- [ ] Log in with demo user account
-- [ ] Verify Supply Chain Health and Cold Chain dashboards load on mobile
-- [ ] Test offline mode: download an app, disconnect, verify exploration works
-- [ ] Verify push notifications from native alerts are received on mobile
-
 ---
 
 ## Phase 13: Pre-Demo Verification
@@ -401,8 +373,6 @@ Master checklist of everything required to stand up the full Meridian Commerce G
 - [ ] Automations execute without errors
 - [ ] Discovery Agent alerts populate
 - [ ] MCP connection responds from Claude
-- [ ] Mobile app loads dashboards and receives push alerts
-- [ ] Embedded analytics sample page renders correctly
 
 ### Demo Environment
 - [ ] Browser logged into Qlik Cloud with demo user
