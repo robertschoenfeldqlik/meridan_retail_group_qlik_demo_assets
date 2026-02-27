@@ -232,13 +232,13 @@ const agendaItems = [
   },
   {
     num: "3", title: "The Analytics Story", color: C.qlikGreen,
-    desc: "Qlik Sense dashboards, Qlik Answers agentic analytics, native alerting, reporting & subscriptions, embedded analytics, mobile, collaboration",
-    components: "Qlik Sense • Qlik Answers • Alerting • Reporting • qlik-embed • Mobile • Notes • Bookmarks",
+    desc: "Qlik Sense dashboards, Qlik Answers agentic analytics, native alerting, reporting & subscriptions, automations",
+    components: "Qlik Sense • Qlik Answers • Alerting • Reporting • Automations",
   },
   {
     num: "4", title: "The AI Story", color: C.qlikPurple,
-    desc: "Qlik Predict (AutoML), Qlik Answers (agentic AI), Discovery Agent, MCP Server, Natural Language Insights, Agentic Analytics (GA)",
-    components: "Predict • Qlik Answers • Discovery Agent • MCP • NLI • Knowledge Mart • Agentic Analytics",
+    desc: "Qlik Predict (AutoML), Qlik Answers (agentic AI), Discovery Agent, MCP Server, Analytics Engine, NLI, Knowledge Mart, Agentic Analytics",
+    components: "Predict • Qlik Answers • Discovery Agent • MCP • Analytics Engine • NLI • Knowledge Mart • Agentic Analytics",
   },
 ];
 
@@ -959,76 +959,20 @@ reportItems.forEach((item, i) => {
   });
 });
 
-// Bottom: Collaboration
+// ─── Slide: Qlik Automations ───
+slide = contentSlide("Qlik Automations", C.qlikGreen);
+
+slide.addText("No-code automation designer for scheduled reloads, alerts, and cross-system workflows", {
+  x: 0.5, y: 0.85, w: 12, h: 0.4,
+  fontSize: 14, color: C.medGray, fontFace: FONT, italic: true,
+});
+
 slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
-  x: 0.5, y: 4.1, w: 12.3, h: 2.0,
-  fill: { color: C.lightBg }, rectRadius: 0.12,
-  line: { color: C.qlikBlue, width: 2 },
-});
-slide.addText("Collaboration & User Experience [NEW]", {
-  x: 0.7, y: 4.2, w: 11.8, h: 0.5,
-  fontSize: 18, color: C.qlikBlue, fontFace: FONT, bold: true,
-});
-
-const collabCols = [
-  { title: "Notes", items: ["In-app commentary", "Chart snapshots", "Tag team members"] },
-  { title: "Bookmarks", items: ["Save selection states", "Share with team", "Public grouping"] },
-  { title: "Collections", items: ["Organize apps/charts", "Personal curations", "Quick access"] },
-  { title: "Mobile", items: ["iOS/Android app", "Offline exploration", "Push notifications"] },
-];
-collabCols.forEach((col, i) => {
-  const x = 0.7 + i * 3.1;
-  slide.addText(col.title, {
-    x, y: 4.7, w: 2.9, h: 0.35,
-    fontSize: 13, color: C.qlikBlue, fontFace: FONT, bold: true,
-  });
-  col.items.forEach((item, j) => {
-    slide.addText(`▸  ${item}`, {
-      x, y: 5.05 + j * 0.3, w: 2.9, h: 0.28,
-      fontSize: 10, color: C.darkText, fontFace: FONT,
-    });
-  });
-});
-
-// ─── Slide: Embedded Analytics ───
-slide = contentSlide("Embedded Analytics & Automations", C.qlikGreen);
-
-// Left: Embedded
-slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
-  x: 0.5, y: 1.1, w: 6.0, h: 3.0,
+  x: 0.5, y: 1.4, w: 12.3, h: 4.2,
   fill: { color: C.lightBg }, rectRadius: 0.12,
   line: { color: C.qlikGreen, width: 2 },
 });
-slide.addText("Embedded Analytics [NEW]", {
-  x: 0.7, y: 1.2, w: 5.5, h: 0.5,
-  fontSize: 18, color: C.qlikGreen, fontFace: FONT, bold: true,
-});
-const embedItems = [
-  "qlik-embed: Modern web component framework",
-  "<qlik-embed> HTML elements with OAuth2",
-  "React support via @qlik/embed-react",
-  "Embed charts, sheets, or full apps",
-  "Nebula.js for custom rendering",
-  "MCG: Embed cold chain dashboard in carrier portal",
-  "MCG: Embed inventory KPIs in store manager intranet",
-];
-embedItems.forEach((item, i) => {
-  slide.addText(`▸  ${item}`, {
-    x: 0.7, y: 1.8 + i * 0.35, w: 5.6, h: 0.32,
-    fontSize: 11, color: C.darkText, fontFace: FONT,
-  });
-});
 
-// Right: Automations
-slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
-  x: 6.8, y: 1.1, w: 6.0, h: 3.0,
-  fill: { color: C.lightBg }, rectRadius: 0.12,
-  line: { color: C.qlikTeal, width: 2 },
-});
-slide.addText("Qlik Automations", {
-  x: 7.0, y: 1.2, w: 5.5, h: 0.5,
-  fontSize: 18, color: C.qlikTeal, fontFace: FONT, bold: true,
-});
 const autoItems = [
   "Block-based automation designer (no code)",
   "MCG Daily App Reload (06:00 UTC)",
@@ -1040,8 +984,8 @@ const autoItems = [
 ];
 autoItems.forEach((item, i) => {
   slide.addText(`▸  ${item}`, {
-    x: 7.0, y: 1.8 + i * 0.35, w: 5.6, h: 0.32,
-    fontSize: 11, color: C.darkText, fontFace: FONT,
+    x: 0.8, y: 1.6 + i * 0.5, w: 11.5, h: 0.45,
+    fontSize: 13, color: C.darkText, fontFace: FONT,
   });
 });
 
@@ -1074,10 +1018,6 @@ yPos = recommendBox(slide, "Qlik Answers Agentic Demo", [
 yPos = recommendBox(slide, "Alerting + Reporting", [
   "Show a native alert: IRA < 85% for DC-RTD-01 → triggered, sent via email and push notification",
   "Open a subscription: weekly compliance PDF emailed to regulatory team every Monday 08:00",
-], yPos, C.lightCyan);
-
-yPos = recommendBox(slide, "Embedded Analytics [NEW]", [
-  "Show a qlik-embed code snippet → demo a cold chain chart embedded in a mock carrier portal page",
 ], yPos, C.lightCyan);
 
 
@@ -1333,14 +1273,11 @@ const missing = [
   { priority: "HIGH", feature: "Native Data Alerts", story: "Analytics", effort: "Low — create 2-3 condition-based alerts" },
   { priority: "MED", feature: "Reporting Service + Subscriptions", story: "Analytics", effort: "Medium — build 1-2 report templates" },
   { priority: "MED", feature: "Section Access (Row-Level Security)", story: "Governance", effort: "Medium — configure for regional VP views" },
-  { priority: "MED", feature: "Embedded Analytics (qlik-embed)", story: "Analytics", effort: "Medium — build a sample HTML page" },
   { priority: "MED", feature: "Business Logic / Logical Model", story: "Analytics", effort: "Low — define in app settings" },
   { priority: "LOW", feature: "Direct Query", story: "Integration", effort: "Low — create one Direct Query app" },
-  { priority: "LOW", feature: "Notes / Bookmarks / Collections", story: "Analytics", effort: "Low — create during demo walk-through" },
   { priority: "LOW", feature: "Knowledge Mart", story: "AI", effort: "Medium — configure RAG pipeline" },
   { priority: "LOW", feature: "Custom MCG Theme", story: "Analytics", effort: "Low — upload JSON theme file" },
   { priority: "LOW", feature: "Data Marketplace", story: "Governance", effort: "Low — enable on data products" },
-  { priority: "LOW", feature: "Mobile Analytics", story: "Analytics", effort: "Low — install app, log in" },
 ];
 
 const mHeaders = [
@@ -1366,7 +1303,7 @@ slide.addTable([...mHeaders, ...mRows], {
   fontFace: FONT,
   border: { type: "solid", pt: 0.5, color: "D1D5DB" },
   colW: [1.3, 4.0, 2.2, 5.2],
-  rowH: [0.32, ...Array(13).fill(0.35)],
+  rowH: [0.32, ...Array(10).fill(0.35)],
 });
 
 // ═══════════════════════════════════════════════════
