@@ -222,8 +222,8 @@ slide = contentSlide("Demo Agenda — Four Stories, One Platform");
 const agendaItems = [
   {
     num: "1", title: "The Integration Story", color: C.qlikTeal,
-    desc: "Data Movement Gateway, CDC, Kafka streaming, Salesforce → Open Lakehouse (Bronze/Silver/Gold) → Direct Query",
-    components: "DMG • CDC • Data Flows • Table Recipes • Direct Query",
+    desc: "CDC, Kafka streaming, Salesforce → Open Lakehouse (Bronze/Silver/Gold) → Direct Query",
+    components: "CDC • Data Flows • Table Recipes • Direct Query",
   },
   {
     num: "2", title: "The Data Governance Story", color: C.qlikGreen,
@@ -285,7 +285,7 @@ slide.addText("Three live data sources feeding the Qlik Open Lakehouse in real-t
 
 const sources = [
   {
-    name: "PostgreSQL (WMS)", method: "CDC via Data Movement Gateway", color: C.qlikTeal,
+    name: "PostgreSQL (WMS)", method: "CDC via Qlik Cloud Connector", color: C.qlikTeal,
     tables: "inventory_positions • warehouse_events • shipments",
     detail: "Real-time Change Data Capture, logical replication, sub-second latency",
   },
@@ -450,7 +450,7 @@ let yPos = 1.1;
 yPos = recommendBox(slide, "Live CDC Demo", [
   "Show PostgreSQL simulator running → watch rows appear in bronze.inventory_positions in real-time",
   "Make a manual UPDATE in PostgreSQL → show CDC propagating through Bronze → Silver → Gold in under 60 seconds",
-  "Highlight Data Movement Gateway status panel (Administration → Gateways)",
+  "Highlight pipeline status in the Qlik Cloud Integration hub",
 ], yPos, C.lightCyan);
 
 yPos = recommendBox(slide, "Lakehouse Walk-Through", [

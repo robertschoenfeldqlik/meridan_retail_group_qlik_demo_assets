@@ -12,11 +12,6 @@ Master checklist of everything required to stand up the full Meridian Commerce G
 - [ ] API key generated (Profile > API keys > Generate new)
 - [ ] Verify entitlements: Qlik Sense, Qlik Cloud Data Integration, Qlik Answers, Qlik Predict, Automations
 
-### Data Movement Gateway
-- [ ] Download and install DMG on a VM or container with network access to PostgreSQL
-- [ ] Register gateway in Qlik Cloud (Administration > Gateways)
-- [ ] Verify gateway status shows "Connected" in the hub
-
 ### PostgreSQL Database
 - [ ] PostgreSQL instance running (Docker, RDS, or local)
 - [ ] Database `mcg_wms` created
@@ -51,7 +46,7 @@ Master checklist of everything required to stand up the full Meridian Commerce G
 - [ ] Create data space: **"MCG Data - Lakehouse"** (if using separate data space)
 
 ### Data Connections
-- [ ] PostgreSQL connection created via DMG
+- [ ] PostgreSQL connection created
   - [ ] Test connection successful
   - [ ] Tables visible: `inventory_positions`, `warehouse_events`, `shipments`
 - [ ] Salesforce connection created via Standard connector
