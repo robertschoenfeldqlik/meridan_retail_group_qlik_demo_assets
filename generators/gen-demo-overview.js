@@ -232,8 +232,8 @@ const agendaItems = [
   },
   {
     num: "3", title: "The Analytics Story", color: C.qlikGreen,
-    desc: "Qlik Sense dashboards, Qlik Answers agentic analytics, native alerting, reporting & subscriptions, automations",
-    components: "Qlik Sense • Qlik Answers • Alerting • Reporting • Automations",
+    desc: "Qlik Sense dashboards, Table Recipes, Data Flows, Qlik Answers agentic analytics, native alerting, reporting & subscriptions, automations",
+    components: "Qlik Sense • Table Recipes • Data Flows • Qlik Answers • Alerting • Reporting • Automations",
   },
   {
     num: "4", title: "The AI Story", color: C.qlikPurple,
