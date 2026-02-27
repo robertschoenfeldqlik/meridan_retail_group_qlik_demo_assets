@@ -227,8 +227,8 @@ const agendaItems = [
   },
   {
     num: "2", title: "The Data Governance Story", color: C.qlikGreen,
-    desc: "Data Products, Catalog & Lineage, Impact Analysis, Trust Score, Data Profiling, Stewardship Campaigns, Business Glossary, Data Marketplace",
-    components: "Data Products • Catalog • Lineage • Impact Analysis • Trust Score • Profiling • Stewardship • Glossary • Data Marketplace",
+    desc: "Data Products, Lineage, Impact Analysis, Trust Score, Data Profiling, Stewardship Campaigns, Business Glossary, Data Marketplace",
+    components: "Data Products • Lineage • Impact Analysis • Trust Score • Profiling • Stewardship • Glossary • Data Marketplace",
   },
   {
     num: "3", title: "The Analytics Story", color: C.qlikGreen,
@@ -522,63 +522,56 @@ slide.addText("Data Products are the governed contract between data producers an
   fontSize: 12, color: C.qlikGreen, fontFace: FONT, bold: true,
 });
 
-// ─── Slide: Catalog, Lineage & Impact Analysis ───
-slide = contentSlide("Data Catalog, Lineage & Impact Analysis", C.qlikGreen);
+// ─── Slide: Lineage & Impact Analysis ───
+slide = contentSlide("Data Lineage & Impact Analysis", C.qlikGreen);
 
-slide.addText("Unified discovery, visual field-level lineage, and downstream dependency analysis", {
+slide.addText("Visual field-level lineage and downstream dependency analysis across the entire data estate", {
   x: 0.5, y: 0.85, w: 12, h: 0.4,
   fontSize: 14, color: C.medGray, fontFace: FONT, italic: true,
 });
 
-// Three columns
+// Two columns
 const govFeatures = [
   {
-    title: "Data Catalog", color: C.qlikGreen, items: [
-      "Auto-discover all data assets",
-      "Technical + business metadata",
-      "Search & filter across spaces",
-      "Asset classification & tagging",
-      "Custom semantic types",
-    ],
-  },
-  {
-    title: "Data Lineage", color: C.qlikTeal, items: [
+    title: "Data Lineage", color: C.qlikGreen, items: [
       "Visual field-level lineage graphs",
       "Source → Transformation → App",
       "Cross-system traceability",
       "Data flow route integration",
       "ML content lineage",
+      "MCG: PostgreSQL → Bronze → Silver → Gold → App",
     ],
   },
   {
-    title: "Impact Analysis", color: C.qlikBlue, items: [
+    title: "Impact Analysis", color: C.qlikTeal, items: [
       "Downstream dependency maps",
       "\"What if I change this field?\"",
       "Affected apps, tasks, datasets",
       "Change risk assessment",
       "ML experiment dependencies",
+      "MCG: silver.inventory_reconciled → 3 Gold + 2 apps",
     ],
   },
 ];
 
 govFeatures.forEach((f, i) => {
-  const x = 0.5 + i * 4.2;
+  const x = 0.5 + i * 6.4;
   slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
-    x, y: 1.4, w: 3.9, h: 4.2,
+    x, y: 1.4, w: 6.1, h: 4.5,
     fill: { color: C.lightBg }, rectRadius: 0.12,
     line: { color: f.color, width: 2 },
   });
   slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
-    x: x + 0.1, y: 1.5, w: 3.7, h: 0.6,
+    x: x + 0.1, y: 1.5, w: 5.9, h: 0.6,
     fill: { color: f.color }, rectRadius: 0.06,
   });
   slide.addText(f.title, {
-    x: x + 0.1, y: 1.5, w: 3.7, h: 0.6,
+    x: x + 0.1, y: 1.5, w: 5.9, h: 0.6,
     fontSize: 16, color: C.white, fontFace: FONT, bold: true, align: "center", valign: "middle",
   });
   f.items.forEach((item, j) => {
     slide.addText(`▸  ${item}`, {
-      x: x + 0.3, y: 2.3 + j * 0.5, w: 3.4, h: 0.45,
+      x: x + 0.3, y: 2.3 + j * 0.55, w: 5.4, h: 0.5,
       fontSize: 12, color: C.darkText, fontFace: FONT,
     });
   });
@@ -1335,7 +1328,7 @@ sectionSlide("★", "Features to Add to Demo", "Qlik Cloud capabilities not yet 
 slide = contentSlide("Missing Features — Prioritized Additions", C.red);
 
 const missing = [
-  { priority: "HIGH", feature: "Data Catalog + Lineage", story: "Governance", effort: "Low — auto-populated from existing data" },
+  { priority: "HIGH", feature: "Lineage + Impact Analysis", story: "Governance", effort: "Low — auto-populated from existing data" },
   { priority: "HIGH", feature: "Trust Score + Data Profiling", story: "Governance", effort: "Low — enable on Gold-layer products" },
   { priority: "HIGH", feature: "Native Data Alerts", story: "Analytics", effort: "Low — create 2-3 condition-based alerts" },
   { priority: "MED", feature: "Reporting Service + Subscriptions", story: "Analytics", effort: "Medium — build 1-2 report templates" },

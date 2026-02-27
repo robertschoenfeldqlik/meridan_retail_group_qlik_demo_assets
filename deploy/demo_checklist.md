@@ -101,14 +101,7 @@ Master checklist of everything required to stand up the full Meridian Commerce G
 
 ---
 
-## Phase 3b: Data Catalog, Lineage & Profiling
-
-### Data Catalog
-- [ ] Verify all Bronze/Silver/Gold tables auto-discovered in Catalog
-- [ ] Review technical metadata for completeness
-- [ ] Add business metadata descriptions to Gold-layer assets
-- [ ] Tag data products with business domains (Inventory, Supply Chain, Compliance, etc.)
-- [ ] Configure custom semantic types for MCG-specific fields (e.g., MCG order IDs, lot numbers)
+## Phase 3b: Lineage, Impact Analysis & Profiling
 
 ### Data Lineage
 - [ ] Verify field-level lineage visible from source → Bronze → Silver → Gold
@@ -408,7 +401,7 @@ Master checklist of everything required to stand up the full Meridian Commerce G
 - [ ] Predict models show predictions when queried
 - [ ] Stewardship campaigns show records needing review
 - [ ] Business glossary terms visible and linked
-- [ ] Data Catalog shows all assets with lineage
+- [ ] Data Lineage traces field-level paths from source to Gold
 - [ ] Trust Scores populated on Gold-layer data products
 - [ ] Automations execute without errors
 - [ ] Discovery Agent alerts populate
