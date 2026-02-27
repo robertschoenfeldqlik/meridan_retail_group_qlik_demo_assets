@@ -232,13 +232,13 @@ const agendaItems = [
   },
   {
     num: "3", title: "The Analytics Story", color: C.qlikGreen,
-    desc: "Qlik Sense dashboards, Insight Advisor, native alerting, reporting & subscriptions, embedded analytics, mobile, collaboration",
-    components: "Qlik Sense • Insight Advisor Chat • Alerting • Reporting • qlik-embed • Mobile • Notes • Bookmarks",
+    desc: "Qlik Sense dashboards, Qlik Answers agentic analytics, native alerting, reporting & subscriptions, embedded analytics, mobile, collaboration",
+    components: "Qlik Sense • Qlik Answers • Alerting • Reporting • qlik-embed • Mobile • Notes • Bookmarks",
   },
   {
     num: "4", title: "The AI Story", color: C.qlikPurple,
-    desc: "Qlik Predict (AutoML), Qlik Answers (RAG), Discovery Agent, MCP Server, Natural Language Insights, Agentic Analytics",
-    components: "Predict • Answers • Discovery Agent • MCP • NLI • Knowledge Mart • Agentic AI",
+    desc: "Qlik Predict (AutoML), Qlik Answers (agentic AI), Discovery Agent, MCP Server, Natural Language Insights, Agentic Analytics (GA)",
+    components: "Predict • Qlik Answers • Discovery Agent • MCP • NLI • Knowledge Mart • Agentic Analytics",
   },
 ];
 
@@ -860,42 +860,42 @@ slide.addTable([...appHeaders, ...appRows], {
   rowH: [0.38, ...Array(7).fill(0.48)],
 });
 
-// ─── Slide: Insight Advisor & NL ───
-slide = contentSlide("Insight Advisor — AI-Powered Analytics", C.qlikGreen);
+// ─── Slide: Qlik Answers — Agentic Analytics ───
+slide = contentSlide("Qlik Answers — Agentic Conversational Analytics", C.qlikGreen);
 
-slide.addText("Natural language exploration, auto-generated visualizations, and narrative insights", {
+slide.addText("Unified agentic interface: ask questions in natural language, get governed answers from data and documents", {
   x: 0.5, y: 0.85, w: 12, h: 0.4,
   fontSize: 14, color: C.medGray, fontFace: FONT, italic: true,
 });
 
-const iaFeatures = [
+const answersFeatures = [
   {
-    title: "Insight Advisor Search", color: C.qlikGreen, items: [
+    title: "Conversational Analytics", color: C.qlikGreen, items: [
       "Ask questions in natural language",
-      "Auto-selects best analysis type",
-      "Generates visualizations instantly",
+      "Qlik engine powers governed calculations",
+      "Auto-generates visualizations & narratives",
       "MCG: \"Show inventory accuracy by DC\"",
     ],
   },
   {
-    title: "Insight Advisor Chat", color: C.qlikTeal, items: [
-      "Conversational analytics interface",
-      "Accessible from Activity Centers",
-      "Multi-turn conversations",
-      "MCG: \"Which carriers miss SLAs most?\"",
+    title: "Agentic Reasoning", color: C.qlikTeal, items: [
+      "Chain-of-thought multi-step reasoning",
+      "Blends structured data + documents",
+      "Citations & explainability built in",
+      "MCG: \"Why did Rotterdam IRA drop?\"",
     ],
   },
   {
     title: "Business Logic", color: C.qlikBlue, items: [
       "Logical Model defines data relationships",
       "Vocabulary maps business terms",
-      "Controls Insight Advisor behavior",
+      "Guides Qlik Answers behavior",
       "MCG: \"phantom\" → inventory_accuracy",
     ],
   },
 ];
 
-iaFeatures.forEach((f, i) => {
+answersFeatures.forEach((f, i) => {
   const x = 0.5 + i * 4.2;
   slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
     x, y: 1.4, w: 3.9, h: 3.5,
@@ -928,13 +928,14 @@ slide.addText("Natural Language Insights (NLI): Add NLI objects to dashboards �
   fontSize: 11, color: C.darkText, fontFace: FONT,
 });
 
+// GA callout
 slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
   x: 0.5, y: 6.1, w: 12.3, h: 0.5,
-  fill: { color: C.lightRed }, rectRadius: 0.08,
+  fill: { color: C.lightGreen }, rectRadius: 0.08,
 });
-slide.addText("⚠ NOT IN CURRENT CHECKLIST — Insight Advisor, Business Logic, and NLI are core Qlik Cloud differentiators. Must be added.", {
+slide.addText("✓ Qlik Answers agentic experience reached GA in February 2026 — replaces legacy Insight Advisor with unified conversational AI.", {
   x: 0.8, y: 6.15, w: 11.8, h: 0.4,
-  fontSize: 12, color: C.red, fontFace: FONT, bold: true,
+  fontSize: 12, color: C.qlikGreen, fontFace: FONT, bold: true,
 });
 
 // ─── Slide: Alerting, Reporting & Subscriptions ───
@@ -1096,9 +1097,9 @@ yPos = recommendBox(slide, "Qlik Sense Dashboard Tour (8 min)", [
   "Switch to Executive Cost Impact → C-level view of $127M broken down by nightmare category",
 ], yPos, C.lightCyan);
 
-yPos = recommendBox(slide, "Insight Advisor Chat Demo (4 min)", [
-  "Open Insight Advisor Chat → ask: \"Which distribution centers have the lowest inventory accuracy?\"",
-  "Follow up: \"Show me the trend for Rotterdam over the last 3 months\" — demonstrate multi-turn conversation",
+yPos = recommendBox(slide, "Qlik Answers Agentic Demo (4 min)", [
+  "Open Qlik Answers → ask: \"Which distribution centers have the lowest inventory accuracy?\"",
+  "Follow up: \"Show me the trend for Rotterdam over the last 3 months\" — demonstrate chain-of-thought reasoning",
   "Show Business Logic: vocabulary mapping 'phantom' → inventory_accuracy, 'WISMO' → customer_delivery_experience",
 ], yPos, C.lightCyan);
 
@@ -1179,10 +1180,10 @@ models.forEach((m, i) => {
   });
 });
 
-// ─── Slide: Qlik Answers ───
-slide = contentSlide("Qlik Answers — RAG Over Business Documents", C.qlikPurple);
+// ─── Slide: Qlik Answers — Document Intelligence ───
+slide = contentSlide("Qlik Answers — Document Intelligence & Knowledge Base", C.qlikPurple);
 
-slide.addText("Knowledge base + AI assistant that answers questions from 25 MCG operational documents", {
+slide.addText("Agentic AI that answers questions from 25 MCG operational documents with citations and reasoning", {
   x: 0.5, y: 0.85, w: 12, h: 0.4,
   fontSize: 14, color: C.medGray, fontFace: FONT, italic: true,
 });
@@ -1319,7 +1320,7 @@ slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
   x: 0.5, y: 5.2, w: 12.3, h: 0.7,
   fill: { color: C.lightPurple }, rectRadius: 0.08,
 });
-slide.addText("Agentic Analytics [NEW — 2026]: Unified conversational interface combining structured analytics (Qlik Sense) + unstructured documents (Qlik Answers) + LLM reasoning. A single AI assistant that can query data, read documents, and reason across both.", {
+slide.addText("Agentic Analytics [GA Feb 2026]: Unified conversational interface combining structured analytics (Qlik Sense) + unstructured documents (Qlik Answers) + LLM reasoning. A single AI assistant that can query data, read documents, and reason across both.", {
   x: 0.8, y: 5.25, w: 11.8, h: 0.6,
   fontSize: 11, color: C.qlikPurple, fontFace: FONT,
 });
@@ -1359,7 +1360,6 @@ sectionSlide("★", "Features to Add to Demo", "Qlik Cloud capabilities not yet 
 slide = contentSlide("Missing Features — Prioritized Additions", C.red);
 
 const missing = [
-  { priority: "HIGH", feature: "Insight Advisor (Search + Chat)", story: "Analytics", effort: "Low — built-in, just configure Business Logic" },
   { priority: "HIGH", feature: "Data Catalog + Lineage", story: "Governance", effort: "Low — auto-populated from existing data" },
   { priority: "HIGH", feature: "Trust Score + Data Profiling", story: "Governance", effort: "Low — enable on Gold-layer products" },
   { priority: "HIGH", feature: "Native Data Alerts", story: "Analytics", effort: "Low — create 2-3 condition-based alerts" },
@@ -1398,7 +1398,7 @@ slide.addTable([...mHeaders, ...mRows], {
   fontFace: FONT,
   border: { type: "solid", pt: 0.5, color: "D1D5DB" },
   colW: [1.3, 4.0, 2.2, 5.2],
-  rowH: [0.32, ...Array(14).fill(0.35)],
+  rowH: [0.32, ...Array(13).fill(0.35)],
 });
 
 // ═══════════════════════════════════════════════════

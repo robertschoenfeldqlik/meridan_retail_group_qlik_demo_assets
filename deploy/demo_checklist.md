@@ -172,11 +172,12 @@ Master checklist of everything required to stand up the full Meridian Commerce G
 - [ ] Compliance & Recall Readiness Dashboard (connect to `gold.compliance_readiness`)
 - [ ] Executive Cost Impact Dashboard (connect to `gold.operational_cost_impact`)
 
-### Insight Advisor & Business Logic
+### Qlik Answers & Business Logic (Agentic Analytics — GA Feb 2026)
 - [ ] Configure Business Logic Logical Model in each app (define dimensions, measures, relationships)
 - [ ] Configure Business Logic Vocabulary (map: "phantom" → inventory_accuracy, "WISMO" → wismo_rate, etc.)
-- [ ] Test Insight Advisor Search: "Show inventory accuracy by distribution center"
-- [ ] Test Insight Advisor Chat: "Which carriers miss SLAs most in APAC?"
+- [ ] Test Qlik Answers conversational analytics: "Show inventory accuracy by distribution center"
+- [ ] Test multi-step agentic reasoning: "Which carriers miss SLAs most in APAC and what does the contract say?"
+- [ ] Verify chain-of-thought reasoning blends structured data + unstructured documents
 - [ ] Add Natural Language Insights (NLI) objects to key sheets (auto-generated narrative summaries)
 
 ### Section Access (Row-Level Security)
@@ -372,10 +373,12 @@ Master checklist of everything required to stand up the full Meridian Commerce G
 - [ ] Test MCP connection: Ask Claude "List the spaces in my Qlik tenant"
 - [ ] Test data product query: Ask Claude "What is the current inventory accuracy at DC-RTD-01?"
 
-### Agentic Analytics (if available — GA early 2026)
-- [ ] Enable Agentic Analytics experience (combines Qlik Sense + Qlik Answers + LLM reasoning)
+### Agentic Analytics (GA February 2026)
+- [ ] Enable Agentic Analytics experience in Qlik Cloud (delivered via Qlik Answers)
 - [ ] Test unified conversational interface: "Show me the inventory accuracy trend for Rotterdam, and what does the incident report say about it?"
-- [ ] Verify the agent can reason across both structured data and unstructured documents
+- [ ] Verify agentic reasoning across structured data (Qlik engine) + unstructured documents (knowledge base)
+- [ ] Confirm citations and explainability in Qlik Answers responses
+- [ ] Test contextual side-panel assistant within Qlik Cloud hub
 
 ### Mobile Analytics
 - [ ] Install Qlik Analytics Mobile app (iOS/Android) on demo device
@@ -397,7 +400,7 @@ Master checklist of everything required to stand up the full Meridian Commerce G
 
 ### Component Verification
 - [ ] Analytics apps load with data (no "missing data" errors)
-- [ ] Insight Advisor Chat responds to natural language questions
+- [ ] Qlik Answers responds to natural language questions with citations
 - [ ] NLI objects display narrative summaries on key sheets
 - [ ] Native data alerts trigger correctly on test conditions
 - [ ] Reporting subscriptions deliver to email
