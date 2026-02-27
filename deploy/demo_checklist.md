@@ -10,7 +10,7 @@ Master checklist of everything required to stand up the full Meridian Commerce G
 - [ ] Tenant provisioned on Qlik Cloud (US, EU, or AP region)
 - [ ] Admin user created with Developer role
 - [ ] API key generated (Profile > API keys > Generate new)
-- [ ] Verify entitlements: Qlik Sense, Talend Cloud, Qlik Answers, Qlik Predict, Automations
+- [ ] Verify entitlements: Qlik Sense, Qlik Cloud Data Integration, Qlik Answers, Qlik Predict, Automations
 
 ### Data Movement Gateway
 - [ ] Download and install DMG on a VM or container with network access to PostgreSQL
@@ -114,7 +114,7 @@ Master checklist of everything required to stand up the full Meridian Commerce G
 - [ ] Verify field-level lineage visible from source → Bronze → Silver → Gold
 - [ ] Walk through lineage for `gold.supply_chain_health` (traces back to PostgreSQL CDC)
 - [ ] Walk through lineage for `gold.cold_chain_compliance` (traces back to Kafka IoT)
-- [ ] Verify Talend data flow routes appear in lineage graphs
+- [ ] Verify data flow routes appear in lineage graphs
 
 ### Impact Analysis
 - [ ] Test impact analysis on `silver.inventory_reconciled` → should show downstream Gold tables + apps

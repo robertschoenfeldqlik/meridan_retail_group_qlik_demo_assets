@@ -222,13 +222,13 @@ slide = contentSlide("Demo Agenda — Four Stories, One Platform");
 const agendaItems = [
   {
     num: "1", title: "The Integration Story", color: C.qlikTeal,
-    desc: "Data Movement Gateway, CDC, Kafka streaming, Salesforce → Open Lakehouse (Bronze/Silver/Gold) → Data Products → API Sharing",
-    components: "DMG • CDC • Talend Data Flows • Table Recipes • Data Products • Direct Query",
+    desc: "Data Movement Gateway, CDC, Kafka streaming, Salesforce → Open Lakehouse (Bronze/Silver/Gold) → Direct Query",
+    components: "DMG • CDC • Data Flows • Table Recipes • Direct Query",
   },
   {
     num: "2", title: "The Data Governance Story", color: C.qlikGreen,
-    desc: "Catalog & Lineage, Impact Analysis, Trust Score, Data Profiling, Stewardship Campaigns, Business Glossary, Section Access",
-    components: "Catalog • Lineage • Impact Analysis • Trust Score • Profiling • Stewardship • Glossary • Data Marketplace",
+    desc: "Data Products, Catalog & Lineage, Impact Analysis, Trust Score, Data Profiling, Stewardship Campaigns, Business Glossary, Data Marketplace",
+    components: "Data Products • Catalog • Lineage • Impact Analysis • Trust Score • Profiling • Stewardship • Glossary • Data Marketplace",
   },
   {
     num: "3", title: "The Analytics Story", color: C.qlikGreen,
@@ -395,7 +395,7 @@ layers.forEach((l, i) => {
 // ─── Slide: Data Flows & Transformation Routes ───
 slide = contentSlide("Data Flows — 8 Transformation Routes", C.qlikTeal);
 
-slide.addText("Talend Cloud Pipeline Designer transforms raw data into trusted, business-ready assets", {
+slide.addText("Qlik Cloud Data Integration transforms raw data into trusted, business-ready assets", {
   x: 0.5, y: 0.85, w: 12, h: 0.4,
   fontSize: 13, color: C.medGray, fontFace: FONT, italic: true,
 });
@@ -443,56 +443,6 @@ slide.addText("Each route maps directly to one of the 7 Data Quality Nightmares 
   fontSize: 11, color: C.qlikTeal, fontFace: FONT, bold: true,
 });
 
-// ─── Slide: Data Products & API Sharing ───
-slide = contentSlide("Data Products & API Sharing", C.qlikTeal);
-
-slide.addText("Gold-layer tables published as governed, API-accessible data products", {
-  x: 0.5, y: 0.85, w: 12, h: 0.4,
-  fontSize: 14, color: C.medGray, fontFace: FONT, italic: true,
-});
-
-const products = [
-  { name: "Supply Chain Health", owner: "Henrik Jansen", refresh: "15 min", api: true },
-  { name: "Last Mile Performance", owner: "Sophie Muller", refresh: "30 min", api: true },
-  { name: "Cold Chain Compliance", owner: "Henrik Jansen", refresh: "5 min", api: true },
-  { name: "Product Master 360", owner: "Thomas Berger", refresh: "1 hour", api: true },
-  { name: "Customer Delivery Experience", owner: "Lisa Park", refresh: "1 hour", api: false },
-  { name: "Compliance Readiness", owner: "Maria Santos", refresh: "1 hour", api: false },
-  { name: "Operational Cost Impact", owner: "CFO Office", refresh: "Daily", api: false },
-];
-
-const dpHeaders = [
-  [
-    { text: "Data Product", options: { bold: true, color: C.white, fill: { color: C.qlikBlue }, fontSize: 11 } },
-    { text: "Owner", options: { bold: true, color: C.white, fill: { color: C.qlikBlue }, fontSize: 11 } },
-    { text: "Refresh", options: { bold: true, color: C.white, fill: { color: C.qlikBlue }, fontSize: 11, align: "center" } },
-    { text: "API Shared", options: { bold: true, color: C.white, fill: { color: C.qlikBlue }, fontSize: 11, align: "center" } },
-  ],
-];
-const dpRows = products.map((p, i) => [
-  { text: p.name, options: { fontSize: 11, color: C.qlikBlue, fill: { color: i % 2 === 0 ? C.lightBg : C.white }, bold: true } },
-  { text: p.owner, options: { fontSize: 11, color: C.darkText, fill: { color: i % 2 === 0 ? C.lightBg : C.white } } },
-  { text: p.refresh, options: { fontSize: 11, color: C.darkText, fill: { color: i % 2 === 0 ? C.lightBg : C.white }, align: "center" } },
-  { text: p.api ? "✓ Enabled" : "—", options: { fontSize: 11, color: p.api ? C.qlikGreen : C.medGray, fill: { color: i % 2 === 0 ? C.lightBg : C.white }, align: "center", bold: p.api } },
-]);
-
-slide.addTable([...dpHeaders, ...dpRows], {
-  x: 0.5, y: 1.4, w: 12.3,
-  fontFace: FONT,
-  border: { type: "solid", pt: 0.5, color: "D1D5DB" },
-  colW: [4.0, 3.0, 2.5, 2.8],
-  rowH: [0.38, ...Array(7).fill(0.42)],
-});
-
-slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
-  x: 0.5, y: 5.2, w: 12.3, h: 0.65,
-  fill: { color: C.lightCyan }, rectRadius: 0.08,
-});
-slide.addText("Show: Query a data product via API (curl / Postman) → demonstrate how external systems consume Qlik data products directly", {
-  x: 0.8, y: 5.25, w: 11.8, h: 0.55,
-  fontSize: 12, color: C.qlikTeal, fontFace: FONT, bold: true,
-});
-
 // ─── Slide: Integration — What to Show ───
 slide = contentSlide("Integration Story — What to Show in the Demo", C.qlikTeal);
 
@@ -509,11 +459,6 @@ yPos = recommendBox(slide, "Lakehouse Walk-Through (5 min)", [
   "Show Data Flow Route 2 (Inventory Reconciliation) in Pipeline Designer — the 'phantom inventory' detection logic",
 ], yPos, C.lightCyan);
 
-yPos = recommendBox(slide, "Data Products + API (3 min)", [
-  "Open the Data Products catalog → show 7 products with owners, tags, SLAs, descriptions",
-  "Click 'API Sharing' on Supply Chain Health → copy the endpoint → run a curl command to fetch live data",
-], yPos, C.lightCyan);
-
 yPos = recommendBox(slide, "Direct Query [NEW — add to demo] (2 min)", [
   "Show a Direct Query app connecting live to the Lakehouse — no data import, SQL pushdown at query time",
   "Great for large dataset scenarios — demonstrate real-time exploration without engine memory load",
@@ -524,6 +469,58 @@ yPos = recommendBox(slide, "Direct Query [NEW — add to demo] (2 min)", [
 //  STORY 2: DATA GOVERNANCE
 // ═══════════════════════════════════════════════════
 sectionSlide("2", "The Data Governance Story", "Trust, transparency, and quality at every layer", C.qlikBlue);
+
+// ─── Slide: Data Products for Analytics ───
+slide = contentSlide("Qlik Data Products for Analytics", C.qlikGreen);
+
+slide.addText("Governed, curated datasets with ownership, quality signals, and API access — the foundation of trusted analytics", {
+  x: 0.5, y: 0.85, w: 12, h: 0.4,
+  fontSize: 14, color: C.medGray, fontFace: FONT, italic: true,
+});
+
+const products = [
+  { name: "Supply Chain Health", owner: "Henrik Jansen", refresh: "15 min", trust: "4.5", api: true },
+  { name: "Last Mile Performance", owner: "Sophie Muller", refresh: "30 min", trust: "4.2", api: true },
+  { name: "Cold Chain Compliance", owner: "Henrik Jansen", refresh: "5 min", trust: "4.8", api: true },
+  { name: "Product Master 360", owner: "Thomas Berger", refresh: "1 hour", trust: "3.9", api: true },
+  { name: "Customer Delivery Experience", owner: "Lisa Park", refresh: "1 hour", trust: "4.1", api: false },
+  { name: "Compliance Readiness", owner: "Maria Santos", refresh: "1 hour", trust: "4.6", api: false },
+  { name: "Operational Cost Impact", owner: "CFO Office", refresh: "Daily", trust: "4.3", api: false },
+];
+
+const dpHeaders = [
+  [
+    { text: "Data Product", options: { bold: true, color: C.white, fill: { color: C.qlikGreen }, fontSize: 11 } },
+    { text: "Owner", options: { bold: true, color: C.white, fill: { color: C.qlikGreen }, fontSize: 11 } },
+    { text: "Refresh", options: { bold: true, color: C.white, fill: { color: C.qlikGreen }, fontSize: 11, align: "center" } },
+    { text: "Trust Score", options: { bold: true, color: C.white, fill: { color: C.qlikGreen }, fontSize: 11, align: "center" } },
+    { text: "API Shared", options: { bold: true, color: C.white, fill: { color: C.qlikGreen }, fontSize: 11, align: "center" } },
+  ],
+];
+const dpRows = products.map((p, i) => [
+  { text: p.name, options: { fontSize: 11, color: C.qlikBlue, fill: { color: i % 2 === 0 ? C.lightBg : C.white }, bold: true } },
+  { text: p.owner, options: { fontSize: 11, color: C.darkText, fill: { color: i % 2 === 0 ? C.lightBg : C.white } } },
+  { text: p.refresh, options: { fontSize: 11, color: C.darkText, fill: { color: i % 2 === 0 ? C.lightBg : C.white }, align: "center" } },
+  { text: p.trust, options: { fontSize: 11, color: C.qlikGreen, fill: { color: i % 2 === 0 ? C.lightBg : C.white }, align: "center", bold: true } },
+  { text: p.api ? "✓ Enabled" : "—", options: { fontSize: 11, color: p.api ? C.qlikGreen : C.medGray, fill: { color: i % 2 === 0 ? C.lightBg : C.white }, align: "center", bold: p.api } },
+]);
+
+slide.addTable([...dpHeaders, ...dpRows], {
+  x: 0.5, y: 1.4, w: 12.3,
+  fontFace: FONT,
+  border: { type: "solid", pt: 0.5, color: "D1D5DB" },
+  colW: [3.5, 2.6, 1.8, 1.8, 2.6],
+  rowH: [0.38, ...Array(7).fill(0.42)],
+});
+
+slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
+  x: 0.5, y: 5.2, w: 12.3, h: 0.65,
+  fill: { color: C.lightGreen }, rectRadius: 0.08,
+});
+slide.addText("Data Products are the governed contract between data producers and consumers — ownership, quality, freshness, and access all in one place.", {
+  x: 0.8, y: 5.25, w: 11.8, h: 0.55,
+  fontSize: 12, color: C.qlikGreen, fontFace: FONT, bold: true,
+});
 
 // ─── Slide: Catalog, Lineage & Impact Analysis ───
 slide = contentSlide("Data Catalog, Lineage & Impact Analysis", C.qlikGreen);
@@ -549,7 +546,7 @@ const govFeatures = [
       "Visual field-level lineage graphs",
       "Source → Transformation → App",
       "Cross-system traceability",
-      "Talend Studio integration",
+      "Data flow route integration",
       "ML content lineage",
     ],
   },
@@ -585,15 +582,6 @@ govFeatures.forEach((f, i) => {
       fontSize: 12, color: C.darkText, fontFace: FONT,
     });
   });
-});
-
-slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
-  x: 0.5, y: 5.8, w: 12.3, h: 0.6,
-  fill: { color: C.lightRed }, rectRadius: 0.08,
-});
-slide.addText("⚠ NOT IN CURRENT CHECKLIST — These are core Qlik Cloud governance features that should be added to the demo", {
-  x: 0.8, y: 5.85, w: 11.8, h: 0.5,
-  fontSize: 12, color: C.red, fontFace: FONT, bold: true,
 });
 
 // ─── Slide: Trust Score & Data Profiling ───
@@ -659,15 +647,6 @@ profItems.forEach((item, i) => {
     x: 7.0, y: 2.1 + i * 0.42, w: 5.6, h: 0.38,
     fontSize: 11, color: C.darkText, fontFace: FONT,
   });
-});
-
-slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
-  x: 0.5, y: 4.9, w: 12.3, h: 0.6,
-  fill: { color: C.lightRed }, rectRadius: 0.08,
-});
-slide.addText("⚠ NOT IN CURRENT CHECKLIST — Trust Score + Profiling are key differentiators. Add to Phase 3 (Lakehouse) and Phase 8 (Stewardship).", {
-  x: 0.8, y: 4.95, w: 11.8, h: 0.5,
-  fontSize: 12, color: C.red, fontFace: FONT, bold: true,
 });
 
 // ─── Slide: Stewardship Campaigns ───
@@ -795,25 +774,21 @@ mpItems.forEach((item, i) => {
 slide = contentSlide("Governance Story — What to Show in the Demo", C.qlikGreen);
 
 yPos = 1.1;
-yPos = recommendBox(slide, "Data Catalog + Lineage Walk-Through (5 min)", [
-  "Open Catalog → search for 'inventory' → show auto-discovered assets across Bronze/Silver/Gold",
-  "Click gold.supply_chain_health → open Lineage view → trace field-level path from PostgreSQL source → Bronze → Silver → Gold",
-  "Click Impact Analysis → show which apps, reports, and ML models depend on this data product",
+yPos = recommendBox(slide, "Data Products Walk-Through (4 min)", [
+  "Open Data Products catalog → show 7 products with owners, Trust Scores, SLAs, API sharing status",
+  "Click 'API Sharing' on Supply Chain Health → copy the endpoint → run a curl command to fetch live data",
+  "Show Data Marketplace → demonstrate self-service data discovery for business users",
 ], yPos, C.lightGreen);
 
-yPos = recommendBox(slide, "Trust Score Demo (3 min)", [
-  "Show Trust Score on gold.cold_chain_compliance → highlight dimensions: Validity (4.2), Completeness (3.8), Discoverability (5.0)",
-  "Compare Trust Score on a degraded dataset (bronze.inventory_raw at DC-RTD-01 during pipeline failure → Trust Score drops to 1.2)",
+yPos = recommendBox(slide, "Catalog + Lineage + Trust Score (5 min)", [
+  "Open Catalog → search 'inventory' → show auto-discovered assets across Bronze/Silver/Gold",
+  "Click gold.supply_chain_health → Lineage view → trace field-level path from PostgreSQL → Bronze → Silver → Gold",
+  "Show Trust Score on gold.cold_chain_compliance → highlight Validity (4.2), Completeness (3.8), Discoverability (5.0)",
 ], yPos, C.lightGreen);
 
-yPos = recommendBox(slide, "Stewardship Campaign (3 min)", [
-  "Open Address Cleanup campaign → show the steward's review queue (ambiguous matches < 90% confidence)",
-  "Demonstrate: steward reviews a fuzzy-matched address, approves correction → data flows back through Silver → Gold",
-], yPos, C.lightGreen);
-
-yPos = recommendBox(slide, "Business Glossary (2 min)", [
-  "Open 'Phantom Inventory' term → show definition, owner, linked datasets, related nightmares",
-  "Search for 'WISMO' → show cross-references to Customer Delivery Experience data product",
+yPos = recommendBox(slide, "Stewardship + Glossary (4 min)", [
+  "Open Address Cleanup campaign → show steward's review queue (ambiguous matches < 90% confidence)",
+  "Open 'Phantom Inventory' glossary term → show definition, owner, linked datasets, related nightmares",
 ], yPos, C.lightGreen);
 
 // ═══════════════════════════════════════════════════
