@@ -447,19 +447,19 @@ slide.addText("Each route maps directly to one of the 7 Data Quality Nightmares 
 slide = contentSlide("Integration Story — What to Show in the Demo", C.qlikTeal);
 
 let yPos = 1.1;
-yPos = recommendBox(slide, "Live CDC Demo (5 min)", [
+yPos = recommendBox(slide, "Live CDC Demo", [
   "Show PostgreSQL simulator running → watch rows appear in bronze.inventory_positions in real-time",
   "Make a manual UPDATE in PostgreSQL → show CDC propagating through Bronze → Silver → Gold in under 60 seconds",
   "Highlight Data Movement Gateway status panel (Administration → Gateways)",
 ], yPos, C.lightCyan);
 
-yPos = recommendBox(slide, "Lakehouse Walk-Through (5 min)", [
+yPos = recommendBox(slide, "Lakehouse Walk-Through", [
   "Navigate Open Lakehouse → show the Bronze/Silver/Gold tier structure",
   "Open a Table Recipe (e.g., gold.supply_chain_health) → show how Gold tables are defined from Silver inputs",
   "Show Data Flow Route 2 (Inventory Reconciliation) in Pipeline Designer — the 'phantom inventory' detection logic",
 ], yPos, C.lightCyan);
 
-yPos = recommendBox(slide, "Direct Query [NEW — add to demo] (2 min)", [
+yPos = recommendBox(slide, "Direct Query [NEW — add to demo]", [
   "Show a Direct Query app connecting live to the Lakehouse — no data import, SQL pushdown at query time",
   "Great for large dataset scenarios — demonstrate real-time exploration without engine memory load",
 ], yPos, C.lightCyan);
@@ -774,19 +774,19 @@ mpItems.forEach((item, i) => {
 slide = contentSlide("Governance Story — What to Show in the Demo", C.qlikGreen);
 
 yPos = 1.1;
-yPos = recommendBox(slide, "Data Products Walk-Through (4 min)", [
+yPos = recommendBox(slide, "Data Products Walk-Through", [
   "Open Data Products catalog → show 7 products with owners, Trust Scores, SLAs, API sharing status",
   "Click 'API Sharing' on Supply Chain Health → copy the endpoint → run a curl command to fetch live data",
   "Show Data Marketplace → demonstrate self-service data discovery for business users",
 ], yPos, C.lightGreen);
 
-yPos = recommendBox(slide, "Catalog + Lineage + Trust Score (5 min)", [
-  "Open Catalog → search 'inventory' → show auto-discovered assets across Bronze/Silver/Gold",
+yPos = recommendBox(slide, "Lineage + Impact Analysis + Trust Score", [
   "Click gold.supply_chain_health → Lineage view → trace field-level path from PostgreSQL → Bronze → Silver → Gold",
+  "Click Impact Analysis → show which apps, reports, and ML models depend on this data product",
   "Show Trust Score on gold.cold_chain_compliance → highlight Validity (4.2), Completeness (3.8), Discoverability (5.0)",
 ], yPos, C.lightGreen);
 
-yPos = recommendBox(slide, "Stewardship + Glossary (4 min)", [
+yPos = recommendBox(slide, "Stewardship + Glossary", [
   "Open Address Cleanup campaign → show steward's review queue (ambiguous matches < 90% confidence)",
   "Open 'Phantom Inventory' glossary term → show definition, owner, linked datasets, related nightmares",
 ], yPos, C.lightGreen);
@@ -1066,24 +1066,24 @@ slide.addText("Custom Themes & Extensions: Apply MCG branding (Navy #1B2A4A, Tea
 slide = contentSlide("Analytics Story — What to Show in the Demo", C.qlikGreen);
 
 yPos = 1.1;
-yPos = recommendBox(slide, "Qlik Sense Dashboard Tour (8 min)", [
+yPos = recommendBox(slide, "Qlik Sense Dashboard Tour", [
   "Open Supply Chain Health → show Rotterdam DC's IRA at 74%, drill into phantom inventory by SKU",
   "Open Cold Chain Monitoring → show live temperature exceedances on São Paulo→Buenos Aires route",
   "Switch to Executive Cost Impact → C-level view of $127M broken down by nightmare category",
 ], yPos, C.lightCyan);
 
-yPos = recommendBox(slide, "Qlik Answers Agentic Demo (4 min)", [
+yPos = recommendBox(slide, "Qlik Answers Agentic Demo", [
   "Open Qlik Answers → ask: \"Which distribution centers have the lowest inventory accuracy?\"",
   "Follow up: \"Show me the trend for Rotterdam over the last 3 months\" — demonstrate chain-of-thought reasoning",
   "Show Business Logic: vocabulary mapping 'phantom' → inventory_accuracy, 'WISMO' → customer_delivery_experience",
 ], yPos, C.lightCyan);
 
-yPos = recommendBox(slide, "Alerting + Reporting (3 min)", [
+yPos = recommendBox(slide, "Alerting + Reporting", [
   "Show a native alert: IRA < 85% for DC-RTD-01 → triggered, sent via email and push notification",
   "Open a subscription: weekly compliance PDF emailed to regulatory team every Monday 08:00",
 ], yPos, C.lightCyan);
 
-yPos = recommendBox(slide, "Embedded Analytics [NEW] (2 min)", [
+yPos = recommendBox(slide, "Embedded Analytics [NEW]", [
   "Show a qlik-embed code snippet → demo a cold chain chart embedded in a mock carrier portal page",
 ], yPos, C.lightCyan);
 
@@ -1304,24 +1304,24 @@ slide.addText("Agentic Analytics [GA Feb 2026]: Unified conversational interface
 slide = contentSlide("AI Story — What to Show in the Demo", C.qlikPurple);
 
 yPos = 1.1;
-yPos = recommendBox(slide, "Qlik Predict Live Demo (5 min)", [
+yPos = recommendBox(slide, "Qlik Predict Live Demo", [
   "Open Spoilage Risk experiment → show training report, feature importance (temperature is #1 driver)",
   "Run a prediction on a live shipment: São Paulo→Buenos Aires, 32°C outside temp, Correios carrier → 87% spoilage risk",
   "Show prediction API endpoint → demonstrate external system consuming predictions",
 ], yPos, C.lightPurple);
 
-yPos = recommendBox(slide, "Qlik Answers Conversation (5 min)", [
+yPos = recommendBox(slide, "Qlik Answers Conversation", [
   "Ask: \"What happened at Rotterdam DC in September?\" → Answers pulls from INC-2025-04872",
   "Follow up: \"What was the root cause?\" → TLS certificate expired, batch job failed silently",
   "Ask: \"What does Project CLARITY propose to fix this?\" → cross-document reasoning",
 ], yPos, C.lightPurple);
 
-yPos = recommendBox(slide, "Discovery Agent Scenario (3 min)", [
+yPos = recommendBox(slide, "Discovery Agent Scenario", [
   "Show Discovery Agent alert: spoilage rate on GRU-BA route spiked 2.1% → 8.8% after fleet change",
   "Agent links to: cold chain dashboard, TransFrio carrier contract, incident report INC-2025-05102",
 ], yPos, C.lightPurple);
 
-yPos = recommendBox(slide, "MCP Server Demo (3 min)", [
+yPos = recommendBox(slide, "MCP Server Demo", [
   "In Claude Desktop: \"What is the current inventory accuracy at Rotterdam DC?\"",
   "Claude queries gold.supply_chain_health via MCP → returns: 74% IRA, 847 phantom units, root cause analysis",
 ], yPos, C.lightPurple);
