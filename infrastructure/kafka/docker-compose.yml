@@ -1,0 +1,297 @@
+# =============================================================================
+# MCG End-to-End Demo — Confluent Kafka Stack
+# =============================================================================
+# Spins up a full Confluent Platform environment with pre-configured MCG demo
+# topics for IoT cold-chain monitoring and carrier event streaming.
+#
+# Services:
+#   - ZooKeeper        : Cluster coordination for Kafka
+#   - Kafka Broker     : Single-node broker with dual listeners
+#   - Schema Registry  : Avro/JSON/Protobuf schema management
+#   - Control Center   : Web UI for monitoring (port 9021)
+#   - Kafka Init       : One-shot container that pre-creates demo topics
+#
+# Usage:
+#   docker compose up -d
+#   docker compose logs -f kafka-init   # watch topic creation
+#   open http://localhost:9021           # Control Center UI
+#
+# Topics created:
+#   mcg.iot.cold-chain      — 3 partitions, 7-day retention  (sensor readings)
+#   mcg.iot.carrier-events  — 3 partitions, 30-day retention (carrier status)
+# =============================================================================
+
+version: "3.8"
+
+services:
+
+  # ---------------------------------------------------------------------------
+  # ZooKeeper — Kafka cluster coordination
+  # ---------------------------------------------------------------------------
+  # Manages broker metadata, leader election, and topic configuration.
+  # Required for Kafka in KRaft-less (classic) mode.
+  # ---------------------------------------------------------------------------
+  zookeeper:
+    image: confluentinc/cp-zookeeper:${CONFLUENT_VERSION:-7.7.1}
+    hostname: zookeeper
+    container_name: mcg-zookeeper
+    ports:
+      - "2181:2181"
+    environment:
+      # Client port that Kafka brokers connect to
+      ZOOKEEPER_CLIENT_PORT: 2181
+      # Tick time in milliseconds — base unit for ZK session/heartbeat timeouts
+      ZOOKEEPER_TICK_TIME: 2000
+    volumes:
+      # Persist ZooKeeper data across restarts
+      - zookeeper-data:/var/lib/zookeeper/data
+      - zookeeper-logs:/var/lib/zookeeper/log
+    networks:
+      - mcg-kafka-net
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Kafka Broker — Single-node message broker
+  # ---------------------------------------------------------------------------
+  # Handles all produce/consume traffic. Exposes two PLAINTEXT listeners:
+  #   - localhost:9092  — for local simulators and internal services
+  #   - localhost:29092 — for Data Movement Gateway (external access)
+  #
+  # Auto topic creation is disabled; topics are managed by the init container
+  # to ensure correct partition counts and retention policies.
+  # ---------------------------------------------------------------------------
+  kafka:
+    image: confluentinc/cp-kafka:${CONFLUENT_VERSION:-7.7.1}
+    hostname: kafka
+    container_name: mcg-kafka-broker
+    depends_on:
+      - zookeeper
+    ports:
+      # Local simulator access (PLAINTEXT)
+      - "${KAFKA_BROKER_PORT:-9092}:9092"
+      # Data Movement Gateway / external access (PLAINTEXT)
+      - "${KAFKA_EXTERNAL_PORT:-29092}:29092"
+    environment:
+      # Unique broker ID in the cluster
+      KAFKA_BROKER_ID: 1
+
+      # ZooKeeper connection string
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+
+      # ---------------------
+      # Listener Configuration
+      # ---------------------
+      # INTERNAL  — used by containers on the Docker network (kafka:9092)
+      # EXTERNAL  — used by host-side clients (localhost:29092)
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_LISTENERS: INTERNAL://0.0.0.0:9092,EXTERNAL://0.0.0.0:29092
+
+      # Advertised listeners — what clients receive after initial bootstrap
+      # INTERNAL advertises the Docker hostname; EXTERNAL advertises localhost
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:9092,EXTERNAL://localhost:29092
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+
+      # ---------------------
+      # Topic Defaults
+      # ---------------------
+      # Disable auto-creation — topics are created explicitly by kafka-init
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+
+      # Default replication factor for internal topics (single-node cluster)
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+
+      # Confluent metrics reporter for Control Center
+      KAFKA_CONFLUENT_LICENSE_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_CONFLUENT_BALANCER_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_METRIC_REPORTERS: io.confluent.metrics.reporter.ConfluentMetricsReporter
+      CONFLUENT_METRICS_REPORTER_BOOTSTRAP_SERVERS: kafka:9092
+      CONFLUENT_METRICS_REPORTER_TOPIC_REPLICAS: 1
+      CONFLUENT_METRICS_ENABLE: "true"
+
+      # ---------------------
+      # Performance Tuning
+      # ---------------------
+      # Log segment size (1 GB) — default, works well for demo workloads
+      KAFKA_LOG_SEGMENT_BYTES: 1073741824
+      # Log retention check interval (5 minutes)
+      KAFKA_LOG_RETENTION_CHECK_INTERVAL_MS: 300000
+
+    volumes:
+      # Persist Kafka log data across restarts
+      - kafka-data:/var/lib/kafka/data
+    networks:
+      - mcg-kafka-net
+    restart: unless-stopped
+
+    # Healthcheck — verifies the broker is accepting connections
+    # Used by kafka-init to wait until the broker is fully ready
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:9092 > /dev/null 2>&1"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
+  # ---------------------------------------------------------------------------
+  # Schema Registry — Schema management for Kafka messages
+  # ---------------------------------------------------------------------------
+  # Provides a RESTful interface for storing and retrieving Avro, JSON Schema,
+  # and Protobuf schemas. Used by producers/consumers to ensure data
+  # compatibility across MCG IoT message formats.
+  # ---------------------------------------------------------------------------
+  schema-registry:
+    image: confluentinc/cp-schema-registry:${CONFLUENT_VERSION:-7.7.1}
+    hostname: schema-registry
+    container_name: mcg-schema-registry
+    depends_on:
+      kafka:
+        condition: service_healthy
+    ports:
+      - "${SCHEMA_REGISTRY_PORT:-8081}:8081"
+    environment:
+      # Hostname for the Schema Registry instance
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry
+
+      # Kafka store connection — schemas are stored in a Kafka topic
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: kafka:9092
+
+      # REST API listener
+      SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
+
+      # Schema compatibility mode — BACKWARD by default ensures consumers
+      # can read data produced with older schemas
+      SCHEMA_REGISTRY_SCHEMA_COMPATIBILITY_LEVEL: BACKWARD
+    networks:
+      - mcg-kafka-net
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Control Center — Web-based monitoring UI
+  # ---------------------------------------------------------------------------
+  # Confluent Control Center provides a web interface on port 9021 for:
+  #   - Monitoring broker health, throughput, and consumer lag
+  #   - Inspecting topics, partitions, and messages
+  #   - Managing schemas and connectors
+  #
+  # Access at: http://localhost:9021
+  # ---------------------------------------------------------------------------
+  control-center:
+    image: confluentinc/cp-enterprise-control-center:${CONFLUENT_VERSION:-7.7.1}
+    hostname: control-center
+    container_name: mcg-control-center
+    depends_on:
+      kafka:
+        condition: service_healthy
+      schema-registry:
+        condition: service_started
+    ports:
+      - "${CONTROL_CENTER_PORT:-9021}:9021"
+    environment:
+      # Kafka bootstrap server for metrics collection
+      CONTROL_CENTER_BOOTSTRAP_SERVERS: kafka:9092
+
+      # Schema Registry URL for schema browsing in the UI
+      CONTROL_CENTER_SCHEMA_REGISTRY_URL: http://schema-registry:8081
+
+      # Replication factor for Control Center internal topics (single-node)
+      CONTROL_CENTER_REPLICATION_FACTOR: 1
+      CONTROL_CENTER_INTERNAL_TOPICS_PARTITIONS: 1
+      CONTROL_CENTER_MONITORING_INTERCEPTOR_TOPIC_PARTITIONS: 1
+
+      # Confluent metrics reporter settings
+      CONFLUENT_METRICS_TOPIC_REPLICATION: 1
+
+      # Port for the Control Center web UI
+      CONTROL_CENTER_LISTENERS: http://0.0.0.0:9021
+    networks:
+      - mcg-kafka-net
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Kafka Init — One-shot topic creation container
+  # ---------------------------------------------------------------------------
+  # Creates the MCG demo topics with the correct partition counts and retention
+  # policies. Runs once and exits. Re-running is safe thanks to --if-not-exists.
+  #
+  # Topics:
+  #   mcg.iot.cold-chain      — 3 partitions, 7-day retention (604800000 ms)
+  #                              Sensor readings at ~1 msg/5s per sensor
+  #   mcg.iot.carrier-events  — 3 partitions, 30-day retention (2592000000 ms)
+  #                              Carrier status updates at ~1 msg/min
+  # ---------------------------------------------------------------------------
+  kafka-init:
+    image: confluentinc/cp-kafka:${CONFLUENT_VERSION:-7.7.1}
+    hostname: kafka-init
+    container_name: mcg-kafka-init
+    depends_on:
+      kafka:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "-c"]
+    command: |
+      "
+      echo '============================================='
+      echo ' MCG Kafka Topic Initialization'
+      echo '============================================='
+
+      echo 'Waiting for Kafka to be ready...'
+      kafka-topics --bootstrap-server kafka:9092 --list
+
+      echo ''
+      echo 'Creating MCG IoT topics...'
+
+      echo '  -> mcg.iot.cold-chain (3 partitions, 7-day retention)'
+      kafka-topics --bootstrap-server kafka:9092 \
+        --create --if-not-exists \
+        --topic mcg.iot.cold-chain \
+        --partitions 3 \
+        --replication-factor 1 \
+        --config retention.ms=604800000
+
+      echo '  -> mcg.iot.carrier-events (3 partitions, 30-day retention)'
+      kafka-topics --bootstrap-server kafka:9092 \
+        --create --if-not-exists \
+        --topic mcg.iot.carrier-events \
+        --partitions 3 \
+        --replication-factor 1 \
+        --config retention.ms=2592000000
+
+      echo ''
+      echo 'Verifying topics...'
+      echo '---------------------------------------------'
+      kafka-topics --bootstrap-server kafka:9092 --describe --topic mcg.iot.cold-chain
+      echo '---------------------------------------------'
+      kafka-topics --bootstrap-server kafka:9092 --describe --topic mcg.iot.carrier-events
+      echo '---------------------------------------------'
+
+      echo ''
+      echo 'MCG Kafka topics ready!'
+      echo '============================================='
+      "
+    networks:
+      - mcg-kafka-net
+    # This container runs once and exits — do not restart
+    restart: "no"
+
+# =============================================================================
+# Volumes — Persistent storage for broker and ZooKeeper data
+# =============================================================================
+# Named volumes ensure data survives container restarts. To fully reset:
+#   docker compose down -v
+# =============================================================================
+volumes:
+  kafka-data:
+    driver: local
+  zookeeper-data:
+    driver: local
+  zookeeper-logs:
+    driver: local
+
+# =============================================================================
+# Networks — Isolated bridge network for inter-service communication
+# =============================================================================
+networks:
+  mcg-kafka-net:
+    driver: bridge
+    name: mcg-kafka-net

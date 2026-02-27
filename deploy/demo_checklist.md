@@ -1,4 +1,4 @@
-# MCG End-to-End Demo — Complete Setup Checklist
+# MCG Full Stack Demo — Complete Setup Checklist
 
 Master checklist of everything required to stand up the full Meridian Commerce Group demo on Qlik Cloud. Check off items as you go.
 
@@ -20,12 +20,28 @@ Master checklist of everything required to stand up the full Meridian Commerce G
 - [ ] Run simulator: `python simulators/postgres_simulator.py` — verify 3 tables created (`inventory_positions`, `warehouse_events`, `shipments`)
 - [ ] Let simulator run for 10-15 minutes to seed initial data volume
 
-### Apache Kafka
-- [ ] Kafka cluster running (Confluent Cloud, Docker, or local)
-- [ ] Topic `mcg.iot.cold-chain` created (6 partitions recommended)
-- [ ] Topic `mcg.iot.carrier-events` created (3 partitions recommended)
+### Apache Kafka (Confluent)
+
+**Option A — Docker Compose (recommended for demos):**
+- [ ] Docker Desktop installed and running
+- [ ] Start Confluent stack: `cd infrastructure/kafka && docker compose up -d`
+- [ ] Verify broker healthy: `docker compose ps` (should show `kafka` as healthy)
+- [ ] Verify topics created: `docker compose exec kafka kafka-topics --bootstrap-server kafka:9092 --list`
+- [ ] Control Center accessible at http://localhost:9021
+- [ ] Note: deploy script prompts to start Docker automatically during deployment
+
+**Option B — External Kafka cluster (Confluent Cloud, MSK, self-managed):**
+- [ ] Kafka cluster running and accessible
+- [ ] Create topics via standalone script: `python infrastructure/kafka/create_topics.py --bootstrap-servers your-broker:9092`
+- [ ] Or create topics manually: `mcg.iot.cold-chain` (3 partitions, 7d retention) and `mcg.iot.carrier-events` (3 partitions, 30d retention)
 - [ ] SASL credentials created for Qlik connector user
-- [ ] Optional: Run Kafka producer script from `MCG_Three_Data_Feeds.md` Section 2 to seed IoT data
+
+**Kafka IoT Simulator:**
+- [ ] Install dependency: `pip install confluent-kafka`
+- [ ] Run continuous: `python simulators/kafka_iot_simulator.py --bootstrap-servers localhost:9092`
+- [ ] Or run scheduled (every 15 min): `python simulators/kafka_iot_simulator.py --bootstrap-servers localhost:9092 --scheduled --interval 900`
+- [ ] Or single batch: `python simulators/kafka_iot_simulator.py --bootstrap-servers localhost:9092 --batch-only --batch-duration 60`
+- [ ] Verify messages flowing in Control Center or via consumer
 
 ### Salesforce
 - [ ] Salesforce Developer Edition org created (free at developer.salesforce.com)
@@ -74,14 +90,18 @@ Master checklist of everything required to stand up the full Meridian Commerce G
 - [ ] Verify all 8 Bronze tables have data flowing
 
 ### Silver Layer — Transformation Routes
-- [ ] Data flow: **Timestamp Normalization** → `silver.warehouse_events_clean`
+
+> **Integration Capabilities:** Transformation Flows (visual Pipeline Designer), AI-Assisted SQL, Datamart Automation, Talend Job (address validation)
+
+- [ ] Data flow: **Timestamp Normalization** → `silver.timestamps_audit`
 - [ ] Data flow: **Inventory Reconciliation** → `silver.inventory_reconciled`
-- [ ] Data flow: **Address Standardization** → `silver.addresses_standardized`
+- [ ] Data flow: **Address Standardization** → `silver.customers_deduped`
+- [ ] **Talend Job: Address Validation Service** — deployed as callable service (tAddressRowStandardize, tAddressRowValidate, tGeocode)
 - [ ] Data flow: **Product Master Harmonization** → `silver.products_harmonized`
 - [ ] Data flow: **Carrier Status Canonicalization** → `silver.shipments_canonical`
-- [ ] Data flow: **IoT Telemetry Normalization** → `silver.iot_telemetry_normalized`
+- [ ] Data flow: **IoT Telemetry Normalization** → `silver.iot_normalized`
 - [ ] Data flow: **Supplier Master Dedup** → `silver.suppliers_deduped`
-- [ ] Data flow: **Order-to-Delivery Timeline** → `silver.order_delivery_timeline`
+- [ ] Data flow: **Order-to-Delivery Timeline** → `silver.orders_enriched`
 - [ ] Verify all 8 Silver tables have transformed data
 
 ### Gold Layer — Data Products
@@ -126,62 +146,80 @@ Master checklist of everything required to stand up the full Meridian Commerce G
 
 ## Phase 4: Data Products & API Sharing
 
-### Register Data Products
+### Register Data Products (with AI-Driven Descriptions)
 - [ ] "Supply Chain Health" registered with tags and owner (Henrik Jansen)
-- [ ] "Last Mile Performance" registered (Sophie Muller)
-- [ ] "Cold Chain Compliance" registered (Henrik Jansen)
+- [ ] "Last Mile Performance" registered (Sophie Müller)
+- [ ] "Cold Chain Compliance" registered (Thomas Brennan)
 - [ ] "Product Master 360" registered (Thomas Berger)
 - [ ] "Customer Delivery Experience" registered (Lisa Park)
-- [ ] "Compliance Readiness" registered (Maria Santos)
+- [ ] "Compliance Readiness" registered (Dr. Elena Vasquez)
 - [ ] "Operational Cost Impact" registered (CFO Office)
+- [ ] **AI-Driven Descriptions** — For each data product:
+  - [ ] Click **Generate Description** to auto-create metadata from schema + sample data
+  - [ ] Review and refine AI-generated product-level descriptions
+  - [ ] Review AI-generated **column-level descriptions** for each field
+  - [ ] Publish descriptions for Data Marketplace discoverability
 
-### API Sharing
-- [ ] API sharing enabled for "Supply Chain Health"
-- [ ] API sharing enabled for "Last Mile Performance"
-- [ ] API sharing enabled for "Cold Chain Compliance"
-- [ ] API sharing enabled for "Product Master 360"
+### Semantic Types & AI-Suggested Validation Rules
+- [ ] Review AI-detected semantic types on all 7 data products (e.g., `dc_id` → Identifier, `ira_pct` → Percentage, `carrier` → Categorical)
+- [ ] Confirm or override detected types for key columns (see `creation_guide.md` Section 2.2 for 10 examples)
+- [ ] Review AI-suggested validation rules:
+  - [ ] Range constraints (e.g., `ira_pct` between 0.0 – 1.0)
+  - [ ] Pattern matching (e.g., `dc_id` matches `DC-[A-Z]{3}-\d{2}`)
+  - [ ] Referential integrity (FK relationships)
+  - [ ] Completeness rules (not-null for critical fields)
+- [ ] Accept/modify/reject suggested rules
+- [ ] Enable rule enforcement → violations route to Stewardship campaigns
+
+### API Sharing (Governance Capability)
+- [ ] API sharing enabled for "Supply Chain Health" (Discovery Agent, MCP Server, external dashboards)
+- [ ] API sharing enabled for "Last Mile Performance" (Predict model training, partner portals)
+- [ ] API sharing enabled for "Cold Chain Compliance" (Predict model training, automated alerting)
+- [ ] API sharing enabled for "Product Master 360" (B2B partners, e-commerce sync)
 - [ ] Test API endpoint returns data (curl or Postman)
+- [ ] Verify API sharing maintains lineage, audit trails, and Trust Score visibility
 
 ### Data Marketplace
 - [ ] Enable Data Marketplace on Gold-layer data products
-- [ ] Verify data products appear in self-service discovery portal
-- [ ] Test: business user can browse, search, and request access to data products
+- [ ] Verify all 7 data products appear in self-service portal with AI-generated descriptions
+- [ ] Test: business user can browse, search by tag, and request access to data products
 
 ---
 
 ## Phase 5: Analytics Apps (Qlik Sense)
 
-### Build or Import Apps
-- [ ] Supply Chain Health Dashboard (connect to `gold.supply_chain_health`)
-- [ ] Last Mile Performance Dashboard (connect to `gold.last_mile_performance`)
-- [ ] Cold Chain Monitoring Dashboard (connect to `gold.cold_chain_compliance`)
-- [ ] Product Master 360 Dashboard (connect to `gold.product_master_360`)
-- [ ] Customer Delivery Experience Dashboard (connect to `gold.customer_delivery_experience`)
-- [ ] Compliance & Recall Readiness Dashboard (connect to `gold.compliance_readiness`)
-- [ ] Executive Cost Impact Dashboard (connect to `gold.operational_cost_impact`)
+### Build or Import Apps (Domain-Based Design — 2 Apps)
+- [ ] **MCG Supply Chain Operations** app created
+  - Gold tables: `supply_chain_health`, `cold_chain_compliance`, `product_master_360`, `compliance_readiness`, `operational_cost_impact`
+  - Streaming: `mcg.iot.cold-chain` via `silver.iot_normalized`, `mcg.iot.carrier-events` via `bronze.iot_carrier_events`
+  - Sheets: Inventory Health, Cold Chain Monitoring (streaming), Product Data Quality, Compliance & Recall, Executive Cost Impact
+- [ ] **MCG Delivery & Customer Experience** app created
+  - Gold tables: `last_mile_performance`, `customer_delivery_experience`, `order_timeline`
+  - Streaming: `mcg.iot.carrier-events` via `bronze.iot_carrier_events`, `silver.shipments_canonical`
+  - Sheets: Last Mile Performance, Live Shipment Tracking (streaming), WISMO & Customer Impact, Order Timeline, Address Quality Impact
 
 ### Qlik Answers & Business Logic (Agentic Analytics — GA Feb 2026)
 - [ ] Configure Business Logic Logical Model in each app (define dimensions, measures, relationships)
-- [ ] Configure Business Logic Vocabulary (map: "phantom" → inventory_accuracy, "WISMO" → wismo_rate, etc.)
+- [ ] Configure Business Logic Vocabulary (map: "phantom" → phantom_count, "WISMO" → wismo_rate, "IRA" → ira_pct, etc.)
 - [ ] Test Qlik Answers conversational analytics: "Show inventory accuracy by distribution center"
 - [ ] Test multi-step agentic reasoning: "Which carriers miss SLAs most in APAC and what does the contract say?"
 - [ ] Verify chain-of-thought reasoning blends structured data + unstructured documents
 - [ ] Add Natural Language Insights (NLI) objects to key sheets (auto-generated narrative summaries)
 
 ### Section Access (Row-Level Security)
-- [ ] Configure Section Access in Supply Chain Health app (regional VPs see only their DCs)
-- [ ] Configure Section Access in Last Mile Performance app (carrier partners see only their shipments)
+- [ ] Configure Section Access in MCG Supply Chain Operations app (regional VPs see only their DCs via REGION field)
+- [ ] Configure Section Access in MCG Delivery & Customer Experience app (carrier partners see only their shipments via CARRIER field)
 - [ ] Test with demo user accounts to verify data reduction works correctly
 
 ### Custom Theme & Extensions
-- [ ] Create MCG custom theme (Navy #1B2A4A, Teal #0D7C8F, Gold #C4922E, Calibri font)
-- [ ] Upload theme at tenant level (Administration → Themes)
-- [ ] Apply MCG theme to all 7 analytics apps
-- [ ] Import any custom visualization extensions needed for supply chain charts
+- [ ] Upload MCG dark theme: `deploy/themes/mcg-dark-theme.zip` (Navy #1B2A4A, Teal #0D7C8F, Gold #C4922E, Inter font)
+- [ ] Upload at tenant level: Administration → Themes → Upload
+- [ ] Apply MCG Dark Theme to both analytics apps (App Settings → Theme)
+- [ ] Verify MCG logo appears in app headers (mcg_logo.png, mcg_icon.png included in theme package)
 
 ### App Publishing
-- [ ] All apps published to "MCG Demo - Published" managed space
-- [ ] Verify app reloads work on schedule
+- [ ] Both apps published to "MCG Demo - Published" managed space
+- [ ] Verify app reloads work on schedule (every 5 minutes for streaming data)
 - [ ] Place .qvf export files in `deploy/apps/` directory (for automated re-deployment)
 
 ---
@@ -189,9 +227,9 @@ Master checklist of everything required to stand up the full Meridian Commerce G
 ## Phase 5b: Native Alerting & Reporting
 
 ### Native Data Alerts
-- [ ] Create alert: "IRA Below 85%" on Supply Chain Health app (triggers when IRA drops below 85% for any DC)
-- [ ] Create alert: "WISMO Rate Spike" on Customer Delivery Experience app (triggers when WISMO > 40% for any carrier)
-- [ ] Create alert: "Cold Chain Exceedance" on Cold Chain Monitoring app (triggers on temperature > 8°C for 15+ min)
+- [ ] Create alert: "IRA Below 85%" on MCG Supply Chain Operations app (triggers when IRA drops below 85% for any DC)
+- [ ] Create alert: "WISMO Rate Spike" on MCG Delivery & Customer Experience app (triggers when WISMO > 40% for any carrier)
+- [ ] Create alert: "Cold Chain Exceedance" on MCG Supply Chain Operations app (triggers on temperature > 8°C for 15+ min)
 - [ ] Configure notification channels: web, email (push if mobile app installed)
 - [ ] Share alerts with relevant team members
 - [ ] Test alerts by simulating a pipeline failure / temperature exceedance
@@ -304,7 +342,7 @@ Master checklist of everything required to stand up the full Meridian Commerce G
 ### Automation Configuration (see `automation_guide.md` for step-by-step)
 - [ ] **MCG Daily App Reload** — configured and enabled
   - Schedule: Daily 06:00 UTC
-  - Reloads all MCG apps
+  - Reloads both MCG analytics apps
 - [ ] **MCG Cold Chain Alert → Teams** — configured and enabled
   - Schedule: Every 5 minutes
   - Posts Adaptive Card on temperature exceedance
@@ -314,6 +352,12 @@ Master checklist of everything required to stand up the full Meridian Commerce G
 - [ ] **WISMO Rate Alert → Customer Ops** — configured and enabled
   - Trigger: WISMO rate exceeds 40% for any carrier
   - Posts alert to `#mcg-customer-ops` channel
+- [ ] **MCG Address Correction — Talend Job Trigger** — configured and enabled
+  - Trigger: Stewardship task approved in Address Cleanup campaign (event or 15-min poll)
+  - Runs Talend Address Validation Service (tAddressRowStandardize → tAddressRowValidate → tGeocode)
+  - Writes corrected addresses back to `silver.customers_deduped`
+  - Resolves stewardship tasks and posts results to Teams
+  - Closes the data quality loop: Stewardship → Talend Job → Silver → Gold → Predict
 - [ ] Test each automation with "Run Now" and verify Teams messages
 
 ---
@@ -393,9 +437,14 @@ Files generated for this demo:
 | | `MCG_Demo_Overview_Four_Stories.pptx` | Demo deck: Integration, Governance, Analytics, AI |
 | **Simulators** | `simulators/postgres_simulator.py` | PostgreSQL WMS data generator |
 | | `simulators/salesforce_simulator.py` | Salesforce CRM data generator |
+| | `simulators/kafka_iot_simulator.py` | Kafka IoT cold-chain & carrier event generator (continuous, scheduled, or batch) |
+| **Infrastructure** | `infrastructure/kafka/docker-compose.yml` | Confluent Kafka stack (ZooKeeper, Broker, Schema Registry, Control Center) |
+| | `infrastructure/kafka/.env` | Docker Compose environment defaults (version, ports) |
+| | `infrastructure/kafka/create_topics.py` | Standalone topic creation for external Kafka clusters |
 | **Deploy** | `deploy/deploy_qlik.py` | Python deployment automation script |
 | | `deploy/config.example.json` | Template configuration |
 | | `deploy/setup_guide.md` | 13-section Qlik Cloud setup guide |
+| | `deploy/creation_guide.md` | Lakehouse, Data Products, Analytics Apps & Predict creation guide |
 | | `deploy/scenarios.md` | 6 demo scenario playbooks |
 | | `deploy/data_model.md` | Full data model reference |
 | | `deploy/automation_guide.md` | Automation UI config instructions |
@@ -404,6 +453,13 @@ Files generated for this demo:
 | | `deploy/glossary_terms.json` | 25 business glossary terms |
 | | `deploy/automations/teams_cold_chain_alert.json` | Teams alert template |
 | | `deploy/automations/teams_pipeline_health.json` | Teams health summary template |
+| **Theme** | `deploy/themes/mcg-dark-theme.zip` | MCG Dark Theme extension (ready to upload) |
+| | `deploy/themes/mcg-dark-theme/theme.json` | Theme definition (Navy/Teal/Gold, Inter font) |
+| | `deploy/themes/mcg-dark-theme/mcg-dark-theme.qext` | Extension manifest |
+| | `deploy/themes/mcg-dark-theme/mcg_logo.png` | MCG logo for theme (dark variant) |
+| | `deploy/themes/mcg-dark-theme/mcg_icon.png` | MCG icon for theme (square variant) |
+| **Generators** | `generators/gen-mcg-logo.js` | MCG logo PNG generator (Inter font, brand colors) |
+| | `generators/assets/mcg_logo_*.png` | 4 MCG logo variants (light, dark, square, large) |
 | **Reference** | `MCG_Nightmare_to_Dataset_Map.md` | 7 nightmares mapped to datasets |
 | | `MCG_Three_Data_Feeds.md` | PostgreSQL/Kafka/Salesforce specs |
 | | `MCG_Talend_Transformation_Routes.md` | 8 transformation route specs |

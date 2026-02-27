@@ -62,9 +62,9 @@
       "consumers": ["Qlik Sense (Last Mile Dashboard)", "Predict (SLA Model)", "Discovery Agent"]
     },
     {
-      "name": "Spoilage Risk",
-      "description": "Cold chain shipment risk assessment combining IoT telemetry with carrier and route context. Real-time updates from Kafka streaming pipeline. Feeds the Spoilage Risk Predictor model.",
-      "sourceTable": "gold.spoilage_risk",
+      "name": "Cold Chain Compliance",
+      "description": "Cold chain shipment compliance monitoring combining IoT telemetry with carrier and route context. Real-time updates from Kafka streaming pipeline. Feeds the Spoilage Risk Predictor model and Teams alerting automation.",
+      "sourceTable": "gold.cold_chain_compliance",
       "owner": "Thomas Brennan",
       "ownerTitle": "VP Supply Chain",
       "tags": ["cold-chain", "iot", "risk", "spoilage", "predict"],
@@ -95,9 +95,38 @@
       "consumers": ["Predict (Spoilage Model)", "Discovery Agent", "Teams Automation"]
     },
     {
-      "name": "Customer 360",
-      "description": "Unified customer view with deduplicated addresses, order history, WISMO frequency, and lifetime value. Fed by Salesforce CRM data through address standardization and fuzzy matching.",
-      "sourceTable": "gold.customer_360",
+      "name": "Product Master 360",
+      "description": "Harmonized product master data combining SKU information from WMS, Salesforce, and supplier systems. Resolves naming inconsistencies, standardizes UoM, and enriches with weight/dimension data.",
+      "sourceTable": "gold.product_master_360",
+      "owner": "Thomas Berger",
+      "ownerTitle": "Product Data Manager",
+      "tags": ["product", "sku", "master-data", "harmonization"],
+      "sla": {
+        "refreshFrequency": "1 hour",
+        "availability": "99.5%",
+        "trustScoreTarget": 0.85
+      },
+      "schema": [
+        {"name": "sku", "type": "VARCHAR(30)", "description": "Canonical MCG product SKU"},
+        {"name": "product_name", "type": "VARCHAR(100)", "description": "Harmonized product name"},
+        {"name": "category", "type": "VARCHAR(30)", "description": "Product category (ELECTRONICS, GROCERY, etc.)"},
+        {"name": "weight_kg", "type": "DECIMAL(8,2)", "description": "Product weight in kg (NULL = missing)"},
+        {"name": "dimensions_cm", "type": "VARCHAR(30)", "description": "L×W×H in centimeters"},
+        {"name": "uom_standard", "type": "VARCHAR(5)", "description": "Standardized unit of measure (EA, CS, PAL)"},
+        {"name": "gtin", "type": "VARCHAR(14)", "description": "Global Trade Item Number"},
+        {"name": "supplier_count", "type": "INTEGER", "description": "Number of deduplicated suppliers"},
+        {"name": "country_of_origin", "type": "VARCHAR(2)", "description": "ISO country code"},
+        {"name": "weight_missing_flag", "type": "BOOLEAN", "description": "TRUE if weight is NULL or zero"},
+        {"name": "trust_score", "type": "DECIMAL(3,2)", "description": "Qlik Trust Score (0.0-1.0)"}
+      ],
+      "nightmares": ["#3 Product Master Mess"],
+      "apiSharing": true,
+      "consumers": ["Qlik Sense (Supply Chain Dashboard)", "Stewardship (Missing Weights)"]
+    },
+    {
+      "name": "Customer Delivery Experience",
+      "description": "Unified customer delivery view with deduplicated addresses, order history, WISMO frequency, and lifetime value. Fed by Salesforce CRM data through address standardization and fuzzy matching.",
+      "sourceTable": "gold.customer_delivery_experience",
       "owner": "Lisa Park",
       "ownerTitle": "Head of Customer Experience",
       "tags": ["customer", "address", "wismo", "ltv"],
@@ -106,14 +135,26 @@
         "availability": "99.5%",
         "trustScoreTarget": 0.85
       },
+      "schema": [
+        {"name": "customer_id", "type": "VARCHAR(40)", "description": "Deduplicated customer identifier"},
+        {"name": "name_clean", "type": "VARCHAR(100)", "description": "Standardized customer name"},
+        {"name": "address_clean", "type": "VARCHAR(200)", "description": "Standardized, validated address"},
+        {"name": "address_quality_score", "type": "DECIMAL(3,2)", "description": "Address quality (0.0-1.0)"},
+        {"name": "total_orders", "type": "INTEGER", "description": "Lifetime order count"},
+        {"name": "wismo_count", "type": "INTEGER", "description": "Number of WISMO inquiries"},
+        {"name": "wismo_rate", "type": "DECIMAL(5,2)", "description": "WISMO inquiries as % of orders"},
+        {"name": "ltv_usd", "type": "DECIMAL(12,2)", "description": "Customer lifetime value"},
+        {"name": "destination_region", "type": "VARCHAR(20)", "description": "MCG region: EU, AMERICAS, APAC, LATAM, AFRICA"},
+        {"name": "trust_score", "type": "DECIMAL(3,2)", "description": "Qlik Trust Score (0.0-1.0)"}
+      ],
       "nightmares": ["#2 Address Catastrophe"],
       "apiSharing": true,
       "consumers": ["Qlik Sense (Customer Dashboard)", "Stewardship (Address Cleanup)"]
     },
     {
-      "name": "Compliance Traceability",
-      "description": "Farm-to-shelf product traceability for food items. Shows traceability completeness, lot capture rates, and sub-tier supplier visibility. Critical for NVWA compliance.",
-      "sourceTable": "gold.compliance_traceability",
+      "name": "Compliance Readiness",
+      "description": "Farm-to-shelf product traceability and compliance readiness for food items. Shows traceability completeness, lot capture rates, and sub-tier supplier visibility. Critical for NVWA compliance and EC 178/2002.",
+      "sourceTable": "gold.compliance_readiness",
       "owner": "Dr. Elena Vasquez",
       "ownerTitle": "Chief Compliance Officer",
       "tags": ["compliance", "nvwa", "traceability", "lot-number", "food-safety"],
@@ -122,25 +163,47 @@
         "availability": "99.5%",
         "trustScoreTarget": 0.90
       },
+      "schema": [
+        {"name": "sku", "type": "VARCHAR(30)", "description": "Canonical MCG product SKU"},
+        {"name": "product_name", "type": "VARCHAR(100)", "description": "Harmonized product name"},
+        {"name": "lot_number", "type": "VARCHAR(30)", "description": "Lot/batch identifier (NULL = non-compliant)"},
+        {"name": "farm_origin", "type": "VARCHAR(20)", "description": "Farm origin code (e.g., FARM-NL-0042)"},
+        {"name": "country_of_origin", "type": "VARCHAR(2)", "description": "ISO country code"},
+        {"name": "dc_receipt_utc", "type": "TIMESTAMPTZ", "description": "When received at distribution center"},
+        {"name": "store_receipt_utc", "type": "TIMESTAMPTZ", "description": "When received at store"},
+        {"name": "trace_complete_flag", "type": "BOOLEAN", "description": "TRUE if full farm-to-shelf chain is documented"},
+        {"name": "trace_completeness_pct", "type": "DECIMAL(5,2)", "description": "Percentage of traceability fields populated"},
+        {"name": "trust_score", "type": "DECIMAL(3,2)", "description": "Qlik Trust Score (0.0-1.0)"}
+      ],
       "nightmares": ["#7 Compliance Traceability Gap"],
       "apiSharing": true,
       "consumers": ["Qlik Sense (Compliance Dashboard)", "NVWA Audit Evidence"]
     },
     {
-      "name": "B2B Inventory Feed",
-      "description": "Daily inventory availability for B2B wholesale customers. Includes Trust Score and data quality flags so consumers can filter by data reliability.",
-      "sourceTable": "gold.inventory_b2b_feed",
-      "owner": "Carlos Rivera",
-      "ownerTitle": "Director of Logistics, Americas",
-      "tags": ["b2b", "api", "inventory", "wholesale"],
+      "name": "Operational Cost Impact",
+      "description": "Cross-nightmare cost attribution linking each of the 7 data quality nightmares to financial impact. Aggregates phantom inventory losses, spoilage costs, failed delivery costs, compliance penalties, and operational waste.",
+      "sourceTable": "gold.operational_cost_impact",
+      "owner": "CFO Office",
+      "ownerTitle": "Executive Finance",
+      "tags": ["cost", "executive", "nightmare", "financial-impact"],
       "sla": {
         "refreshFrequency": "Daily at 06:00 UTC",
         "availability": "99.9%",
         "trustScoreTarget": 0.80
       },
-      "nightmares": ["#1 Phantom Inventory", "#3 Product Master Mess"],
+      "schema": [
+        {"name": "nightmare_id", "type": "INTEGER", "description": "Nightmare number (1-7)"},
+        {"name": "nightmare_name", "type": "VARCHAR(50)", "description": "Nightmare short name"},
+        {"name": "cost_category", "type": "VARCHAR(30)", "description": "Cost type: labor, inventory, delivery, compliance, spoilage"},
+        {"name": "period", "type": "VARCHAR(10)", "description": "Reporting period (YYYY-MM)"},
+        {"name": "cost_usd", "type": "DECIMAL(12,2)", "description": "Cost attributed to this nightmare/category"},
+        {"name": "cost_trend", "type": "VARCHAR(10)", "description": "IMPROVING, STABLE, or WORSENING"},
+        {"name": "incidents", "type": "INTEGER", "description": "Number of incidents in this period"},
+        {"name": "trust_score", "type": "DECIMAL(3,2)", "description": "Qlik Trust Score (0.0-1.0)"}
+      ],
+      "nightmares": ["#1 Phantom Inventory", "#2 Address Catastrophe", "#3 Product Master Mess", "#4 Silent Pipeline Failures", "#5 Timestamp Tower of Babel", "#6 Carrier Data Black Hole", "#7 Compliance Traceability Gap"],
       "apiSharing": true,
-      "consumers": ["B2B Partner Portals", "EDI Feeds"]
+      "consumers": ["Qlik Sense (Executive Dashboard)", "CFO Reporting", "Project CLARITY ROI Tracking"]
     },
     {
       "name": "Order Timeline",

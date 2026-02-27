@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """
-deploy_qlik.py — Qlik Cloud Deployment for Meridian Commerce Group Demo
+deploy_qlik.py — Qlik Cloud Deployment for Meridian Commerce Group Full Stack Demo
 
-Interactive deployment script that provisions spaces, imports apps,
-creates data connections, sets up Qlik Answers knowledge bases,
-configures assistants, creates automations, deploys Gold-layer data
-product definitions, and populates a business glossary.
+Interactive deployment script that provisions spaces, creates data connections
+(PostgreSQL, Salesforce, Kafka, S3), uploads the MCG dark theme, imports apps,
+sets up Qlik Answers knowledge bases, configures assistants, creates automations
+(including Talend address correction trigger), deploys Gold-layer data product
+definitions, and populates a business glossary.
 
 Usage:
     python deploy_qlik.py                    # Interactive setup wizard
@@ -14,9 +15,17 @@ Usage:
     python deploy_qlik.py --skip-prompts     # Use config.json, no prompts
 
 Data files:
-    deploy/data_products.json    — Gold-layer data product definitions
-    deploy/glossary_terms.json   — Business glossary terms
-    deploy/automations/*.json    — Automation templates (Teams alerts, etc.)
+    deploy/data_products.json              — 7 Gold-layer data product definitions
+    deploy/glossary_terms.json             — 25 business glossary terms
+    deploy/automations/*.json              — Automation templates (Teams alerts, etc.)
+    deploy/themes/mcg-dark-theme.zip       — MCG Dark Theme extension package
+
+Post-deploy manual steps (see creation_guide.md):
+    - Open Lakehouse: Bronze/Silver/Gold layer configuration
+    - Data Flows: 8 transformation routes + Talend address validation job
+    - Table Recipes: 7 Gold-layer aggregations
+    - Qlik Predict: 2 AutoML experiments (Spoilage Risk, SLA Prediction)
+    - Semantic Types, AI-Suggested Validation Rules, AI-Driven Descriptions
 
 Requirements:
     pip install requests
@@ -25,6 +34,8 @@ Requirements:
 import argparse
 import json
 import os
+import shutil
+import subprocess
 import sys
 import time
 import getpass
@@ -46,6 +57,9 @@ PROJECT_DIR = SCRIPT_DIR.parent
 DOCUMENTS_DIR = PROJECT_DIR / "documents"
 APPS_DIR = SCRIPT_DIR / "apps"
 AUTOMATIONS_DIR = SCRIPT_DIR / "automations"
+THEMES_DIR = SCRIPT_DIR / "themes"
+INFRASTRUCTURE_DIR = PROJECT_DIR / "infrastructure" / "kafka"
+SIMULATORS_DIR = PROJECT_DIR / "simulators"
 DATA_PRODUCTS_FILE = SCRIPT_DIR / "data_products.json"
 GLOSSARY_FILE = SCRIPT_DIR / "glossary_terms.json"
 CONFIG_PATH = SCRIPT_DIR / "config.json"
@@ -59,12 +73,14 @@ QLIK_REGIONS = [
 
 # Deployment components the user can toggle
 COMPONENTS = [
+    ("infrastructure", "Start Kafka Infrastructure (Docker Compose — Confluent)"),
     ("spaces",        "Create Spaces (shared + managed)"),
-    ("connections",   "Create Data Connections"),
+    ("connections",   "Create Data Connections (PostgreSQL, Salesforce, Kafka, S3)"),
+    ("theme",         "Upload MCG Dark Theme Extension"),
     ("apps",          "Import & Publish Analytics Apps (.qvf)"),
     ("knowledge",     "Create Qlik Answers Knowledge Base + Upload Documents"),
     ("assistant",     "Create Qlik Answers Assistant"),
-    ("automations",   "Create Automations (scheduled reloads, alerts)"),
+    ("automations",   "Create Automations (scheduled reloads, alerts, Talend address correction)"),
     ("dataproducts",  "Create Data Products (Gold layer definitions)"),
     ("glossary",      "Create Business Glossary Terms"),
 ]
@@ -243,9 +259,49 @@ def run_setup_wizard(existing_config=None):
     spaces["managed"] = prompt("Managed space name", default=spaces.get("managed", "MCG Demo - Published"))
     cfg["spaces"] = spaces
 
+    # --- Kafka Infrastructure ---
+    print("\n-- Kafka Infrastructure --")
+    print("  MCG requires two Kafka topics for IoT streaming data:")
+    print("    • mcg.iot.cold-chain     (sensor readings)")
+    print("    • mcg.iot.carrier-events (carrier status updates)")
+
+    infra = cfg.get("infrastructure", {})
+    if prompt_yes_no("Set up Kafka infrastructure?", default=True):
+        has_docker = check_docker()
+        if has_docker:
+            use_docker = prompt_yes_no(
+                "Use Docker Compose (Confluent stack — recommended for demos)?",
+                default=infra.get("useDocker", True),
+            )
+            infra["useDocker"] = use_docker
+            if use_docker:
+                print("  -> Will start Confluent Kafka via Docker Compose.")
+                print(f"     Compose file: {DOCKER_COMPOSE_FILE}")
+            else:
+                print("  -> Will create topics on your existing Kafka cluster.")
+                bs = cfg.get("dataConnections", {}).get("kafka", {}).get("bootstrapServers", "")
+                if not bs:
+                    bs = prompt("Kafka bootstrap servers (host:port)", default="localhost:9092")
+                    cfg.setdefault("dataConnections", {}).setdefault("kafka", {})["bootstrapServers"] = bs
+        else:
+            print("  Docker not found — will create topics on an external Kafka cluster.")
+            infra["useDocker"] = False
+            bs = cfg.get("dataConnections", {}).get("kafka", {}).get("bootstrapServers", "")
+            if not bs:
+                bs = prompt("Kafka bootstrap servers (host:port)")
+                cfg.setdefault("dataConnections", {}).setdefault("kafka", {})["bootstrapServers"] = bs
+    else:
+        print("  -> Skipping Kafka setup. You can configure it later.")
+        infra["skipInfrastructure"] = True
+
+    cfg["infrastructure"] = infra
+
     # --- Components to deploy ---
     print("\n-- Select Components to Deploy --")
     enabled = cfg.get("enabledComponents", {})
+    # Default infrastructure to False if user chose to skip
+    if infra.get("skipInfrastructure"):
+        enabled["infrastructure"] = False
     defaults = [enabled.get(key, True) for key, _ in COMPONENTS]
     enabled = prompt_multi_select("Toggle deployment components:", COMPONENTS, defaults)
     cfg["enabledComponents"] = enabled
@@ -281,6 +337,25 @@ def run_setup_wizard(existing_config=None):
             sf["isSandbox"] = prompt_yes_no("Is this a Sandbox?",
                                              default=sf.get("isSandbox", True))
             conns["salesforce"] = sf
+
+        # Kafka
+        if prompt_yes_no("Configure Kafka (IoT Telemetry) connection?",
+                          default=bool(conns.get("kafka"))):
+            kf = conns.get("kafka", {})
+            kf["name"] = prompt("Connection name", default=kf.get("name", "MCG IoT Telemetry"))
+            kf["bootstrapServers"] = prompt("Bootstrap servers",
+                                             default=kf.get("bootstrapServers"))
+            if not kf.get("topics"):
+                kf["topics"] = ["mcg.iot.cold-chain", "mcg.iot.carrier-events"]
+                print(f"    Using default topics: {', '.join(kf['topics'])}")
+            kf["securityProtocol"] = prompt("Security protocol",
+                                             default=kf.get("securityProtocol", "SASL_SSL"))
+            kf["saslMechanism"] = prompt("SASL mechanism",
+                                          default=kf.get("saslMechanism", "PLAIN"))
+            kf["saslUsername"] = prompt("SASL username", default=kf.get("saslUsername"))
+            kf["saslPassword"] = prompt("SASL password", secret=True,
+                                         default=kf.get("saslPassword"))
+            conns["kafka"] = kf
 
         # S3
         if prompt_yes_no("Configure S3 (file storage) connection?",
@@ -601,6 +676,47 @@ class QlikClient:
             return {"id": app_id, "already_published": True}
 
         raise RuntimeError(f'Publish failed ({resp.status_code}): {resp.text[:300]}')
+
+    # ========================================================================
+    #  THEMES
+    # ========================================================================
+
+    def find_theme(self, name):
+        themes = self._get_all("/api/v1/themes")
+        return next((t for t in themes if t.get("name") == name), None)
+
+    def upload_theme(self, file_path):
+        file_path = Path(file_path)
+        theme_name = file_path.stem.replace("-", " ").title()
+
+        existing = self.find_theme(theme_name)
+        if not existing:
+            # Also check with the raw stem name and common variants
+            existing = self.find_theme(file_path.stem)
+        if existing:
+            self.log.ok(f'Theme already exists: "{existing.get("name")}" ({existing.get("id", "?")})')
+            return existing
+
+        if self.dry_run:
+            self.log.info(f'DRY RUN: Would upload theme "{file_path.name}"')
+            return {"id": "dry-run-theme-id", "name": theme_name}
+
+        with open(file_path, "rb") as f:
+            resp = self._session.post(
+                self._url("/api/v1/themes"),
+                files={"file": (file_path.name, f, "application/zip")},
+                timeout=120,
+            )
+
+        if resp.status_code in (200, 201):
+            body = resp.json()
+            self.log.ok(f'Uploaded theme "{body.get("name", theme_name)}" ({body.get("id", "?")})')
+            return body
+        if resp.status_code == 409:
+            self.log.warn(f'Theme "{file_path.name}" already exists (409).')
+            return {"name": theme_name, "already_exists": True}
+
+        raise RuntimeError(f'Theme upload failed ({resp.status_code}): {resp.text[:300]}')
 
     # ========================================================================
     #  DATA CONNECTIONS
@@ -1013,6 +1129,11 @@ def print_checklist(report, enabled, log):
 
     # Manual steps keyed by component — only shown if that component deployed OK
     manual_steps = {
+        "infrastructure": [
+            "Verify Kafka broker is reachable: docker compose ps (or check your cluster)",
+            "Verify topics exist: docker compose exec kafka kafka-topics --bootstrap-server kafka:9092 --list",
+            "Start the IoT simulator: python simulators/kafka_iot_simulator.py --bootstrap-servers localhost:9092",
+        ],
         "spaces": [
             "Assign users/groups to shared and managed spaces",
             "Verify space permissions for demo presenters",
@@ -1020,11 +1141,19 @@ def print_checklist(report, enabled, log):
         "connections": [
             "Test each data connection (click 'Test Connection' in the UI)",
             "Verify tables/topics are visible through each connection",
-            "Configure CDC replication for PostgreSQL (requires DMG)",
+            "Configure CDC Cluster for PostgreSQL + Salesforce pipelines",
+            "Configure Streaming Cluster for Kafka IoT pipelines",
+        ],
+        "theme": [
+            "Apply MCG Dark Theme to both analytics apps (App Settings → Theme)",
+            "Verify MCG logo appears in app headers",
         ],
         "apps": [
-            "Open each app and verify data loads correctly",
-            "Set up scheduled reloads for each app",
+            "Open both domain apps and verify data loads correctly:",
+            "  • MCG Supply Chain Operations (5 Gold tables + streaming IoT)",
+            "  • MCG Delivery & Customer Experience (3 Gold tables + streaming carrier events)",
+            "Set up scheduled reloads (every 5 min for streaming data)",
+            "Configure Business Logic for Qlik Answers in each app",
             "Publish apps from Development → Published space",
         ],
         "knowledge": [
@@ -1039,11 +1168,14 @@ def print_checklist(report, enabled, log):
             "Open each automation in the Automation Designer",
             "Configure block details (see deploy/automation_guide.md)",
             "Set Teams webhook URLs in webhook blocks",
+            "Configure Talend Address Correction automation trigger (new stewardship tasks → run Talend job)",
             "Enable automations and test with 'Run Now'",
         ],
         "dataproducts": [
             "Verify data products have data flowing from Gold tables",
-            "Enable API sharing for key data products",
+            "Enable API sharing for key data products (governance capability)",
+            "Review AI-Driven Descriptions and column-level metadata",
+            "Review Semantic Types and AI-Suggested Validation Rules",
             "Configure refresh schedules",
         ],
         "glossary": [
@@ -1054,10 +1186,10 @@ def print_checklist(report, enabled, log):
 
     # Always-shown manual steps (not tied to a specific component)
     always_manual = [
-        ("Open Lakehouse",      "Configure Bronze/Silver/Gold layers in Qlik Cloud UI"),
-        ("Data Flows",          "Build 8 transformation routes in Talend Pipeline Designer"),
-        ("Table Recipes",       "Create Gold-layer table recipes from Silver tables"),
-        ("Qlik Predict",       "Create AutoML experiments for Spoilage Risk & SLA Prediction"),
+        ("Open Lakehouse",      "Configure Bronze/Silver/Gold layers in Qlik Cloud UI (see creation_guide.md §1)"),
+        ("Data Flows",          "Build 8 transformation flows + Talend address validation job (see creation_guide.md §1.3)"),
+        ("Table Recipes",       "Create 7 Gold-layer table recipes from Silver tables (see creation_guide.md §1.4)"),
+        ("Qlik Predict",       "Create AutoML experiments for Spoilage Risk & SLA Prediction (see creation_guide.md §4)"),
         ("Stewardship",         "Create 4 stewardship campaigns (see demo_checklist.md Phase 8)"),
         ("Discovery Agent",     "Enable Discovery Agent on data products and set alert thresholds"),
         ("MCP Server",          "Install and configure Qlik MCP server (see setup_guide.md §13)"),
@@ -1137,12 +1269,251 @@ def build_s3_props(cfg):
         },
     }
 
+def build_kafka_props(cfg):
+    topics = cfg.get("topics", [])
+    if isinstance(topics, str):
+        topics = [topics]
+    return {
+        "connectionProperties": {
+            "bootstrapServers": cfg.get("bootstrapServers", ""),
+            "topics": ",".join(topics),
+            "securityProtocol": cfg.get("securityProtocol", "SASL_SSL"),
+            "saslMechanism": cfg.get("saslMechanism", "PLAIN"),
+            "saslUsername": cfg.get("saslUsername", ""),
+            "saslPassword": cfg.get("saslPassword", ""),
+        },
+    }
+
 
 CONNECTION_DEFS = [
     ("postgresql",  "postgres",    build_postgres_props,   "PostgreSQL (MCG WMS)"),
     ("salesforce",  "salesforce",  build_salesforce_props,  "Salesforce (MCG CRM)"),
+    ("kafka",       "kafka",       build_kafka_props,       "Kafka (MCG IoT Telemetry)"),
     ("s3",          "s3",          build_s3_props,          "S3 (File Storage)"),
 ]
+
+
+# ---------------------------------------------------------------------------
+#  Kafka Infrastructure (Docker Compose + standalone topic creation)
+# ---------------------------------------------------------------------------
+
+DOCKER_COMPOSE_FILE = INFRASTRUCTURE_DIR / "docker-compose.yml"
+
+MCG_TOPICS = [
+    {
+        "name": "mcg.iot.cold-chain",
+        "partitions": 3,
+        "replication_factor": 1,
+        "retention_ms": 604800000,       # 7 days
+        "description": "Cold chain IoT sensor readings (~1 msg/5s per sensor)",
+    },
+    {
+        "name": "mcg.iot.carrier-events",
+        "partitions": 3,
+        "replication_factor": 1,
+        "retention_ms": 2592000000,      # 30 days
+        "description": "Carrier status update events (~1 msg/min)",
+    },
+]
+
+
+def check_docker():
+    """Return True if docker and docker compose are available."""
+    if not shutil.which("docker"):
+        return False
+    try:
+        result = subprocess.run(
+            ["docker", "compose", "version"],
+            capture_output=True, text=True, timeout=10,
+        )
+        return result.returncode == 0
+    except Exception:
+        return False
+
+
+def kafka_docker_status(log):
+    """Check whether the MCG Kafka stack is already running."""
+    if not DOCKER_COMPOSE_FILE.exists():
+        return "not_found"
+    try:
+        result = subprocess.run(
+            ["docker", "compose", "-f", str(DOCKER_COMPOSE_FILE), "ps", "--format", "json"],
+            capture_output=True, text=True, timeout=15,
+            cwd=str(INFRASTRUCTURE_DIR),
+        )
+        if result.returncode != 0:
+            return "stopped"
+        output = result.stdout.strip()
+        if not output:
+            return "stopped"
+        # Check if kafka broker is running
+        if "kafka" in output.lower() and "running" in output.lower():
+            return "running"
+        return "stopped"
+    except Exception:
+        return "stopped"
+
+
+def start_kafka_docker(log, dry_run=False):
+    """Start the Confluent Kafka stack via Docker Compose."""
+    if not DOCKER_COMPOSE_FILE.exists():
+        log.error(f"Docker Compose file not found: {DOCKER_COMPOSE_FILE}")
+        return False
+
+    if dry_run:
+        log.info("DRY RUN: Would run 'docker compose up -d' for Kafka infrastructure.")
+        return True
+
+    log.info("Starting Confluent Kafka stack (ZooKeeper, Broker, Schema Registry, Control Center)...")
+    try:
+        result = subprocess.run(
+            ["docker", "compose", "-f", str(DOCKER_COMPOSE_FILE), "up", "-d"],
+            capture_output=True, text=True, timeout=120,
+            cwd=str(INFRASTRUCTURE_DIR),
+        )
+        if result.returncode != 0:
+            log.error(f"Docker Compose failed:\n{result.stderr}")
+            return False
+
+        log.ok("Kafka stack started. Waiting for broker to become healthy...")
+
+        # Wait for broker to be healthy (up to 60 seconds)
+        for i in range(12):
+            time.sleep(5)
+            status = kafka_docker_status(log)
+            if status == "running":
+                log.ok("Kafka broker is healthy.")
+                log.info("Topics mcg.iot.cold-chain and mcg.iot.carrier-events created by init container.")
+                log.info("Confluent Control Center available at http://localhost:9021")
+                return True
+            log.debug(f"Waiting for broker... ({(i+1)*5}s)")
+
+        log.warn("Broker may still be starting — check 'docker compose logs kafka'.")
+        return True
+
+    except subprocess.TimeoutExpired:
+        log.error("Docker Compose timed out after 120 seconds.")
+        return False
+    except Exception as e:
+        log.error(f"Docker Compose error: {e}")
+        return False
+
+
+def stop_kafka_docker(log):
+    """Stop the Confluent Kafka stack."""
+    if not DOCKER_COMPOSE_FILE.exists():
+        return
+    try:
+        subprocess.run(
+            ["docker", "compose", "-f", str(DOCKER_COMPOSE_FILE), "down"],
+            capture_output=True, text=True, timeout=60,
+            cwd=str(INFRASTRUCTURE_DIR),
+        )
+        log.ok("Kafka stack stopped.")
+    except Exception as e:
+        log.warn(f"Could not stop Kafka stack: {e}")
+
+
+def create_kafka_topics_standalone(bootstrap_servers, log, dry_run=False):
+    """Create MCG Kafka topics using kafka-topics CLI (no Docker required).
+
+    This is the fallback for users who have their own Kafka cluster
+    (e.g., Confluent Cloud, Amazon MSK, self-managed) and don't need
+    the Docker Compose stack.
+
+    Requires: confluent-kafka Python package or kafka-topics CLI on PATH.
+    """
+    log.info(f"Creating MCG topics on external broker: {bootstrap_servers}")
+
+    # Try kafka-topics CLI first (available if Kafka is installed locally)
+    kafka_topics_cmd = shutil.which("kafka-topics") or shutil.which("kafka-topics.sh")
+
+    if kafka_topics_cmd:
+        return _create_topics_via_cli(kafka_topics_cmd, bootstrap_servers, log, dry_run)
+
+    # Fallback: try confluent-kafka Python AdminClient
+    try:
+        from confluent_kafka.admin import AdminClient, NewTopic
+        return _create_topics_via_python(bootstrap_servers, log, dry_run)
+    except ImportError:
+        pass
+
+    log.error(
+        "Cannot create topics: neither 'kafka-topics' CLI nor "
+        "'confluent-kafka' Python package found.\n"
+        "  Option A: pip install confluent-kafka\n"
+        "  Option B: Install Kafka CLI tools (kafka-topics.sh)\n"
+        "  Option C: Use the Docker Compose stack (infrastructure/kafka/)\n"
+        "  Option D: Create topics manually in your Kafka management console."
+    )
+    return False
+
+
+def _create_topics_via_cli(kafka_topics_cmd, bootstrap_servers, log, dry_run):
+    """Create topics using kafka-topics CLI."""
+    for topic in MCG_TOPICS:
+        cmd = [
+            kafka_topics_cmd,
+            "--bootstrap-server", bootstrap_servers,
+            "--create", "--if-not-exists",
+            "--topic", topic["name"],
+            "--partitions", str(topic["partitions"]),
+            "--replication-factor", str(topic["replication_factor"]),
+            "--config", f"retention.ms={topic['retention_ms']}",
+        ]
+        if dry_run:
+            log.info(f"DRY RUN: Would run: {' '.join(cmd)}")
+            continue
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+            if result.returncode == 0:
+                log.ok(f"Topic '{topic['name']}' created ({topic['description']})")
+            else:
+                log.error(f"Failed to create '{topic['name']}': {result.stderr.strip()}")
+                return False
+        except Exception as e:
+            log.error(f"kafka-topics error for '{topic['name']}': {e}")
+            return False
+    return True
+
+
+def _create_topics_via_python(bootstrap_servers, log, dry_run):
+    """Create topics using confluent-kafka Python AdminClient."""
+    from confluent_kafka.admin import AdminClient, NewTopic
+
+    if dry_run:
+        for topic in MCG_TOPICS:
+            log.info(f"DRY RUN: Would create topic '{topic['name']}' "
+                     f"(partitions={topic['partitions']}, "
+                     f"retention={topic['retention_ms']}ms)")
+        return True
+
+    admin = AdminClient({"bootstrap.servers": bootstrap_servers})
+
+    new_topics = [
+        NewTopic(
+            topic["name"],
+            num_partitions=topic["partitions"],
+            replication_factor=topic["replication_factor"],
+            config={"retention.ms": str(topic["retention_ms"])},
+        )
+        for topic in MCG_TOPICS
+    ]
+
+    futures = admin.create_topics(new_topics)
+    success = True
+    for topic_name, future in futures.items():
+        try:
+            future.result()  # blocks until topic is created
+            desc = next((t["description"] for t in MCG_TOPICS if t["name"] == topic_name), "")
+            log.ok(f"Topic '{topic_name}' created ({desc})")
+        except Exception as e:
+            if "already exists" in str(e).lower():
+                log.info(f"Topic '{topic_name}' already exists — OK.")
+            else:
+                log.error(f"Failed to create '{topic_name}': {e}")
+                success = False
+    return success
 
 
 # ---------------------------------------------------------------------------
@@ -1160,10 +1531,57 @@ def run_deployment(cfg, log, dry_run=False):
     if dry_run:
         log.warn("DRY RUN MODE — no changes will be made to Qlik Cloud.")
 
-    all_components = ["spaces", "connections", "apps", "knowledge", "assistant",
-                      "automations", "dataproducts", "glossary"]
+    all_components = ["infrastructure", "spaces", "connections", "theme", "apps",
+                      "knowledge", "assistant", "automations", "dataproducts", "glossary"]
     total_steps = sum(1 for k in all_components if enabled.get(k, True))
     current_step = 0
+
+    # --- Step: Kafka Infrastructure (Docker or standalone topic creation) ---
+    if enabled.get("infrastructure", True):
+        current_step += 1
+        log.step(current_step, total_steps, "Kafka Infrastructure")
+
+        kafka_cfg = cfg.get("dataConnections", {}).get("kafka", {})
+        infra_cfg = cfg.get("infrastructure", {})
+        use_docker = infra_cfg.get("useDocker", True)
+        bootstrap = kafka_cfg.get("bootstrapServers", "localhost:9092")
+
+        if use_docker:
+            has_docker = check_docker()
+            if not has_docker:
+                log.warn("Docker not found on PATH — skipping Docker Compose.")
+                log.info("To create topics on an external broker, set "
+                         "infrastructure.useDocker = false in config.")
+                report.record("Kafka Infrastructure", "SKIP",
+                              "Docker not available")
+            else:
+                status = kafka_docker_status(log)
+                if status == "running":
+                    log.ok("Kafka Docker stack is already running.")
+                    report.record("Kafka Infrastructure", "OK",
+                                  "Already running")
+                else:
+                    ok = start_kafka_docker(log, dry_run=dry_run)
+                    report.record("Kafka Infrastructure",
+                                  "OK" if ok else "FAIL",
+                                  "Docker Compose started" if ok else "Failed to start")
+                    if not ok and not continue_on_error:
+                        report.print_summary(log)
+                        return 1
+        else:
+            # Standalone topic creation on external broker
+            if not bootstrap or bootstrap in ("localhost:9092", "your-kafka-broker:9092"):
+                log.warn("No external Kafka broker configured — skipping topic creation.")
+                log.info("Set dataConnections.kafka.bootstrapServers in config.")
+                report.record("Kafka Topics", "SKIP", "No broker configured")
+            else:
+                ok = create_kafka_topics_standalone(bootstrap, log, dry_run=dry_run)
+                report.record("Kafka Topics",
+                              "OK" if ok else "FAIL",
+                              f"Broker: {bootstrap}")
+                if not ok and not continue_on_error:
+                    report.print_summary(log)
+                    return 1
 
     # --- Authenticate ---
     log.section("Authentication")
@@ -1233,6 +1651,26 @@ def run_deployment(cfg, log, dry_run=False):
                 if not continue_on_error:
                     report.print_summary(log)
                     return 1
+
+    # --- Step: Theme ---
+    if enabled.get("theme", True):
+        current_step += 1
+        log.step(current_step, total_steps, "Upload MCG Dark Theme")
+
+        theme_zip = THEMES_DIR / "mcg-dark-theme.zip"
+        if theme_zip.exists():
+            try:
+                client.upload_theme(theme_zip)
+                report.record("Theme Upload", "OK", f'"{theme_zip.name}"')
+            except Exception as e:
+                log.error(f"Theme upload failed: {e}")
+                report.record("Theme Upload", "FAIL", str(e))
+                if not continue_on_error:
+                    report.print_summary(log)
+                    return 1
+        else:
+            log.warn(f"Theme file not found: {theme_zip}")
+            report.record("Theme Upload", "SKIP", "mcg-dark-theme.zip not found")
 
     # --- Step: Apps ---
     if enabled.get("apps", True):
@@ -1362,7 +1800,13 @@ def run_deployment(cfg, log, dry_run=False):
 
         # Built-in automation definitions (always created)
         automation_defs = [
-            ("MCG Daily App Reload", "Scheduled daily reload of MCG analytics apps at 06:00 UTC."),
+            ("MCG Daily App Reload",
+             "Scheduled daily reload of MCG analytics apps at 06:00 UTC."),
+            ("MCG Address Correction — Talend Job Trigger",
+             "Triggered by new Stewardship tasks in the Address Cleanup campaign. "
+             "Runs the Talend Address Validation Service job (tAddressRowStandardize, "
+             "tAddressRowValidate, tGeocode) on flagged records, writes corrected "
+             "addresses back to silver.customers_deduped, and resolves the stewardship task."),
         ]
 
         # Load additional automations from JSON templates in automations/ directory

@@ -332,6 +332,19 @@ Create 8 data flows (plus 1 Talend job) in the Pipeline Designer that transform 
 - Data Flow 3 calls this job via **tRunJob** component for each address batch
 - Can be reused by any future data flow that processes addresses
 
+**Automation Integration — Closing the Data Quality Loop:**
+This Talend job is also triggered automatically by the **MCG Address Correction automation** (see `automation_guide.md` Automation 5). When a steward approves address records in the Address Cleanup stewardship campaign, the automation:
+1. Collects approved record IDs from the stewardship task
+2. Invokes this Talend job with those records as input
+3. Writes corrected addresses back to `silver.customers_deduped`
+4. Resolves the stewardship task and notifies Teams
+
+This creates a complete data quality remediation loop:
+```
+Source (dirty) → Data Flow 3 (standardize) → Stewardship (human review)
+    → Automation (trigger Talend job) → Silver (corrected) → Gold → Predict
+```
+
 #### Data Flow 4: Product Master Harmonization
 
 | Setting | Value |

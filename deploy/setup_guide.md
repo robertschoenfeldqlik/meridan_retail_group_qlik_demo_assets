@@ -90,26 +90,74 @@ python simulators/postgres_simulator.py --host localhost --port 5432 \
 
 ### 1.4 Apache Kafka Setup
 
-**Option A: Confluent Cloud (recommended — free tier)**
-1. Sign up at [confluent.cloud](https://confluent.cloud)
-2. Create a Basic cluster in your preferred region
-3. Create topics:
-   - `mcg.iot.cold-chain` (6 partitions, 7-day retention)
-   - `mcg.iot.carrier-events` (3 partitions, 7-day retention)
-4. Create an API key (Cluster → API Keys → Create Key)
+Two topics are required:
+- `mcg.iot.cold-chain` (3 partitions, 7-day retention, lz4 compression)
+- `mcg.iot.carrier-events` (3 partitions, 30-day retention, lz4 compression)
 
-**Option B: Docker**
+**Option A: Docker Compose (recommended for demos)**
+
+The repo includes a full Confluent Platform stack (ZooKeeper, Broker, Schema Registry, Control Center) with topics pre-created automatically:
+
 ```bash
-docker-compose up -d  # Use Confluent Platform docker-compose
-# Or use Redpanda (Kafka-compatible, lighter):
-docker run -d --name mcg-kafka -p 9092:9092 vectorized/redpanda
+cd infrastructure/kafka
+docker compose up -d          # Starts all services + auto-creates topics
+docker compose ps             # Verify all services are healthy
 ```
 
-**Start IoT producer (during demo):**
+Access Confluent Control Center at `http://localhost:9021` to inspect topics and messages.
+
+To tear down:
+```bash
+docker compose down           # Stop containers (keeps data)
+docker compose down -v        # Stop containers + delete data volumes
+```
+
+**Option B: External Kafka (Confluent Cloud / Amazon MSK / self-managed)**
+
+Use the standalone topic creation script:
+
 ```bash
 pip install confluent-kafka
-python simulators/mcg_iot_producer.py  # Generates live sensor readings
+
+# Confluent Cloud:
+python infrastructure/kafka/create_topics.py \
+  --bootstrap-servers pkc-xxxxx.us-east-1.aws.confluent.cloud:9092 \
+  --security-protocol SASL_SSL \
+  --sasl-mechanism PLAIN \
+  --sasl-username YOUR_API_KEY \
+  --sasl-password YOUR_API_SECRET
+
+# Amazon MSK with IAM:
+python infrastructure/kafka/create_topics.py \
+  --bootstrap-servers b-1.msk-cluster.xxxxx.kafka.us-east-1.amazonaws.com:9098 \
+  --security-protocol SASL_SSL \
+  --sasl-mechanism OAUTHBEARER
+
+# Self-managed / local:
+python infrastructure/kafka/create_topics.py --bootstrap-servers localhost:9092
+
+# List existing topics (no creation):
+python infrastructure/kafka/create_topics.py --bootstrap-servers localhost:9092 --list-only
 ```
+
+**Start IoT simulator (generates live sensor data during demos):**
+
+```bash
+pip install confluent-kafka
+
+# Continuous mode — runs until Ctrl+C:
+python simulators/kafka_iot_simulator.py --bootstrap-servers localhost:9092
+
+# Scheduled mode — produce a batch every 15 minutes (great for sustained demos):
+python simulators/kafka_iot_simulator.py --bootstrap-servers localhost:9092 \
+  --scheduled --interval 900
+
+# Single batch — produce one batch and exit (good for cron / Task Scheduler):
+python simulators/kafka_iot_simulator.py --bootstrap-servers localhost:9092 \
+  --batch-only --batch-duration 60
+```
+
+> **Note:** The simulator intentionally injects data quality issues (mixed Fahrenheit readings, bare timestamps, GPS blackouts, carrier vocabulary inconsistencies) to demonstrate Qlik Talend Cloud profiling and Trust Score.
 
 ### 1.5 Salesforce Developer Edition
 
@@ -166,7 +214,7 @@ python simulators/mcg_iot_producer.py  # Generates live sensor readings
 1. Create a new Replicate task: **PostgreSQL → Open Lakehouse (Bronze)**
 2. Select all 3 tables
 3. Enable CDC (Full Load + ongoing changes)
-4. Target tables: `bronze.inventory_raw`, `bronze.warehouse_events_raw`, `bronze.shipments_raw`
+4. Target tables: `bronze.inventory_positions`, `bronze.warehouse_events`, `bronze.shipments`
 
 ### 2.2 Apache Kafka (IoT Telemetry)
 
@@ -193,7 +241,7 @@ python simulators/mcg_iot_producer.py  # Generates live sensor readings
 1. Create streaming pipeline: **Kafka → Open Lakehouse (Bronze)**
 2. Subscribe to both topics
 3. JSON message parsing with schema inference
-4. Target: `bronze.iot_cold_chain_raw`, `bronze.carrier_events_raw`
+4. Target: `bronze.iot_cold_chain`, `bronze.iot_carrier_events`
 
 ### 2.3 Salesforce (CRM + Orders)
 
@@ -220,7 +268,7 @@ python simulators/mcg_iot_producer.py  # Generates live sensor readings
 1. Create SaaS landing task: **Salesforce → Open Lakehouse (Bronze)**
 2. Select all 4 objects
 3. Mode: Full + Incremental (SystemModstamp)
-4. Target: `bronze.contacts_raw`, `bronze.accounts_raw`, `bronze.orders_raw`, `bronze.products_raw`
+4. Target: `bronze.sf_contacts`, `bronze.sf_accounts`, `bronze.sf_orders`, `bronze.sf_products`
 
 ---
 
@@ -239,14 +287,14 @@ Data arrives here first — dirty, as-is, preserving the original for lineage an
 
 | Table | Source | Format |
 |---|---|---|
-| `bronze.inventory_raw` | PostgreSQL CDC | Iceberg (append + CDC merge) |
-| `bronze.warehouse_events_raw` | PostgreSQL CDC | Iceberg |
-| `bronze.shipments_raw` | PostgreSQL CDC | Iceberg |
-| `bronze.iot_cold_chain_raw` | Kafka streaming | Iceberg (append) |
-| `bronze.carrier_events_raw` | Kafka streaming | Iceberg (append) |
-| `bronze.contacts_raw` | Salesforce | Iceberg |
-| `bronze.orders_raw` | Salesforce | Iceberg |
-| `bronze.products_raw` | Salesforce | Iceberg |
+| `bronze.inventory_positions` | PostgreSQL CDC | Iceberg (append + CDC merge) |
+| `bronze.warehouse_events` | PostgreSQL CDC | Iceberg |
+| `bronze.shipments` | PostgreSQL CDC | Iceberg |
+| `bronze.iot_cold_chain` | Kafka streaming | Iceberg (append) |
+| `bronze.iot_carrier_events` | Kafka streaming | Iceberg (append) |
+| `bronze.sf_contacts` | Salesforce | Iceberg |
+| `bronze.sf_orders` | Salesforce | Iceberg |
+| `bronze.sf_products` | Salesforce | Iceberg |
 
 **Total: 8 Bronze tables**
 
@@ -275,10 +323,10 @@ Aggregated, governed, SLA-backed data products for business consumption.
 |---|---|---|---|
 | `gold.supply_chain_health` | inventory_reconciled, timestamps_audit | Qlik Sense, Discovery Agent | DC, SKU, qty_wms, qty_erp, variance, trust_score, pipeline_status |
 | `gold.last_mile_performance` | shipments_canonical, orders_enriched, customers_deduped | Qlik Sense, Predict | carrier, region, sla_target, sla_actual, on_time_pct, address_quality_score |
-| `gold.spoilage_risk` | iot_normalized, shipments_canonical | Predict, Discovery Agent | shipment_id, route, carrier, avg_temp, max_temp, exceedance_min, spoilage_flag |
-| `gold.customer_360` | customers_deduped, orders_enriched | Qlik Sense | customer_id, name, address_clean, total_orders, wismo_count, ltv |
-| `gold.compliance_traceability` | products_harmonized, inventory_reconciled | Compliance, Qlik Sense | sku, lot_number, farm_origin, dc_receipt, store_receipt, trace_complete_flag |
-| `gold.inventory_b2b_feed` | inventory_reconciled, products_harmonized | B2B API, flat file export | sku, product_name, dc, qty_available, uom, unit_price, trust_score |
+| `gold.cold_chain_compliance` | iot_normalized, shipments_canonical | Predict, Discovery Agent | shipment_id, route, carrier, avg_temp, max_temp, exceedance_min, spoilage_flag |
+| `gold.customer_delivery_experience` | customers_deduped, orders_enriched | Qlik Sense | customer_id, name, address_clean, total_orders, wismo_count, ltv |
+| `gold.compliance_readiness` | products_harmonized, inventory_reconciled | Compliance, Qlik Sense | sku, lot_number, farm_origin, dc_receipt, store_receipt, trace_complete_flag |
+| `gold.operational_cost_impact` | inventory_reconciled, products_harmonized | B2B API, flat file export | sku, product_name, dc, qty_available, uom, unit_price, trust_score |
 | `gold.order_timeline` | orders_enriched, shipments_canonical, iot_normalized | Qlik Sense, Answers | order_id, customer, order_dt, pick_dt, ship_dt, deliver_dt, total_hours, sla_met |
 
 **Total: 7 Gold tables**
@@ -289,13 +337,19 @@ Aggregated, governed, SLA-backed data products for business consumption.
 
 Each transformation route is built as a **Qlik Talend Cloud Data Flow** (Pipeline Designer). Below is the specification for each.
 
+> **Integration Capabilities Used:**
+> - **Transformation Flows** — Visual data flow designer for building Bronze → Silver → Gold pipelines
+> - **AI-Assisted SQL** — Use Qlik's AI SQL assistant to generate transformation SQL from natural language (e.g., "normalize all timestamps to UTC")
+> - **Datamart Automation** — Automate creation and refresh of Silver and Gold datamarts from transformation outputs
+> - **Talend Job** — Reusable address validation service (see Route 3a below)
+
 ### Route 1: Timestamp Normalization (Cross-Cutting)
 
 **Runs first — all other routes depend on normalized timestamps.**
 
 | Property | Value |
 |---|---|
-| Input | `bronze.inventory_raw`, `bronze.warehouse_events_raw`, `bronze.shipments_raw`, `bronze.iot_cold_chain_raw` |
+| Input | `bronze.inventory_positions`, `bronze.warehouse_events`, `bronze.shipments`, `bronze.iot_cold_chain` |
 | Output | `silver.timestamps_audit` + timestamps updated in-place on Silver tables |
 | Nightmare | #5 (Timestamp Tower of Babel) |
 | Schedule | Triggered after every Bronze refresh |
@@ -317,7 +371,7 @@ Each transformation route is built as a **Qlik Talend Cloud Data Flow** (Pipelin
 
 | Property | Value |
 |---|---|
-| Input | `bronze.inventory_raw` (normalized timestamps from Route 1) |
+| Input | `bronze.inventory_positions` (normalized timestamps from Route 1) |
 | Output | `silver.inventory_reconciled` |
 | Nightmare | #1 (Phantom Inventory), #3 (Product Master), #7 (Compliance) |
 
@@ -346,7 +400,7 @@ Each transformation route is built as a **Qlik Talend Cloud Data Flow** (Pipelin
 
 | Property | Value |
 |---|---|
-| Input | `bronze.contacts_raw`, `bronze.orders_raw` |
+| Input | `bronze.sf_contacts`, `bronze.sf_orders` |
 | Output | `silver.customers_deduped` |
 | Nightmare | #2 (Address Catastrophe) |
 
@@ -370,11 +424,30 @@ Each transformation route is built as a **Qlik Talend Cloud Data Flow** (Pipelin
    - 0.2 = incomplete / unvalidatable
 8. **Write** → `silver.customers_deduped`
 
+### Route 3a: Talend Job — Address Validation Service
+
+A dedicated **Talend Job** deployed as a reusable address validation service, called by Route 3 and available for other flows.
+
+| Property | Value |
+|---|---|
+| Name | `MCG - Address Validation Service` |
+| Type | Talend Job (Qlik Talend Cloud) |
+| Input | Raw address fields (street, city, state, postal, country) |
+| Output | Validated address + quality score + geocoordinates |
+| Called by | Route 3, Route 8 |
+
+**Talend Job Components:**
+1. **tAddressRowStandardize** — Parse free-text address into structured components, normalize country to ISO 3166, standardize postal codes, expand abbreviations
+2. **tAddressRowValidate** — Validate against country postal databases (NL PostNL, US USPS, BR Correios), return confidence score + status (VALID/CORRECTED/AMBIGUOUS/INVALID)
+3. **tGeocode** — Optional geocoding for map visualizations (latitude/longitude for GPS correlation with IoT data)
+
+**Deployment:** Publish to Qlik Talend Cloud as callable service → Route 3 calls via **tRunJob** component.
+
 ### Route 4: Product Master Harmonization
 
 | Property | Value |
 |---|---|
-| Input | `bronze.products_raw` |
+| Input | `bronze.sf_products` |
 | Output | `silver.products_harmonized` |
 | Nightmare | #3 (Product Master Mess) |
 
@@ -394,7 +467,7 @@ Each transformation route is built as a **Qlik Talend Cloud Data Flow** (Pipelin
 
 | Property | Value |
 |---|---|
-| Input | `bronze.shipments_raw`, `bronze.carrier_events_raw` |
+| Input | `bronze.shipments`, `bronze.iot_carrier_events` |
 | Output | `silver.shipments_canonical` |
 | Nightmare | #6 (Carrier Data Black Hole) |
 
@@ -424,7 +497,7 @@ Each transformation route is built as a **Qlik Talend Cloud Data Flow** (Pipelin
 
 | Property | Value |
 |---|---|
-| Input | `bronze.iot_cold_chain_raw` |
+| Input | `bronze.iot_cold_chain` |
 | Output | `silver.iot_normalized` |
 | Nightmare | #4 (Silent Pipelines), #5 (Timestamps) |
 
@@ -445,7 +518,7 @@ Each transformation route is built as a **Qlik Talend Cloud Data Flow** (Pipelin
 
 | Property | Value |
 |---|---|
-| Input | `bronze.products_raw` (supplier fields) |
+| Input | `bronze.sf_products` (supplier fields) |
 | Output | `silver.suppliers_deduped` |
 | Nightmare | #3 (Product Master Mess) |
 
@@ -495,13 +568,42 @@ In **Data Integration → Data Products → Create**:
 |---|---|---|---|---|
 | Supply Chain Health | `gold.supply_chain_health` | Henrik Jansen (VP Warehouse Ops) | `inventory`, `phantom`, `pipeline-health` | Refreshed every 15 min |
 | Last Mile Performance | `gold.last_mile_performance` | Sophie Müller (EU Logistics Mgr) | `carrier`, `sla`, `delivery` | Refreshed every 30 min |
-| Spoilage Risk | `gold.spoilage_risk` | Thomas Brennan (VP Supply Chain) | `cold-chain`, `iot`, `risk` | Refreshed real-time (streaming) |
-| Customer 360 | `gold.customer_360` | Lisa Park (Head of CX) | `customer`, `address`, `wismo` | Refreshed hourly |
-| Compliance Traceability | `gold.compliance_traceability` | Dr. Elena Vasquez (CCO) | `compliance`, `nvwa`, `traceability` | Refreshed daily |
-| B2B Inventory Feed | `gold.inventory_b2b_feed` | Carlos Rivera (Dir. Logistics) | `b2b`, `api`, `inventory` | Refreshed daily 06:00 UTC |
+| Cold Chain Compliance | `gold.cold_chain_compliance` | Thomas Brennan (VP Supply Chain) | `cold-chain`, `iot`, `risk` | Refreshed real-time (streaming) |
+| Customer Delivery Experience | `gold.customer_delivery_experience` | Lisa Park (Head of CX) | `customer`, `address`, `wismo` | Refreshed hourly |
+| Compliance Readiness | `gold.compliance_readiness` | Dr. Elena Vasquez (CCO) | `compliance`, `nvwa`, `traceability` | Refreshed daily |
+| Operational Cost Impact | `gold.operational_cost_impact` | CFO Office | `b2b`, `api`, `inventory` | Refreshed daily 06:00 UTC |
 | Order Timeline | `gold.order_timeline` | Wei Lin Tan (APAC Logistics) | `order`, `timeline`, `sla` | Refreshed every 30 min |
 
-### 5.2 Enable API Sharing
+### 5.2 AI-Driven Descriptions & Semantic Types
+
+**AI-Driven Descriptions:**
+
+For each data product:
+1. Click **Generate Description** → AI auto-creates metadata from schema + sample data
+2. AI analyzes column names, types, distributions, and relationships
+3. Review and refine the AI-generated product-level and column-level descriptions
+4. Publish for Data Marketplace discoverability
+
+**Semantic Types & AI-Suggested Validation Rules:**
+
+Navigate to: Data Product → Schema → Semantic Types
+
+Qlik auto-detects semantic types for columns. Review key examples:
+
+| Column | Detected Type | AI-Suggested Validation |
+|---|---|---|
+| `dc_id` | Identifier | Not null, matches `DC-[A-Z]{3}-\d{2}` |
+| `ira_pct` | Percentage | Range 0.0 – 1.0 |
+| `avg_temp_celsius` | Temperature | Range -40.0 – 60.0 |
+| `carrier` | Categorical | Must be one of: FEDEX, DHL-EXPRESS, DPD, NINJAVAN, CORREIOS, LOCAL-LOS |
+| `destination_country` | Country Code (ISO 3166) | 2-letter ISO code, not null |
+| `weight_kg` | Weight (metric) | Positive numeric, > 0 |
+
+Accept/modify/reject AI-suggested rules → violations route to **Stewardship campaigns** (Section 9).
+
+### 5.3 Enable API Sharing
+
+API sharing is a governance capability providing controlled access with lineage, audit trails, and Trust Score visibility.
 
 For each data product in the shared space:
 
@@ -518,7 +620,7 @@ For each data product in the shared space:
 
 **Demo talking point:** "Any system — BI tools, custom apps, partner portals — can consume MCG's governed data products via API. The Trust Score travels with the data, so consumers know what to trust."
 
-### 5.3 Predict Model API Sharing
+### 5.4 Predict Model API Sharing
 
 Qlik Predict models (Section 7) also get API endpoints when published:
 ```
@@ -567,21 +669,21 @@ Or manually in Qlik Cloud: **Administration → Spaces → Create Space**
 
 ## 7. Qlik Predict (AutoML)
 
-### 7.1 Model 1: Spoilage Risk Predictor
+### 7.1 Model 1: Cold Chain Compliance Predictor
 
 **Business scenario:** Predict which cold chain shipments on the São Paulo→Buenos Aires corridor will experience spoilage, before it happens.
 
 | Property | Value |
 |---|---|
-| **Name** | MCG Spoilage Risk Predictor |
-| **Training data** | `gold.spoilage_risk` (historical shipments with known outcomes) |
+| **Name** | MCG Cold Chain Compliance Predictor |
+| **Training data** | `gold.cold_chain_compliance` (historical shipments with known outcomes) |
 | **Target variable** | `spoilage_flag` (binary: TRUE/FALSE) |
 | **Feature columns** | `carrier`, `route`, `avg_temp_celsius`, `max_temp_celsius`, `exceedance_minutes`, `pre_cool_compliant`, `month`, `day_of_week`, `weight_kg` |
 | **Algorithm** | Auto (Qlik selects best: typically gradient boosting for binary classification) |
 | **Nightmare tie-in** | #6 (Carrier Data Black Hole) + INC-2025-05102 (TransFrio Spoilage) |
 
 **Setup in Qlik Cloud:**
-1. **AutoML** → **Create Experiment** → Select `gold.spoilage_risk` dataset
+1. **AutoML** → **Create Experiment** → Select `gold.cold_chain_compliance` dataset
 2. Set target: `spoilage_flag`
 3. Select features (exclude IDs, timestamps)
 4. Train → Review model performance (expect ~85% accuracy on demo data)
@@ -816,7 +918,7 @@ python deploy/deploy_qlik.py  # Includes glossary import step
 
 **Build in Qlik Application Automation:**
 
-1. **Trigger:** Qlik Sense Reload Task Complete → check `gold.spoilage_risk` for new exceedance rows
+1. **Trigger:** Qlik Sense Reload Task Complete → check `gold.cold_chain_compliance` for new exceedance rows
    - Alternative trigger: Webhook from IoT pipeline when exceedance detected
 
 2. **Condition Block:** Filter for `exceedance_minutes >= 15 AND alert_sent = FALSE`
@@ -901,7 +1003,7 @@ python deploy/deploy_qlik.py  # Includes glossary import step
 1. In Qlik Cloud: **Analytics** → **Discovery Agent** → **Enable**
 2. Connect to data products:
    - `gold.supply_chain_health`
-   - `gold.spoilage_risk`
+   - `gold.cold_chain_compliance`
    - `gold.last_mile_performance`
 3. Set monitoring frequency: continuous (streaming data products) or 15-min intervals
 
@@ -910,7 +1012,7 @@ python deploy/deploy_qlik.py  # Includes glossary import step
 **Narrative:** The Discovery Agent should detect the spoilage anomaly on the São Paulo→Buenos Aires route the same way Roberto Almeida's team eventually did — but in hours instead of weeks.
 
 **What the Agent monitors:**
-- `gold.spoilage_risk`: temperature exceedance rates by route and carrier
+- `gold.cold_chain_compliance`: temperature exceedance rates by route and carrier
 - `gold.supply_chain_health`: pipeline health and data freshness
 
 **Expected Discovery Agent alert:**

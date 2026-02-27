@@ -209,6 +209,142 @@ Pipeline Health Summary:
 
 ---
 
+## Automation 5: Talend Address Correction — Automated Data Quality Remediation
+
+**Purpose:** Close the data quality loop by automatically correcting addresses flagged in Stewardship campaigns. When a steward reviews and approves address records in the Address Cleanup campaign, this automation triggers the Talend Address Validation Service job to standardize, validate, and geocode the addresses, then writes the corrected data back to the Silver layer.
+
+**Data Quality Story:** This automation is the final link in the MCG address quality chain:
+
+```
+Bronze (dirty addresses) → Data Flow 3 (standardization) → Silver (quality-scored)
+    → Stewardship Campaign (human review of ambiguous matches)
+    → THIS AUTOMATION (Talend job corrects approved records)
+    → Silver updated (corrected addresses flow to Gold → Analytics → Predict)
+```
+
+**Nightmare tie-in:** #2 (Address Catastrophe) — 11% formatting issues, 6% truncation, 3.2% duplicates in Salesforce addresses. This automation reduces the manual effort of correcting ~8,500 flagged address records.
+
+### UI Configuration Steps
+
+1. Open **"MCG Address Correction — Talend Job Trigger"** in the Automation Designer
+
+#### Block 1: Event Trigger — Stewardship Task Completed
+- Select **Webhook** or **Scheduled Start** as the trigger
+- **Option A (Event-driven):** Configure a webhook that fires when a stewardship task status changes to "Completed" or "Approved"
+- **Option B (Scheduled):** Poll every 15 minutes for newly approved stewardship tasks in the Address Cleanup campaign
+  - Query: `GET /api/data-governance/stewardship/tasks?campaign=address-cleanup&status=approved&since={{lastRunTimestamp}}`
+
+#### Block 2: Collect Approved Records
+- Add block: **Qlik Cloud > REST API Call**
+- Method: `GET`
+- Retrieve the record IDs and current address fields from the approved stewardship tasks
+- Store results in a variable: `approvedRecords`
+
+#### Block 3: Invoke Talend Job
+- Add block: **Qlik Cloud > REST API Call** (or **Talend Cloud > Run Job**)
+- Method: `POST`
+- URL: `https://<tenant>/api/v1/talend/jobs/<address-validation-job-id>/run`
+- Body:
+```json
+{
+  "parameters": {
+    "input_source": "stewardship_batch",
+    "record_ids": "{{approvedRecords.ids}}",
+    "source_table": "silver.customers_deduped",
+    "write_back": true
+  }
+}
+```
+- This runs the Talend Address Validation Service job with components:
+  - **tAddressRowStandardize** — Parses and standardizes the address
+  - **tAddressRowValidate** — Validates against postal reference databases
+  - **tGeocode** — Adds latitude/longitude for map visualizations
+
+#### Block 4: Wait for Job Completion
+- Add block: **Control > Wait** + **REST API Call** to poll job status
+- Poll every 30 seconds until job status = "completed" or "failed"
+- Timeout: 10 minutes
+
+#### Block 5: Verify Results
+- Add block: **Qlik Cloud > REST API Call**
+- Query the job execution results:
+  - `records_processed`, `records_corrected`, `records_failed`
+  - `avg_confidence_score` of corrected records
+
+#### Block 6: Update Stewardship Tasks
+- Add block: **Qlik Cloud > REST API Call**
+- For each successfully corrected record, update the stewardship task status to "Resolved"
+- For failed records, update status to "Needs Manual Review"
+
+#### Block 7: Notify via Teams
+- Add block: **Microsoft Teams > Post Adaptive Card**
+- Webhook URL: Your `#mcg-data-engineering` or `#mcg-customer-ops` channel
+- Card JSON:
+
+```json
+{
+  "type": "AdaptiveCard",
+  "version": "1.4",
+  "body": [
+    {
+      "type": "TextBlock",
+      "text": "Address Correction Complete",
+      "weight": "bolder",
+      "size": "large",
+      "color": "good"
+    },
+    {
+      "type": "FactSet",
+      "facts": [
+        {"title": "Records Processed", "value": "{{recordsProcessed}}"},
+        {"title": "Corrected", "value": "{{recordsCorrected}}"},
+        {"title": "Failed", "value": "{{recordsFailed}}"},
+        {"title": "Avg Confidence", "value": "{{avgConfidence}}%"},
+        {"title": "Campaign", "value": "Address Cleanup"},
+        {"title": "Talend Job", "value": "MCG Address Validation Service"}
+      ]
+    }
+  ],
+  "actions": [
+    {
+      "type": "Action.OpenUrl",
+      "title": "View Stewardship Campaign",
+      "url": "https://<tenant>/stewardship/campaigns/<address-cleanup-id>"
+    },
+    {
+      "type": "Action.OpenUrl",
+      "title": "View Address Quality Dashboard",
+      "url": "https://<tenant>/sense/app/<delivery-cx-app-id>/sheet/<address-quality-sheet>"
+    }
+  ]
+}
+```
+
+#### Block 8: Trigger Downstream Refresh (Optional)
+- If corrected addresses changed significantly, trigger a data flow refresh:
+  - Reload `gold.customer_delivery_experience` table recipe
+  - Reload `gold.last_mile_performance` (address quality affects delivery SLAs)
+- This ensures the Predict SLA model picks up improved address quality scores
+
+2. **Enable** and test with a small batch of approved stewardship records
+
+### End-to-End Data Quality Loop
+
+```
+1. Source: Salesforce addresses arrive with 11% formatting issues
+2. Pipeline: Data Flow 3 standardizes + scores (Bronze → Silver)
+3. Governance: Semantic Types + AI Validation Rules flag quality issues
+4. Stewardship: Address Cleanup campaign routes ambiguous records to stewards
+5. Human Review: Steward approves/corrects flagged addresses
+6. AUTOMATION: Talend job validates, standardizes, geocodes approved records
+7. Silver Updated: Corrected addresses flow to Gold via table recipes
+8. Analytics: Address Quality Score improves in dashboards
+9. Predict: SLA model accuracy improves (address quality = #2 feature)
+10. Business Impact: Fewer failed deliveries, lower WISMO rate, reduced costs
+```
+
+---
+
 ## General Automation Tips
 
 ### Available Block Types in Qlik Cloud Automations

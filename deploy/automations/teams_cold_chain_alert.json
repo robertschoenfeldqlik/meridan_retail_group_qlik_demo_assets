@@ -5,15 +5,15 @@
   "trigger": {
     "type": "scheduled",
     "schedule": "*/5 * * * *",
-    "description": "Runs every 5 minutes, checks gold.spoilage_risk for new exceedances"
+    "description": "Runs every 5 minutes, checks gold.cold_chain_compliance for new exceedances"
   },
   "blocks": [
     {
       "step": 1,
       "type": "qlik_query",
-      "description": "Query gold.spoilage_risk for unalerted exceedances",
+      "description": "Query gold.cold_chain_compliance for unalerted exceedances",
       "config": {
-        "dataProduct": "Spoilage Risk",
+        "dataProduct": "Cold Chain Compliance",
         "filter": "exceedance_minutes >= 15 AND alert_sent = false",
         "fields": ["shipment_id", "route", "carrier", "max_temp_celsius", "exceedance_minutes", "estimated_loss_usd", "product_type", "sensor_count"]
       }
@@ -107,7 +107,7 @@
       "type": "qlik_update",
       "description": "Mark alert as sent to prevent duplicate notifications",
       "config": {
-        "dataProduct": "Spoilage Risk",
+        "dataProduct": "Cold Chain Compliance",
         "update": {"alert_sent": true},
         "filter": "shipment_id = '${shipment_id}'"
       }
@@ -117,13 +117,13 @@
     "prerequisites": [
       "Microsoft Teams connector configured in Qlik Application Automation (OAuth consent required)",
       "Teams channel '#mcg-cold-chain-alerts' created in the MCG workspace",
-      "gold.spoilage_risk data product populated with streaming IoT data",
+      "gold.cold_chain_compliance data product populated with streaming IoT data",
       "Qlik Sense Cold Chain Monitor app published"
     ],
     "buildSteps": [
       "1. In Qlik Cloud → Automations → Create New",
       "2. Add trigger block: Scheduled (every 5 minutes)",
-      "3. Add Qlik Cloud block: Query data product 'Spoilage Risk' with filter",
+      "3. Add Qlik Cloud block: Query data product 'Cold Chain Compliance' with filter",
       "4. Add Condition block: Check result count > 0",
       "5. Add Loop block: Iterate over results",
       "6. Add Microsoft Teams block: Post Adaptive Card (paste template above)",

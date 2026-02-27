@@ -17,7 +17,7 @@ Rotterdam DC's WMS-to-SAP CDC pipeline silently failed for 72 hours. SAP showed 
 ### Demo Walk-Through
 
 **Step 1 — Show the raw data (Bronze)**
-- Open Lakehouse → `bronze.inventory_raw`
+- Open Lakehouse → `bronze.inventory_positions`
 - Filter to `location_id = 'DC-RTD-01'`, `sku = 'MCG-4420'`
 - Point out: `snapshot_timestamp` stops advancing on Sep 24 — data is frozen
 - The timestamp shows `14:32` with no timezone indicator (Nightmare #5)
@@ -67,14 +67,14 @@ Rotterdam DC's WMS-to-SAP CDC pipeline silently failed for 72 hours. SAP showed 
 ### Demo Walk-Through
 
 **Step 1 — Show the dirty addresses (Bronze)**
-- Open `bronze.contacts_raw` → filter to demonstrate:
+- Open `bronze.sf_contacts` → filter to demonstrate:
   - `Jan de Vries` vs `Jan De Vries` (capitalization)
   - `Keizersgracht 482, Apartment 4B` vs `Keizersgracht 482, Apt 4B` (abbreviation)
   - `Friedrichstraße 123, Hinterh` — truncated at exactly 30 characters
   - `Sao Paulo` (accent stripped) vs `São Paulo`
 
 **Step 2 — Show Data Quality Profiling**
-- Run profiling on `bronze.contacts_raw`
+- Run profiling on `bronze.sf_contacts`
 - Show: 11% format inconsistency, 6% truncation (exactly 30 chars), 3.2% potential duplicates
 
 **Step 3 — Show the transformation (Data Flow Route 3)**
@@ -124,7 +124,7 @@ TransFrio Logistics replaced 6 trucks with new Thermo King X4 7500 reefer units 
 
 **Step 1 — Show live IoT data (Kafka → Bronze)**
 - Start the IoT producer simulator
-- Show `bronze.iot_cold_chain_raw` — live sensor readings flowing in
+- Show `bronze.iot_cold_chain` — live sensor readings flowing in
 - Point out: São Paulo sensors showing temperature exceedances (8-14°C)
 - Point out: one sensor shows `temperature_unit: "F"` (Nightmare #5 — Fahrenheit mix)
 
@@ -162,7 +162,7 @@ TransFrio Logistics replaced 6 trucks with new Thermo King X4 7500 reefer units 
 
 **Step 8 — Show MCP integration (optional)**
 - Open Claude → "What's the spoilage risk for active TransFrio shipments?"
-- Claude uses Qlik MCP to query `gold.spoilage_risk` + Qlik Answers for context
+- Claude uses Qlik MCP to query `gold.cold_chain_compliance` + Qlik Answers for context
 - Returns combined data + operational procedure guidance
 
 **Talking Points:**
@@ -185,12 +185,12 @@ Listeria detected in organic butter lettuce from an undisclosed backup farm (FAR
 ### Demo Walk-Through
 
 **Step 1 — Show the traceability gap (Bronze)**
-- `bronze.inventory_raw`: filter to grocery items → show 15% with `lot_number = NULL`
-- `bronze.products_raw`: show `country_of_origin = NULL` for 12% of food SKUs
+- `bronze.inventory_positions`: filter to grocery items → show 15% with `lot_number = NULL`
+- `bronze.sf_products`: show `country_of_origin = NULL` for 12% of food SKUs
 - "If this lettuce batch is contaminated, we can't tell which stores have it"
 
 **Step 2 — Show the compliance data product (Gold)**
-- `gold.compliance_traceability`: query `sku = 'MCG-GRO-LET-001'`
+- `gold.compliance_readiness`: query `sku = 'MCG-GRO-LET-001'`
 - Some rows have complete farm-to-store tracing. Others have gaps.
 - `trace_complete_flag = FALSE` for 30% of lettuce records
 

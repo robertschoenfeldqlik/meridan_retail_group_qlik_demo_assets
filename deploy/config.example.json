@@ -24,6 +24,7 @@
   },
 
   "enabledComponents": {
+    "infrastructure": true,
     "spaces": true,
     "connections": true,
     "apps": true,
@@ -32,7 +33,14 @@
     "automations": true,
     "dataproducts": true,
     "glossary": true,
-    "comment_components": "Toggle individual deployment steps on/off"
+    "comment_components": "Toggle individual deployment steps on/off. 'infrastructure' controls Kafka Docker/topic setup."
+  },
+
+  "infrastructure": {
+    "useDocker": true,
+    "comment_useDocker": "true = start Confluent Kafka via Docker Compose (infrastructure/kafka/). false = create topics on external broker using bootstrapServers from dataConnections.kafka.",
+    "simulatorInterval": 900,
+    "comment_simulatorInterval": "Seconds between Kafka IoT simulator batches when using --scheduled mode (default 900 = 15 min)"
   },
 
   "dataConnections": {
@@ -54,9 +62,12 @@
     },
     "kafka": {
       "name": "MCG IoT Telemetry",
-      "bootstrapServers": "your-kafka-broker:9092",
-      "topic": "mcg.iot.telemetry",
-      "securityProtocol": "SASL_SSL",
+      "bootstrapServers": "localhost:9092",
+      "comment_bootstrapServers": "Use localhost:9092 for Docker Compose, or your-broker:9092 for Confluent Cloud / MSK / self-managed",
+      "topics": ["mcg.iot.cold-chain", "mcg.iot.carrier-events"],
+      "comment_topics": "Two Kafka topics: cold-chain (sensor readings ~1msg/5s) and carrier-events (status updates ~1msg/min)",
+      "securityProtocol": "PLAINTEXT",
+      "comment_securityProtocol": "Use PLAINTEXT for Docker Compose local dev, SASL_SSL for Confluent Cloud / production",
       "saslMechanism": "PLAIN",
       "saslUsername": "YOUR_KAFKA_USER",
       "saslPassword": "YOUR_KAFKA_PASSWORD"
@@ -69,6 +80,30 @@
       "secretAccessKey": "YOUR_AWS_SECRET_KEY",
       "prefix": "exports/"
     }
+  },
+
+  "lakehouse": {
+    "name": "MCG Demo Lakehouse",
+    "storage": "qlik-managed",
+    "comment_storage": "Use 'qlik-managed' or provide S3/Azure Blob/GCS connection details",
+    "schemas": ["bronze", "silver", "gold"]
+  },
+
+  "clusters": {
+    "cdc": {
+      "name": "CDC Cluster",
+      "comment": "Handles PostgreSQL change data capture (Pipelines 1-3) and Salesforce incremental sync (Pipelines 6-8)"
+    },
+    "streaming": {
+      "name": "Streaming Cluster",
+      "comment": "Handles real-time Kafka ingestion from IoT topics mcg.iot.cold-chain and mcg.iot.carrier-events (Pipelines 4-5)"
+    }
+  },
+
+  "theme": {
+    "name": "MCG Dark Theme",
+    "sourceFile": "./themes/mcg-dark-theme.zip",
+    "comment_theme": "Upload via Administration → Themes. Contains theme.json, .qext manifest, MCG logos. Colors: Navy #1B2A4A, Teal #0D7C8F, Gold #C4922E, Inter font."
   },
 
   "knowledgeBase": {
@@ -112,7 +147,19 @@
 
   "apps": {
     "sourceDir": "./apps",
-    "comment_sourceDir": "Place .qvf app export files in this directory before running deploy"
+    "comment_sourceDir": "Place .qvf app export files in this directory before running deploy",
+    "domainApps": [
+      {
+        "name": "MCG Supply Chain Operations",
+        "goldTables": ["supply_chain_health", "cold_chain_compliance", "product_master_360", "compliance_readiness", "operational_cost_impact"],
+        "streamingTables": ["silver.iot_normalized", "bronze.iot_carrier_events"]
+      },
+      {
+        "name": "MCG Delivery & Customer Experience",
+        "goldTables": ["last_mile_performance", "customer_delivery_experience", "order_timeline"],
+        "streamingTables": ["bronze.iot_carrier_events", "silver.shipments_canonical"]
+      }
+    ]
   },
 
   "mcp": {
