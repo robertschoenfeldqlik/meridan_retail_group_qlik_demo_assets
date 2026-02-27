@@ -12,6 +12,7 @@
   "type": "commonjs",
   "dependencies": {
     "docx": "^9.6.0",
+    "exceljs": "^4.4.0",
     "pptxgenjs": "^4.0.1"
   },
   "devDependencies": {

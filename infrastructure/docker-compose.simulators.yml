@@ -69,7 +69,7 @@ services:
   # ---------------------------------------------------------------------------
   seed-data:
     build:
-      context: ../../simulators
+      context: ../simulators
       dockerfile: Dockerfile
     container_name: mcg-seed-data
     depends_on:
@@ -77,11 +77,12 @@ services:
         condition: service_healthy
     command: >
       python seed_data.py
-        --host postgres
-        --port 5432
-        --db ${POSTGRES_DB:-mcg_wms}
-        --user ${POSTGRES_USER:-mcg_admin}
-        --password ${POSTGRES_PASSWORD:-mcg_demo_2025}
+        --postgres
+        --pg-host postgres
+        --pg-port 5432
+        --pg-db ${POSTGRES_DB:-mcg_wms}
+        --pg-user ${POSTGRES_USER:-mcg_admin}
+        --pg-pass ${POSTGRES_PASSWORD:-mcg_demo_2025}
     networks:
       - mcg-sim-net
     extra_hosts:
@@ -97,7 +98,7 @@ services:
   # ---------------------------------------------------------------------------
   postgres-simulator:
     build:
-      context: ../../simulators
+      context: ../simulators
       dockerfile: Dockerfile
     container_name: mcg-postgres-simulator
     depends_on:
@@ -127,7 +128,7 @@ services:
   # ---------------------------------------------------------------------------
   kafka-iot-simulator:
     build:
-      context: ../../simulators
+      context: ../simulators
       dockerfile: Dockerfile
     container_name: mcg-kafka-iot-simulator
     command: >
@@ -152,7 +153,7 @@ services:
   # ---------------------------------------------------------------------------
   salesforce-simulator:
     build:
-      context: ../../simulators
+      context: ../simulators
       dockerfile: Dockerfile
     container_name: mcg-salesforce-simulator
     command: >

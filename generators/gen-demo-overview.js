@@ -1,6 +1,6 @@
 // Generate MCG Demo Overview PowerPoint — Four Stories
 // Uses Qlik brand template (colors, fonts, contrail backgrounds, logo)
-// Integration | Data Governance | Analytics | AI
+// Integrations | Governance | Analytics | AI & Outcomes
 const PptxGenJS = require("pptxgenjs");
 const path = require("path");
 
@@ -180,7 +180,7 @@ slide.addText("Qlik Cloud\nEnd-to-End Demo", {
   x: 0.5, y: 2.3, w: 6.5, h: 1.6,
   fontSize: 38, color: C.qlikBlue, fontFace: FONT, bold: true, lineSpacingMultiple: 1.1,
 });
-slide.addText("Integration  •  Governance  •  Analytics  •  AI", {
+slide.addText("Integrations  •  Governance  •  Analytics  •  AI & Outcomes", {
   x: 0.5, y: 4.0, w: 6.5, h: 0.5,
   fontSize: 16, color: C.qlikGreen, fontFace: FONT, bold: true,
 });
@@ -191,10 +191,10 @@ slide.addText("From 47 fragmented systems to a trusted, AI-ready data platform",
 
 // Four story boxes
 const stories = [
-  { label: "Integration", color: C.qlikTeal },
+  { label: "Integrations", color: C.qlikTeal },
   { label: "Governance", color: C.qlikGreen },
   { label: "Analytics", color: C.qlikBlue },
-  { label: "AI", color: C.qlikLightGreen },
+  { label: "AI & Outcomes", color: C.qlikLightGreen },
 ];
 stories.forEach((s, i) => {
   const x = 0.5 + i * 2.5;
@@ -215,24 +215,24 @@ slide = contentSlide("Demo Agenda — Four Stories, One Platform");
 
 const agendaItems = [
   {
-    num: "1", title: "The Integration Story", color: C.qlikTeal,
-    desc: "CDC, Kafka streaming, Salesforce → Open Lakehouse (Bronze/Silver/Gold) → Direct Query",
-    components: "CDC • Data Flows • Table Recipes • Direct Query",
+    num: "1", title: "The Integrations Story", color: C.qlikTeal,
+    desc: "CDC, Kafka streaming, Salesforce → Open Lakehouse (Bronze/Silver/Gold)",
+    components: "CDC • Data Flows • Table Recipes",
   },
   {
-    num: "2", title: "The Data Governance Story", color: C.qlikGreen,
+    num: "2", title: "The Governance Story", color: C.qlikGreen,
     desc: "Data Products, Lineage, Impact Analysis, Trust Score, Data Profiling, Stewardship Campaigns, Business Glossary, Data Marketplace",
     components: "Data Products • Lineage • Impact Analysis • Trust Score • Profiling • Stewardship • Glossary • Data Marketplace",
   },
   {
     num: "3", title: "The Analytics Story", color: C.qlikGreen,
-    desc: "Qlik Sense dashboards, Table Recipes, Data Flows, Qlik Answers agentic analytics, native alerting, reporting & subscriptions, automations",
-    components: "Qlik Sense • Table Recipes • Data Flows • Qlik Answers • Alerting • Reporting • Automations",
+    desc: "Qlik Sense dashboards, Analytics Engine (associative model), Natural Language Insights, Business Logic, native alerting, reporting & subscriptions, automations",
+    components: "Qlik Sense • Analytics Engine • Associative Model • NLI • Business Logic • Alerting • Reporting • Automations",
   },
   {
-    num: "4", title: "The AI Story", color: C.qlikLightGreen,
-    desc: "Qlik Predict (AutoML), Qlik Answers (agentic AI), Discovery Agent, MCP Server, Analytics Engine, NLI, Knowledge Mart, Agentic Analytics",
-    components: "Predict • Qlik Answers • Discovery Agent • MCP • Analytics Engine • NLI • Knowledge Mart • Agentic Analytics",
+    num: "4", title: "The AI & Outcomes Story", color: C.qlikLightGreen,
+    desc: "Agentic Analytics (unified conversational AI), Qlik Answers (data + documents), Qlik Predict (AutoML), Discovery Agent, MCP Server, Knowledge Mart",
+    components: "Agentic Analytics • Qlik Answers • Predict • Discovery Agent • MCP • Knowledge Mart",
   },
 ];
 
@@ -265,9 +265,9 @@ agendaItems.forEach((item, i) => {
 });
 
 // ═══════════════════════════════════════════════════
-//  STORY 1: INTEGRATION
+//  STORY 1: INTEGRATIONS
 // ═══════════════════════════════════════════════════
-sectionSlide("1", "The Integration Story", "From 47 fragmented systems to a unified, real-time data fabric", C.qlikBlue);
+sectionSlide("1", "The Integrations Story", "From 47 fragmented systems to a unified, real-time data fabric", C.qlikBlue);
 
 // ─── Slide: Data Sources & Connectivity ───
 slide = contentSlide("Data Sources & Connectivity", C.qlikTeal);
@@ -438,7 +438,7 @@ slide.addText("Each route maps directly to one of the 7 Data Quality Nightmares 
 });
 
 // ─── Slide: Integration — What to Show ───
-slide = contentSlide("Integration Story — What to Show in the Demo", C.qlikTeal);
+slide = contentSlide("Integrations Story — What to Show in the Demo", C.qlikTeal);
 
 let yPos = 1.1;
 yPos = recommendBox(slide, "Live CDC Demo", [
@@ -453,16 +453,11 @@ yPos = recommendBox(slide, "Lakehouse Walk-Through", [
   "Show Data Flow Route 2 (Inventory Reconciliation) in Pipeline Designer — the 'phantom inventory' detection logic",
 ], yPos, C.lightCyan);
 
-yPos = recommendBox(slide, "Direct Query [NEW — add to demo]", [
-  "Show a Direct Query app connecting live to the Lakehouse — no data import, SQL pushdown at query time",
-  "Great for large dataset scenarios — demonstrate real-time exploration without engine memory load",
-], yPos, C.lightCyan);
-
 
 // ═══════════════════════════════════════════════════
-//  STORY 2: DATA GOVERNANCE
+//  STORY 2: GOVERNANCE
 // ═══════════════════════════════════════════════════
-sectionSlide("2", "The Data Governance Story", "Trust, transparency, and quality at every layer", C.qlikBlue);
+sectionSlide("2", "The Governance Story", "Trust, transparency, and quality at every layer", C.qlikBlue);
 
 // ─── Slide: Data Products for Analytics ───
 slide = contentSlide("Qlik Data Products for Analytics", C.qlikGreen);
@@ -822,45 +817,51 @@ slide.addTable([...appHeaders, ...appRows], {
   rowH: [0.38, ...Array(7).fill(0.48)],
 });
 
-// ─── Slide: Qlik Answers — Agentic Analytics ───
-slide = contentSlide("Qlik Answers — Agentic Conversational Analytics", C.qlikGreen);
+// ─── Slide: Analytics Engine & Intelligence ───
+slide = contentSlide("Analytics Engine & Intelligent Insights", C.qlikGreen);
 
-slide.addText("Unified agentic interface: ask questions in natural language, get governed answers from data and documents", {
+slide.addText("The Qlik Associative Engine — the foundation powering every dashboard, calculation, and AI interaction", {
   x: 0.5, y: 0.85, w: 12, h: 0.4,
   fontSize: 14, color: C.medGray, fontFace: FONT, italic: true,
 });
 
-const answersFeatures = [
+const engineFeatures = [
   {
-    title: "Conversational Analytics", color: C.qlikGreen, items: [
-      "Ask questions in natural language",
-      "Qlik engine powers governed calculations",
-      "Auto-generates visualizations & narratives",
-      "MCG: \"Show inventory accuracy by DC\"",
+    title: "Associative Engine", color: C.qlikGreen, items: [
+      "In-memory associative data model",
+      "Green/white/gray selection states",
+      "Set analysis for complex calculations",
+      "Cross-source data associations",
+      "No pre-defined drill paths or queries",
+      "MCG: Select Rotterdam → all charts update",
     ],
   },
   {
-    title: "Agentic Reasoning", color: C.qlikTeal, items: [
-      "Chain-of-thought multi-step reasoning",
-      "Blends structured data + documents",
-      "Citations & explainability built in",
-      "MCG: \"Why did Rotterdam IRA drop?\"",
+    title: "Natural Language Insights", color: C.qlikTeal, items: [
+      "Auto-generated narrative summaries",
+      "Trend, outlier, and driver detection",
+      "Linked directly to chart selections",
+      "Plain-English explanations of data",
+      "Updated Nov 2025: chart-linked NLI",
+      "MCG: NLI on Supply Chain Health app",
     ],
   },
   {
     title: "Business Logic", color: C.qlikBlue, items: [
-      "Logical Model defines data relationships",
+      "Logical Model defines relationships",
       "Vocabulary maps business terms",
-      "Guides Qlik Answers behavior",
+      "Guides analytics + AI behavior",
+      "Calendar & geographic hierarchies",
+      "Measure definitions & formatting",
       "MCG: \"phantom\" → inventory_accuracy",
     ],
   },
 ];
 
-answersFeatures.forEach((f, i) => {
+engineFeatures.forEach((f, i) => {
   const x = 0.5 + i * 4.2;
   slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
-    x, y: 1.4, w: 3.9, h: 3.5,
+    x, y: 1.4, w: 3.9, h: 4.6,
     fill: { color: C.lightBg }, rectRadius: 0.12,
     line: { color: f.color, width: 2 },
   });
@@ -874,30 +875,20 @@ answersFeatures.forEach((f, i) => {
   });
   f.items.forEach((item, j) => {
     slide.addText(`▸  ${item}`, {
-      x: x + 0.3, y: 2.3 + j * 0.5, w: 3.4, h: 0.45,
-      fontSize: 12, color: C.darkText, fontFace: FONT,
+      x: x + 0.3, y: 2.3 + j * 0.48, w: 3.4, h: 0.43,
+      fontSize: 11, color: C.darkText, fontFace: FONT,
     });
   });
 });
 
-// NLI callout
+// Cross-reference to AI & Outcomes
 slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
-  x: 0.5, y: 5.1, w: 12.3, h: 0.8,
-  fill: { color: C.lightCyan }, rectRadius: 0.08,
-});
-slide.addText("Natural Language Insights (NLI): Add NLI objects to dashboards — auto-generated narrative summaries of trends, outliers, and drivers in plain English. Updated Nov 2025 to link directly to selected charts.", {
-  x: 0.8, y: 5.15, w: 11.8, h: 0.7,
-  fontSize: 11, color: C.darkText, fontFace: FONT,
-});
-
-// GA callout
-slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
-  x: 0.5, y: 6.1, w: 12.3, h: 0.5,
+  x: 0.5, y: 6.2, w: 12.3, h: 0.55,
   fill: { color: C.lightGreen }, rectRadius: 0.08,
 });
-slide.addText("✓ Qlik Answers agentic experience reached GA in February 2026 — replaces legacy Insight Advisor with unified conversational AI.", {
-  x: 0.8, y: 6.15, w: 11.8, h: 0.4,
-  fontSize: 12, color: C.qlikGreen, fontFace: FONT, bold: true,
+slide.addText("→  Story 4 — AI & Outcomes: The Agentic Analytics experience layers conversational AI and Qlik Answers on top of this engine. See the full agentic demo flow in Story 4.", {
+  x: 0.8, y: 6.25, w: 11.8, h: 0.45,
+  fontSize: 11, color: C.qlikLightGreen, fontFace: FONT, bold: true,
 });
 
 // ─── Slide: Alerting, Reporting & Subscriptions ───
@@ -1003,10 +994,10 @@ yPos = recommendBox(slide, "Qlik Sense Dashboard Tour", [
   "Switch to Executive Cost Impact → C-level view of $127M broken down by nightmare category",
 ], yPos, C.lightCyan);
 
-yPos = recommendBox(slide, "Qlik Answers Agentic Demo", [
-  "Open Qlik Answers → ask: \"Which distribution centers have the lowest inventory accuracy?\"",
-  "Follow up: \"Show me the trend for Rotterdam over the last 3 months\" — demonstrate chain-of-thought reasoning",
-  "Show Business Logic: vocabulary mapping 'phantom' → inventory_accuracy, 'WISMO' → customer_delivery_experience",
+yPos = recommendBox(slide, "Analytics Engine & NLI", [
+  "Show associative selections: click Rotterdam DC → green/white/gray state across all charts instantly",
+  "Open NLI object on Supply Chain Health → auto-generated narrative explaining IRA trend and key drivers",
+  "Show Business Logic: Logical Model vocabulary mapping 'phantom' → inventory_accuracy",
 ], yPos, C.lightCyan);
 
 yPos = recommendBox(slide, "Alerting + Reporting", [
@@ -1016,9 +1007,87 @@ yPos = recommendBox(slide, "Alerting + Reporting", [
 
 
 // ═══════════════════════════════════════════════════
-//  STORY 4: AI
+//  STORY 4: AI & OUTCOMES
 // ═══════════════════════════════════════════════════
-sectionSlide("4", "The AI Story", "From reactive dashboards to proactive, conversational, agentic intelligence", C.qlikBlue);
+sectionSlide("4", "The AI & Outcomes Story", "From reactive dashboards to proactive, conversational, agentic intelligence", C.qlikBlue);
+
+// ─── Slide: Agentic Analytics Experience ───
+slide = contentSlide("Agentic Analytics — Unified AI Experience", C.qlikLightGreen);
+
+slide.addText("A single conversational AI that queries data, reads documents, and reasons across both — GA February 2026", {
+  x: 0.5, y: 0.85, w: 12, h: 0.4,
+  fontSize: 14, color: C.medGray, fontFace: FONT, italic: true,
+});
+
+const agenticFeatures = [
+  {
+    title: "Conversational Analytics", color: C.qlikLightGreen, items: [
+      "Ask questions in natural language",
+      "Qlik engine powers governed answers",
+      "Auto-generates visualizations",
+      "MCG: \"Show IRA by DC\"",
+    ],
+  },
+  {
+    title: "Agentic Reasoning", color: C.qlikTeal, items: [
+      "Chain-of-thought multi-step logic",
+      "Blends structured + unstructured",
+      "Citations & explainability built in",
+      "MCG: \"Why did Rotterdam IRA drop?\"",
+    ],
+  },
+  {
+    title: "Document Intelligence", color: C.qlikBlue, items: [
+      "25 MCG operational documents",
+      "SOPs, contracts, incident reports",
+      "Cross-document reasoning",
+      "MCG: \"What is Project CLARITY?\"",
+    ],
+  },
+];
+
+agenticFeatures.forEach((f, i) => {
+  const x = 0.5 + i * 4.2;
+  slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
+    x, y: 1.4, w: 3.9, h: 3.3,
+    fill: { color: C.lightBg }, rectRadius: 0.12,
+    line: { color: f.color, width: 2 },
+  });
+  slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
+    x: x + 0.1, y: 1.5, w: 3.7, h: 0.6,
+    fill: { color: f.color }, rectRadius: 0.06,
+  });
+  slide.addText(f.title, {
+    x: x + 0.1, y: 1.5, w: 3.7, h: 0.6,
+    fontSize: 15, color: C.white, fontFace: FONT, bold: true, align: "center", valign: "middle",
+  });
+  f.items.forEach((item, j) => {
+    slide.addText(`▸  ${item}`, {
+      x: x + 0.3, y: 2.3 + j * 0.5, w: 3.4, h: 0.45,
+      fontSize: 12, color: C.darkText, fontFace: FONT,
+    });
+  });
+});
+
+// GA callout
+slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
+  x: 0.5, y: 4.9, w: 12.3, h: 0.55,
+  fill: { color: C.lightGreen }, rectRadius: 0.08,
+});
+slide.addText("✓ Qlik Answers agentic experience reached GA in February 2026 — replaces legacy Insight Advisor with unified conversational AI across data and documents.", {
+  x: 0.8, y: 4.95, w: 11.8, h: 0.45,
+  fontSize: 12, color: C.qlikGreen, fontFace: FONT, bold: true,
+});
+
+// Qlik Answers flow
+slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
+  x: 0.5, y: 5.6, w: 12.3, h: 0.55,
+  fill: { color: C.lightCyan }, rectRadius: 0.08,
+});
+slide.addText("→  Powered by the Qlik Associative Engine & Business Logic from Story 3 — Analytics. The engine provides governed calculations; Agentic Analytics adds conversational reasoning on top.", {
+  x: 0.8, y: 5.65, w: 11.8, h: 0.45,
+  fontSize: 11, color: C.qlikGreen, fontFace: FONT, bold: true,
+});
 
 // ─── Slide: Qlik Predict ───
 slide = contentSlide("Qlik Predict — AutoML for Supply Chain", C.qlikLightGreen);
@@ -1217,30 +1286,30 @@ mcpItems.forEach((item, i) => {
   });
 });
 
-// Agentic callout
+// Cross-reference
 slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
-  x: 0.5, y: 5.2, w: 12.3, h: 0.7,
+  x: 0.5, y: 5.2, w: 12.3, h: 0.55,
   fill: { color: C.lightGreen }, rectRadius: 0.08,
 });
-slide.addText("Agentic Analytics [GA Feb 2026]: Unified conversational interface combining structured analytics (Qlik Sense) + unstructured documents (Qlik Answers) + LLM reasoning. A single AI assistant that can query data, read documents, and reason across both.", {
-  x: 0.8, y: 5.25, w: 11.8, h: 0.6,
+slide.addText("Both tools integrate with the Agentic Analytics experience (see slide above) — Discovery Agent proactively surfaces issues; MCP enables external AI agents to query Qlik data directly.", {
+  x: 0.8, y: 5.25, w: 11.8, h: 0.45,
   fontSize: 11, color: C.qlikLightGreen, fontFace: FONT,
 });
 
 // ─── Slide: AI — What to Show ───
-slide = contentSlide("AI Story — What to Show in the Demo", C.qlikLightGreen);
+slide = contentSlide("AI & Outcomes Story — What to Show in the Demo", C.qlikLightGreen);
 
 yPos = 1.1;
+yPos = recommendBox(slide, "Agentic Analytics Experience", [
+  "Open Qlik Answers → ask: \"Which distribution centers have the lowest inventory accuracy?\" → data agent queries Qlik Sense",
+  "Follow up: \"What happened at Rotterdam in September?\" → document agent pulls INC-2025-04872 with citations",
+  "Ask: \"What does Project CLARITY propose to fix this?\" → chain-of-thought reasoning across data + documents",
+], yPos, C.lightGreen);
+
 yPos = recommendBox(slide, "Qlik Predict Live Demo", [
   "Open Spoilage Risk experiment → show training report, feature importance (temperature is #1 driver)",
   "Run a prediction on a live shipment: São Paulo→Buenos Aires, 32°C outside temp, Correios carrier → 87% spoilage risk",
   "Show prediction API endpoint → demonstrate external system consuming predictions",
-], yPos, C.lightGreen);
-
-yPos = recommendBox(slide, "Qlik Answers Conversation", [
-  "Ask: \"What happened at Rotterdam DC in September?\" → Answers pulls from INC-2025-04872",
-  "Follow up: \"What was the root cause?\" → TLS certificate expired, batch job failed silently",
-  "Ask: \"What does Project CLARITY propose to fix this?\" → cross-document reasoning",
 ], yPos, C.lightGreen);
 
 yPos = recommendBox(slide, "Discovery Agent Scenario", [
@@ -1268,8 +1337,7 @@ const missing = [
   { priority: "MED", feature: "Reporting Service + Subscriptions", story: "Analytics", effort: "Medium — build 1-2 report templates" },
   { priority: "MED", feature: "Section Access (Row-Level Security)", story: "Governance", effort: "Medium — configure for regional VP views" },
   { priority: "MED", feature: "Business Logic / Logical Model", story: "Analytics", effort: "Low — define in app settings" },
-  { priority: "LOW", feature: "Direct Query", story: "Integration", effort: "Low — create one Direct Query app" },
-  { priority: "LOW", feature: "Knowledge Mart", story: "AI", effort: "Medium — configure RAG pipeline" },
+  { priority: "LOW", feature: "Knowledge Mart", story: "AI & Outcomes", effort: "Medium — configure RAG pipeline" },
   { priority: "LOW", feature: "Custom MCG Theme", story: "Analytics", effort: "Low — upload JSON theme file" },
   { priority: "LOW", feature: "Data Marketplace", story: "Governance", effort: "Low — enable on data products" },
 ];
@@ -1297,7 +1365,7 @@ slide.addTable([...mHeaders, ...mRows], {
   fontFace: FONT,
   border: { type: "solid", pt: 0.5, color: "D1D5DB" },
   colW: [1.3, 4.0, 2.2, 5.2],
-  rowH: [0.38, ...Array(10).fill(0.42)],
+  rowH: [0.38, ...Array(9).fill(0.42)],
 });
 
 // ═══════════════════════════════════════════════════
@@ -1347,7 +1415,7 @@ closingMetrics.forEach((m, i) => {
   });
 });
 
-slide.addText("Qlik Cloud  •  End-to-End Demo  •  Integration  •  Governance  •  Analytics  •  AI", {
+slide.addText("Qlik Cloud  •  End-to-End Demo  •  Integrations  •  Governance  •  Analytics  •  AI & Outcomes", {
   x: 0.5, y: 5.8, w: 11.5, h: 0.4,
   fontSize: 12, color: C.qlikGray, fontFace: FONT,
 });

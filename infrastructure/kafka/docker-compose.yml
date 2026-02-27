@@ -105,13 +105,9 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
 
-      # Confluent metrics reporter for Control Center
+      # Confluent internal topic replication (single-node cluster)
       KAFKA_CONFLUENT_LICENSE_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_CONFLUENT_BALANCER_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_METRIC_REPORTERS: io.confluent.metrics.reporter.ConfluentMetricsReporter
-      CONFLUENT_METRICS_REPORTER_BOOTSTRAP_SERVERS: kafka:9092
-      CONFLUENT_METRICS_REPORTER_TOPIC_REPLICAS: 1
-      CONFLUENT_METRICS_ENABLE: "true"
 
       # ---------------------
       # Performance Tuning
@@ -232,46 +228,29 @@ services:
       kafka:
         condition: service_healthy
     entrypoint: ["/bin/sh", "-c"]
-    command: |
-      "
-      echo '============================================='
-      echo ' MCG Kafka Topic Initialization'
-      echo '============================================='
-
-      echo 'Waiting for Kafka to be ready...'
-      kafka-topics --bootstrap-server kafka:9092 --list
-
-      echo ''
-      echo 'Creating MCG IoT topics...'
-
-      echo '  -> mcg.iot.cold-chain (3 partitions, 7-day retention)'
-      kafka-topics --bootstrap-server kafka:9092 \
-        --create --if-not-exists \
-        --topic mcg.iot.cold-chain \
-        --partitions 3 \
-        --replication-factor 1 \
-        --config retention.ms=604800000
-
-      echo '  -> mcg.iot.carrier-events (3 partitions, 30-day retention)'
-      kafka-topics --bootstrap-server kafka:9092 \
-        --create --if-not-exists \
-        --topic mcg.iot.carrier-events \
-        --partitions 3 \
-        --replication-factor 1 \
-        --config retention.ms=2592000000
-
-      echo ''
-      echo 'Verifying topics...'
-      echo '---------------------------------------------'
-      kafka-topics --bootstrap-server kafka:9092 --describe --topic mcg.iot.cold-chain
-      echo '---------------------------------------------'
-      kafka-topics --bootstrap-server kafka:9092 --describe --topic mcg.iot.carrier-events
-      echo '---------------------------------------------'
-
-      echo ''
-      echo 'MCG Kafka topics ready!'
-      echo '============================================='
-      "
+    command:
+      - |
+        echo '============================================='
+        echo ' MCG Kafka Topic Initialization'
+        echo '============================================='
+        echo 'Waiting for Kafka to be ready...'
+        kafka-topics --bootstrap-server kafka:9092 --list
+        echo ''
+        echo 'Creating MCG IoT topics...'
+        echo '  -> mcg.iot.cold-chain (3 partitions, 7-day retention)'
+        kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic mcg.iot.cold-chain --partitions 3 --replication-factor 1 --config retention.ms=604800000
+        echo '  -> mcg.iot.carrier-events (3 partitions, 30-day retention)'
+        kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic mcg.iot.carrier-events --partitions 3 --replication-factor 1 --config retention.ms=2592000000
+        echo ''
+        echo 'Verifying topics...'
+        echo '---------------------------------------------'
+        kafka-topics --bootstrap-server kafka:9092 --describe --topic mcg.iot.cold-chain
+        echo '---------------------------------------------'
+        kafka-topics --bootstrap-server kafka:9092 --describe --topic mcg.iot.carrier-events
+        echo '---------------------------------------------'
+        echo ''
+        echo 'MCG Kafka topics ready!'
+        echo '============================================='
     networks:
       - mcg-kafka-net
     # This container runs once and exits — do not restart
