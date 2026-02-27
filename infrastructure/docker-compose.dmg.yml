@@ -1,0 +1,120 @@
+# =============================================================================
+# MCG Demo — Qlik Data Movement Gateway + RDBMS Container
+# =============================================================================
+# Provides a single privileged container running:
+#   - Qlik Data Movement Gateway (repagent)
+#   - PostgreSQL 15 (port 5432)
+#   - MySQL 8.0 (port 3306)
+#   - SQL Server 2022 Developer (port 1433)
+#   - SSH (port 22)
+#
+# This is an ALTERNATIVE to the standalone PostgreSQL in
+# docker-compose.simulators.yml. Use this when you want the
+# Data Movement Gateway co-located with the demo databases.
+#
+# Prerequisites:
+#   1. Clone the submodule:
+#      git submodule update --init
+#   2. Download the Gateway RPM from:
+#      https://github.com/qlik-download/saas-download-links/releases
+#   3. Place the RPM as:
+#      infrastructure/dmg/gateway/rpmfiles/gateway.rpm
+#
+# Usage (standalone):
+#   cd infrastructure
+#   docker compose -f docker-compose.dmg.yml up -d --build
+#
+# Usage (full stack with Kafka + simulators):
+#   docker compose -f docker-compose.full-stack-dmg.yml up -d --build
+#
+# After startup, find the registration token in the logs:
+#   docker logs mcg-qlik-dmg 2>&1 | grep -A2 "Registration Token"
+#
+# Paste the token into Qlik Cloud:
+#   Administration → Data Gateways → Register
+#
+# Default credentials:
+#   PostgreSQL:  postgres / Qlik1234   (port 5432)
+#   MySQL:       root / Qlik1234       (port 3306)
+#   SQL Server:  sa / Qlik1234!        (port 1433)
+#   SSH:         qlikdmg / Qlik1234    (port 22)
+# =============================================================================
+
+version: "3.8"
+
+services:
+
+  # ---------------------------------------------------------------------------
+  # Qlik Data Movement Gateway + RDBMS (all-in-one)
+  # ---------------------------------------------------------------------------
+  # Oracle Linux 9 container running systemd as PID 1.
+  # Starts PostgreSQL 15, MySQL 8.0, SQL Server 2022, and the
+  # Qlik Data Movement Gateway (repagent) as systemd services.
+  #
+  # The "postgres" network alias allows MCG simulators to connect
+  # transparently — they resolve "postgres:5432" to this container.
+  # ---------------------------------------------------------------------------
+  qlik-dmg:
+    build:
+      context: dmg/gateway
+      dockerfile: Dockerfile
+    image: qlik-dmg:latest
+    container_name: mcg-qlik-dmg
+    privileged: true
+    cgroupns: host
+    deploy:
+      resources:
+        limits:
+          memory: 4g
+    environment:
+      TENANT_URL: ${TENANT_URL:-your-tenant.us.qlikcloud.com}
+      POSTGRES_PASSWORD: ${DMG_POSTGRES_PASSWORD:-Qlik1234}
+      MYSQL_ROOT_PASSWORD: ${DMG_MYSQL_PASSWORD:-Qlik1234}
+      MSSQL_SA_PASSWORD: ${DMG_MSSQL_PASSWORD:-Qlik1234!}
+      MSSQL_PID: Developer
+      ACCEPT_EULA: "Y"
+    ports:
+      # PostgreSQL
+      - "${DMG_PG_PORT:-5432}:5432"
+      # MySQL
+      - "${DMG_MYSQL_PORT:-3306}:3306"
+      # SQL Server
+      - "${DMG_MSSQL_PORT:-1433}:1433"
+      # Qlik Data Movement Gateway
+      - "3552:3552"
+      - "8080:8080"
+      - "8088:8088"
+      - "8686:8686"
+      # SSH
+      - "${DMG_SSH_PORT:-2222}:22"
+    volumes:
+      - qlik-mysql-data:/var/lib/mysql
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    networks:
+      mcg-sim-net:
+        aliases:
+          - postgres
+      mcg-kafka-net:
+        aliases:
+          - postgres
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+      start_period: 60s
+    restart: unless-stopped
+
+volumes:
+  qlik-mysql-data:
+    driver: local
+
+networks:
+  mcg-sim-net:
+    driver: bridge
+    name: mcg-sim-net
+  mcg-kafka-net:
+    external: true
+    name: mcg-kafka-net

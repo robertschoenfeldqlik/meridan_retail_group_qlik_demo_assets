@@ -1,0 +1,122 @@
+# =============================================================================
+# MCG Demo — Simulator Services (DMG variant)
+# =============================================================================
+# Identical to docker-compose.simulators.yml but WITHOUT the standalone
+# PostgreSQL service. Use this alongside docker-compose.dmg.yml, which
+# provides PostgreSQL via the Qlik Data Movement Gateway container.
+#
+# The DMG container exposes a "postgres" network alias on mcg-sim-net,
+# so all simulators connect transparently to qlik-dmg:5432.
+#
+# Usage (with Kafka + DMG):
+#   cd infrastructure
+#   docker compose -f docker-compose.full-stack-dmg.yml up -d
+#
+# Usage (standalone — DMG must already be running):
+#   docker compose -f docker-compose.dmg.yml up -d
+#   docker compose -f docker-compose.simulators-dmg.yml up -d
+# =============================================================================
+
+version: "3.8"
+
+services:
+
+  # ---------------------------------------------------------------------------
+  # Seed Data — One-shot container to populate DMG's PostgreSQL with demo data
+  # ---------------------------------------------------------------------------
+  seed-data:
+    build:
+      context: ../simulators
+      dockerfile: Dockerfile
+    container_name: mcg-seed-data
+    depends_on:
+      qlik-dmg:
+        condition: service_healthy
+    command: >
+      python seed_data.py
+        --postgres
+        --pg-host postgres
+        --pg-port 5432
+        --pg-db ${POSTGRES_DB:-mcg_wms}
+        --pg-user ${DMG_PG_USER:-postgres}
+        --pg-pass ${DMG_POSTGRES_PASSWORD:-Qlik1234}
+    networks:
+      - mcg-sim-net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: "no"
+
+  # ---------------------------------------------------------------------------
+  # PostgreSQL Simulator — Continuous WMS event generation
+  # ---------------------------------------------------------------------------
+  postgres-simulator:
+    build:
+      context: ../simulators
+      dockerfile: Dockerfile
+    container_name: mcg-postgres-simulator
+    depends_on:
+      seed-data:
+        condition: service_completed_successfully
+    command: >
+      python postgres_simulator.py
+        --host ${PG_SIM_HOST:-postgres}
+        --port ${PG_SIM_PORT:-5432}
+        --db ${POSTGRES_DB:-mcg_wms}
+        --user ${DMG_PG_USER:-postgres}
+        --password ${DMG_POSTGRES_PASSWORD:-Qlik1234}
+    networks:
+      - mcg-sim-net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Kafka IoT Simulator — Cold-chain sensor + carrier event production
+  # ---------------------------------------------------------------------------
+  kafka-iot-simulator:
+    build:
+      context: ../simulators
+      dockerfile: Dockerfile
+    container_name: mcg-kafka-iot-simulator
+    command: >
+      python kafka_iot_simulator.py
+        --bootstrap-servers ${KAFKA_BOOTSTRAP:-kafka:9092}
+    networks:
+      - mcg-sim-net
+      - mcg-kafka-net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Salesforce Simulator (requires credentials)
+  # ---------------------------------------------------------------------------
+  salesforce-simulator:
+    build:
+      context: ../simulators
+      dockerfile: Dockerfile
+    container_name: mcg-salesforce-simulator
+    command: >
+      python salesforce_simulator.py
+        --username ${SF_USERNAME}
+        --password ${SF_PASSWORD}
+        --token ${SF_SECURITY_TOKEN}
+    environment:
+      SF_USERNAME: ${SF_USERNAME:-}
+      SF_PASSWORD: ${SF_PASSWORD:-}
+      SF_SECURITY_TOKEN: ${SF_SECURITY_TOKEN:-}
+    networks:
+      - mcg-sim-net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    profiles:
+      - salesforce
+    restart: unless-stopped
+
+networks:
+  mcg-sim-net:
+    driver: bridge
+    name: mcg-sim-net
+  mcg-kafka-net:
+    external: true
+    name: mcg-kafka-net

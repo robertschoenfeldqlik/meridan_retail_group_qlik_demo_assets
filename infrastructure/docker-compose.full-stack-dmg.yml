@@ -1,0 +1,48 @@
+# =============================================================================
+# MCG Demo — Full Stack with Qlik Data Movement Gateway
+# =============================================================================
+# Like docker-compose.full-stack.yml but replaces the standalone PostgreSQL
+# with the Qlik Data Movement Gateway container, which provides:
+#   - Qlik Data Movement Gateway (auto-registers with Qlik Cloud)
+#   - PostgreSQL 15, MySQL 8.0, SQL Server 2022 (all in one container)
+#   - Pre-installed ODBC drivers for all databases
+#
+# This is the "batteries included" option for demos where you want the
+# gateway co-located with the source databases.
+#
+# Prerequisites:
+#   1. git submodule update --init
+#   2. Download Gateway RPM → infrastructure/dmg/gateway/rpmfiles/gateway.rpm
+#   3. Set TENANT_URL in .env or pass via environment
+#
+# Network Architecture:
+#   mcg-kafka-net — Kafka broker, IoT simulator, DMG container
+#   mcg-sim-net   — All simulators, DMG container (alias: postgres)
+#
+# Exposed Host Ports:
+#   5432  — PostgreSQL (DMG container)
+#   3306  — MySQL (DMG container)
+#   1433  — SQL Server (DMG container)
+#   3552  — Qlik Data Movement Gateway
+#   8080  — Gateway HTTP
+#   2222  — SSH into DMG container
+#   9092  — Kafka internal
+#   29092 — Kafka external (for Qlik Data Gateway)
+#   8081  — Schema Registry
+#   9021  — Confluent Control Center UI
+#
+# Usage:
+#   cd infrastructure
+#   docker compose -f docker-compose.full-stack-dmg.yml up -d --build
+#
+# After startup, register the gateway:
+#   docker logs mcg-qlik-dmg 2>&1 | grep -A2 "Registration Token"
+#   → Paste token into Qlik Cloud: Administration → Data Gateways → Register
+# =============================================================================
+
+version: "3.8"
+
+include:
+  - path: kafka/docker-compose.yml
+  - path: docker-compose.dmg.yml
+  - path: docker-compose.simulators-dmg.yml

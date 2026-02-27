@@ -118,6 +118,100 @@ function talkingPoint(text) {
   return para(text, { bullet: true, color: Q.blue });
 }
 
+// ─── DEMO2WIN / SHOW-TELL-SHOW HELPERS ──────────────────────
+
+// Limbic Opening box — emotional hook at the start of each module
+function limbicOpening(text, type = "Problem/Consequence") {
+  return new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    rows: [
+      new TableRow({
+        children: [
+          new TableCell({
+            width: { size: 2, type: WidthType.PERCENTAGE },
+            shading: { type: ShadingType.SOLID, color: Q.blue },
+            borders: { top: { style: "none" }, bottom: { style: "none" }, left: { style: "none" }, right: { style: "none" } },
+            children: [new Paragraph({ spacing: { after: 0 }, children: [new TextRun({ text: " ", size: 10 })] })],
+          }),
+          new TableCell({
+            width: { size: 98, type: WidthType.PERCENTAGE },
+            shading: { type: ShadingType.SOLID, color: "E3EAF3" },
+            margins: { top: 60, bottom: 60, left: 120, right: 120 },
+            children: [
+              new Paragraph({
+                spacing: { after: 40 },
+                children: [new TextRun({ text: `Limbic Opening  (${type})`, font: FONT, size: 18, bold: true, color: Q.blue })],
+              }),
+              new Paragraph({
+                spacing: { after: 0 },
+                children: [new TextRun({ text, font: FONT, size: 20, italics: true, color: Q.darkText })],
+              }),
+            ],
+          }),
+        ],
+      }),
+    ],
+  });
+}
+
+// Tell annotation — opening or closing Tell in Show-Tell-Show
+function tellAnnotation(phase, text) {
+  const label = phase === "open" ? "TELL (before showing)" : "TELL (after showing)";
+  const color = phase === "open" ? Q.teal : Q.green;
+  const bgColor = phase === "open" ? "E0F2F5" : "E0F5EA";
+  return new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    rows: [
+      new TableRow({
+        children: [
+          new TableCell({
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            shading: { type: ShadingType.SOLID, color: bgColor },
+            margins: { top: 40, bottom: 40, left: 120, right: 120 },
+            borders: {
+              top: { style: BorderStyle.SINGLE, size: 1, color },
+              bottom: { style: BorderStyle.SINGLE, size: 1, color },
+              left: { style: BorderStyle.SINGLE, size: 6, color },
+              right: { style: "none" },
+            },
+            children: [
+              new Paragraph({
+                spacing: { after: 30 },
+                children: [new TextRun({ text: label, font: FONT, size: 16, bold: true, color })],
+              }),
+              new Paragraph({
+                spacing: { after: 0 },
+                children: [new TextRun({ text, font: FONT, size: 18, italics: true, color: Q.darkText })],
+              }),
+            ],
+          }),
+        ],
+      }),
+    ],
+  });
+}
+
+// Interaction prompt — question to ask the audience
+function interactionPrompt(question) {
+  return new Paragraph({
+    spacing: { before: 80, after: 80 },
+    children: [
+      new TextRun({ text: "Ask the audience: ", font: FONT, size: 20, bold: true, color: Q.cyan }),
+      new TextRun({ text: `"${question}"`, font: FONT, size: 20, italics: true, color: Q.darkText }),
+    ],
+  });
+}
+
+// "So You Can" value chain — walks up the value pyramid
+function valueChain(items) {
+  const runs = [];
+  items.forEach((item, i) => {
+    if (i > 0) runs.push(new TextRun({ text: "  →  so you can  ", font: FONT, size: 20, bold: true, color: Q.green }));
+    runs.push(new TextRun({ text: item, font: FONT, size: 20, color: Q.darkText }));
+  });
+  return new Paragraph({ spacing: { before: 60, after: 100 }, children: runs });
+}
+
 
 // =============================================================================
 // MODULE 1: Infrastructure & Data Sources
@@ -144,7 +238,13 @@ function module01() {
     numberedItem(4, "A Salesforce Developer Edition org (free at developer.salesforce.com)"),
     numberedItem(5, "Network access to your Qlik Cloud tenant"),
 
+    heading("Demo Methodology: Tell → Show → Tell", 2),
+    limbicOpening("It's Monday morning. Henrik Jansen gets a call: 200 orders shipped over the weekend are wrong. The WMS said the inventory was there — it wasn't. Phantom inventory. $48 million a year in write-offs, and nobody knew until customers started calling. What if he could have seen the discrepancy before those orders shipped?", "Problem/Consequence"),
+    interactionPrompt("How does your team currently know when inventory data doesn't match reality?"),
+
     heading("Demo Walk-Through", 2),
+
+    tellAnnotation("open", "Before showing the infrastructure, set context: MCG has three completely independent data systems — a warehouse database, IoT sensors on trucks, and a CRM. None of them talk to each other. That's the starting point. Now let me show you where this data lives."),
 
     heading("Step 1: Start PostgreSQL & Seed WMS Data", 3),
     numberedItem(1, "Ensure PostgreSQL is running (Docker, RDS, or local install)"),
@@ -175,6 +275,10 @@ function module01() {
     numberedItem(4, "Run the Salesforce simulator:"),
     promptBox("python simulators/salesforce_simulator.py --instance https://your-dev-org.my.salesforce.com", "Terminal Command"),
     calloutBox("Talking point: Salesforce data has 11% address formatting inconsistencies and a legacy 30-character field limit that truncates addresses. These feed directly into Nightmare #2 (Address Catastrophe).", "warning"),
+
+    tellAnnotation("close", "So what you just saw are three real data sources — a warehouse database, IoT cold-chain sensors, and a CRM — all generating data with real-world quality problems baked in. This is not sanitized demo data. This is how supply chain data actually looks."),
+    interactionPrompt("Does this feel familiar? How many disconnected data sources does your team deal with today?"),
+    valueChain(["Ingest data from three independent systems in real-time", "see the complete supply chain picture in one place", "catch problems like phantom inventory before they cost $48M"]),
 
     heading("Talking Points", 2),
     talkingPoint("Three completely independent data systems — this is reality for every enterprise, not a contrived demo"),
@@ -218,7 +322,13 @@ function module02() {
     numberedItem(4, "Data Movement Gateway installed (for PostgreSQL CDC)"),
     numberedItem(5, "Remote Engine Gen2 installed (for Kafka streaming)"),
 
+    heading("Demo Methodology: Tell → Show → Tell", 2),
+    limbicOpening("MCG had a data engineer who spent 3 days debugging a broken pipeline — only to discover it was feeding the wrong Kafka topic to the wrong team's dashboard. No governance, no separation, no audit trail. That single incident delayed a product launch by two weeks.", "Case Study"),
+    interactionPrompt("How do you currently separate development data from production analytics?"),
+
     heading("Demo Walk-Through", 2),
+
+    tellAnnotation("open", "What I'm about to show you is how Qlik Cloud organizes the entire data landscape — separate spaces for development and production, with connections that handle CDC, streaming, and API sources all from one console."),
 
     heading("Step 1: Create Spaces", 3),
     numberedItem(1, "Navigate to Qlik Cloud Hub > Spaces > Create Space"),
@@ -255,6 +365,10 @@ function module02() {
     numberedItem(1, "Select Salesforce Standard connector"),
     numberedItem(2, "Authenticate via OAuth or username/password + security token"),
     numberedItem(3, "Test connection — should show Contact, MCG_Order__c, MCG_Product__c"),
+
+    tellAnnotation("close", "What you just saw is the foundation: governed spaces with clear dev/prod separation, and three very different data sources — database CDC, real-time streaming, and API — all connected from one console. No custom ETL code, no middleware, no integration tax."),
+    interactionPrompt("Which of these connector types would be most relevant for your environment?"),
+    valueChain(["Connect all three data source types from one platform", "eliminate the middleware and custom integration layer", "give your data team back the 40% of time they currently spend on plumbing"]),
 
     heading("Talking Points", 2),
     talkingPoint("Three different connector types: CDC (PostgreSQL), streaming (Kafka), standard API (Salesforce)"),
@@ -339,13 +453,24 @@ function module03() {
       ]
     ),
 
+    heading("Demo Methodology: Tell → Show → Tell", 2),
+    limbicOpening("Last quarter, MCG shipped 4,200 orders with incorrect cold chain documentation. An NVWA inspector found the gap during a routine audit — 15% of perishable items were missing lot numbers entirely. The fine was €350,000. The real cost? Every shipment was frozen for 72 hours while compliance manually traced each item back through three different spreadsheets. The Lakehouse you're about to see was built to make that scenario impossible.", "Problem/Consequence"),
+    interactionPrompt("When your team finds a data quality issue, how long does it typically take to trace it back to the source?"),
+
     heading("Demo Walk-Through", 2),
+
+    tellAnnotation("open", "The Lakehouse implements a medallion architecture — Bronze for raw data, Silver for cleansed data, Gold for business-ready products. What makes this different is that each transformation addresses a specific MCG nightmare. Let me show you how raw, messy data becomes trusted, governed data products."),
+
     numberedItem(1, "Navigate to Data Integration > Lakehouse > Show Bronze tables receiving data"),
     numberedItem(2, 'Open bronze.inventory_positions — show raw data with quality issues visible (null lot numbers, timestamp mismatches)'),
     numberedItem(3, 'Navigate to a Silver transformation route — show the Pipeline Designer visual flow'),
     numberedItem(4, 'Show before/after: bronze.sf_contacts (messy addresses) vs silver.customers_deduped (standardized)'),
     numberedItem(5, 'Open a Gold table recipe — show how Silver tables combine into business-ready products'),
     numberedItem(6, 'Highlight refresh schedules: real-time CDC, 5-min streaming, 15-min batch'),
+
+    tellAnnotation("close", "What you just saw is raw data arriving from three systems, getting cleansed through 8 transformation routes that directly address MCG's 7 data nightmares, and emerging as 7 governed Gold data products — each with an owner, an SLA, and a Trust Score. Full lineage at every step."),
+    interactionPrompt("Which of these transformation routes — inventory reconciliation, address standardization, carrier canonicalization — resonates most with your current challenges?"),
+    valueChain(["Transform raw data through automated quality pipelines", "resolve all 7 data quality nightmares systematically", "deliver trusted Gold data products that the business actually uses for decisions"]),
 
     heading("Talking Points", 2),
     talkingPoint("Bronze preserves raw data for auditability — you can always go back to the source"),
@@ -372,7 +497,13 @@ function module04() {
     heading("Overview", 2),
     para("This module demonstrates Qlik's governance capabilities: tracing data from source to dashboard (lineage), understanding what breaks when a table changes (impact analysis), automated quality profiling, and Trust Scores that quantify data reliability."),
 
+    heading("Demo Methodology: Tell → Show → Tell", 2),
+    limbicOpening("The Rotterdam CDC pipeline failed on a Friday afternoon. Nobody noticed until Monday. By then, 72 hours of inventory data was stale. Three Gold data products showed wrong numbers. Two dashboards were making decisions on phantom data. The Trust Score dropped from 0.89 to 0.31 — but there was no Trust Score back then. There was just a phone call from a very angry VP on Monday morning.", "Discovery Findings"),
+    interactionPrompt("When a data pipeline fails silently, how long does it typically take your team to discover it?"),
+
     heading("Demo Walk-Through", 2),
+
+    tellAnnotation("open", "What I'm about to show you are four governance capabilities that would have caught Rotterdam's failure in minutes, not days: visual lineage, impact analysis, automated profiling, and Trust Scores. These work together as an early warning system for data quality."),
 
     heading("Step 1: Data Lineage", 3),
     numberedItem(1, "Navigate to gold.supply_chain_health > Lineage"),
@@ -411,6 +542,10 @@ function module04() {
     numberedItem(4, "Demonstrate Trust Score drop: simulate a pipeline failure scenario for DC-RTD-01"),
     calloutBox("Talking point: Trust Score is the single number that tells you whether you can trust your data. When Rotterdam's pipeline failed, the Trust Score dropped from 0.89 to 0.31 — that's an automatic alert, not a manual discovery 72 hours later."),
 
+    tellAnnotation("close", "What you saw is an automated governance layer: lineage traces every record from source to dashboard, impact analysis shows exactly what breaks when something changes, profiling catches quality issues humans miss, and Trust Score gives you a single number — 0.89 means go, 0.31 means stop. Rotterdam's 72-hour silent failure? Now it's a 5-minute alert."),
+    interactionPrompt("If you had a Trust Score for your critical data products today, what would it be? Above 0.7? Below?"),
+    valueChain(["See full data lineage and impact analysis automatically", "detect pipeline failures and quality degradation in minutes", "give the business confidence that the numbers they see are the numbers they can trust"]),
+
     heading("Talking Points", 2),
     talkingPoint("Lineage is automatic — Qlik traces every transformation, every join, every filter"),
     talkingPoint("Impact analysis prevents 'change and pray' — you know what breaks before you change it"),
@@ -436,6 +571,12 @@ function module05() {
     para("Gold-layer tables become governed Data Products with owners, SLAs, Trust Scores, and API access. AI automatically generates descriptions and suggests validation rules. The Data Marketplace lets business users discover and request access to data products."),
 
     heading("Demo Walk-Through", 2),
+
+    heading("Demo Methodology: Tell → Show → Tell", 2),
+    limbicOpening("MCG's data engineering team built 23 Gold tables last year. By December, 14 had no documentation, 6 had no owner, and the business didn't know 9 of them existed. Meanwhile, three different teams independently built their own 'customer delivery' datasets — all slightly different, all 'correct.' Data Products turn undiscoverable assets into governed, SLA-backed products with clear ownership.", "Industry Insights"),
+    interactionPrompt("How does your organization currently discover and access analytical datasets — is there a catalog, or is it tribal knowledge?"),
+
+    tellAnnotation("open", "I'm going to show you how MCG turns Gold tables into governed Data Products — with AI-generated descriptions, validation rules, Trust Scores, and API sharing. A Data Product is a contract between the data team and the business."),
 
     heading("Step 1: Register Data Products", 3),
     numberedItem(1, "Navigate to Data Catalog > Data Products > Register"),
@@ -471,6 +612,10 @@ function module05() {
     numberedItem(2, "Browse data products — show AI-generated descriptions and Trust Scores"),
     numberedItem(3, 'Search by tag: "cold-chain" — should find Cold Chain Compliance product'),
     numberedItem(4, "Demonstrate access request workflow for a business user"),
+
+    tellAnnotation("close", "What you saw is data as a product: owned, documented, quality-scored, and accessible via API. No more shadow datasets, no more tribal knowledge, no more 'which version of the customer table is right?'"),
+    interactionPrompt("If you could expose any of your internal datasets as a governed API tomorrow, which one would create the most value?"),
+    valueChain(["Publish governed data products with AI-generated documentation", "eliminate shadow datasets and ensure one version of truth", "let the business self-serve trusted data without filing tickets"]),
 
     heading("Talking Points", 2),
     talkingPoint("Data Products turn tables into governed, discoverable business assets"),
@@ -521,7 +666,14 @@ function module06() {
       ]
     ),
 
+    heading("Demo Methodology: Tell → Show → Tell", 2),
+    limbicOpening("Picture this: it's the quarterly business review. The CFO asks, 'What's our real exposure from data quality issues?' Three VPs give three different numbers — $48M, $85M, $127M — because each one pulled from a different dataset. The analytics apps you're about to see give everyone the same number, from the same governed source, in real-time.", "Problem/Consequence"),
+    interactionPrompt("How many different dashboards or reports does your leadership team currently look at for operational decisions?"),
+
     heading("Demo Walk-Through", 2),
+
+    tellAnnotation("open", "I'm going to show you two domain apps built on the Gold data products we just created. The key: every visualization connects to governed data with Trust Scores. And with Agentic Analytics, users can ask questions in natural language — the AI reasons across both structured data and documents."),
+
     numberedItem(1, "Open MCG Supply Chain Operations app — show MCG Dark Theme (Navy/Teal/Gold)"),
     numberedItem(2, "Inventory Health sheet: point out IRA at 74% for Rotterdam DC (below 97% target)"),
     numberedItem(3, "Cold Chain Monitoring: show live temperature feed updating in real-time from Kafka"),
@@ -540,6 +692,10 @@ function module06() {
     expectedBox("Combines structured data (SLA metrics from gold.last_mile_performance) with unstructured contract text from knowledge base. Shows NinjaVan at 69% on-time in Singapore with AMD3 reclassification context."),
 
     heading("Talking Points", 2),
+    tellAnnotation("close", "Two apps, 10 sheets, one version of truth. Every KPI traces back to a governed Gold data product. The Agentic Analytics layer lets anyone ask questions in plain language and get answers that combine real data with document context. No more 'which number is right?' — it's the same number everywhere."),
+    interactionPrompt("What if your team could ask a question like 'why did Singapore SLA drop?' and get an answer that includes both the data and the contract context?"),
+    valueChain(["Visualize operational and customer data in real-time from governed sources", "give every stakeholder the same trusted numbers", "let business users self-serve insights through conversational AI instead of filing dashboard requests"]),
+
     talkingPoint("Two apps cover the entire supply chain: operations (internal) and delivery (customer-facing)"),
     talkingPoint("Streaming sheets show live IoT data — not stale batch reports"),
     talkingPoint("MCG Dark Theme provides consistent, professional branding across all analytics"),
@@ -564,7 +720,14 @@ function module07() {
     heading("Overview", 2),
     para("Native alerts push notifications when data crosses thresholds — no automation needed. The Reporting Service generates formatted PDF and Excel reports on schedule or on-demand, ensuring stakeholders who don't log into Qlik still get the information they need."),
 
+    heading("Demo Methodology: Tell → Show → Tell", 2),
+    limbicOpening("The Rotterdam failure was discovered 72 hours late — by a human who happened to notice stale numbers. The São Paulo cold chain spoilage was discovered by a customer who opened a box of spoiled food. The NVWA citation arrived by registered mail. Every one of these incidents could have been an alert instead of a crisis.", "Discovery Findings"),
+    interactionPrompt("When a KPI crosses a critical threshold, how quickly does the right person find out today?"),
+
     heading("Demo Walk-Through: Alerts", 2),
+
+    tellAnnotation("open", "I'll show you two proactive capabilities: native alerts that push notifications when data crosses thresholds, and formatted reports that deliver compliance data on schedule. The key: data finds the stakeholder — they don't have to go looking for it."),
+
     numberedItem(1, "Navigate to MCG Supply Chain Operations app > Alerts"),
     numberedItem(2, 'Create alert: "IRA Below 85%" — triggers when IRA drops below 85% for any DC'),
     numberedItem(3, 'Create alert: "Cold Chain Exceedance" — triggers when temperature > 8 C for 15+ minutes'),
@@ -583,6 +746,9 @@ function module07() {
     calloutBox("Talking point: The compliance team needed 11 days to compile traceability data for the lettuce recall. With scheduled reports, that data is pre-compiled and emailed every Monday."),
 
     heading("Talking Points", 2),
+    tellAnnotation("close", "Alerts turn reactive incident response into proactive data-driven notification. Reports reach stakeholders who never log into a dashboard. Together, they close the gap between 'data exists' and 'the right person acts on it.'"),
+    valueChain(["Set threshold-based alerts on any KPI", "catch pipeline failures and quality issues in minutes", "prevent the next Rotterdam from becoming a 72-hour silent crisis"]),
+
     talkingPoint("Alerts are proactive — they find you, you don't have to go looking for problems"),
     talkingPoint("No code required — business users create alerts on any KPI with threshold rules"),
     talkingPoint("Reporting reaches stakeholders who don't use Qlik — formatted PDFs and Excel files"),
@@ -605,6 +771,10 @@ function module08() {
 
     heading("Overview", 2),
     para("Two AutoML models predict real-world outcomes from MCG data: a Spoilage Risk Predictor for cold chain shipments, and a Delivery SLA Predictor that forecasts on-time performance. Both are trained on Gold-layer data products and deployed with API access."),
+
+    heading("Demo Methodology: Tell → Show → Tell", 2),
+    limbicOpening("Last quarter, TransFrio quietly swapped in 12 older trucks on the São Paulo→Buenos Aires route. Nobody noticed until spoilage spiked from 2.1% to 8.8% — $2.48M in losses. The spoilage predictor you're about to see would have flagged the risk shift the moment the new truck data started flowing in.", "Case Study"),
+    interactionPrompt("Does your team currently use any predictive models for operational risk, or is it mostly reactive?"),
 
     heading("Model 1: Spoilage Risk Predictor", 2),
     metadataTable([
@@ -644,6 +814,10 @@ function module08() {
     numberedItem(4, "Test prediction: NinjaVan, Singapore, 7 kg parcel"),
     expectedBox("SLA met probability: 31%. Factors: carrier=NINJAVAN (69% on-time post AMD3), weight=7kg (exceeds 5kg threshold for 2-day SLA), destination=SG"),
 
+    tellAnnotation("close", "Two no-code ML models: one predicts spoilage risk from IoT data, the other predicts delivery SLA breaches. Both revealed insights MCG didn't expect — address quality is the #2 predictor of late deliveries. And both are API-shareable, so predictions flow into dashboards and automations automatically."),
+    interactionPrompt("What operational outcome would be most valuable for your team to predict — quality issues, delivery failures, or something else?"),
+    valueChain(["Train predictive models on governed data without writing code", "predict operational risks before they become incidents", "shift from reactive firefighting to proactive risk management"]),
+
     heading("Talking Points", 2),
     talkingPoint("AutoML requires no data science expertise — select a target, Qlik does the rest"),
     talkingPoint("Models are trained on governed Gold data products — same Trust Score, same lineage"),
@@ -681,6 +855,12 @@ function module09() {
     numberedItem(4, 'Create assistant: "MCG Operations Assistant"'),
     numberedItem(5, "Link to knowledge base, add 5 conversation starters"),
 
+    heading("Demo Methodology: Tell → Show → Tell", 2),
+    limbicOpening("When the lettuce recall hit, the compliance team spent 11 days manually searching through SOPs, supplier contracts, and incident reports across 4 different systems. EU regulation requires 24-hour traceability. Imagine if they could have simply asked, 'What happened with the lettuce recall and who was the supplier?' and gotten a sourced, cited answer in 30 seconds.", "Problem/Consequence"),
+    interactionPrompt("When your team needs to find information across operational documents — SOPs, contracts, policies — how long does it typically take?"),
+
+    tellAnnotation("open", "I'm going to ask the AI assistant 6 real questions about MCG operations — each one pulls from specific documents, cites its sources, and connects the dots across multiple reports. Watch for the citations — every answer is traceable."),
+
     heading("Demo Scenarios", 2),
 
     heading("Scenario 1: Singapore SLA Decline", 3),
@@ -709,6 +889,10 @@ function module09() {
     heading("Scenario 6: Project CLARITY ROI", 3),
     promptBox("What is Project CLARITY and what is the expected return on investment?", "Ask Qlik Answers"),
     expectedBox("References PROJ-CLARITY-2025: $12.4M Qlik platform investment. Conservative annual benefit: $52.7M. 3-year ROI: 952%. Covers all 7 data quality nightmares. Phase 1 (Integration Foundation) starts Q1 2026. Each nightmare has a specific remediation workstream with cost savings quantified."),
+
+    tellAnnotation("close", "Six questions, six instant answers, all sourced and cited from MCG's actual operational documents. The lettuce recall investigation that took 11 days? Qlik Answers gives you the supplier, the incident ID, the NVWA findings, and the remediation steps in 30 seconds. And it connects structured data with document intelligence for complete answers."),
+    interactionPrompt("Which of those scenarios — the recall investigation, the carrier SLA issue, or the cold chain spoilage — is closest to a situation your team has faced?"),
+    valueChain(["Ask natural language questions across all operational documents", "get cited, traceable answers in seconds instead of days", "empower every team member to access institutional knowledge without being an expert"]),
 
     heading("Talking Points", 2),
     talkingPoint("Qlik Answers is grounded in MCG's actual documents — not generic AI hallucinations"),
@@ -782,7 +966,14 @@ function module10() {
       ["Nightmare", "#7 — Compliance Traceability Gap"],
     ]),
 
+    heading("Demo Methodology: Tell → Show → Tell", 2),
+    limbicOpening("MCG's data quality team estimated that 18.4 million customer address records needed review. Impossible to automate — a machine can normalize formatting, but only a human can decide whether '123 Keizersgracht' and '123-A Keizersgracht Apt 2' are the same customer. Stewardship puts domain experts in the loop for the decisions that require human judgment.", "Illustrative Analogy"),
+    interactionPrompt("When you find data quality issues that can't be fixed automatically, what's your current process — spreadsheets? Email chains?"),
+
     heading("Demo Walk-Through", 2),
+
+    tellAnnotation("open", "I'll show you four campaigns that assign data quality tasks to the people who actually understand the data — logistics experts for addresses, procurement for suppliers, warehouse supervisors for lot numbers. Each task has context, comparison views, and one-click resolution."),
+
     numberedItem(1, "Navigate to Qlik Stewardship > Campaigns"),
     numberedItem(2, "Open the Address Cleanup campaign — show the task list"),
     numberedItem(3, "Open an address task — show side-by-side comparison of two records"),
@@ -792,6 +983,9 @@ function module10() {
     numberedItem(7, "Explain: approved corrections flow back through the Automation (Module 12) to update Silver tables"),
 
     heading("Talking Points", 2),
+    tellAnnotation("close", "Four campaigns, four different domain teams, one unified workflow. The key: corrections approved in Stewardship flow back through the Lakehouse automatically. This is a closed-loop data quality cycle — not a one-time cleanup but a continuous improvement process."),
+    valueChain(["Assign data quality tasks to domain experts who understand the data", "resolve quality issues that automation can't handle", "continuously improve data quality instead of accepting the $3.1M annual cost of bad addresses"]),
+
     talkingPoint("Not everything can be automated — Stewardship puts humans in the loop where judgment matters"),
     talkingPoint("Domain experts review data quality issues they actually understand (logistics people for addresses, procurement for suppliers)"),
     talkingPoint("Campaign dashboards show progress — management sees task completion rates"),
@@ -827,6 +1021,9 @@ function module11() {
         ["Business Operations", "Distribution Center, Carrier Canonical Status, Address Quality Score", "5 terms"],
       ]
     ),
+
+    heading("Demo Methodology: Tell → Show → Tell", 2),
+    limbicOpening("In an MCG leadership meeting, the VP of Warehouse said 'phantom inventory is down 12%' while the CFO said 'phantom inventory is up 8%.' They were both right — they were using different definitions. The warehouse measures by SKU count; finance measures by dollar value. The glossary ensures everyone means the same thing when they use the same term.", "Discovery Findings"),
 
     heading("Demo Walk-Through", 2),
     numberedItem(1, "Navigate to Business Glossary > Browse"),
@@ -872,7 +1069,13 @@ function module12() {
       ]
     ),
 
+    heading("Demo Methodology: Tell → Show → Tell", 2),
+    limbicOpening("The São Paulo spoilage cost $2.48M, but the real failure wasn't the temperature — it was the response time. The IoT system detected the exceedance. But the alert went to an email inbox nobody checks on weekends. By Monday, the product was in stores. Automation ensures the right action happens immediately, every time, without a human remembering to check.", "Problem/Consequence"),
+    interactionPrompt("When a critical operational event happens, how many manual steps are between detection and action in your current process?"),
+
     heading("Demo Walk-Through", 2),
+
+    tellAnnotation("open", "I'll walk through 5 no-code automations that close the loop between detection and action. The cold chain alert is the flagship: when temperature exceeds threshold, a Teams message with full context goes to the right team within 5 minutes. No email, no manual check, no weekend gaps."),
 
     heading("Cold Chain Alert (Primary Demo)", 3),
     numberedItem(1, "Navigate to Automations > MCG Cold Chain Alert > Edit"),
@@ -892,6 +1095,9 @@ function module12() {
     calloutBox("Talking point: This is the closed-loop data quality cycle. Detection (profiling) > Notification (alert) > Review (stewardship) > Correction (Talend job) > Validation (Trust Score). Fully automated except the human judgment step."),
 
     heading("Talking Points", 2),
+    tellAnnotation("close", "Five automations, zero code, complete closed-loop action. The cold chain alert alone would have prevented the $2.48M TransFrio spoilage. The address correction automation feeds Stewardship decisions back into the Lakehouse automatically. This is how you turn insights into outcomes."),
+    valueChain(["Automate the response to critical operational events", "eliminate the gap between detection and action", "save $2.48M by catching cold chain issues on Day 1 instead of Day 7"]),
+
     talkingPoint("Automations turn insights into action — the cold chain alert would have caught TransFrio on Day 1"),
     talkingPoint("Block-based builder requires no code — business users can create automations"),
     talkingPoint("The address correction loop is unique: Stewardship > Talend > Lakehouse > Gold > Predict"),
@@ -914,6 +1120,10 @@ function module13() {
 
     heading("Overview", 2),
     para("The Discovery Agent proactively monitors data products for anomalies and alerts users before problems escalate. The MCP Server connects Qlik data to AI agents (Claude), enabling natural language queries that combine structured data with document intelligence. Together, they represent the AI-driven future of data analytics."),
+
+    heading("Demo Methodology: Tell → Show → Tell", 2),
+    limbicOpening("Everything we've shown so far requires a human to ask a question or look at a dashboard. But what if the data found you? What if an AI agent noticed that spoilage rates were climbing, correlated it with a fleet change, estimated the financial exposure, and alerted the right person — all before a single box of product spoiled? That's not future vision. That's what the Discovery Agent does today.", "Problem/Consequence"),
+    interactionPrompt("What if your data could proactively find problems and tell you before anyone asks — how would that change your team's operating model?"),
 
     divider(),
 
@@ -972,6 +1182,10 @@ function module13() {
     expectedBox("Claude queries gold.compliance_readiness filtered by nvwa_applicable=TRUE. Returns: 85% lot capture rate (target 100%), 30% of lettuce records missing trace_complete. Pulls COMP-2025-NVWA for the 5 findings from the last audit and RCL-2025-003 for the recall timeline. Recommends prioritizing lot number capture for perishables."),
 
     divider(),
+
+    tellAnnotation("close", "Two AI capabilities that complete the picture: the Discovery Agent proactively monitors your data products and finds anomalies before anyone asks. The MCP Server lets AI agents like Claude query your real-time Qlik data and documents in a single conversation. Together, they shift your operating model from 'search for problems' to 'problems find you.'"),
+    interactionPrompt("If an AI agent could monitor all 8 of your data products 24/7 and alert you to anomalies — what would you stop doing manually?"),
+    valueChain(["Deploy AI agents that proactively monitor data quality and operational metrics", "combine structured data with document intelligence in natural language conversations", "shift from reactive analytics to proactive, AI-driven operational intelligence"]),
 
     heading("Talking Points", 2),
     talkingPoint("Discovery Agent is proactive AI — it finds anomalies you didn't know to look for"),
