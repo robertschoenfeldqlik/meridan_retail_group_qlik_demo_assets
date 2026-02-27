@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1920, initial-scale=1">
+<title>MCG Supply Chain Operations - Compliance &amp; Recall Readiness</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Inter', 'Segoe UI', Calibri, sans-serif;
+    background: #0D2137;
+    color: #FFFFFF;
+    min-width: 1920px;
+    overflow-x: hidden;
+  }
+  .top-bar {
+    background: #1B2A4A; height: 48px; display: flex; align-items: center;
+    padding: 0 20px; border-bottom: 1px solid #1E3A5C;
+  }
+  .logo { display: flex; align-items: center; gap: 8px; margin-right: 32px; }
+  .logo-mcg {
+    font-weight: 700; font-size: 18px; color: #1B2A4A;
+    background: #E8ECF1; padding: 2px 6px; border-radius: 4px; letter-spacing: 1px;
+  }
+  .logo-q {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 22px; height: 22px; background: #059669; border-radius: 50%;
+    color: #fff; font-weight: 700; font-size: 13px; margin-left: -4px;
+  }
+  .app-name { font-size: 14px; font-weight: 600; color: #E8ECF1; margin-right: 40px; }
+  .sheet-tabs { display: flex; align-items: center; gap: 0; height: 48px; }
+  .sheet-tab {
+    padding: 0 20px; height: 48px; display: flex; align-items: center;
+    font-size: 13px; color: #A8B8CC; cursor: pointer;
+    border-bottom: 3px solid transparent; transition: all 0.2s;
+    text-decoration: none; white-space: nowrap;
+  }
+  .sheet-tab:hover { color: #E8ECF1; background: rgba(13,124,143,0.1); }
+  .sheet-tab.active { color: #FFFFFF; border-bottom-color: #0D7C8F; background: rgba(13,124,143,0.08); }
+  .main-container { display: flex; height: calc(100vh - 48px); }
+  .filter-pane {
+    width: 240px; min-width: 240px; background: #1B2A4A;
+    border-right: 1px solid #1E3A5C; padding: 16px; overflow-y: auto;
+  }
+  .filter-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: #8899AD; margin-bottom: 12px; }
+  .filter-group { margin-bottom: 20px; }
+  .filter-group-label { font-size: 12px; font-weight: 600; color: #C4922E; margin-bottom: 8px; }
+  .filter-item { padding: 6px 10px; font-size: 12px; color: #E8ECF1; border-radius: 4px; cursor: pointer; transition: background 0.15s; }
+  .filter-item:hover { background: #243656; }
+  .filter-item.selected { background: #0D7C8F; color: #fff; }
+  .filter-search {
+    width: 100%; padding: 6px 10px; background: #0D2137; border: 1px solid #1E3A5C;
+    border-radius: 4px; color: #E8ECF1; font-size: 12px; margin-bottom: 6px;
+    outline: none; font-family: inherit;
+  }
+  .filter-search::placeholder { color: #8899AD; }
+  .content { flex: 1; padding: 20px; overflow-y: auto; }
+  .row { display: flex; gap: 16px; margin-bottom: 16px; }
+  .card {
+    background: #1B2A4A; border-radius: 8px; padding: 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2);
+    flex: 1; min-width: 0;
+  }
+  .card:hover { background: #243656; transition: background 0.2s; }
+  .card-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: #C4922E; margin-bottom: 12px; }
+  .kpi-card { border-left: 4px solid #0D7C8F; display: flex; flex-direction: column; justify-content: center; }
+  .kpi-value { font-size: 36px; font-weight: 700; color: #FFFFFF; line-height: 1.1; margin-bottom: 4px; }
+  .kpi-subtitle { font-size: 12px; color: #A8B8CC; line-height: 1.3; }
+  .kpi-value.red { color: #DC2626; }
+  .kpi-value.green { color: #059669; }
+  .kpi-value.amber { color: #C4922E; }
+  .data-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .data-table th {
+    text-align: left; padding: 8px 10px; color: #8899AD; font-weight: 600;
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;
+    border-bottom: 1px solid #1E3A5C;
+  }
+  .data-table td { padding: 8px 10px; color: #E8ECF1; border-bottom: 1px solid rgba(30,58,92,0.5); }
+  .text-red { color: #DC2626; }
+  .text-green { color: #059669; }
+  .text-amber { color: #C4922E; }
+  .badge {
+    display: inline-block; padding: 2px 8px; border-radius: 10px;
+    font-size: 10px; font-weight: 600;
+  }
+  .badge-green { background: rgba(5,150,105,0.15); color: #059669; }
+  .badge-amber { background: rgba(196,146,46,0.15); color: #C4922E; }
+  .badge-red { background: rgba(220,38,38,0.15); color: #DC2626; }
+  .risk-high {
+    background: #DC2626; color: #fff; padding: 2px 10px; border-radius: 10px;
+    font-size: 10px; font-weight: 700; letter-spacing: 0.5px;
+  }
+  .risk-medium {
+    background: #C4922E; color: #fff; padding: 2px 10px; border-radius: 10px;
+    font-size: 10px; font-weight: 700; letter-spacing: 0.5px;
+  }
+  .risk-low {
+    background: rgba(5,150,105,0.2); color: #059669; padding: 2px 10px; border-radius: 10px;
+    font-size: 10px; font-weight: 700; letter-spacing: 0.5px;
+  }
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <div class="logo"><span class="logo-mcg">MCG<span class="logo-q">Q</span></span></div>
+  <div class="app-name">MCG Supply Chain Operations</div>
+  <div class="sheet-tabs">
+    <a class="sheet-tab" href="app1-sheet1-inventory-health.html">Inventory Health Overview</a>
+    <a class="sheet-tab" href="app1-sheet2-cold-chain.html">Cold Chain Monitoring</a>
+    <a class="sheet-tab" href="app1-sheet3-product-quality.html">Product Data Quality</a>
+    <a class="sheet-tab active" href="app1-sheet4-compliance.html">Compliance &amp; Recall Readiness</a>
+    <a class="sheet-tab" href="app1-sheet5-cost-impact.html">Executive Cost Impact</a>
+  </div>
+</div>
+
+<div class="main-container">
+  <div class="filter-pane">
+    <div class="filter-title">Filters</div>
+    <div class="filter-group">
+      <div class="filter-group-label">Category</div>
+      <input class="filter-search" placeholder="Search...">
+      <div class="filter-item selected">All Categories</div>
+      <div class="filter-item">Dairy</div>
+      <div class="filter-item">Meat</div>
+      <div class="filter-item">Produce</div>
+      <div class="filter-item">Bakery</div>
+      <div class="filter-item">Seafood</div>
+    </div>
+    <div class="filter-group">
+      <div class="filter-group-label">Distribution Center</div>
+      <input class="filter-search" placeholder="Search...">
+      <div class="filter-item selected">All DCs</div>
+      <div class="filter-item">Rotterdam</div>
+      <div class="filter-item">Munich</div>
+      <div class="filter-item">Atlanta</div>
+      <div class="filter-item">Paris</div>
+    </div>
+    <div class="filter-group">
+      <div class="filter-group-label">NVWA Applicable</div>
+      <input class="filter-search" placeholder="Search...">
+      <div class="filter-item selected">All</div>
+      <div class="filter-item">Yes</div>
+      <div class="filter-item">No</div>
+    </div>
+  </div>
+
+  <div class="content">
+    <!-- Row 1: KPIs -->
+    <div class="row">
+      <div class="card kpi-card" style="border-left-color:#C4922E;">
+        <div class="card-title">Trace-Complete Rate</div>
+        <div class="kpi-value amber">85%</div>
+        <div class="kpi-subtitle">Farm-to-Shelf Traceability (Target: 100%)</div>
+      </div>
+      <div class="card kpi-card" style="border-left-color:#DC2626;">
+        <div class="card-title">Missing Lot Numbers</div>
+        <div class="kpi-value red">2,400</div>
+        <div class="kpi-subtitle">Perishable Items Without Lot ID</div>
+      </div>
+      <div class="card kpi-card">
+        <div class="card-title">NVWA Findings</div>
+        <div class="kpi-value">5</div>
+        <div class="kpi-subtitle">Open Compliance Findings</div>
+      </div>
+    </div>
+
+    <!-- Row 2: Charts -->
+    <div class="row" style="min-height: 300px;">
+      <!-- Recall Readiness by Category: Bar chart -->
+      <div class="card">
+        <div class="card-title">Recall Readiness by Category</div>
+        <svg viewBox="0 0 420 270" width="100%" height="280">
+          <!-- Grid -->
+          <line x1="60" y1="20" x2="400" y2="20" stroke="#1E3A5C" stroke-width="0.3"/>
+          <line x1="60" y1="65" x2="400" y2="65" stroke="#1E3A5C" stroke-width="0.3"/>
+          <line x1="60" y1="110" x2="400" y2="110" stroke="#1E3A5C" stroke-width="0.3"/>
+          <line x1="60" y1="155" x2="400" y2="155" stroke="#1E3A5C" stroke-width="0.3"/>
+          <line x1="60" y1="200" x2="400" y2="200" stroke="#1E3A5C" stroke-width="0.3"/>
+          <line x1="60" y1="230" x2="400" y2="230" stroke="#1E3A5C" stroke-width="1"/>
+          <!-- Y axis: 0%(bottom=230) to 100%(top=20). Range=210px. 1%=2.1px -->
+          <text x="55" y="24" text-anchor="end" fill="#8899AD" font-size="9" font-family="Inter, sans-serif">100%</text>
+          <text x="55" y="69" text-anchor="end" fill="#8899AD" font-size="9" font-family="Inter, sans-serif">75%</text>
+          <text x="55" y="114" text-anchor="end" fill="#8899AD" font-size="9" font-family="Inter, sans-serif">50%</text>
+          <text x="55" y="159" text-anchor="end" fill="#8899AD" font-size="9" font-family="Inter, sans-serif">25%</text>
+          <text x="55" y="234" text-anchor="end" fill="#8899AD" font-size="9" font-family="Inter, sans-serif">0%</text>
+          <!-- Target line at 90% -->
+          <line x1="60" y1="41" x2="400" y2="41" stroke="#059669" stroke-width="1" stroke-dasharray="5,3" opacity="0.6"/>
+          <text x="402" y="44" fill="#059669" font-size="8" font-family="Inter, sans-serif">90% target</text>
+          <!-- Dairy: 92% => h=193.2, y=230-193.2=36.8 -->
+          <rect x="100" y="37" width="50" height="193" rx="3" fill="#0D7C8F" opacity="0.9"/>
+          <text x="125" y="31" text-anchor="middle" fill="#059669" font-size="11" font-weight="600" font-family="Inter, sans-serif">92%</text>
+          <text x="125" y="248" text-anchor="middle" fill="#E8ECF1" font-size="10" font-family="Inter, sans-serif">Dairy</text>
+          <!-- Meat: 88% => h=184.8, y=45.2 -->
+          <rect x="175" y="45" width="50" height="185" rx="3" fill="#0D7C8F" opacity="0.9"/>
+          <text x="200" y="39" text-anchor="middle" fill="#E8ECF1" font-size="11" font-weight="600" font-family="Inter, sans-serif">88%</text>
+          <text x="200" y="248" text-anchor="middle" fill="#E8ECF1" font-size="10" font-family="Inter, sans-serif">Meat</text>
+          <!-- Produce: 71% => h=149.1, y=80.9 (RED - below target) -->
+          <rect x="250" y="81" width="50" height="149" rx="3" fill="#DC2626" opacity="0.9"/>
+          <text x="275" y="75" text-anchor="middle" fill="#DC2626" font-size="11" font-weight="600" font-family="Inter, sans-serif">71%</text>
+          <text x="275" y="248" text-anchor="middle" fill="#E8ECF1" font-size="10" font-family="Inter, sans-serif">Produce</text>
+          <!-- Bakery: 83% => h=174.3, y=55.7 -->
+          <rect x="325" y="56" width="50" height="174" rx="3" fill="#C4922E" opacity="0.9"/>
+          <text x="350" y="50" text-anchor="middle" fill="#C4922E" font-size="11" font-weight="600" font-family="Inter, sans-serif">83%</text>
+          <text x="350" y="248" text-anchor="middle" fill="#E8ECF1" font-size="10" font-family="Inter, sans-serif">Bakery</text>
+          <!-- Axis -->
+          <line x1="59" y1="20" x2="59" y2="230" stroke="#1E3A5C" stroke-width="1"/>
+        </svg>
+      </div>
+
+      <!-- Compliance Trend: Line chart -->
+      <div class="card">
+        <div class="card-title">Lot Capture Rate Trend (Monthly)</div>
+        <svg viewBox="0 0 480 270" width="100%" height="280">
+          <!-- Grid -->
+          <line x1="45" y1="20" x2="460" y2="20" stroke="#1E3A5C" stroke-width="0.3"/>
+          <line x1="45" y1="60" x2="460" y2="60" stroke="#1E3A5C" stroke-width="0.3"/>
+          <line x1="45" y1="100" x2="460" y2="100" stroke="#1E3A5C" stroke-width="0.3"/>
+          <line x1="45" y1="140" x2="460" y2="140" stroke="#1E3A5C" stroke-width="0.3"/>
+          <line x1="45" y1="180" x2="460" y2="180" stroke="#1E3A5C" stroke-width="0.3"/>
+          <line x1="45" y1="220" x2="460" y2="220" stroke="#1E3A5C" stroke-width="1"/>
+          <!-- Y axis: 60%(bottom=220) to 100%(top=20). Range=40%=200px. 1%=5px -->
+          <text x="40" y="24" text-anchor="end" fill="#8899AD" font-size="9" font-family="Inter, sans-serif">100%</text>
+          <text x="40" y="64" text-anchor="end" fill="#8899AD" font-size="9" font-family="Inter, sans-serif">92%</text>
+          <text x="40" y="104" text-anchor="end" fill="#8899AD" font-size="9" font-family="Inter, sans-serif">84%</text>
+          <text x="40" y="144" text-anchor="end" fill="#8899AD" font-size="9" font-family="Inter, sans-serif">76%</text>
+          <text x="40" y="184" text-anchor="end" fill="#8899AD" font-size="9" font-family="Inter, sans-serif">68%</text>
+          <text x="40" y="224" text-anchor="end" fill="#8899AD" font-size="9" font-family="Inter, sans-serif">60%</text>
+          <!-- Target line at 95% -->
+          <line x1="45" y1="45" x2="460" y2="45" stroke="#059669" stroke-width="1" stroke-dasharray="5,3" opacity="0.6"/>
+          <text x="462" y="48" fill="#059669" font-size="8" font-family="Inter, sans-serif">95% target</text>
+          <!-- Data: Jan=72, Feb=74, Mar=76, Apr=78, May=80, Jun=82, Jul=84, Aug=86, Sep=88, Oct=90, Nov=91, Dec=93 -->
+          <!-- y = 20 + (100-val)*5 -->
+          <!-- Jan:72 => y=160; Feb:74=>150; Mar:76=>140; Apr:78=>130; May:80=>120; Jun:82=>110 -->
+          <!-- Jul:84=>100; Aug:86=>90; Sep:88=>80; Oct:90=>70; Nov:91=>65; Dec:93=>55 -->
+          <polyline points="60,160 97,150 134,140 171,130 208,120 245,110 282,100 319,90 356,80 393,70 430,65 452,55" fill="none" stroke="#10CFC9" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+          <polygon points="60,160 97,150 134,140 171,130 208,120 245,110 282,100 319,90 356,80 393,70 430,65 452,55 452,220 60,220" fill="#10CFC9" opacity="0.08"/>
+          <!-- Dots -->
+          <circle cx="60" cy="160" r="3" fill="#10CFC9"/>
+          <circle cx="97" cy="150" r="3" fill="#10CFC9"/>
+          <circle cx="134" cy="140" r="3" fill="#10CFC9"/>
+          <circle cx="171" cy="130" r="3" fill="#10CFC9"/>
+          <circle cx="208" cy="120" r="3" fill="#10CFC9"/>
+          <circle cx="245" cy="110" r="3" fill="#10CFC9"/>
+          <circle cx="282" cy="100" r="3" fill="#10CFC9"/>
+          <circle cx="319" cy="90" r="3" fill="#10CFC9"/>
+          <circle cx="356" cy="80" r="3" fill="#10CFC9"/>
+          <circle cx="393" cy="70" r="3" fill="#10CFC9"/>
+          <circle cx="430" cy="65" r="3" fill="#10CFC9"/>
+          <circle cx="452" cy="55" r="4" fill="#10CFC9" stroke="#10CFC9" stroke-width="2" opacity="0.7"/>
+          <!-- Value annotations -->
+          <text x="60" y="153" text-anchor="middle" fill="#A8B8CC" font-size="8" font-family="Inter, sans-serif">72%</text>
+          <text x="452" y="48" text-anchor="middle" fill="#10CFC9" font-size="10" font-weight="600" font-family="Inter, sans-serif">93%</text>
+          <!-- X axis labels -->
+          <text x="60" y="236" text-anchor="middle" fill="#8899AD" font-size="8" font-family="Inter, sans-serif">Jan</text>
+          <text x="134" y="236" text-anchor="middle" fill="#8899AD" font-size="8" font-family="Inter, sans-serif">Mar</text>
+          <text x="208" y="236" text-anchor="middle" fill="#8899AD" font-size="8" font-family="Inter, sans-serif">May</text>
+          <text x="282" y="236" text-anchor="middle" fill="#8899AD" font-size="8" font-family="Inter, sans-serif">Jul</text>
+          <text x="356" y="236" text-anchor="middle" fill="#8899AD" font-size="8" font-family="Inter, sans-serif">Sep</text>
+          <text x="430" y="236" text-anchor="middle" fill="#8899AD" font-size="8" font-family="Inter, sans-serif">Nov</text>
+          <text x="452" y="236" text-anchor="middle" fill="#8899AD" font-size="8" font-family="Inter, sans-serif">Dec</text>
+        </svg>
+      </div>
+    </div>
+
+    <!-- Row 3: NVWA Risk Table -->
+    <div class="row">
+      <div class="card">
+        <div class="card-title">NVWA Compliance Risk Assessment</div>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Product</th>
+              <th>Category</th>
+              <th>DC</th>
+              <th>Lot Status</th>
+              <th>Trace %</th>
+              <th>Risk Level</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="background: rgba(220,38,38,0.06);">
+              <td style="font-weight:500;">Organic Baby Spinach 200g</td>
+              <td>Produce</td>
+              <td>Rotterdam</td>
+              <td class="text-red">Missing</td>
+              <td class="text-red" style="font-weight:600;">42%</td>
+              <td><span class="risk-high">HIGH</span></td>
+            </tr>
+            <tr style="background: rgba(220,38,38,0.06);">
+              <td style="font-weight:500;">Free-Range Chicken Thigh 1kg</td>
+              <td>Meat</td>
+              <td>Rotterdam</td>
+              <td class="text-red">Partial</td>
+              <td class="text-red" style="font-weight:600;">58%</td>
+              <td><span class="risk-high">HIGH</span></td>
+            </tr>
+            <tr>
+              <td style="font-weight:500;">Whole Milk 1L Organic</td>
+              <td>Dairy</td>
+              <td>Munich</td>
+              <td class="text-amber">Partial</td>
+              <td class="text-amber">78%</td>
+              <td><span class="risk-medium">MEDIUM</span></td>
+            </tr>
+            <tr>
+              <td style="font-weight:500;">Sourdough Bread 800g</td>
+              <td>Bakery</td>
+              <td>Paris</td>
+              <td class="text-amber">Partial</td>
+              <td class="text-amber">81%</td>
+              <td><span class="risk-medium">MEDIUM</span></td>
+            </tr>
+            <tr>
+              <td style="font-weight:500;">Dutch Gouda Cheese 500g</td>
+              <td>Dairy</td>
+              <td>Rotterdam</td>
+              <td class="text-green">Complete</td>
+              <td class="text-green">96%</td>
+              <td><span class="risk-low">LOW</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

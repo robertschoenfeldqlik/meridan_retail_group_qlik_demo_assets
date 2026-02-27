@@ -1,0 +1,185 @@
+# =============================================================================
+# MCG Demo — Simulator Services
+# =============================================================================
+# Run alongside the Kafka stack (infrastructure/kafka/docker-compose.yml)
+# or standalone with external infrastructure.
+#
+# Usage (with Kafka stack):
+#   cd infrastructure
+#   docker compose -f kafka/docker-compose.yml -f docker-compose.simulators.yml up -d
+#
+# Usage (standalone — simulators only, external Kafka/PG):
+#   docker compose -f docker-compose.simulators.yml up -d
+#
+# Usage (full stack — everything in one command):
+#   docker compose -f docker-compose.full-stack.yml up -d
+#
+# Network connectivity:
+#   - All simulator containers can reach each other via service names
+#   - Kafka IoT simulator joins the Kafka network to reach the broker
+#   - All containers can reach host services via host.docker.internal
+#   - PostgreSQL port 5432 is exposed to the host for Qlik Data Gateway
+#   - Kafka ports 9092/29092 are exposed via the Kafka stack
+#
+# Environment variables can be set in .env or passed directly.
+# =============================================================================
+
+version: "3.8"
+
+services:
+
+  # ---------------------------------------------------------------------------
+  # PostgreSQL — WMS Database for CDC simulation
+  # ---------------------------------------------------------------------------
+  # Exposes port 5432 to the host so Qlik Data Movement Gateway can connect.
+  # Also accessible from other containers via hostname "postgres" on mcg-sim-net.
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: mcg-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-mcg_wms}
+      POSTGRES_USER: ${POSTGRES_USER:-mcg_admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mcg_demo_2025}
+      # Enable logical replication for Qlik CDC
+      POSTGRES_INITDB_ARGS: "--data-checksums"
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - mcg-sim-net
+      - mcg-kafka-net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-mcg_admin} -d ${POSTGRES_DB:-mcg_wms}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    command: >
+      postgres
+        -c wal_level=logical
+        -c max_replication_slots=4
+        -c max_wal_senders=4
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Seed Data — One-shot container to populate PostgreSQL with demo data
+  # ---------------------------------------------------------------------------
+  seed-data:
+    build:
+      context: ../../simulators
+      dockerfile: Dockerfile
+    container_name: mcg-seed-data
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: >
+      python seed_data.py
+        --host postgres
+        --port 5432
+        --db ${POSTGRES_DB:-mcg_wms}
+        --user ${POSTGRES_USER:-mcg_admin}
+        --password ${POSTGRES_PASSWORD:-mcg_demo_2025}
+    networks:
+      - mcg-sim-net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: "no"
+
+  # ---------------------------------------------------------------------------
+  # PostgreSQL Simulator — Continuous WMS event generation
+  # ---------------------------------------------------------------------------
+  # Generates realistic inventory movements, warehouse events, and shipments.
+  # Connects to the PostgreSQL container via the mcg-sim-net network.
+  # Can also connect to a host-based PostgreSQL via host.docker.internal.
+  # ---------------------------------------------------------------------------
+  postgres-simulator:
+    build:
+      context: ../../simulators
+      dockerfile: Dockerfile
+    container_name: mcg-postgres-simulator
+    depends_on:
+      seed-data:
+        condition: service_completed_successfully
+    command: >
+      python postgres_simulator.py
+        --host ${PG_SIM_HOST:-postgres}
+        --port ${PG_SIM_PORT:-5432}
+        --db ${POSTGRES_DB:-mcg_wms}
+        --user ${POSTGRES_USER:-mcg_admin}
+        --password ${POSTGRES_PASSWORD:-mcg_demo_2025}
+    networks:
+      - mcg-sim-net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Kafka IoT Simulator — Cold-chain sensor + carrier event production
+  # ---------------------------------------------------------------------------
+  # Produces messages to mcg.iot.cold-chain and mcg.iot.carrier-events topics.
+  # Joins BOTH networks:
+  #   - mcg-kafka-net: to reach the Kafka broker container (kafka:9092)
+  #   - mcg-sim-net:   to be reachable by other simulator containers
+  # Can also connect to a host-based Kafka via host.docker.internal:29092.
+  # ---------------------------------------------------------------------------
+  kafka-iot-simulator:
+    build:
+      context: ../../simulators
+      dockerfile: Dockerfile
+    container_name: mcg-kafka-iot-simulator
+    command: >
+      python kafka_iot_simulator.py
+        --bootstrap-servers ${KAFKA_BOOTSTRAP:-kafka:9092}
+    networks:
+      - mcg-sim-net
+      - mcg-kafka-net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Salesforce Simulator — CRM data generation (requires credentials)
+  # ---------------------------------------------------------------------------
+  # This simulator connects to Salesforce API (external) and requires valid
+  # credentials. It won't start without them.
+  #
+  # To start with Salesforce simulator:
+  #   SF_USERNAME=you@dev.org SF_PASSWORD=pass SF_SECURITY_TOKEN=token \
+  #   docker compose --profile salesforce up -d
+  # ---------------------------------------------------------------------------
+  salesforce-simulator:
+    build:
+      context: ../../simulators
+      dockerfile: Dockerfile
+    container_name: mcg-salesforce-simulator
+    command: >
+      python salesforce_simulator.py
+        --username ${SF_USERNAME}
+        --password ${SF_PASSWORD}
+        --token ${SF_SECURITY_TOKEN}
+    environment:
+      SF_USERNAME: ${SF_USERNAME:-}
+      SF_PASSWORD: ${SF_PASSWORD:-}
+      SF_SECURITY_TOKEN: ${SF_SECURITY_TOKEN:-}
+    networks:
+      - mcg-sim-net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    profiles:
+      - salesforce
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+    driver: local
+
+networks:
+  mcg-sim-net:
+    driver: bridge
+    name: mcg-sim-net
+  mcg-kafka-net:
+    external: true
+    name: mcg-kafka-net

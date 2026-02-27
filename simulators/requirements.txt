@@ -1,0 +1,4 @@
+psycopg2-binary>=2.9.9
+confluent-kafka>=2.3.0
+simple-salesforce>=1.12.5
+faker>=22.0.0

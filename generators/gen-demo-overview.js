@@ -6,26 +6,20 @@ const path = require("path");
 
 // ─── Qlik brand palette (from Qlik Powerpoint template theme1.xml) ───
 const C = {
-  // Primary Qlik colors
-  qlikBlue: "19416C",    // dk2 — primary dark blue
-  qlikGreen: "009845",   // accent1 — Qlik green
-  qlikTeal: "006580",    // accent3 — teal
-  qlikCyan: "10CFC9",    // accent4 — bright cyan
-  qlikPurple: "93579C",  // accent5 — purple
-  qlikGray: "A9B3B6",    // accent6 — medium gray
-  // Text & backgrounds
-  darkText: "545659",    // dk1 — main dark text
-  white: "FFFFFF",       // lt1
-  lightBg: "F6F7F8",     // lt2 — light background
-  // Extended palette
+  qlikBlue: "19416C",
+  qlikGreen: "009845",
+  qlikTeal: "006580",
+  qlikCyan: "10CFC9",
+  qlikLightGreen: "4CB393",
+  qlikGray: "A9B3B6",
+  darkText: "454659",
+  white: "FFFFFF",
+  lightBg: "F6F7F8",
   medGray: "6B7280",
-  red: "DC2626",
-  lightGreen: "D1FAE5",
-  lightRed: "FEE2E2",
-  lightCyan: "E0F8F7",
   lightBlue: "E3EAF3",
-  lightPurple: "EDE9FE",
-  lightGold: "FEF3C7",
+  lightCyan: "E0F8F7",
+  lightTeal: "E0F2F5",
+  lightGreen: "E0F5EA",
 };
 
 // ─── Asset paths ───
@@ -200,7 +194,7 @@ const stories = [
   { label: "Integration", color: C.qlikTeal },
   { label: "Governance", color: C.qlikGreen },
   { label: "Analytics", color: C.qlikBlue },
-  { label: "AI", color: C.qlikPurple },
+  { label: "AI", color: C.qlikLightGreen },
 ];
 stories.forEach((s, i) => {
   const x = 0.5 + i * 2.5;
@@ -236,7 +230,7 @@ const agendaItems = [
     components: "Qlik Sense • Table Recipes • Data Flows • Qlik Answers • Alerting • Reporting • Automations",
   },
   {
-    num: "4", title: "The AI Story", color: C.qlikPurple,
+    num: "4", title: "The AI Story", color: C.qlikLightGreen,
     desc: "Qlik Predict (AutoML), Qlik Answers (agentic AI), Discovery Agent, MCP Server, Analytics Engine, NLI, Knowledge Mart, Agentic Analytics",
     components: "Predict • Qlik Answers • Discovery Agent • MCP • Analytics Engine • NLI • Knowledge Mart • Agentic Analytics",
   },
@@ -423,7 +417,7 @@ const rtRows = routes.map((r, i) => [
   { text: r.num, options: { fontSize: 10, color: C.darkText, fill: { color: i % 2 === 0 ? C.lightBg : C.white }, align: "center" } },
   { text: r.name, options: { fontSize: 10, color: C.qlikBlue, fill: { color: i % 2 === 0 ? C.lightBg : C.white }, bold: true } },
   { text: r.desc, options: { fontSize: 10, color: C.darkText, fill: { color: i % 2 === 0 ? C.lightBg : C.white } } },
-  { text: r.nightmare, options: { fontSize: 10, color: C.red, fill: { color: i % 2 === 0 ? C.lightBg : C.white }, align: "center", bold: true } },
+  { text: r.nightmare, options: { fontSize: 10, color: C.qlikTeal, fill: { color: i % 2 === 0 ? C.lightBg : C.white }, align: "center", bold: true } },
 ]);
 
 slide.addTable([...rtHeaders, ...rtRows], {
@@ -431,7 +425,7 @@ slide.addTable([...rtHeaders, ...rtRows], {
   fontFace: FONT,
   border: { type: "solid", pt: 0.5, color: "D1D5DB" },
   colW: [0.6, 3.2, 6.0, 2.5],
-  rowH: [0.35, ...Array(8).fill(0.45)],
+  rowH: [0.38, ...Array(8).fill(0.45)],
 });
 
 slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
@@ -668,10 +662,10 @@ const campHeaders = [
 ];
 const campRows = campaigns.map((c, i) => [
   { text: c.name, options: { fontSize: 10, color: C.qlikBlue, fill: { color: i % 2 === 0 ? C.lightBg : C.white }, bold: true } },
-  { text: c.source, options: { fontSize: 9, color: C.darkText, fill: { color: i % 2 === 0 ? C.lightBg : C.white } } },
-  { text: c.filter, options: { fontSize: 9, color: C.darkText, fill: { color: i % 2 === 0 ? C.lightBg : C.white } } },
+  { text: c.source, options: { fontSize: 10, color: C.darkText, fill: { color: i % 2 === 0 ? C.lightBg : C.white } } },
+  { text: c.filter, options: { fontSize: 10, color: C.darkText, fill: { color: i % 2 === 0 ? C.lightBg : C.white } } },
   { text: c.owner, options: { fontSize: 10, color: C.darkText, fill: { color: i % 2 === 0 ? C.lightBg : C.white } } },
-  { text: c.nightmare, options: { fontSize: 10, color: C.red, fill: { color: i % 2 === 0 ? C.lightBg : C.white }, align: "center", bold: true } },
+  { text: c.nightmare, options: { fontSize: 10, color: C.qlikTeal, fill: { color: i % 2 === 0 ? C.lightBg : C.white }, align: "center", bold: true } },
 ]);
 
 slide.addTable([...campHeaders, ...campRows], {
@@ -817,7 +811,7 @@ const appHeaders = [
 const appRows = apps.map((a, i) => [
   { text: a.name, options: { fontSize: 11, color: C.qlikBlue, fill: { color: i % 2 === 0 ? C.lightBg : C.white }, bold: true } },
   { text: a.focus, options: { fontSize: 10, color: C.darkText, fill: { color: i % 2 === 0 ? C.lightBg : C.white } } },
-  { text: a.nightmare, options: { fontSize: 10, color: C.red, fill: { color: i % 2 === 0 ? C.lightBg : C.white }, align: "center", bold: true } },
+  { text: a.nightmare, options: { fontSize: 10, color: C.qlikTeal, fill: { color: i % 2 === 0 ? C.lightBg : C.white }, align: "center", bold: true } },
 ]);
 
 slide.addTable([...appHeaders, ...appRows], {
@@ -1027,7 +1021,7 @@ yPos = recommendBox(slide, "Alerting + Reporting", [
 sectionSlide("4", "The AI Story", "From reactive dashboards to proactive, conversational, agentic intelligence", C.qlikBlue);
 
 // ─── Slide: Qlik Predict ───
-slide = contentSlide("Qlik Predict — AutoML for Supply Chain", C.qlikPurple);
+slide = contentSlide("Qlik Predict — AutoML for Supply Chain", C.qlikLightGreen);
 
 slide.addText("Train, deploy, and share ML models without code — predictions served via API", {
   x: 0.5, y: 0.85, w: 12, h: 0.4,
@@ -1037,7 +1031,7 @@ slide.addText("Train, deploy, and share ML models without code — predictions s
 // Two model cards
 const models = [
   {
-    name: "Spoilage Risk Predictor", type: "Regression", color: C.red,
+    name: "Spoilage Risk Predictor", type: "Regression", color: C.qlikTeal,
     source: "gold.cold_chain_compliance",
     target: "spoilage_risk_score",
     features: "max_temp_celsius, exceedance_minutes, humidity_avg, product_category, route_id, season",
@@ -1089,7 +1083,7 @@ models.forEach((m, i) => {
 });
 
 // ─── Slide: Qlik Answers — Document Intelligence ───
-slide = contentSlide("Qlik Answers — Document Intelligence & Knowledge Base", C.qlikPurple);
+slide = contentSlide("Qlik Answers — Document Intelligence & Knowledge Base", C.qlikLightGreen);
 
 slide.addText("Agentic AI that answers questions from 25 MCG operational documents with citations and reasoning", {
   x: 0.5, y: 0.85, w: 12, h: 0.4,
@@ -1100,11 +1094,11 @@ slide.addText("Agentic AI that answers questions from 25 MCG operational documen
 slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
   x: 0.5, y: 1.4, w: 5.5, h: 2.5,
   fill: { color: C.lightBg }, rectRadius: 0.12,
-  line: { color: C.qlikPurple, width: 2 },
+  line: { color: C.qlikLightGreen, width: 2 },
 });
 slide.addText("Knowledge Base: 25 Documents", {
   x: 0.7, y: 1.5, w: 5.1, h: 0.45,
-  fontSize: 15, color: C.qlikPurple, fontFace: FONT, bold: true,
+  fontSize: 15, color: C.qlikLightGreen, fontFace: FONT, bold: true,
 });
 const docTypes = [
   "5 SOPs (warehouse, cold chain, returns, ...)",
@@ -1117,7 +1111,7 @@ const docTypes = [
 ];
 docTypes.forEach((doc, i) => {
   slide.addText(`▸  ${doc}`, {
-    x: 0.7, y: 2.0 + i * 0.27, w: 5.1, h: 0.25,
+    x: 0.7, y: 2.0 + i * 0.27, w: 5.1, h: 0.27,
     fontSize: 10, color: C.darkText, fontFace: FONT,
   });
 });
@@ -1153,25 +1147,25 @@ answersScenarios.forEach((s, i) => {
 // Knowledge Mart callout
 slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
   x: 0.5, y: 4.2, w: 12.3, h: 0.7,
-  fill: { color: C.lightPurple }, rectRadius: 0.08,
+  fill: { color: C.lightGreen }, rectRadius: 0.08,
 });
 slide.addText("Knowledge Mart [NEW]: Automate the RAG pipeline — structured-to-document transformation, vectorization, and incremental loading to vector stores. Keeps Qlik Answers grounded in fresh data. GA July 2025.", {
   x: 0.8, y: 4.25, w: 11.8, h: 0.6,
-  fontSize: 11, color: C.qlikPurple, fontFace: FONT,
+  fontSize: 11, color: C.qlikLightGreen, fontFace: FONT,
 });
 
 // ─── Slide: Discovery Agent + MCP ───
-slide = contentSlide("Discovery Agent & MCP Server", C.qlikPurple);
+slide = contentSlide("Discovery Agent & MCP Server", C.qlikLightGreen);
 
 // Left: Discovery Agent
 slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
   x: 0.5, y: 1.1, w: 6.0, h: 3.8,
   fill: { color: C.lightBg }, rectRadius: 0.12,
-  line: { color: C.qlikPurple, width: 2 },
+  line: { color: C.qlikLightGreen, width: 2 },
 });
 slide.addText("Discovery Agent", {
   x: 0.7, y: 1.2, w: 5.5, h: 0.5,
-  fontSize: 18, color: C.qlikPurple, fontFace: FONT, bold: true,
+  fontSize: 18, color: C.qlikLightGreen, fontFace: FONT, bold: true,
 });
 slide.addText("Proactive AI that monitors data products for anomalies", {
   x: 0.7, y: 1.7, w: 5.5, h: 0.35,
@@ -1226,38 +1220,38 @@ mcpItems.forEach((item, i) => {
 // Agentic callout
 slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
   x: 0.5, y: 5.2, w: 12.3, h: 0.7,
-  fill: { color: C.lightPurple }, rectRadius: 0.08,
+  fill: { color: C.lightGreen }, rectRadius: 0.08,
 });
 slide.addText("Agentic Analytics [GA Feb 2026]: Unified conversational interface combining structured analytics (Qlik Sense) + unstructured documents (Qlik Answers) + LLM reasoning. A single AI assistant that can query data, read documents, and reason across both.", {
   x: 0.8, y: 5.25, w: 11.8, h: 0.6,
-  fontSize: 11, color: C.qlikPurple, fontFace: FONT,
+  fontSize: 11, color: C.qlikLightGreen, fontFace: FONT,
 });
 
 // ─── Slide: AI — What to Show ───
-slide = contentSlide("AI Story — What to Show in the Demo", C.qlikPurple);
+slide = contentSlide("AI Story — What to Show in the Demo", C.qlikLightGreen);
 
 yPos = 1.1;
 yPos = recommendBox(slide, "Qlik Predict Live Demo", [
   "Open Spoilage Risk experiment → show training report, feature importance (temperature is #1 driver)",
   "Run a prediction on a live shipment: São Paulo→Buenos Aires, 32°C outside temp, Correios carrier → 87% spoilage risk",
   "Show prediction API endpoint → demonstrate external system consuming predictions",
-], yPos, C.lightPurple);
+], yPos, C.lightGreen);
 
 yPos = recommendBox(slide, "Qlik Answers Conversation", [
   "Ask: \"What happened at Rotterdam DC in September?\" → Answers pulls from INC-2025-04872",
   "Follow up: \"What was the root cause?\" → TLS certificate expired, batch job failed silently",
   "Ask: \"What does Project CLARITY propose to fix this?\" → cross-document reasoning",
-], yPos, C.lightPurple);
+], yPos, C.lightGreen);
 
 yPos = recommendBox(slide, "Discovery Agent Scenario", [
   "Show Discovery Agent alert: spoilage rate on GRU-BA route spiked 2.1% → 8.8% after fleet change",
   "Agent links to: cold chain dashboard, TransFrio carrier contract, incident report INC-2025-05102",
-], yPos, C.lightPurple);
+], yPos, C.lightGreen);
 
 yPos = recommendBox(slide, "MCP Server Demo", [
   "In Claude Desktop: \"What is the current inventory accuracy at Rotterdam DC?\"",
   "Claude queries gold.supply_chain_health via MCP → returns: 74% IRA, 847 phantom units, root cause analysis",
-], yPos, C.lightPurple);
+], yPos, C.lightGreen);
 
 
 // ═══════════════════════════════════════════════════
@@ -1265,7 +1259,7 @@ yPos = recommendBox(slide, "MCP Server Demo", [
 // ═══════════════════════════════════════════════════
 sectionSlide("★", "Features to Add to Demo", "Qlik Cloud capabilities not yet in the checklist — recommended additions");
 
-slide = contentSlide("Missing Features — Prioritized Additions", C.red);
+slide = contentSlide("Missing Features — Prioritized Additions", C.qlikBlue);
 
 const missing = [
   { priority: "HIGH", feature: "Lineage + Impact Analysis", story: "Governance", effort: "Low — auto-populated from existing data" },
@@ -1282,14 +1276,14 @@ const missing = [
 
 const mHeaders = [
   [
-    { text: "Priority", options: { bold: true, color: C.white, fill: { color: C.red }, fontSize: 10, align: "center" } },
-    { text: "Feature", options: { bold: true, color: C.white, fill: { color: C.red }, fontSize: 10 } },
-    { text: "Story", options: { bold: true, color: C.white, fill: { color: C.red }, fontSize: 10, align: "center" } },
-    { text: "Effort to Add", options: { bold: true, color: C.white, fill: { color: C.red }, fontSize: 10 } },
+    { text: "Priority", options: { bold: true, color: C.white, fill: { color: C.qlikBlue }, fontSize: 10, align: "center" } },
+    { text: "Feature", options: { bold: true, color: C.white, fill: { color: C.qlikBlue }, fontSize: 10 } },
+    { text: "Story", options: { bold: true, color: C.white, fill: { color: C.qlikBlue }, fontSize: 10, align: "center" } },
+    { text: "Effort to Add", options: { bold: true, color: C.white, fill: { color: C.qlikBlue }, fontSize: 10 } },
   ],
 ];
 const mRows = missing.map((m, i) => {
-  const pColor = m.priority === "HIGH" ? C.red : m.priority === "MED" ? C.qlikGreen : C.qlikGreen;
+  const pColor = m.priority === "HIGH" ? C.qlikTeal : m.priority === "MED" ? C.qlikGreen : C.qlikGreen;
   return [
     { text: m.priority, options: { fontSize: 10, color: pColor, fill: { color: i % 2 === 0 ? C.lightBg : C.white }, bold: true, align: "center" } },
     { text: m.feature, options: { fontSize: 10, color: C.qlikBlue, fill: { color: i % 2 === 0 ? C.lightBg : C.white }, bold: true } },
@@ -1303,7 +1297,7 @@ slide.addTable([...mHeaders, ...mRows], {
   fontFace: FONT,
   border: { type: "solid", pt: 0.5, color: "D1D5DB" },
   colW: [1.3, 4.0, 2.2, 5.2],
-  rowH: [0.32, ...Array(10).fill(0.35)],
+  rowH: [0.38, ...Array(10).fill(0.42)],
 });
 
 // ═══════════════════════════════════════════════════
@@ -1332,8 +1326,8 @@ const closingMetrics = [
   { val: "23", label: "Lakehouse Tables", color: C.qlikTeal },
   { val: "7", label: "Data Products", color: C.qlikGreen },
   { val: "7", label: "Dashboards", color: C.qlikGreen },
-  { val: "2", label: "ML Models", color: C.qlikPurple },
-  { val: "25", label: "KB Documents", color: C.qlikPurple },
+  { val: "2", label: "ML Models", color: C.qlikLightGreen },
+  { val: "25", label: "KB Documents", color: C.qlikLightGreen },
 ];
 closingMetrics.forEach((m, i) => {
   const x = 0.5 + (i % 6) * 2.1;
@@ -1349,7 +1343,7 @@ closingMetrics.forEach((m, i) => {
   });
   slide.addText(m.label, {
     x, y: y + 0.65, w: 1.8, h: 0.35,
-    fontSize: 9, color: C.darkText, fontFace: FONT, align: "center",
+    fontSize: 10, color: C.darkText, fontFace: FONT, align: "center",
   });
 });
 

@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1920, initial-scale=1">
+<title>MCG Supply Chain Operations - Cold Chain Monitoring</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Inter', 'Segoe UI', Calibri, sans-serif;
+    background: #0D2137;
+    color: #FFFFFF;
+    min-width: 1920px;
+    overflow-x: hidden;
+  }
+  .top-bar {
+    background: #1B2A4A;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    border-bottom: 1px solid #1E3A5C;
+  }
+  .logo { display: flex; align-items: center; gap: 8px; margin-right: 32px; }
+  .logo-mcg {
+    font-weight: 700; font-size: 18px; color: #1B2A4A;
+    background: #E8ECF1; padding: 2px 6px; border-radius: 4px; letter-spacing: 1px;
+  }
+  .logo-q {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 22px; height: 22px; background: #059669; border-radius: 50%;
+    color: #fff; font-weight: 700; font-size: 13px; margin-left: -4px;
+  }
+  .app-name { font-size: 14px; font-weight: 600; color: #E8ECF1; margin-right: 40px; }
+  .sheet-tabs { display: flex; align-items: center; gap: 0; height: 48px; }
+  .sheet-tab {
+    padding: 0 20px; height: 48px; display: flex; align-items: center;
+    font-size: 13px; color: #A8B8CC; cursor: pointer;
+    border-bottom: 3px solid transparent; transition: all 0.2s;
+    text-decoration: none; white-space: nowrap;
+  }
+  .sheet-tab:hover { color: #E8ECF1; background: rgba(13,124,143,0.1); }
+  .sheet-tab.active { color: #FFFFFF; border-bottom-color: #0D7C8F; background: rgba(13,124,143,0.08); }
+  .main-container { display: flex; height: calc(100vh - 48px); }
+  .filter-pane {
+    width: 240px; min-width: 240px; background: #1B2A4A;
+    border-right: 1px solid #1E3A5C; padding: 16px; overflow-y: auto;
+  }
+  .filter-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: #8899AD; margin-bottom: 12px; }
+  .filter-group { margin-bottom: 20px; }
+  .filter-group-label { font-size: 12px; font-weight: 600; color: #C4922E; margin-bottom: 8px; }
+  .filter-item { padding: 6px 10px; font-size: 12px; color: #E8ECF1; border-radius: 4px; cursor: pointer; transition: background 0.15s; }
+  .filter-item:hover { background: #243656; }
+  .filter-item.selected { background: #0D7C8F; color: #fff; }
+  .filter-search {
+    width: 100%; padding: 6px 10px; background: #0D2137; border: 1px solid #1E3A5C;
+    border-radius: 4px; color: #E8ECF1; font-size: 12px; margin-bottom: 6px;
+    outline: none; font-family: inherit;
+  }
+  .filter-search::placeholder { color: #8899AD; }
+  .content { flex: 1; padding: 20px; overflow-y: auto; }
+  .row { display: flex; gap: 16px; margin-bottom: 16px; }
+  .card {
+    background: #1B2A4A; border-radius: 8px; padding: 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2);
+    flex: 1; min-width: 0;
+  }
+  .card:hover { background: #243656; transition: background 0.2s; }
+  .card-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: #C4922E; margin-bottom: 12px; }
+  .kpi-card { border-left: 4px solid #0D7C8F; display: flex; flex-direction: column; justify-content: center; }
+  .kpi-value { font-size: 36px; font-weight: 700; color: #FFFFFF; line-height: 1.1; margin-bottom: 4px; }
+  .kpi-subtitle { font-size: 12px; color: #A8B8CC; line-height: 1.3; }
+  .kpi-value.red { color: #DC2626; }
+  .kpi-value.green { color: #059669; }
+  .kpi-value.amber { color: #C4922E; }
+  .kpi-red-bg { border-left-color: #DC2626; background: rgba(220,38,38,0.06) !important; }
+  .data-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .data-table th {
+    text-align: left; padding: 8px 10px; color: #8899AD; font-weight: 600;
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;
+    border-bottom: 1px solid #1E3A5C;
+  }
+  .data-table td { padding: 8px 10px; color: #E8ECF1; border-bottom: 1px solid rgba(30,58,92,0.5); }
+  .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+  .status-dot.green { background: #059669; }
+  .status-dot.red { background: #DC2626; }
+  .text-red { color: #DC2626; }
+  .text-green { color: #059669; }
+  .row-highlight-red { background: rgba(220,38,38,0.08) !important; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+  .pulse { animation: pulse 1.5s ease-in-out infinite; }
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <div class="logo"><span class="logo-mcg">MCG<span class="logo-q">Q</span></span></div>
+  <div class="app-name">MCG Supply Chain Operations</div>
+  <div class="sheet-tabs">
+    <a class="sheet-tab" href="app1-sheet1-inventory-health.html">Inventory Health Overview</a>
+    <a class="sheet-tab active" href="app1-sheet2-cold-chain.html">Cold Chain Monitoring</a>
+    <a class="sheet-tab" href="app1-sheet3-product-quality.html">Product Data Quality</a>
+    <a class="sheet-tab" href="app1-sheet4-compliance.html">Compliance &amp; Recall Readiness</a>
+    <a class="sheet-tab" href="app1-sheet5-cost-impact.html">Executive Cost Impact</a>
+  </div>
+</div>
+
+<div class="main-container">
+  <div class="filter-pane">
+    <div class="filter-title">Filters</div>
+    <div class="filter-group">
+      <div class="filter-group-label">Route</div>
+      <input class="filter-search" placeholder="Search...">
+      <div class="filter-item selected">All Routes</div>
+      <div class="filter-item">GRU-BA (Sao Paulo - Buenos Aires)</div>
+      <div class="filter-item">AMS-FRA (Amsterdam - Frankfurt)</div>
+      <div class="filter-item">ATL-MIA (Atlanta - Miami)</div>
+      <div class="filter-item">SIN-HKG (Singapore - Hong Kong)</div>
+    </div>
+    <div class="filter-group">
+      <div class="filter-group-label">Carrier</div>
+      <input class="filter-search" placeholder="Search...">
+      <div class="filter-item selected">All Carriers</div>
+      <div class="filter-item">TransCold SA</div>
+      <div class="filter-item">Kuehne+Nagel</div>
+      <div class="filter-item">DHL Cold Chain</div>
+      <div class="filter-item">Maersk Reefer</div>
+    </div>
+    <div class="filter-group">
+      <div class="filter-group-label">Product Category</div>
+      <input class="filter-search" placeholder="Search...">
+      <div class="filter-item selected">All Categories</div>
+      <div class="filter-item">Dairy</div>
+      <div class="filter-item">Frozen Meat</div>
+      <div class="filter-item">Pharmaceuticals</div>
+      <div class="filter-item">Fresh Produce</div>
+    </div>
+  </div>
+
+  <div class="content">
+    <!-- Row 1: KPIs -->
+    <div class="row">
+      <div class="card kpi-card kpi-red-bg">
+        <div class="card-title">Active Exceedances</div>
+        <div class="kpi-value red">3</div>
+        <div class="kpi-subtitle">Shipments Above Temperature Threshold</div>
+      </div>
+      <div class="card kpi-card" style="border-left-color:#DC2626;">
+        <div class="card-title">Spoilage Risk</div>
+        <div class="kpi-value red">78%</div>
+        <div class="kpi-subtitle">Highest Active Spoilage Probability (GRU-BA)</div>
+      </div>
+      <div class="card kpi-card">
+        <div class="card-title">Sensor Count</div>
+        <div class="kpi-value">142</div>
+        <div class="kpi-subtitle">Active IoT Sensors</div>
+      </div>
+    </div>
+
+    <!-- Row 2: Charts -->
+    <div class="row" style="min-height: 280px;">
+      <!-- Live Temperature Feed -->
+      <div class="card" style="flex: 1.5;">
+        <div class="card-title">Live Temperature Feed (Last 2 Hours)</div>
+        <svg viewBox="0 0 600 240" width="100%" height="250">
+          <!-- Grid -->
+          <line x1="50" y1="15" x2="580" y2="15" stroke="#1E3A5C" stroke-width="0.5"/>
+          <line x1="50" y1="45" x2="580" y2="45" stroke="#1E3A5C" stroke-width="0.5"/>
+          <line x1="50" y1="75" x2="580" y2="75" stroke="#1E3A5C" stroke-width="0.5"/>
+          <line x1="50" y1="105" x2="580" y2="105" stroke="#1E3A5C" stroke-width="0.5"/>
+          <line x1="50" y1="135" x2="580" y2="135" stroke="#1E3A5C" stroke-width="0.5"/>
+          <line x1="50" y1="165" x2="580" y2="165" stroke="#1E3A5C" stroke-width="0.5"/>
+          <line x1="50" y1="195" x2="580" y2="195" stroke="#1E3A5C" stroke-width="0.5"/>
+          <line x1="50" y1="225" x2="580" y2="225" stroke="#1E3A5C" stroke-width="1"/>
+          <!-- Y axis: 14C(top=15) to -2C(bottom=225). Range=16C, 225-15=210px. 1C=13.125px -->
+          <!-- 8C threshold: y = 15 + (14-8)*13.125 = 15+78.75 = 93.75 -->
+          <text x="45" y="19" text-anchor="end" fill="#8899AD" font-size="9" font-family="Inter, sans-serif">14°C</text>
+          <text x="45" y="49" text-anchor="end" fill="#8899AD" font-size="9" font-family="Inter, sans-serif">12°C</text>
+          <text x="45" y="79" text-anchor="end" fill="#8899AD" font-size="9" font-family="Inter, sans-serif">10°C</text>
+          <text x="45" y="98" text-anchor="end" fill="#DC2626" font-size="9" font-weight="600" font-family="Inter, sans-serif">8°C</text>
+          <text x="45" y="139" text-anchor="end" fill="#8899AD" font-size="9" font-family="Inter, sans-serif">6°C</text>
+          <text x="45" y="169" text-anchor="end" fill="#8899AD" font-size="9" font-family="Inter, sans-serif">4°C</text>
+          <text x="45" y="199" text-anchor="end" fill="#8899AD" font-size="9" font-family="Inter, sans-serif">2°C</text>
+          <text x="45" y="229" text-anchor="end" fill="#8899AD" font-size="9" font-family="Inter, sans-serif">-2°C</text>
+          <!-- Threshold line at 8C -->
+          <line x1="50" y1="94" x2="580" y2="94" stroke="#DC2626" stroke-width="1.5" stroke-dasharray="6,4"/>
+          <text x="583" y="97" fill="#DC2626" font-size="8" font-family="Inter, sans-serif">LIMIT</text>
+          <!-- X axis time labels -->
+          <text x="80" y="238" text-anchor="middle" fill="#8899AD" font-size="8" font-family="Inter, sans-serif">14:00</text>
+          <text x="185" y="238" text-anchor="middle" fill="#8899AD" font-size="8" font-family="Inter, sans-serif">14:30</text>
+          <text x="290" y="238" text-anchor="middle" fill="#8899AD" font-size="8" font-family="Inter, sans-serif">15:00</text>
+          <text x="395" y="238" text-anchor="middle" fill="#8899AD" font-size="8" font-family="Inter, sans-serif">15:30</text>
+          <text x="500" y="238" text-anchor="middle" fill="#8899AD" font-size="8" font-family="Inter, sans-serif">16:00</text>
+          <!-- Sensor 1: SENS-GRU-047 (ABOVE threshold) - starts normal, rises above 8C -->
+          <!-- Values: 5, 5.5, 6, 7, 8.5, 9.5, 10.5, 11, 11.5, 12, 12.5 -->
+          <!-- y = 15 + (14 - val)*13.125 -->
+          <!-- 5:133, 5.5:127, 6:120, 7:107, 8.5:87, 9.5:74, 10.5:61, 11:54, 11.5:48, 12:41, 12.5:34 -->
+          <polyline points="65,133 118,127 171,120 224,107 277,87 330,74 383,61 436,54 489,48 530,41 560,34" fill="none" stroke="#DC2626" stroke-width="2" stroke-linejoin="round"/>
+          <circle cx="560" cy="34" r="4" fill="#DC2626" class="pulse"/>
+          <text x="560" y="27" text-anchor="middle" fill="#DC2626" font-size="8" font-weight="600" font-family="Inter, sans-serif">SENS-GRU-047</text>
+          <!-- Sensor 2: SENS-AMS-012 (normal, 3-5C range) -->
+          <!-- Values: 4, 3.5, 4.2, 4.8, 3.8, 4.5, 5, 4.2, 3.8, 4.1, 4.5 -->
+          <!-- y: 4:146, 3.5:152, 4.2:143, 4.8:134, 3.8:149, 4.5:137, 5:133, 4.2:143, 3.8:149, 4.1:144, 4.5:137 -->
+          <polyline points="65,146 118,152 171,143 224,134 277,149 330,137 383,133 436,143 489,149 530,144 560,137" fill="none" stroke="#0D7C8F" stroke-width="2" stroke-linejoin="round"/>
+          <circle cx="560" cy="137" r="3" fill="#0D7C8F"/>
+          <text x="560" y="130" text-anchor="middle" fill="#0D7C8F" font-size="8" font-family="Inter, sans-serif">SENS-AMS-012</text>
+          <!-- Sensor 3: SENS-ATL-089 (normal, 2-4C range) -->
+          <!-- Values: 3, 2.5, 3.2, 3.8, 2.8, 3.5, 4, 3.2, 2.8, 3.1, 3.5 -->
+          <!-- y: 3:159, 2.5:166, 3.2:156, 3.8:149, 2.8:162, 3.5:152, 4:146, 3.2:156, 2.8:162, 3.1:157, 3.5:152 -->
+          <polyline points="65,159 118,166 171,156 224,149 277,162 330,152 383,146 436,156 489,162 530,157 560,152" fill="none" stroke="#10CFC9" stroke-width="2" stroke-linejoin="round"/>
+          <circle cx="560" cy="152" r="3" fill="#10CFC9"/>
+          <text x="560" y="162" text-anchor="middle" fill="#10CFC9" font-size="8" font-family="Inter, sans-serif">SENS-ATL-089</text>
+          <!-- Legend -->
+          <rect x="60" y="4" width="8" height="3" rx="1" fill="#DC2626"/>
+          <text x="72" y="8" fill="#E8ECF1" font-size="7" font-family="Inter, sans-serif">Exceedance</text>
+          <rect x="130" y="4" width="8" height="3" rx="1" fill="#0D7C8F"/>
+          <text x="142" y="8" fill="#E8ECF1" font-size="7" font-family="Inter, sans-serif">Normal</text>
+        </svg>
+      </div>
+      <!-- Route Performance -->
+      <div class="card">
+        <div class="card-title">Exceedance Rate by Route</div>
+        <svg viewBox="0 0 380 240" width="100%" height="250">
+          <!-- Grid -->
+          <line x1="120" y1="20" x2="360" y2="20" stroke="#1E3A5C" stroke-width="0.5"/>
+          <line x1="120" y1="65" x2="360" y2="65" stroke="#1E3A5C" stroke-width="0.5"/>
+          <line x1="120" y1="110" x2="360" y2="110" stroke="#1E3A5C" stroke-width="0.5"/>
+          <line x1="120" y1="155" x2="360" y2="155" stroke="#1E3A5C" stroke-width="0.5"/>
+          <line x1="120" y1="200" x2="360" y2="200" stroke="#1E3A5C" stroke-width="1"/>
+          <!-- Y axis: 0%(bottom=200) to 10%(top=20). 1%=18px -->
+          <text x="115" y="24" text-anchor="end" fill="#8899AD" font-size="9" font-family="Inter, sans-serif">10%</text>
+          <text x="115" y="69" text-anchor="end" fill="#8899AD" font-size="9" font-family="Inter, sans-serif">7.5%</text>
+          <text x="115" y="114" text-anchor="end" fill="#8899AD" font-size="9" font-family="Inter, sans-serif">5%</text>
+          <text x="115" y="159" text-anchor="end" fill="#8899AD" font-size="9" font-family="Inter, sans-serif">2.5%</text>
+          <text x="115" y="204" text-anchor="end" fill="#8899AD" font-size="9" font-family="Inter, sans-serif">0%</text>
+          <!-- Bars: GRU-BA=8.8%, AMS-FRA=2.1%, ATL-MIA=1.5%, SIN-HKG=3.2% -->
+          <!-- Bar width=40, gaps, starting x=145 -->
+          <!-- GRU-BA: 8.8% => height=8.8*18=158.4, y=200-158.4=41.6 -->
+          <rect x="140" y="42" width="40" height="158" rx="3" fill="#DC2626" opacity="0.9"/>
+          <text x="160" y="36" text-anchor="middle" fill="#DC2626" font-size="10" font-weight="600" font-family="Inter, sans-serif">8.8%</text>
+          <text x="160" y="216" text-anchor="middle" fill="#E8ECF1" font-size="9" font-family="Inter, sans-serif">GRU-BA</text>
+          <!-- AMS-FRA: 2.1% => height=37.8, y=162.2 -->
+          <rect x="200" y="162" width="40" height="38" rx="3" fill="#0D7C8F" opacity="0.9"/>
+          <text x="220" y="156" text-anchor="middle" fill="#E8ECF1" font-size="10" font-family="Inter, sans-serif">2.1%</text>
+          <text x="220" y="216" text-anchor="middle" fill="#E8ECF1" font-size="9" font-family="Inter, sans-serif">AMS-FRA</text>
+          <!-- ATL-MIA: 1.5% => height=27, y=173 -->
+          <rect x="260" y="173" width="40" height="27" rx="3" fill="#0D7C8F" opacity="0.9"/>
+          <text x="280" y="167" text-anchor="middle" fill="#E8ECF1" font-size="10" font-family="Inter, sans-serif">1.5%</text>
+          <text x="280" y="216" text-anchor="middle" fill="#E8ECF1" font-size="9" font-family="Inter, sans-serif">ATL-MIA</text>
+          <!-- SIN-HKG: 3.2% => height=57.6, y=142.4 -->
+          <rect x="320" y="142" width="40" height="58" rx="3" fill="#0D7C8F" opacity="0.9"/>
+          <text x="340" y="136" text-anchor="middle" fill="#E8ECF1" font-size="10" font-family="Inter, sans-serif">3.2%</text>
+          <text x="340" y="216" text-anchor="middle" fill="#E8ECF1" font-size="9" font-family="Inter, sans-serif">SIN-HKG</text>
+          <!-- Axis line -->
+          <line x1="119" y1="20" x2="119" y2="200" stroke="#1E3A5C" stroke-width="1"/>
+        </svg>
+      </div>
+    </div>
+
+    <!-- Row 3 -->
+    <div class="row" style="min-height: 300px;">
+      <!-- GPS Tracking Map -->
+      <div class="card">
+        <div class="card-title">GPS Tracking - GRU-BA Route</div>
+        <svg viewBox="0 0 400 280" width="100%" height="290">
+          <!-- Simplified South America outline -->
+          <path d="M180,20 L210,15 L240,25 L260,20 L290,30 L310,50 L320,70 L330,90 L325,110 L330,130 L320,150 L310,170 L295,190 L280,210 L260,230 L240,245 L225,260 L215,270 L210,265 L200,250 L195,235 L190,220 L180,210 L165,195 L155,180 L150,160 L155,140 L160,120 L165,100 L170,80 L175,60 L175,40 Z" fill="none" stroke="#1E3A5C" stroke-width="1.5"/>
+          <!-- Country rough borders -->
+          <path d="M170,100 L200,95 L230,100 L260,105 L290,100" fill="none" stroke="#1E3A5C" stroke-width="0.5" stroke-dasharray="3,3"/>
+          <path d="M165,140 L200,135 L240,140 L275,145" fill="none" stroke="#1E3A5C" stroke-width="0.5" stroke-dasharray="3,3"/>
+          <!-- Route line GRU (Sao Paulo) to BA (Buenos Aires) -->
+          <line x1="285" y1="148" x2="228" y2="210" stroke="#C4922E" stroke-width="2" stroke-dasharray="6,3" opacity="0.7"/>
+          <!-- GRU marker (Sao Paulo area) -->
+          <circle cx="285" cy="148" r="7" fill="#059669" opacity="0.8"/>
+          <circle cx="285" cy="148" r="3" fill="#fff"/>
+          <text x="296" y="145" fill="#E8ECF1" font-size="9" font-family="Inter, sans-serif">GRU</text>
+          <!-- Midpoint - at risk shipment (red pulsing) -->
+          <circle cx="258" cy="178" r="9" fill="#DC2626" opacity="0.3" class="pulse"/>
+          <circle cx="258" cy="178" r="5" fill="#DC2626" opacity="0.9"/>
+          <circle cx="258" cy="178" r="2" fill="#fff"/>
+          <text x="268" y="175" fill="#DC2626" font-size="8" font-weight="600" font-family="Inter, sans-serif">ALERT</text>
+          <!-- BA marker (Buenos Aires area) -->
+          <circle cx="228" cy="210" r="7" fill="#059669" opacity="0.8"/>
+          <circle cx="228" cy="210" r="3" fill="#fff"/>
+          <text x="238" y="207" fill="#E8ECF1" font-size="9" font-family="Inter, sans-serif">BA</text>
+          <!-- Second route dot (normal, near AMS) -->
+          <circle cx="210" cy="35" r="5" fill="#059669" opacity="0.8"/>
+          <circle cx="210" cy="35" r="2" fill="#fff"/>
+          <text x="218" y="33" fill="#E8ECF1" font-size="8" font-family="Inter, sans-serif">Bogota Hub</text>
+          <!-- Legend -->
+          <rect x="20" y="250" width="80" height="24" rx="4" fill="#0D2137" stroke="#1E3A5C" stroke-width="1"/>
+          <circle cx="35" cy="262" r="4" fill="#059669"/>
+          <text x="43" y="265" fill="#E8ECF1" font-size="8" font-family="Inter, sans-serif">Normal</text>
+          <circle cx="72" cy="262" r="4" fill="#DC2626"/>
+          <text x="80" y="265" fill="#E8ECF1" font-size="8" font-family="Inter, sans-serif">Alert</text>
+        </svg>
+      </div>
+
+      <!-- At-Risk Shipments Table -->
+      <div class="card" style="flex: 1.5;">
+        <div class="card-title">At-Risk Shipments</div>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Shipment ID</th>
+              <th>Route</th>
+              <th>Carrier</th>
+              <th>Max Temp</th>
+              <th>Risk Score</th>
+              <th>Est. Loss</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="row-highlight-red">
+              <td style="font-weight:600;">SH-2024-8847</td>
+              <td>GRU-BA</td>
+              <td>TransCold SA</td>
+              <td class="text-red" style="font-weight:600;">12.4°C</td>
+              <td><span style="background:#DC2626;color:#fff;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;">CRITICAL</span></td>
+              <td class="text-red" style="font-weight:600;">$184,000</td>
+            </tr>
+            <tr>
+              <td>SH-2024-9103</td>
+              <td>GRU-BA</td>
+              <td>TransCold SA</td>
+              <td class="text-red">9.1°C</td>
+              <td><span style="background:#C4922E;color:#fff;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;">HIGH</span></td>
+              <td style="color:#C4922E;">$67,200</td>
+            </tr>
+            <tr>
+              <td>SH-2024-9210</td>
+              <td>SIN-HKG</td>
+              <td>Maersk Reefer</td>
+              <td style="color:#C4922E;">8.3°C</td>
+              <td><span style="background:#C4922E;color:#fff;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;">HIGH</span></td>
+              <td style="color:#C4922E;">$42,500</td>
+            </tr>
+          </tbody>
+        </table>
+        <div style="margin-top: 16px; padding: 12px; background: rgba(220,38,38,0.06); border: 1px solid rgba(220,38,38,0.2); border-radius: 6px;">
+          <div style="font-size: 11px; color: #DC2626; font-weight: 600; margin-bottom: 4px;">ACTIVE ALERT - SH-2024-8847</div>
+          <div style="font-size: 11px; color: #A8B8CC;">Sensor SENS-GRU-047 has recorded temperature above 8°C threshold for 47 minutes. Spoilage probability: 78%. Estimated cargo value at risk: $184,000. Carrier notified at 15:42 UTC.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

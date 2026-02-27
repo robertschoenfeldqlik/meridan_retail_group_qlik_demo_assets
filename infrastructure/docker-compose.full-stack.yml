@@ -1,0 +1,41 @@
+# =============================================================================
+# MCG Demo — Full Stack (Kafka Infrastructure + All Simulators)
+# =============================================================================
+# Brings up the complete demo infrastructure in one command:
+#   - Kafka broker + ZooKeeper + Schema Registry + Control Center
+#   - PostgreSQL database with WAL logical replication enabled
+#   - All 3 simulators (PG, Kafka IoT, Salesforce)
+#
+# Network Architecture:
+#   mcg-kafka-net   — Kafka broker, IoT simulator, PostgreSQL
+#   mcg-sim-net     — All simulators, PostgreSQL, seed-data
+#   host.docker.internal — All containers can reach host services
+#
+# Exposed Host Ports:
+#   5432  — PostgreSQL (for Qlik Data Movement Gateway CDC)
+#   9092  — Kafka internal (for local clients)
+#   29092 — Kafka external (for Qlik Data Movement Gateway)
+#   8081  — Schema Registry
+#   9021  — Confluent Control Center UI
+#
+# Usage:
+#   cd infrastructure
+#   docker compose -f docker-compose.full-stack.yml up -d
+#
+# For Salesforce simulator (requires credentials):
+#   SF_USERNAME=you@dev.org SF_PASSWORD=pass SF_SECURITY_TOKEN=token \
+#   docker compose -f docker-compose.full-stack.yml --profile salesforce up -d
+#
+# To connect from host to containers:
+#   psql -h localhost -p 5432 -U mcg_admin -d mcg_wms
+#   kafka-console-consumer --bootstrap-server localhost:29092 --topic mcg.iot.cold-chain
+#
+# To connect from containers to host services:
+#   Use host.docker.internal as the hostname (e.g., host.docker.internal:8080)
+# =============================================================================
+
+version: "3.8"
+
+include:
+  - path: kafka/docker-compose.yml
+  - path: docker-compose.simulators.yml
