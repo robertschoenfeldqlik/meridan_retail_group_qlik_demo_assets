@@ -3116,13 +3116,35 @@ function getHTML() {
     }
   }
 
+  // --- Batched log appender (prevents page freeze from rapid SSE messages) ---
+  const LOG_MAX_LINES = 500;
+  let _logQueue = [];
+  let _logRafId = null;
+
   function appendLog(level, text) {
+    _logQueue.push({ level, text, ts: new Date().toLocaleTimeString('en-US', { hour12: false }) });
+    if (!_logRafId) {
+      _logRafId = requestAnimationFrame(_flushLogs);
+    }
+  }
+
+  function _flushLogs() {
+    _logRafId = null;
+    if (_logQueue.length === 0) return;
     const consoleEl = document.getElementById('console');
-    const div = document.createElement('div');
-    div.className = 'log-line log-' + level;
-    const ts = new Date().toLocaleTimeString('en-US', { hour12: false });
-    div.innerHTML = '<span class="timestamp">' + ts + '</span>' + esc(text);
-    consoleEl.appendChild(div);
+    const frag = document.createDocumentFragment();
+    const batch = _logQueue.splice(0);
+    for (const entry of batch) {
+      const div = document.createElement('div');
+      div.className = 'log-line log-' + entry.level;
+      div.innerHTML = '<span class="timestamp">' + entry.ts + '</span>' + esc(entry.text);
+      frag.appendChild(div);
+    }
+    consoleEl.appendChild(frag);
+    // Trim old lines if over cap
+    while (consoleEl.childElementCount > LOG_MAX_LINES) {
+      consoleEl.removeChild(consoleEl.firstChild);
+    }
     consoleEl.scrollTop = consoleEl.scrollHeight;
   }
 

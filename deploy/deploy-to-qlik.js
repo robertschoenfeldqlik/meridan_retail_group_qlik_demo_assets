@@ -1254,6 +1254,7 @@ async function main() {
           const child = spawn('docker', ['compose', '-f', composeFile, 'up', '-d'], {
             cwd: infraDir,
             stdio: ['ignore', 'pipe', 'pipe'],
+            shell: true,
           });
           let stderr = '';
           child.stdout.on('data', (d) => { d.toString().trim().split('\n').forEach(l => l.trim() && log.info(l.trim())); });
