@@ -24,6 +24,7 @@ const http  = require('http');
 const fs    = require('fs');
 const path  = require('path');
 const url   = require('url');
+const { execSync } = require('child_process');
 
 // ---------------------------------------------------------------------------
 //  Constants
@@ -180,6 +181,13 @@ function requestOnce(method, reqUrl, { headers = {}, body = null, rawBody = null
     }
 
     const req = transport.request(opts, (res) => {
+      // Follow 301/302/307/308 redirects
+      if ([301, 302, 307, 308].includes(res.statusCode) && res.headers.location) {
+        const redirectUrl = new URL(res.headers.location, reqUrl).toString();
+        res.resume(); // drain response
+        resolve(requestOnce(method, redirectUrl, { headers, body, rawBody, timeout }));
+        return;
+      }
       const chunks = [];
       res.on('data', (chunk) => chunks.push(chunk));
       res.on('end', () => {
@@ -1208,11 +1216,41 @@ async function main() {
     process.exit(EXIT_FAILURE);
   }
 
+  // ---- Docker Containers ---------------------------------------------------
+  if (enabled.docker !== false && cfg.infrastructure && cfg.infrastructure.useDocker) {
+    log.section('Step 2: Docker Containers');
+    try {
+      const infraDir = path.resolve(SCRIPT_DIR, '..', 'infrastructure', 'kafka');
+      const profile = cfg.docker && cfg.docker.profile || 'full-stack';
+      if (!fs.existsSync(path.join(infraDir, 'docker-compose.yml'))) {
+        throw new Error('docker-compose.yml not found in infrastructure/kafka/');
+      }
+      if (dryRun) {
+        log.ok(`[DRY RUN] Would start Docker profile "${profile}" in ${infraDir}`);
+      } else {
+        log.info(`Starting Docker Compose (profile: ${profile})...`);
+        const cmd = `docker compose --profile ${profile} up -d`;
+        const output = execSync(cmd, { cwd: infraDir, timeout: 120000, encoding: 'utf-8', stdio: ['ignore', 'pipe', 'pipe'] });
+        if (output.trim()) log.debug(output.trim());
+        log.ok(`Docker containers started (profile: ${profile})`);
+      }
+      report.record('Docker Containers', 'OK', `profile=${profile}`);
+    } catch (err) {
+      log.error(`Docker step failed: ${err.message}`);
+      report.record('Docker Containers', 'FAIL', err.message);
+      if (!continueOnError) { report.print(log); process.exit(EXIT_FAILURE); }
+    }
+  } else {
+    log.section('Step 2: Docker Containers');
+    log.info('Skipped (disabled).');
+    report.record('Docker Containers', 'SKIP', 'disabled');
+  }
+
   // ---- Create Spaces ------------------------------------------------------
   let sharedSpace, managedSpace;
 
   if (enabled.spaces !== false) {
-    log.section('Step 2: Create Spaces');
+    log.section('Step 3: Create Spaces');
     try {
       const sharedName  = (cfg.spaces && cfg.spaces.shared)  || 'MCG Demo - Development';
       const managedName = (cfg.spaces && cfg.spaces.managed)  || 'MCG Demo - Published';
@@ -1231,7 +1269,7 @@ async function main() {
 
   // ---- Create Data Connections --------------------------------------------
   if (enabled.connections !== false) {
-    log.section('Step 3: Create Data Connections');
+    log.section('Step 4: Create Data Connections');
 
     const connectionDefs = [
       { key: 'postgresql', keyword: 'postgres',   buildProps: buildPostgresProperties,   label: 'PostgreSQL (MCG WMS)' },
@@ -1277,7 +1315,7 @@ async function main() {
 
   // ---- Upload Theme -------------------------------------------------------
   if (enabled.theme !== false) {
-    log.section('Step 4: Upload MCG Dark Theme');
+    log.section('Step 5: Upload MCG Dark Theme');
 
     const themeZip = path.resolve(SCRIPT_DIR, (cfg.theme && cfg.theme.sourceFile) || './themes/mcg-dark-theme.zip');
     if (fs.existsSync(themeZip)) {
@@ -1297,7 +1335,7 @@ async function main() {
 
   // ---- Import & Publish Apps ----------------------------------------------
   if (enabled.apps !== false) {
-    log.section('Step 5: Import & Publish Apps');
+    log.section('Step 6: Import & Publish Apps');
     const appsDir = path.resolve(SCRIPT_DIR, (cfg.apps && cfg.apps.sourceDir) || './apps');
     const qvfFiles = findFiles(appsDir, '.qvf');
 
@@ -1332,7 +1370,7 @@ async function main() {
   let kbDatasource  = null;
 
   if (enabled.knowledge !== false) {
-    log.section('Step 6: Create Knowledge Base for Qlik Answers');
+    log.section('Step 7: Create Knowledge Base for Qlik Answers');
 
     try {
       const kbName = (cfg.knowledgeBase && cfg.knowledgeBase.name) || 'MCG Operations Knowledge Base';
@@ -1390,7 +1428,7 @@ async function main() {
 
   // ---- Create Assistant ---------------------------------------------------
   if (enabled.assistant !== false) {
-    log.section('Step 7: Create Qlik Answers Assistant');
+    log.section('Step 8: Create Qlik Answers Assistant');
 
     try {
       const astCfg = cfg.assistant || {};
@@ -1416,7 +1454,7 @@ async function main() {
 
   // ---- Create Automations -------------------------------------------------
   if (enabled.automations !== false) {
-    log.section('Step 8: Create Automations');
+    log.section('Step 9: Create Automations');
 
     const spaceId = sharedSpace ? sharedSpace.id : undefined;
 
@@ -1464,7 +1502,7 @@ async function main() {
 
   // ---- Create Data Products -----------------------------------------------
   if (enabled.dataproducts !== false) {
-    log.section('Step 9: Create Data Products (Gold Layer)');
+    log.section('Step 10: Create Data Products (Gold Layer)');
 
     const dpFile = path.resolve(SCRIPT_DIR, (cfg.dataProducts && cfg.dataProducts.sourceFile) || './data_products.json');
     if (fs.existsSync(dpFile)) {
@@ -1511,7 +1549,7 @@ async function main() {
 
   // ---- Create Business Glossary -------------------------------------------
   if (enabled.glossary !== false) {
-    log.section('Step 10: Create Business Glossary Terms');
+    log.section('Step 11: Create Business Glossary Terms');
 
     const glFile = path.resolve(SCRIPT_DIR, (cfg.glossary && cfg.glossary.sourceFile) || './glossary_terms.json');
     if (fs.existsSync(glFile)) {

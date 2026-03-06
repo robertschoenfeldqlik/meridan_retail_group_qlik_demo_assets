@@ -1496,6 +1496,11 @@ function getHTML() {
         <div class="page-title">Docker Containers</div>
         <div class="page-desc">Launch simulator and Data Movement Gateway containers. Configure environment variables for Docker Compose.</div>
 
+        <div class="toggle-row">
+          <label>Enable Docker Containers</label>
+          <label class="switch"><input type="checkbox" id="f-en-docker" checked><span class="slider"></span></label>
+        </div>
+
         <div class="section-divider">Stack Selection</div>
         <div class="field">
           <label>Compose Profile</label>
@@ -2698,6 +2703,7 @@ function getHTML() {
         managed: getVal('f-space-managed') || 'MCG Demo - Published',
       },
       enabledComponents: {
+        docker: isChecked('f-en-docker'),
         infrastructure: isChecked('f-en-infra'),
         spaces: isChecked('f-en-spaces'),
         connections: isChecked('f-en-connections'),
@@ -2710,6 +2716,9 @@ function getHTML() {
       },
       infrastructure: {
         useDocker: isChecked('f-infra-docker'),
+      },
+      docker: {
+        profile: getVal('f-docker-profile') || 'full-stack',
       },
       dataConnections: {
         postgresql: {
@@ -2873,7 +2882,7 @@ function getHTML() {
     renderPreflight();
     const el = document.getElementById('deploy-summary');
     const en = {
-      docker: isChecked('f-en-infra') && isChecked('f-infra-docker'),
+      docker: isChecked('f-en-docker'),
       infrastructure: isChecked('f-en-infra'),
       spaces: isChecked('f-en-spaces'),
       connections: isChecked('f-en-connections'),
@@ -2893,9 +2902,8 @@ function getHTML() {
     html += '<div style="margin-bottom:4px"><strong>Auth:</strong> ' + esc(auth) + '</div>';
     html += '</div>';
 
-    const dockerProfile = getVal('f-docker-profile') || 'none';
     const steps = [
-      ['docker', 'Docker Containers (' + esc(dockerProfile) + ')'],
+      ['docker', 'Docker Containers'],
       ['infrastructure', 'Infrastructure (Kafka)'],
       ['spaces', 'Spaces'],
       ['connections', 'Data Connections'],
