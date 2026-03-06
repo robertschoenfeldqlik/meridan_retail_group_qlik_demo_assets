@@ -610,17 +610,17 @@ class QlikClient {
   }
 
   async createKBFileDatasource(kbId, name) {
+    if (this.dryRun) {
+      this.log.info(`DRY RUN: Would create file datasource "${name}" on KB ${kbId}`);
+      return { id: 'dry-run-ds-id', name };
+    }
+
     // Check existing datasources on this KB
     const existingDs = await this._getAll(`/api/v1/knowledgebases/${kbId}/datasources`);
     const found = existingDs.find((ds) => ds.name === name);
     if (found) {
       this.log.success(`KB datasource already exists: "${name}" (${found.id}) — skipping.`);
       return found;
-    }
-
-    if (this.dryRun) {
-      this.log.info(`DRY RUN: Would create file datasource "${name}" on KB ${kbId}`);
-      return { id: 'dry-run-ds-id', name };
     }
 
     const res = await this._post(`/api/v1/knowledgebases/${kbId}/datasources`, {
