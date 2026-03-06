@@ -1265,6 +1265,10 @@ async function main() {
       report.record('Spaces', 'FAIL', err.message);
       if (!continueOnError) { report.print(log); process.exit(EXIT_FAILURE); }
     }
+  } else {
+    log.section('Step 3: Create Spaces');
+    log.info('Skipped (disabled).');
+    report.record('Spaces', 'SKIP', 'disabled');
   }
 
   // ---- Create Data Connections --------------------------------------------
@@ -1311,6 +1315,10 @@ async function main() {
         if (!continueOnError) { report.print(log); process.exit(EXIT_FAILURE); }
       }
     }
+  } else {
+    log.section('Step 4: Create Data Connections');
+    log.info('Skipped (disabled).');
+    report.record('Data Connections', 'SKIP', 'disabled');
   }
 
   // ---- Upload Theme -------------------------------------------------------
@@ -1331,38 +1339,10 @@ async function main() {
       log.warn(`Theme file not found: ${themeZip}`);
       report.record('Theme Upload', 'SKIP', 'mcg-dark-theme.zip not found');
     }
-  }
-
-  // ---- Import & Publish Apps ----------------------------------------------
-  if (enabled.apps !== false) {
-    log.section('Step 6: Import & Publish Apps');
-    const appsDir = path.resolve(SCRIPT_DIR, (cfg.apps && cfg.apps.sourceDir) || './apps');
-    const qvfFiles = findFiles(appsDir, '.qvf');
-
-    if (qvfFiles.length === 0) {
-      log.warn(`No .qvf files found in ${appsDir} — skipping app import.`);
-      report.record('App import', 'SKIP', 'No .qvf files found');
-    } else {
-      log.info(`Found ${qvfFiles.length} .qvf file(s) to import.`);
-      for (const qvf of qvfFiles) {
-        const baseName = path.basename(qvf, '.qvf');
-        try {
-          const app = await client.importApp(qvf, sharedSpace ? sharedSpace.id : 'unknown');
-          report.record(`Import "${baseName}"`, 'OK', `id=${app.id}`);
-
-          if (managedSpace && !app.alreadyExisted) {
-            await client.publishApp(app.id, baseName, managedSpace.id);
-            report.record(`Publish "${baseName}"`, 'OK', 'published');
-          } else if (app.alreadyExisted) {
-            report.record(`Publish "${baseName}"`, 'SKIP', 'App already existed');
-          }
-        } catch (err) {
-          log.error(`App "${baseName}": ${err.message}`);
-          report.record(`App "${baseName}"`, 'FAIL', err.message);
-          if (!continueOnError) { report.print(log); process.exit(EXIT_FAILURE); }
-        }
-      }
-    }
+  } else {
+    log.section('Step 5: Upload MCG Dark Theme');
+    log.info('Skipped (disabled).');
+    report.record('Theme Upload', 'SKIP', 'disabled');
   }
 
   // ---- Create Knowledge Base & Upload Documents ---------------------------
@@ -1370,7 +1350,7 @@ async function main() {
   let kbDatasource  = null;
 
   if (enabled.knowledge !== false) {
-    log.section('Step 7: Create Knowledge Base for Qlik Answers');
+    log.section('Step 6: Create Knowledge Base for Qlik Answers');
 
     try {
       const kbName = (cfg.knowledgeBase && cfg.knowledgeBase.name) || 'MCG Operations Knowledge Base';
@@ -1424,11 +1404,15 @@ async function main() {
       report.record('Knowledge Base', 'FAIL', err.message);
       if (!continueOnError) { report.print(log); process.exit(EXIT_FAILURE); }
     }
+  } else {
+    log.section('Step 6: Create Knowledge Base for Qlik Answers');
+    log.info('Skipped (disabled).');
+    report.record('Knowledge Base', 'SKIP', 'disabled');
   }
 
   // ---- Create Assistant ---------------------------------------------------
   if (enabled.assistant !== false) {
-    log.section('Step 8: Create Qlik Answers Assistant');
+    log.section('Step 7: Create Qlik Answers Assistant');
 
     try {
       const astCfg = cfg.assistant || {};
@@ -1450,11 +1434,15 @@ async function main() {
       report.record('Assistant', 'FAIL', err.message);
       if (!continueOnError) { report.print(log); process.exit(EXIT_FAILURE); }
     }
+  } else {
+    log.section('Step 7: Create Qlik Answers Assistant');
+    log.info('Skipped (disabled).');
+    report.record('Assistant', 'SKIP', 'disabled');
   }
 
   // ---- Create Automations -------------------------------------------------
   if (enabled.automations !== false) {
-    log.section('Step 9: Create Automations');
+    log.section('Step 8: Create Automations');
 
     const spaceId = sharedSpace ? sharedSpace.id : undefined;
 
@@ -1498,11 +1486,15 @@ async function main() {
       }
     }
     log.info('Automations created in DISABLED state — configure triggers in Qlik Cloud console.');
+  } else {
+    log.section('Step 8: Create Automations');
+    log.info('Skipped (disabled).');
+    report.record('Automations', 'SKIP', 'disabled');
   }
 
   // ---- Create Data Products -----------------------------------------------
   if (enabled.dataproducts !== false) {
-    log.section('Step 10: Create Data Products (Gold Layer)');
+    log.section('Step 9: Create Data Products (Gold Layer)');
 
     const dpFile = path.resolve(SCRIPT_DIR, (cfg.dataProducts && cfg.dataProducts.sourceFile) || './data_products.json');
     if (fs.existsSync(dpFile)) {
@@ -1545,11 +1537,15 @@ async function main() {
       log.warn(`${path.basename(dpFile)} not found — skipping data products.`);
       report.record('Data Products', 'SKIP', 'No definitions file found');
     }
+  } else {
+    log.section('Step 9: Create Data Products (Gold Layer)');
+    log.info('Skipped (disabled).');
+    report.record('Data Products', 'SKIP', 'disabled');
   }
 
   // ---- Create Business Glossary -------------------------------------------
   if (enabled.glossary !== false) {
-    log.section('Step 11: Create Business Glossary Terms');
+    log.section('Step 10: Create Business Glossary Terms');
 
     const glFile = path.resolve(SCRIPT_DIR, (cfg.glossary && cfg.glossary.sourceFile) || './glossary_terms.json');
     if (fs.existsSync(glFile)) {
@@ -1606,6 +1602,10 @@ async function main() {
       log.warn(`${path.basename(glFile)} not found — skipping glossary.`);
       report.record('Glossary', 'SKIP', 'No definitions file found');
     }
+  } else {
+    log.section('Step 10: Create Business Glossary Terms');
+    log.info('Skipped (disabled).');
+    report.record('Glossary', 'SKIP', 'disabled');
   }
 
   // ---- Final Report -------------------------------------------------------
