@@ -1217,7 +1217,7 @@ async function main() {
   }
 
   // ---- Docker Containers ---------------------------------------------------
-  if (enabled.docker !== false && cfg.infrastructure && cfg.infrastructure.useDocker) {
+  if (enabled.docker !== false) {
     log.section('Step 2: Docker Containers');
     try {
       const infraDir = path.resolve(SCRIPT_DIR, '..', 'infrastructure', 'kafka');
