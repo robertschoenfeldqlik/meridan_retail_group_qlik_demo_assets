@@ -24,7 +24,7 @@ const http  = require('http');
 const fs    = require('fs');
 const path  = require('path');
 const url   = require('url');
-const { spawn } = require('child_process');
+const { spawn, spawnSync } = require('child_process');
 
 // ---------------------------------------------------------------------------
 //  Constants
@@ -1248,24 +1248,38 @@ async function main() {
       if (dryRun) {
         log.success(`[DRY RUN] Would start Docker stack "${profile}" via ${composeFile}`);
       } else {
-        log.info(`Starting Docker Compose (${profile})... this may take several minutes on first pull`);
-        log.info(`Compose file: ${composeFile}`);
-        await new Promise((resolve, reject) => {
-          const child = spawn('docker', ['compose', '-f', composeFile, 'up', '-d'], {
-            cwd: infraDir,
-            stdio: ['ignore', 'pipe', 'pipe'],
-            shell: true,
-          });
-          let stderr = '';
-          child.stdout.on('data', (d) => { d.toString().trim().split('\n').forEach(l => l.trim() && log.info(l.trim())); });
-          child.stderr.on('data', (d) => { const s = d.toString(); stderr += s; s.trim().split('\n').forEach(l => l.trim() && log.info(l.trim())); });
-          child.on('close', (code) => {
-            if (code === 0) { resolve(); }
-            else { reject(new Error(`docker compose exited with code ${code}\n${stderr.slice(-500)}`)); }
-          });
-          child.on('error', reject);
+        // Check if containers are already running
+        const psResult = spawnSync('docker', ['compose', '-f', composeFile, 'ps', '--status', 'running', '-q'], {
+          cwd: infraDir, shell: true, encoding: 'utf-8', timeout: 15000,
         });
-        log.success(`Docker containers started (${profile})`);
+        const runningIds = (psResult.stdout || '').trim().split('\n').filter(Boolean);
+
+        if (runningIds.length > 0) {
+          // Containers already up — report and continue
+          const psNames = spawnSync('docker', ['compose', '-f', composeFile, 'ps', '--status', 'running', '--format', '{{.Name}}'], {
+            cwd: infraDir, shell: true, encoding: 'utf-8', timeout: 15000,
+          });
+          const names = (psNames.stdout || '').trim().split('\n').filter(Boolean);
+          log.success(`Docker containers already running (${names.length} containers)`);
+          for (const n of names) { log.info(`  ✓ ${n}`); }
+        } else {
+          log.info(`Starting Docker Compose (${profile})... this may take several minutes on first pull`);
+          log.info(`Compose file: ${composeFile}`);
+          await new Promise((resolve, reject) => {
+            const child = spawn('docker', ['compose', '-f', composeFile, 'up', '-d'], {
+              cwd: infraDir, stdio: ['ignore', 'pipe', 'pipe'], shell: true,
+            });
+            let stderr = '';
+            child.stdout.on('data', (d) => { d.toString().trim().split('\n').forEach(l => l.trim() && log.info(l.trim())); });
+            child.stderr.on('data', (d) => { const s = d.toString(); stderr += s; s.trim().split('\n').forEach(l => l.trim() && log.info(l.trim())); });
+            child.on('close', (code) => {
+              if (code === 0) { resolve(); }
+              else { reject(new Error(`docker compose exited with code ${code}\n${stderr.slice(-500)}`)); }
+            });
+            child.on('error', reject);
+          });
+          log.success(`Docker containers started (${profile})`);
+        }
       }
       report.record('Docker Containers', 'OK', `profile=${profile}`);
     } catch (err) {
