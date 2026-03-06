@@ -3132,6 +3132,7 @@ function getHTML() {
     _logRafId = null;
     if (_logQueue.length === 0) return;
     const consoleEl = document.getElementById('console');
+    if (!consoleEl) return;
     const frag = document.createDocumentFragment();
     const batch = _logQueue.splice(0);
     for (const entry of batch) {
@@ -3142,8 +3143,9 @@ function getHTML() {
     }
     consoleEl.appendChild(frag);
     // Trim old lines if over cap
-    while (consoleEl.childElementCount > LOG_MAX_LINES) {
-      consoleEl.removeChild(consoleEl.firstChild);
+    var kids = consoleEl.children;
+    while (kids.length > LOG_MAX_LINES) {
+      consoleEl.removeChild(kids[0]);
     }
     consoleEl.scrollTop = consoleEl.scrollHeight;
   }
