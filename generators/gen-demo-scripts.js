@@ -251,7 +251,7 @@ function module01() {
     numberedItem(2, "Verify database mcg_wms exists with user qlik_reader"),
     numberedItem(3, "Run the simulator to seed initial data:"),
     promptBox("python simulators/postgres_simulator.py --host localhost --port 5432 --database mcg_wms --user qlik_reader --password <pw> --mode seed", "Terminal Command"),
-    numberedItem(4, "Verify 3 tables created: inventory_positions (~8,000 rows), warehouse_events (~15,000), shipments (~3,000)"),
+    numberedItem(4, "Verify 3 tables created: inventory_positions (~5,000 rows), warehouse_events (~20,000), shipments (~8,000)"),
     numberedItem(5, "Start continuous mode for live CDC during demo:"),
     promptBox("python simulators/postgres_simulator.py --host localhost --port 5432 --database mcg_wms --user qlik_reader --password <pw> --mode continuous", "Terminal Command"),
     calloutBox("Talking point: The PostgreSQL simulator injects intentional data quality issues — phantom inventory (ERP says 50, WMS says 42), missing lot numbers on 15% of perishables, and timestamp drift between systems.", "warning"),
@@ -266,7 +266,7 @@ function module01() {
     numberedItem(4, "Start the IoT simulator:"),
     promptBox("python simulators/kafka_iot_simulator.py --bootstrap-servers localhost:9092", "Terminal Command"),
     numberedItem(5, "Verify messages flowing: check Control Center > Topics > mcg.iot.cold-chain > Messages"),
-    calloutBox("Talking point: The IoT simulator intentionally mixes Fahrenheit and Celsius readings (5% of messages), sends bare timestamps without timezone info (3%), and creates GPS blackouts for Lagos shipments (2%). These are the real data quality nightmares IoT teams face.", "warning"),
+    calloutBox("Talking point: The IoT simulator intentionally mixes Fahrenheit and Celsius readings (8% of sensors), sends bare timestamps without timezone info (3%), and creates GPS blackouts for Lagos shipments (2%). These are the real data quality nightmares IoT teams face.", "warning"),
 
     heading("Step 3: Configure Salesforce", 3),
     numberedItem(1, "Log into your Salesforce Developer Edition org"),
@@ -627,20 +627,20 @@ function module05() {
 }
 
 // =============================================================================
-// MODULE 6: Analytics Apps (Qlik Sense)
+// MODULE 6: Analytics Apps (Qlik Analytics)
 // =============================================================================
 function module06() {
   return [
-    heading("Module 6: Analytics Apps (Qlik Sense)"),
+    heading("Module 6: Analytics Apps (Qlik Analytics)"),
     metadataTable([
       ["Duration", "15-20 minutes"],
       ["Checklist Phase", "Phase 5"],
       ["Nightmares", "All 7 (dashboards visualize every nightmare)"],
-      ["Components", "Qlik Sense, Business Logic, Agentic Analytics, Section Access, MCG Dark Theme"],
+      ["Components", "Qlik Analytics, Business Logic, Agentic Analytics, Section Access, MCG Dark Theme"],
     ]),
 
     heading("Overview", 2),
-    para("Two domain-based Qlik Sense apps bring MCG's data to life: Supply Chain Operations (inventory, cold chain, compliance) and Delivery & Customer Experience (carrier SLAs, WISMO, order tracking). Both use the MCG Dark Theme and connect to Gold-layer data products with streaming IoT data."),
+    para("Two domain-based Qlik Analytics apps bring MCG's data to life: Supply Chain Operations (inventory, cold chain, compliance) and Delivery & Customer Experience (carrier SLAs, WISMO, order tracking). Both use the MCG Dark Theme and connect to Gold-layer data products with streaming IoT data."),
 
     heading("App 1: MCG Supply Chain Operations", 2),
     dataTable(
@@ -779,8 +779,8 @@ function module08() {
     heading("Model 1: Spoilage Risk Predictor", 2),
     metadataTable([
       ["Data Source", "gold.cold_chain_compliance"],
-      ["Target Variable", "spoilage_risk_score (regression)"],
-      ["Key Features", "max_temp_celsius, exceedance_minutes, humidity, product_category, route_id, season"],
+      ["Target Variable", "spoilage_flag (binary classification)"],
+      ["Key Features", "carrier, route_id, avg_temp_celsius, max_temp_celsius, exceedance_minutes, pre_cool_compliant, product_category, weight_kg, month, day_of_week"],
       ["Business Value", "Predict which in-transit shipments will spoil before they arrive"],
       ["Nightmare", "#6 — Carrier Data Black Hole (TransFrio fleet change undetected)"],
     ]),
@@ -788,7 +788,7 @@ function module08() {
     heading("Demo Walk-Through: Spoilage Model", 3),
     numberedItem(1, "Navigate to Qlik Predict > Create Experiment"),
     numberedItem(2, "Select data source: gold.cold_chain_compliance"),
-    numberedItem(3, "Select target: spoilage_risk_score"),
+    numberedItem(3, "Select target: spoilage_flag (binary classification)"),
     numberedItem(4, "Review auto-selected features — note max_temp_celsius and route_id as top predictors"),
     numberedItem(5, "Train model — show AutoML trying multiple algorithms"),
     numberedItem(6, "Review results: feature importance chart"),
@@ -801,7 +801,7 @@ function module08() {
     metadataTable([
       ["Data Source", "gold.last_mile_performance"],
       ["Target Variable", "sla_met (binary classification)"],
-      ["Key Features", "carrier, destination_region, address_quality_score, weight_kg, day_of_week"],
+      ["Key Features", "carrier, destination_country, destination_region, address_quality_score, weight_kg, fulfillment_method, day_of_week"],
       ["Business Value", "Predict which shipments will miss delivery SLA at time of order"],
       ["Nightmare", "#2 — Address Catastrophe (address quality predicts delivery success)"],
     ]),
@@ -1061,7 +1061,7 @@ function module12() {
     dataTable(
       ["Automation", "Trigger", "Action", "Target"],
       [
-        ["Daily App Reload", "Schedule: 06:00 UTC", "Reload both analytics apps", "Qlik Sense"],
+        ["Daily App Reload", "Schedule: 06:00 UTC", "Reload both analytics apps", "Qlik Analytics"],
         ["Cold Chain Alert", "Every 5 min: temp > 8 C for 15+ min", "Post Adaptive Card to Teams", "#mcg-cold-chain-alerts"],
         ["Pipeline Health Summary", "Schedule: 07:00 UTC daily", "Post health summary to Teams", "#mcg-data-engineering"],
         ["WISMO Rate Alert", "WISMO rate > 40% for any carrier", "Post alert to Teams", "#mcg-customer-ops"],
@@ -1087,7 +1087,7 @@ function module12() {
     para("  Block 5: Update alert_sent flag to prevent duplicates", { indent: true }),
     numberedItem(3, "Show the Adaptive Card template: shipment ID, carrier, route, temperature, estimated loss"),
     numberedItem(4, "Click 'Run Now' to test"),
-    expectedBox("Teams channel receives an Adaptive Card showing a temperature exceedance with shipment details, estimated $ exposure, and links to the Qlik Sense dashboard and SOP document."),
+    expectedBox("Teams channel receives an Adaptive Card showing a temperature exceedance with shipment details, estimated $ exposure, and links to the Qlik Analytics dashboard and SOP document."),
 
     heading("Address Correction Loop (Advanced)", 3),
     numberedItem(1, "Show the Stewardship-to-Talend-to-Lakehouse loop:"),
@@ -1147,7 +1147,7 @@ function module13() {
     numberedItem(2, "Agent correlates: fleet metadata shows 6 truck replacements in the same period"),
     numberedItem(3, "Agent generates alert:"),
     expectedBox("Temperature exceedance on GRU-BA route. Spoilage rate increased 4x since fleet change on July 7. 12 active shipments at risk. Estimated $180K exposure. Click to view Cold Chain Dashboard."),
-    numberedItem(4, "Agent links to: Qlik Sense dashboard, carrier contract (CARRIER-TF-2024), incident report (INC-2025-05102)"),
+    numberedItem(4, "Agent links to: Qlik Analytics dashboard, carrier contract (CARRIER-TF-2024), incident report (INC-2025-05102)"),
     calloutBox("Talking point: The Discovery Agent found a pattern that took human analysts 3 weeks to notice. It connected fleet metadata changes to temperature anomalies across multiple data products — something no single dashboard could show."),
 
     divider(),
@@ -1163,7 +1163,7 @@ function module13() {
 
     heading("MCP Demo Scenario 1: Rotterdam Inventory", 3),
     promptBox("What is the current inventory accuracy rate at Rotterdam DC, and what is causing the issues?", "Ask Claude"),
-    expectedBox("Claude uses MCP to query gold.supply_chain_health filtered by dc = DC-RTD-01. Gets: IRA = 74%, phantom_units = 847, pipeline_status = RECOVERED. Then queries gold.order_timeline for affected orders. Finally pulls context from INC-2025-04872 (Rotterdam Pipeline Failure) via Qlik Answers.\n\nResponse: Rotterdam DC IRA is 74%, significantly below the 97% target. Root cause: silent pipeline failure INC-2025-04872 where WMS-to-SAP CDC sync stopped for 72 hours due to an expired TLS certificate. Created 847 phantom units across 143 SKUs, costing EUR 30,500. Pipeline recovered; Project CLARITY Phase 1 will extend monitoring to all 27 DCs."),
+    expectedBox("Claude uses MCP to query gold.supply_chain_health filtered by dc = DC-RTD-01. Gets: IRA = 74%, phantom_units = 847, pipeline_status = RECOVERED. Then queries gold.order_timeline for affected orders. Finally pulls context from INC-2025-04872 (Rotterdam Pipeline Failure) via Qlik Answers.\n\nResponse: Rotterdam DC IRA is 74%, significantly below the 97% target. Root cause: silent pipeline failure INC-2025-04872 where WMS-to-SAP CDC sync stopped for 72 hours due to an expired TLS certificate. Created 847 phantom units across 143 SKUs, costing EUR 30,500. Pipeline recovered; Project CLARITY Phase 1 will extend monitoring to all 28 DCs."),
 
     heading("MCP Demo Scenario 2: Cold Chain Risk", 3),
     promptBox("What is the current spoilage risk for active TransFrio shipments on the Sao Paulo to Buenos Aires route?", "Ask Claude"),

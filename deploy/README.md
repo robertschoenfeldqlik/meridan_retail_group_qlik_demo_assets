@@ -1,58 +1,36 @@
 # MCG Qlik Cloud Deployment
 
-Automated deployment of the Meridian Commerce Group demo environment to a Qlik Cloud tenant. Provisions spaces, imports apps, creates data connections, sets up a Qlik Answers knowledge base with all 25 operational documents, creates an AI assistant, and scaffolds automations.
+Automated deployment of the Meridian Commerce Group demo environment to a Qlik Cloud tenant. Provisions spaces, imports apps, creates data connections, sets up a Qlik Answers knowledge base with 25 operational documents, creates an AI assistant, and scaffolds automations.
 
-Two scripts are provided — **Python (recommended)** with an interactive setup wizard, and **Node.js** for zero-dependency environments.
+Three deployment interfaces are available — **Web UI** (recommended), **CLI**, and **Dry Run** preview.
 
 ## Prerequisites
 
-### Python script (recommended)
-- **Python** 3.8 or later
-- `pip install -r deploy/requirements.txt` (installs `requests`)
-
-### Node.js script (alternative)
 - **Node.js** 18 or later (no external dependencies)
-
-### Common
 - A **Qlik Cloud tenant** with admin or developer-level access
 - An **API key** or **OAuth M2M** client credentials for the target tenant
 - (Optional) `.qvf` app export files placed in `deploy/apps/`
 
-## Quick Start — Python (Interactive Wizard)
+## Quick Start — Web UI (Recommended)
 
 ```bash
-# 1. Install dependencies
-pip install -r deploy/requirements.txt
-
-# 2. Run the interactive wizard — prompts for tenant, API key, spaces, etc.
-python deploy/deploy_qlik.py
-
-# 3. Or preview first without making changes
-python deploy/deploy_qlik.py --dry-run
+# From the project root
+npm run ui
+# or
+node deploy/deploy-ui.js
 ```
 
-The wizard will prompt you for:
-- Tenant hostname and region
-- Authentication method (API Key or OAuth M2M)
-- API key or OAuth credentials
-- Shared and managed space names
-- Which components to deploy (spaces, connections, apps, KB, assistant, automations)
-- Data connection credentials (PostgreSQL, Salesforce, S3)
-- Knowledge base and assistant configuration
+Open `http://localhost:3939` in your browser. The wizard walks you through:
+1. Tenant connection and authentication
+2. Spaces and infrastructure setup
+3. Docker container management (simulators, DMG gateway)
+4. Data connections (PostgreSQL, Salesforce, Kafka, S3)
+5. App import and theme upload
+6. Knowledge base and document upload
+7. Automations, data products, and glossary
+8. Pre-flight checks and deployment
 
-Configuration is saved to `deploy/config.json` so subsequent runs can reuse it.
-
-### Re-running with saved config
-
-```bash
-# Use saved config without prompts
-python deploy/deploy_qlik.py --skip-prompts
-
-# Update a few settings, keep the rest
-python deploy/deploy_qlik.py  # select "Use existing config? Y" then "Update settings? y"
-```
-
-## Quick Start — Node.js
+## Quick Start — CLI
 
 ```bash
 # 1. Copy the example config and fill in your tenant details
@@ -61,17 +39,19 @@ cp deploy/config.example.json deploy/config.json
 # 2. Edit deploy/config.json with your tenant hostname, region, and API key
 
 # 3. Preview the deployment (no changes made)
-node deploy/deploy-to-qlik.js --dry-run
+npm run deploy:dry-run
+# or: node deploy/deploy-to-qlik.js --dry-run
 
 # 4. Run the deployment
-node deploy/deploy-to-qlik.js
+npm run deploy
+# or: node deploy/deploy-to-qlik.js
 ```
 
 ## Configuration
 
 ### Config file
 
-Both scripts share the same `config.json` format. Copy `config.example.json` to `config.json` and update:
+Copy `config.example.json` to `config.json` and update:
 
 | Field | Description | Example |
 |---|---|---|
@@ -100,7 +80,7 @@ Environment variables override values in `config.json`:
 
 **API Key** (simplest for demos):
 
-Generate an API key from your Qlik Cloud tenant: Settings > API keys > Create new. Note: as of February 2026, API key creation requires the "Manage API keys" permission via custom roles.
+Generate an API key from your Qlik Cloud tenant: Settings > API keys > Create new.
 
 ```json
 {
@@ -147,18 +127,16 @@ Any `.qvf` files placed in `deploy/apps/` are imported into the shared space and
 |---|---|---|
 | MCG WMS Database | PostgreSQL | Warehouse Management System |
 | MCG Salesforce CRM | Salesforce | Customer Relationship Management |
-| MCG IoT Telemetry | Kafka | Real-time sensor data (Node.js only) |
+| MCG IoT Telemetry | Kafka | Real-time sensor data |
 | MCG Flat File Outputs | S3 | CSV/file exports |
 
-Uses the Qlik Cloud data source discovery workflow:
-1. `GET /api/v1/data-sources` — discover available connector types
-2. `POST /api/v1/data-connections` — create with credentials from config
+### 4. Theme
 
-Connections without credentials in the config are skipped with a warning.
+Uploads the MCG Dark Theme (navy/teal/gold brand colors with Inter font).
 
-### 4. Knowledge Base (Qlik Answers)
+### 5. Knowledge Base (Qlik Answers)
 
-Creates a knowledge base named "MCG Operations Knowledge Base" and uploads all 25 `.docx` files:
+Creates a knowledge base and uploads all 25 operational `.docx` files:
 
 - 5 SOPs (goods receiving, cycle count, recall, cold chain, WISMO)
 - 4 policies (food safety, cold chain, data quality, shipping)
@@ -169,19 +147,13 @@ Creates a knowledge base named "MCG Operations Knowledge Base" and uploads all 2
 
 After upload, triggers sync/indexing so documents are immediately searchable.
 
-### 5. Assistant
+### 6. Assistant
 
-Creates a Qlik Answers assistant linked to the knowledge base with conversation starters:
+Creates a Qlik Answers assistant linked to the knowledge base with conversation starters.
 
-- "What is the procedure for goods receiving?"
-- "What happened during the Rotterdam pipeline failure?"
-- "What are the cold chain temperature requirements?"
-- "What is Project CLARITY and what problem does it solve?"
-- "What was the lettuce recall and what went wrong?"
+### 7. Automations
 
-### 6. Automations (Python script only)
-
-Creates three automation scaffolds in disabled state:
+Creates automation scaffolds in disabled state:
 
 | Automation | Purpose |
 |---|---|
@@ -189,23 +161,15 @@ Creates three automation scaffolds in disabled state:
 | MCG Pipeline Health Alert | Alert on CDC sync lag > 60 min |
 | MCG Cold Chain Alert | Alert on IoT temperature exceedance > 15 min |
 
-Automations are created disabled — configure triggers and workflow blocks in the Qlik Cloud console.
+### 8. Data Products (Gold Layer)
+
+Registers 8 data products from `data_products.json` (requires Talend Enterprise tier).
+
+### 9. Business Glossary
+
+Creates 25 business glossary terms from `glossary_terms.json`.
 
 ## CLI Options
-
-### Python
-
-```
-python deploy/deploy_qlik.py [OPTIONS]
-
-  --config <path>    Path to config JSON (default: deploy/config.json)
-  --dry-run          Preview actions without making API calls
-  --verbose          Enable detailed HTTP logging
-  --skip-prompts     Use config.json as-is, no interactive prompts
-  --help             Show usage
-```
-
-### Node.js
 
 ```
 node deploy/deploy-to-qlik.js [OPTIONS]
@@ -216,29 +180,9 @@ node deploy/deploy-to-qlik.js [OPTIONS]
   --help            Show usage
 ```
 
-## Qlik Cloud APIs Used
-
-| Area | Endpoint | Method |
-|---|---|---|
-| Auth (M2M) | `POST /oauth/token` | OAuth2 client credentials |
-| Verify | `GET /api/v1/users/me` | Connection check |
-| Spaces | `POST /api/v1/spaces` | Create shared/managed |
-| Apps (import) | `POST /api/v1/apps/import` | Binary upload |
-| Apps (publish) | `POST /api/v1/apps/{id}/publish` | First publish |
-| Apps (republish) | `PUT /api/v1/apps/{id}/publish` | Update existing |
-| Data Sources | `GET /api/v1/data-sources` | Discover connector types |
-| Data Connections | `POST /api/v1/data-connections` | Create with credentials |
-| Knowledge Bases | `POST /api/v1/knowledgebases` | Create KB |
-| KB Datasources | `POST /api/v1/knowledgebases/{id}/datasources` | Add file source |
-| KB Files | `POST .../datasources/{id}/files` | Upload documents |
-| KB Sync | `POST .../datasources/{id}/actions/sync` | Trigger indexing |
-| Assistants | `POST /api/v1/assistants` | Create with KB link |
-| Automations | `POST /api/v1/automations` | Create scaffold |
-| Data Products | `POST /api/data-governance/data-products` | Create (Talend Enterprise) |
-
 ## Idempotency
 
-Both scripts are designed to be run multiple times safely:
+The script is designed to be run multiple times safely:
 
 - **Spaces**: Checks if a space with the same name exists before creating
 - **Apps**: Checks if an app with the same name exists in the target space
@@ -254,20 +198,21 @@ Re-running after a partial failure picks up where it left off.
 
 ```
 deploy/
-  deploy_qlik.py        # Python deployment script (interactive wizard)
   deploy-to-qlik.js     # Node.js deployment script
+  deploy-ui.js           # Web UI for deployment (port 3939)
   config.json            # Your tenant config (git-ignored)
   config.example.json    # Template with placeholder values
-  requirements.txt       # Python dependencies
   apps/                  # Place .qvf app exports here
+  automations/           # Teams alert JSON templates
+  themes/                # MCG dark theme
+  data_products.json     # Gold-layer data product definitions
+  glossary_terms.json    # Business glossary terms
   README.md              # This file
 ```
 
 ## Troubleshooting
 
-**"requests not installed"** — Run `pip install -r deploy/requirements.txt`.
-
-**"Config file not found"** — Copy `config.example.json` to `config.json`, or run the Python wizard which creates it interactively.
+**"Config file not found"** — Copy `config.example.json` to `config.json`, or use the Web UI which lets you configure and save interactively.
 
 **Authentication fails (401)** — Verify your API key is valid. For OAuth, confirm client ID/secret and that consent method is set to "Trusted".
 
@@ -275,17 +220,16 @@ deploy/
 
 **App import fails (413)** — The `.qvf` file may exceed upload limits.
 
-**Data connection fails** — Ensure the connector type is installed on your tenant. Some connectors require additional setup in Management Console.
+**Data connection fails** — Ensure the connector type is installed on your tenant.
 
-**KB document upload fails (415)** — Verify files are valid `.docx`. The script sets correct MIME types automatically.
+**KB document upload fails (415)** — Verify files are valid `.docx`.
 
 **"Already exists" warnings** — Expected on re-runs. The script skips existing resources.
 
 ## Security Notes
 
 - Never commit `config.json` to version control (it contains secrets)
-- Add `deploy/config.json` to your `.gitignore`
+- `deploy/config.json` is in `.gitignore`
 - For CI/CD, use environment variables instead of the config file
 - API keys should have minimum required permissions
 - Rotate credentials after demo events
-- The Python wizard uses `getpass` for secret inputs (not echoed to terminal)

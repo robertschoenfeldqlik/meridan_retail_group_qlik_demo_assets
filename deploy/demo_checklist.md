@@ -10,7 +10,7 @@ Master checklist of everything required to stand up the full Meridian Commerce G
 - [ ] Tenant provisioned on Qlik Cloud (US, EU, or AP region)
 - [ ] Admin user created with Developer role
 - [ ] API key generated (Profile > API keys > Generate new)
-- [ ] Verify entitlements: Qlik Sense, Qlik Cloud Data Integration, Qlik Answers, Qlik Predict, Automations
+- [ ] Verify entitlements: Qlik Analytics, Qlik Cloud Data Integration, Qlik Answers, Qlik Predict, Automations
 
 ### PostgreSQL Database
 - [ ] PostgreSQL instance running (Docker, RDS, or local)
@@ -186,7 +186,7 @@ Master checklist of everything required to stand up the full Meridian Commerce G
 
 ---
 
-## Phase 5: Analytics Apps (Qlik Sense)
+## Phase 5: Analytics Apps (Qlik Analytics)
 
 ### Build or Import Apps (Domain-Based Design — 2 Apps)
 - [ ] **MCG Supply Chain Operations** app created
@@ -300,7 +300,7 @@ Master checklist of everything required to stand up the full Meridian Commerce G
 
 ### Campaigns
 - [ ] **Address Cleanup** campaign created
-  - Data source: `silver.addresses_standardized`
+  - Data source: `silver.customers_deduped`
   - Filter: `quality_score < 0.7`
   - Owner: Sophie Muller
 - [ ] **Supplier Dedup** campaign created

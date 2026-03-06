@@ -157,7 +157,7 @@ function applyEnvOverrides(cfg) {
  * Make an HTTP(S) request and return { statusCode, headers, body }.
  * `body` is parsed as JSON when the response Content-Type is application/json.
  */
-function request(method, reqUrl, { headers = {}, body = null, rawBody = null, timeout = 60000 } = {}) {
+function requestOnce(method, reqUrl, { headers = {}, body = null, rawBody = null, timeout = 60000 } = {}) {
   return new Promise((resolve, reject) => {
     const parsed = new URL(reqUrl);
     const transport = parsed.protocol === 'https:' ? https : http;
@@ -200,6 +200,34 @@ function request(method, reqUrl, { headers = {}, body = null, rawBody = null, ti
     req.end();
   });
 }
+
+/**
+ * HTTP request with retry on transient failures (429, 502, 503, 504).
+ */
+async function request(method, reqUrl, opts = {}, { maxRetries = 3, backoff = 2.0 } = {}) {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const res = await requestOnce(method, reqUrl, opts);
+      if ([429, 502, 503, 504].includes(res.statusCode) && attempt < maxRetries) {
+        const retryAfter = parseFloat(res.headers['retry-after']) || backoff * Math.pow(2, attempt);
+        console.warn(`  WARN  HTTP ${res.statusCode} — retrying in ${retryAfter.toFixed(1)}s (attempt ${attempt + 1}/${maxRetries})`);
+        await sleep(retryAfter * 1000);
+        continue;
+      }
+      return res;
+    } catch (err) {
+      if (attempt < maxRetries && (err.code === 'ECONNRESET' || err.code === 'ECONNREFUSED' || err.code === 'ETIMEDOUT' || err.message.includes('timed out'))) {
+        const wait = backoff * Math.pow(2, attempt);
+        console.warn(`  WARN  ${err.code || 'Timeout'} — retrying in ${wait.toFixed(1)}s (attempt ${attempt + 1}/${maxRetries})`);
+        await sleep(wait * 1000);
+        continue;
+      }
+      throw err;
+    }
+  }
+}
+
+function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
 
 // ---------------------------------------------------------------------------
 //  Multipart form-data builder (zero-dependency)
@@ -407,10 +435,10 @@ class QlikClient {
   // ========================================================================
 
   async findAppByName(name, spaceId) {
-    const query = spaceId
-      ? { filter: `name eq "${name}" and spaceId eq "${spaceId}"` }
-      : { filter: `name eq "${name}"` };
-    const apps = await this._getAll('/api/v1/items', { resourceType: 'app', ...query });
+    const filter = spaceId
+      ? `name eq "${name}" and resourceType eq "app" and spaceId eq "${spaceId}"`
+      : `name eq "${name}" and resourceType eq "app"`;
+    const apps = await this._getAll('/api/v1/items', { filter });
     return apps.find((a) => a.name === name) || null;
   }
 
@@ -693,6 +721,219 @@ class QlikClient {
     }
     throw new Error(`Failed to create assistant (${res.statusCode}): ${JSON.stringify(res.body)}`);
   }
+
+  // ========================================================================
+  //  CONNECTION VERIFICATION
+  // ========================================================================
+
+  async verifyConnection() {
+    if (this.dryRun) {
+      this.log.success('DRY RUN: Skipped connection verification.');
+      return true;
+    }
+    const res = await this._get('/api/v1/users/me');
+    if (res.statusCode === 200) {
+      const name = res.body.name || res.body.subject || 'unknown';
+      this.log.success(`Connected as: ${name}`);
+      return true;
+    }
+    this.log.error(`Connection check failed (${res.statusCode}): ${JSON.stringify(res.body).slice(0, 200)}`);
+    return false;
+  }
+
+  // ========================================================================
+  //  THEMES
+  // ========================================================================
+
+  async findThemeByName(name) {
+    const themes = await this._getAll('/api/v1/themes');
+    return themes.find((t) => t.name === name) || null;
+  }
+
+  async uploadTheme(filePath) {
+    const fileName = path.basename(filePath);
+    const themeName = path.basename(filePath, path.extname(filePath))
+      .replace(/-/g, ' ')
+      .replace(/\b\w/g, (c) => c.toUpperCase());
+
+    let existing = await this.findThemeByName(themeName);
+    if (!existing) existing = await this.findThemeByName(path.basename(filePath, path.extname(filePath)));
+    if (existing) {
+      this.log.success(`Theme already exists: "${existing.name || themeName}" (${existing.id || '?'}) — skipping.`);
+      return existing;
+    }
+
+    if (this.dryRun) {
+      this.log.info(`DRY RUN: Would upload theme "${fileName}"`);
+      return { id: 'dry-run-theme-id', name: themeName };
+    }
+
+    const fileBuffer = fs.readFileSync(filePath);
+    const { boundary, payload } = buildMultipart([
+      { name: 'file', filename: fileName, contentType: 'application/zip', value: fileBuffer },
+    ]);
+
+    const res = await this._postRaw('/api/v1/themes', payload,
+      { 'Content-Type': `multipart/form-data; boundary=${boundary}` });
+
+    if (res.statusCode === 200 || res.statusCode === 201) {
+      this.log.success(`Uploaded theme "${res.body.name || themeName}" (${res.body.id || '?'})`);
+      return res.body;
+    }
+    if (res.statusCode === 409) {
+      this.log.warn(`Theme "${fileName}" already exists (409).`);
+      return { name: themeName, alreadyExists: true };
+    }
+    throw new Error(`Theme upload failed (${res.statusCode}): ${JSON.stringify(res.body)}`);
+  }
+
+  // ========================================================================
+  //  AUTOMATIONS
+  // ========================================================================
+
+  async findAutomationByName(name) {
+    const autos = await this._getAll('/api/v1/automations');
+    return autos.find((a) => a.name === name) || null;
+  }
+
+  async createAutomation(name, description, spaceId) {
+    const existing = await this.findAutomationByName(name);
+    if (existing) {
+      this.log.success(`Automation already exists: "${name}" (${existing.id}) — skipping.`);
+      return existing;
+    }
+
+    if (this.dryRun) {
+      this.log.info(`DRY RUN: Would create automation "${name}"`);
+      return { id: 'dry-run-auto-id', name };
+    }
+
+    const payload = { name, description, state: 'disabled' };
+    if (spaceId) payload.spaceId = spaceId;
+
+    const res = await this._post('/api/v1/automations', payload);
+    if (res.statusCode === 200 || res.statusCode === 201) {
+      this.log.success(`Created automation "${name}" (${res.body.id})`);
+      return res.body;
+    }
+    if (res.statusCode === 409) {
+      this.log.warn(`Automation "${name}" already exists (409).`);
+      return this.findAutomationByName(name);
+    }
+    throw new Error(`Automation create failed (${res.statusCode}): ${JSON.stringify(res.body)}`);
+  }
+
+  // ========================================================================
+  //  DATA PRODUCTS
+  // ========================================================================
+
+  async findDataProductByName(name) {
+    try {
+      const products = await this._getAll('/api/data-governance/data-products');
+      return products.find((dp) => dp.name === name) || null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  async createDataProduct({ name, description, tags, owner, sla, schema, apiSharing, spaceId }) {
+    const existing = await this.findDataProductByName(name);
+    if (existing) {
+      this.log.success(`Data product already exists: "${name}" (${existing.id || '?'}) — skipping.`);
+      return existing;
+    }
+
+    if (this.dryRun) {
+      this.log.info(`DRY RUN: Would create data product "${name}"`);
+      return { id: 'dry-run-dp-id', name };
+    }
+
+    const payload = { name, description };
+    if (spaceId) payload.spaceId = spaceId;
+    if (tags) payload.tags = tags;
+    if (owner) payload.owner = owner;
+    if (sla) payload.sla = sla;
+    if (schema) payload.schema = schema;
+    if (apiSharing) payload.apiSharing = { enabled: true };
+
+    const res = await this._post('/api/data-governance/data-products', payload);
+    if (res.statusCode === 200 || res.statusCode === 201) {
+      this.log.success(`Created data product "${name}" (${res.body.id || '?'})`);
+      return res.body;
+    }
+    if (res.statusCode === 409) {
+      this.log.warn(`Data product "${name}" may already exist.`);
+      return { name, alreadyExists: true };
+    }
+    if (res.statusCode === 404) {
+      this.log.warn(`Data products API not available (404). Talend Enterprise tier may be required for "${name}".`);
+      return { name, notAvailable: true };
+    }
+    throw new Error(`Data product create failed (${res.statusCode}): ${JSON.stringify(res.body)}`);
+  }
+
+  // ========================================================================
+  //  BUSINESS GLOSSARY
+  // ========================================================================
+
+  async findGlossaryByName(name) {
+    try {
+      const glossaries = await this._getAll('/api/data-governance/glossaries');
+      return glossaries.find((g) => g.name === name) || null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  async createGlossary(name, description) {
+    const existing = await this.findGlossaryByName(name);
+    if (existing) {
+      this.log.success(`Glossary already exists: "${name}" (${existing.id || '?'}) — skipping.`);
+      return existing;
+    }
+
+    if (this.dryRun) {
+      this.log.info(`DRY RUN: Would create glossary "${name}"`);
+      return { id: 'dry-run-glossary-id', name };
+    }
+
+    const res = await this._post('/api/data-governance/glossaries', { name, description });
+    if (res.statusCode === 200 || res.statusCode === 201) {
+      this.log.success(`Created glossary "${name}" (${res.body.id || '?'})`);
+      return res.body;
+    }
+    if (res.statusCode === 409) {
+      this.log.warn(`Glossary "${name}" may already exist.`);
+      return (await this.findGlossaryByName(name)) || { name, alreadyExists: true };
+    }
+    if (res.statusCode === 404) {
+      this.log.warn('Glossaries API not available (404). Talend Enterprise tier may be required.');
+      return { name, notAvailable: true };
+    }
+    throw new Error(`Glossary create failed (${res.statusCode}): ${JSON.stringify(res.body)}`);
+  }
+
+  async createGlossaryTerm(glossaryId, { name, definition, category, tags }) {
+    if (this.dryRun) {
+      this.log.debug(`DRY RUN: Would create glossary term "${name}"`);
+      return { id: 'dry-run-term-id', name };
+    }
+
+    const payload = { name, definition };
+    if (category) payload.category = category;
+    if (tags) payload.tags = tags;
+
+    const res = await this._post(`/api/data-governance/glossaries/${glossaryId}/terms`, payload);
+    if (res.statusCode === 200 || res.statusCode === 201) {
+      this.log.debug(`Created term "${name}" (${res.body.id || '?'})`);
+      return res.body;
+    }
+    if (res.statusCode === 409) {
+      this.log.debug(`Term "${name}" already exists — skipping.`);
+      return { name, alreadyExists: true };
+    }
+    throw new Error(`Term "${name}" create failed (${res.statusCode}): ${JSON.stringify(res.body)}`);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -731,13 +972,6 @@ function buildPostgresProperties(cfg) {
     ].join(''),
     qUsername: cfg.username,
     qPassword: cfg.password,
-    connectionProperties: {
-      host: cfg.host,
-      port: cfg.port,
-      database: cfg.database,
-      schema: cfg.schema || 'public',
-      sslMode: 'require',
-    },
   };
 }
 
@@ -818,6 +1052,112 @@ class DeploymentReport {
 }
 
 // ---------------------------------------------------------------------------
+//  Post-deployment checklist
+// ---------------------------------------------------------------------------
+
+function printChecklist(report, enabled, log) {
+  log.section('POST-DEPLOYMENT CHECKLIST');
+
+  const okSteps = new Set(report.steps.filter((s) => s.status === 'OK').map((s) => s.step.toLowerCase()));
+
+  const manualSteps = {
+    spaces: [
+      'Assign users/groups to shared and managed spaces',
+      'Verify space permissions for demo presenters',
+    ],
+    connections: [
+      "Test each data connection (click 'Test Connection' in the UI)",
+      'Verify tables/topics are visible through each connection',
+      'Configure CDC Cluster for PostgreSQL + Salesforce pipelines',
+      'Configure Streaming Cluster for Kafka IoT pipelines',
+    ],
+    theme: [
+      'Apply MCG Dark Theme to both analytics apps (App Settings → Theme)',
+      'Verify MCG logo appears in app headers',
+    ],
+    apps: [
+      'Open both domain apps and verify data loads correctly:',
+      '  • MCG Supply Chain Operations (5 Gold tables + streaming IoT)',
+      '  • MCG Delivery & Customer Experience (3 Gold tables + streaming carrier events)',
+      'Set up scheduled reloads (every 5 min for streaming data)',
+      'Configure Business Logic for Qlik Answers in each app',
+      'Publish apps from Development → Published space',
+    ],
+    knowledge: [
+      'Wait for document indexing to complete (5-10 min)',
+      'Verify upload count matches expected 25 documents',
+    ],
+    assistant: [
+      'Test each conversation starter in the Qlik Answers UI',
+      'Verify answers reference correct source documents',
+    ],
+    automations: [
+      'Open each automation in the Automation Designer',
+      'Configure block details (see deploy/automation_guide.md)',
+      'Set Teams webhook URLs in webhook blocks',
+      'Configure Talend Address Correction automation trigger',
+      "Enable automations and test with 'Run Now'",
+    ],
+    dataproducts: [
+      'Verify data products have data flowing from Gold tables',
+      'Enable API sharing for key data products (governance capability)',
+      'Review AI-Driven Descriptions and column-level metadata',
+      'Review Semantic Types and AI-Suggested Validation Rules',
+      'Configure refresh schedules',
+    ],
+    glossary: [
+      'Review and approve glossary terms',
+      'Link terms to relevant data products and datasets',
+    ],
+  };
+
+  const alwaysManual = [
+    ['Open Lakehouse',     'Configure Bronze/Silver/Gold layers in Qlik Cloud UI (see creation_guide.md §1)'],
+    ['Data Flows',         'Build 8 transformation flows + Talend address validation job (see creation_guide.md §1.3)'],
+    ['Table Recipes',      'Create 7 Gold-layer table recipes from Silver tables (see creation_guide.md §1.4)'],
+    ['Qlik Predict',       'Create AutoML experiments for Spoilage Risk & SLA Prediction (see creation_guide.md §4)'],
+    ['Stewardship',        'Create 4 stewardship campaigns (see demo_checklist.md Phase 8)'],
+    ['Discovery Agent',    'Enable Discovery Agent on data products and set alert thresholds'],
+    ['MCP Server',         'Install and configure Qlik MCP server (see setup_guide.md §13)'],
+  ];
+
+  const components = [
+    ['spaces',       'Create Spaces (shared + managed)'],
+    ['connections',  'Create Data Connections (PostgreSQL, Salesforce, Kafka, S3)'],
+    ['theme',        'Upload MCG Dark Theme Extension'],
+    ['apps',         'Import & Publish Analytics Apps (.qvf)'],
+    ['knowledge',    'Create Qlik Answers Knowledge Base + Upload Documents'],
+    ['assistant',    'Create Qlik Answers Assistant'],
+    ['automations',  'Create Automations (scheduled reloads, alerts, Talend address correction)'],
+    ['dataproducts', 'Create Data Products (Gold layer definitions)'],
+    ['glossary',     'Create Business Glossary Terms'],
+  ];
+
+  let idx = 1;
+
+  for (const [key, label] of components) {
+    if (!enabled[key]) continue;
+    const steps = manualSteps[key] || [];
+    const componentOk = [...okSteps].some((s) => s.includes(key));
+    if (!steps.length || !componentOk) continue;
+    console.log(`\n  ${label}:`);
+    for (const step of steps) {
+      console.log(`    ${String(idx).padStart(2)}. [ ] ${step}`);
+      idx++;
+    }
+  }
+
+  console.log('\n  Manual Configuration (UI-only — not automated):');
+  for (const [label, desc] of alwaysManual) {
+    console.log(`    ${String(idx).padStart(2)}. [ ] ${label}: ${desc}`);
+    idx++;
+  }
+
+  console.log(`\n  Total manual steps remaining: ${idx - 1}`);
+  console.log('  See deploy/demo_checklist.md for the full 13-phase checklist.\n');
+}
+
+// ---------------------------------------------------------------------------
 //  Main deployment orchestrator
 // ---------------------------------------------------------------------------
 
@@ -848,13 +1188,18 @@ async function main() {
   const continueOnError = cfg.options && cfg.options.continueOnError;
   if (cfg.options && cfg.options.verbose) log.verbose = true;
 
+  const enabled = cfg.enabledComponents || {};
   const client = new QlikClient(cfg, log, dryRun);
   log.info(`Target: ${client.baseUrl}`);
+  if (dryRun) log.warn('DRY RUN MODE — no changes will be made to Qlik Cloud.');
 
   // ---- Authenticate -------------------------------------------------------
   log.section('Step 1: Authentication');
   try {
     await client.authenticate();
+    if (!(await client.verifyConnection())) {
+      throw new Error('Could not verify connection to Qlik Cloud tenant.');
+    }
     report.record('Authentication', 'OK', `method=${cfg.auth.method}`);
   } catch (err) {
     log.error(`Authentication failed: ${err.message}`);
@@ -864,202 +1209,372 @@ async function main() {
   }
 
   // ---- Create Spaces ------------------------------------------------------
-  log.section('Step 2: Create Spaces');
   let sharedSpace, managedSpace;
 
-  try {
-    const sharedName  = (cfg.spaces && cfg.spaces.shared)  || 'MCG Demo - Development';
-    const managedName = (cfg.spaces && cfg.spaces.managed)  || 'MCG Demo - Published';
+  if (enabled.spaces !== false) {
+    log.section('Step 2: Create Spaces');
+    try {
+      const sharedName  = (cfg.spaces && cfg.spaces.shared)  || 'MCG Demo - Development';
+      const managedName = (cfg.spaces && cfg.spaces.managed)  || 'MCG Demo - Published';
 
-    sharedSpace  = await client.createSpace(sharedName, 'shared');
-    report.record('Space (shared)', 'OK', `"${sharedName}" id=${sharedSpace.id}`);
+      sharedSpace  = await client.createSpace(sharedName, 'shared');
+      report.record('Space (shared)', 'OK', `"${sharedName}" id=${sharedSpace.id}`);
 
-    managedSpace = await client.createSpace(managedName, 'managed');
-    report.record('Space (managed)', 'OK', `"${managedName}" id=${managedSpace.id}`);
-  } catch (err) {
-    log.error(`Space creation failed: ${err.message}`);
-    report.record('Spaces', 'FAIL', err.message);
-    if (!continueOnError) { report.print(log); process.exit(EXIT_FAILURE); }
+      managedSpace = await client.createSpace(managedName, 'managed');
+      report.record('Space (managed)', 'OK', `"${managedName}" id=${managedSpace.id}`);
+    } catch (err) {
+      log.error(`Space creation failed: ${err.message}`);
+      report.record('Spaces', 'FAIL', err.message);
+      if (!continueOnError) { report.print(log); process.exit(EXIT_FAILURE); }
+    }
   }
 
-  // ---- Import & Publish Apps ----------------------------------------------
-  log.section('Step 3: Import & Publish Apps');
-  const appsDir = path.resolve(SCRIPT_DIR, (cfg.apps && cfg.apps.sourceDir) || './apps');
-  const qvfFiles = findFiles(appsDir, '.qvf');
+  // ---- Create Data Connections --------------------------------------------
+  if (enabled.connections !== false) {
+    log.section('Step 3: Create Data Connections');
 
-  if (qvfFiles.length === 0) {
-    log.warn(`No .qvf files found in ${appsDir} — skipping app import.`);
-    report.record('App import', 'SKIP', 'No .qvf files found');
-  } else {
-    log.info(`Found ${qvfFiles.length} .qvf file(s) to import.`);
-    for (const qvf of qvfFiles) {
-      const baseName = path.basename(qvf, '.qvf');
+    const connectionDefs = [
+      { key: 'postgresql', keyword: 'postgres',   buildProps: buildPostgresProperties,   label: 'PostgreSQL (MCG WMS)' },
+      { key: 'salesforce', keyword: 'salesforce', buildProps: buildSalesforceProperties, label: 'Salesforce (MCG CRM)' },
+      { key: 'kafka',      keyword: 'kafka',      buildProps: buildKafkaProperties,      label: 'Kafka (IoT Telemetry)' },
+      { key: 's3',         keyword: 's3',          buildProps: buildS3Properties,          label: 'S3 (Flat File Outputs)' },
+    ];
+
+    for (const def of connectionDefs) {
+      const connCfg = cfg.dataConnections && cfg.dataConnections[def.key];
+      if (!connCfg) {
+        log.warn(`No config for ${def.label} — skipping.`);
+        report.record(`Connection: ${def.label}`, 'SKIP', 'Not configured');
+        continue;
+      }
+
       try {
-        const app = await client.importApp(qvf, sharedSpace ? sharedSpace.id : 'unknown');
-        report.record(`Import "${baseName}"`, 'OK', `id=${app.id}`);
+        log.info(`Discovering data source type for: ${def.keyword}`);
+        const dataSource = await client.discoverDataSourceByType(def.keyword);
+        const dataSourceId = dataSource ? (dataSource.dataSourceType || dataSource.sourceType || dataSource.id || def.keyword) : def.keyword;
 
-        // Publish to managed space
-        if (managedSpace && !app.alreadyExisted) {
-          const pub = await client.publishApp(app.id, baseName, managedSpace.id);
-          report.record(`Publish "${baseName}"`, 'OK', `published`);
-        } else if (app.alreadyExisted) {
-          report.record(`Publish "${baseName}"`, 'SKIP', 'App already existed');
+        if (dataSource) {
+          log.debug(`Found data source: ${dataSource.name || dataSource.dataSourceType} (id=${dataSourceId})`);
+        } else {
+          log.warn(`Data source type "${def.keyword}" not found via discovery — using keyword as fallback.`);
         }
+
+        const props = def.buildProps(connCfg);
+        await client.createDataConnection(
+          connCfg.name || `MCG ${def.label}`,
+          dataSourceId,
+          props,
+          sharedSpace ? sharedSpace.id : undefined
+        );
+        report.record(`Connection: ${def.label}`, 'OK', connCfg.name);
       } catch (err) {
-        log.error(`App "${baseName}": ${err.message}`);
-        report.record(`App "${baseName}"`, 'FAIL', err.message);
+        log.error(`${def.label}: ${err.message}`);
+        report.record(`Connection: ${def.label}`, 'FAIL', err.message);
         if (!continueOnError) { report.print(log); process.exit(EXIT_FAILURE); }
       }
     }
   }
 
-  // ---- Create Data Connections --------------------------------------------
-  log.section('Step 4: Create Data Connections');
+  // ---- Upload Theme -------------------------------------------------------
+  if (enabled.theme !== false) {
+    log.section('Step 4: Upload MCG Dark Theme');
 
-  const connectionDefs = [
-    {
-      key: 'postgresql',
-      keyword: 'postgres',
-      buildProps: buildPostgresProperties,
-      label: 'PostgreSQL (MCG WMS)',
-    },
-    {
-      key: 'salesforce',
-      keyword: 'salesforce',
-      buildProps: buildSalesforceProperties,
-      label: 'Salesforce (MCG CRM)',
-    },
-    {
-      key: 'kafka',
-      keyword: 'kafka',
-      buildProps: buildKafkaProperties,
-      label: 'Kafka (IoT Telemetry)',
-    },
-    {
-      key: 's3',
-      keyword: 's3',
-      buildProps: buildS3Properties,
-      label: 'S3 (Flat File Outputs)',
-    },
-  ];
-
-  for (const def of connectionDefs) {
-    const connCfg = cfg.dataConnections && cfg.dataConnections[def.key];
-    if (!connCfg) {
-      log.warn(`No config for ${def.label} — skipping.`);
-      report.record(`Connection: ${def.label}`, 'SKIP', 'Not configured');
-      continue;
-    }
-
-    try {
-      // Step 4a: Discover the data source type
-      log.info(`Discovering data source type for: ${def.keyword}`);
-      const dataSource = await client.discoverDataSourceByType(def.keyword);
-      const dataSourceId = dataSource ? (dataSource.dataSourceType || dataSource.sourceType || dataSource.id || def.keyword) : def.keyword;
-
-      if (dataSource) {
-        log.debug(`Found data source: ${dataSource.name || dataSource.dataSourceType} (id=${dataSourceId})`);
-      } else {
-        log.warn(`Data source type "${def.keyword}" not found via discovery — using keyword as fallback.`);
+    const themeZip = path.resolve(SCRIPT_DIR, (cfg.theme && cfg.theme.sourceFile) || './themes/mcg-dark-theme.zip');
+    if (fs.existsSync(themeZip)) {
+      try {
+        await client.uploadTheme(themeZip);
+        report.record('Theme Upload', 'OK', path.basename(themeZip));
+      } catch (err) {
+        log.error(`Theme upload failed: ${err.message}`);
+        report.record('Theme Upload', 'FAIL', err.message);
+        if (!continueOnError) { report.print(log); process.exit(EXIT_FAILURE); }
       }
+    } else {
+      log.warn(`Theme file not found: ${themeZip}`);
+      report.record('Theme Upload', 'SKIP', 'mcg-dark-theme.zip not found');
+    }
+  }
 
-      // Step 4b: Build connection properties from config
-      const props = def.buildProps(connCfg);
+  // ---- Import & Publish Apps ----------------------------------------------
+  if (enabled.apps !== false) {
+    log.section('Step 5: Import & Publish Apps');
+    const appsDir = path.resolve(SCRIPT_DIR, (cfg.apps && cfg.apps.sourceDir) || './apps');
+    const qvfFiles = findFiles(appsDir, '.qvf');
 
-      // Step 4c: Create the connection
-      await client.createDataConnection(
-        connCfg.name || `MCG ${def.label}`,
-        dataSourceId,
-        props,
-        sharedSpace ? sharedSpace.id : undefined
-      );
-      report.record(`Connection: ${def.label}`, 'OK', connCfg.name);
-    } catch (err) {
-      log.error(`${def.label}: ${err.message}`);
-      report.record(`Connection: ${def.label}`, 'FAIL', err.message);
-      if (!continueOnError) { report.print(log); process.exit(EXIT_FAILURE); }
+    if (qvfFiles.length === 0) {
+      log.warn(`No .qvf files found in ${appsDir} — skipping app import.`);
+      report.record('App import', 'SKIP', 'No .qvf files found');
+    } else {
+      log.info(`Found ${qvfFiles.length} .qvf file(s) to import.`);
+      for (const qvf of qvfFiles) {
+        const baseName = path.basename(qvf, '.qvf');
+        try {
+          const app = await client.importApp(qvf, sharedSpace ? sharedSpace.id : 'unknown');
+          report.record(`Import "${baseName}"`, 'OK', `id=${app.id}`);
+
+          if (managedSpace && !app.alreadyExisted) {
+            await client.publishApp(app.id, baseName, managedSpace.id);
+            report.record(`Publish "${baseName}"`, 'OK', 'published');
+          } else if (app.alreadyExisted) {
+            report.record(`Publish "${baseName}"`, 'SKIP', 'App already existed');
+          }
+        } catch (err) {
+          log.error(`App "${baseName}": ${err.message}`);
+          report.record(`App "${baseName}"`, 'FAIL', err.message);
+          if (!continueOnError) { report.print(log); process.exit(EXIT_FAILURE); }
+        }
+      }
     }
   }
 
   // ---- Create Knowledge Base & Upload Documents ---------------------------
-  log.section('Step 5: Create Knowledge Base for Qlik Answers');
-
   let knowledgeBase = null;
   let kbDatasource  = null;
 
-  try {
-    const kbName = (cfg.knowledgeBase && cfg.knowledgeBase.name) || 'MCG Operations Knowledge Base';
-    const kbDesc = (cfg.knowledgeBase && cfg.knowledgeBase.description) || '';
+  if (enabled.knowledge !== false) {
+    log.section('Step 6: Create Knowledge Base for Qlik Answers');
 
-    knowledgeBase = await client.createKnowledgeBase(kbName, kbDesc);
-    report.record('Knowledge Base', 'OK', `"${kbName}" id=${knowledgeBase.id}`);
+    try {
+      const kbName = (cfg.knowledgeBase && cfg.knowledgeBase.name) || 'MCG Operations Knowledge Base';
+      const kbDesc = (cfg.knowledgeBase && cfg.knowledgeBase.description) || '';
 
-    // Create file-based datasource within the KB
-    kbDatasource = await client.createKBFileDatasource(knowledgeBase.id, 'MCG Documents');
-    report.record('KB Datasource', 'OK', `id=${kbDatasource.id}`);
+      knowledgeBase = await client.createKnowledgeBase(kbName, kbDesc);
+      report.record('Knowledge Base', 'OK', `"${kbName}" id=${knowledgeBase.id}`);
 
-    // Upload all .docx files from the documents directory
-    const docsDir = path.resolve(SCRIPT_DIR, (cfg.documents && cfg.documents.sourceDir) || '../documents');
-    const docxFiles = findFiles(docsDir, '.docx');
+      kbDatasource = await client.createKBFileDatasource(knowledgeBase.id, 'MCG Documents');
+      report.record('KB Datasource', 'OK', `id=${kbDatasource.id}`);
 
-    if (docxFiles.length === 0) {
-      log.warn(`No .docx files found in ${docsDir}`);
-      report.record('Document Upload', 'SKIP', 'No .docx files found');
-    } else {
-      log.info(`Found ${docxFiles.length} .docx file(s) to upload.`);
-      let uploaded = 0;
-      let failed   = 0;
+      const docsDir = path.resolve(SCRIPT_DIR, (cfg.documents && cfg.documents.sourceDir) || '../documents');
+      const allDocxFiles = findFiles(docsDir, '.docx');
 
-      for (const docPath of docxFiles) {
-        try {
-          await client.uploadDocumentToKB(knowledgeBase.id, kbDatasource.id, docPath);
-          uploaded++;
-        } catch (err) {
-          log.error(`Upload failed for "${path.basename(docPath)}": ${err.message}`);
-          failed++;
-          if (!continueOnError) throw err;
+      // Filter: only operational documents (exclude demo-scripts and top-level guides)
+      const docxFiles = allDocxFiles.filter(f => {
+        const rel = path.relative(docsDir, f).replace(/\\/g, '/');
+        if (rel.startsWith('demo-scripts/')) return false;
+        const base = path.basename(f);
+        if (!rel.includes('/') && (base.startsWith('MCG_Setup_Guide') || base.startsWith('MCG_Creation_Guide'))) return false;
+        return true;
+      });
+
+      if (docxFiles.length === 0) {
+        log.warn(`No operational .docx files found in ${docsDir}`);
+        report.record('Document Upload', 'SKIP', 'No operational .docx files found');
+      } else {
+        log.info(`Found ${docxFiles.length} operational .docx file(s) to upload (${allDocxFiles.length} total, ${allDocxFiles.length - docxFiles.length} excluded).`);
+        let uploaded = 0;
+        let failed   = 0;
+
+        for (const docPath of docxFiles) {
+          try {
+            await client.uploadDocumentToKB(knowledgeBase.id, kbDatasource.id, docPath);
+            uploaded++;
+          } catch (err) {
+            log.error(`Upload failed for "${path.basename(docPath)}": ${err.message}`);
+            failed++;
+            if (!continueOnError) throw err;
+          }
         }
+        log.success(`Uploaded ${uploaded}/${docxFiles.length} documents (${failed} failed).`);
+        report.record('Document Upload', failed === 0 ? 'OK' : 'FAIL', `${uploaded} uploaded, ${failed} failed`);
       }
-      log.success(`Uploaded ${uploaded}/${docxFiles.length} documents (${failed} failed).`);
-      report.record('Document Upload', failed === 0 ? 'OK' : 'FAIL', `${uploaded} uploaded, ${failed} failed`);
-    }
 
-    // Trigger sync / indexing
-    log.info('Triggering knowledge base sync/indexing...');
-    await client.syncKBDatasource(knowledgeBase.id, kbDatasource.id);
-    report.record('KB Sync', 'OK', 'Indexing triggered');
-  } catch (err) {
-    log.error(`Knowledge base setup failed: ${err.message}`);
-    report.record('Knowledge Base', 'FAIL', err.message);
-    if (!continueOnError) { report.print(log); process.exit(EXIT_FAILURE); }
+      log.info('Triggering knowledge base sync/indexing...');
+      await client.syncKBDatasource(knowledgeBase.id, kbDatasource.id);
+      report.record('KB Sync', 'OK', 'Indexing triggered');
+    } catch (err) {
+      log.error(`Knowledge base setup failed: ${err.message}`);
+      report.record('Knowledge Base', 'FAIL', err.message);
+      if (!continueOnError) { report.print(log); process.exit(EXIT_FAILURE); }
+    }
   }
 
   // ---- Create Assistant ---------------------------------------------------
-  log.section('Step 6: Create Qlik Answers Assistant');
+  if (enabled.assistant !== false) {
+    log.section('Step 7: Create Qlik Answers Assistant');
 
-  try {
-    const astCfg = cfg.assistant || {};
-    const assistant = await client.createAssistant({
-      name: astCfg.name || 'MCG Operations Assistant',
-      description: astCfg.description || 'AI assistant for Meridian Commerce Group operations.',
-      knowledgeBaseId: knowledgeBase ? knowledgeBase.id : undefined,
-      conversationStarters: astCfg.conversationStarters || [
-        'What is the procedure for goods receiving?',
-        'What happened during the Rotterdam pipeline failure?',
-        'What are the cold chain temperature requirements?',
-        'What is Project CLARITY?',
-        'What was the lettuce recall and what went wrong?',
-      ],
-    });
-    report.record('Assistant', 'OK', `"${assistant.name}" id=${assistant.id}`);
-  } catch (err) {
-    log.error(`Assistant creation failed: ${err.message}`);
-    report.record('Assistant', 'FAIL', err.message);
-    if (!continueOnError) { report.print(log); process.exit(EXIT_FAILURE); }
+    try {
+      const astCfg = cfg.assistant || {};
+      const assistant = await client.createAssistant({
+        name: astCfg.name || 'MCG Operations Assistant',
+        description: astCfg.description || 'AI assistant for Meridian Commerce Group operations.',
+        knowledgeBaseId: knowledgeBase ? knowledgeBase.id : undefined,
+        conversationStarters: astCfg.conversationStarters || [
+          'What is the procedure for goods receiving?',
+          'What happened during the Rotterdam pipeline failure?',
+          'What are the cold chain temperature requirements?',
+          'What is Project CLARITY?',
+          'What was the lettuce recall and what went wrong?',
+        ],
+      });
+      report.record('Assistant', 'OK', `"${assistant.name}" id=${assistant.id}`);
+    } catch (err) {
+      log.error(`Assistant creation failed: ${err.message}`);
+      report.record('Assistant', 'FAIL', err.message);
+      if (!continueOnError) { report.print(log); process.exit(EXIT_FAILURE); }
+    }
+  }
+
+  // ---- Create Automations -------------------------------------------------
+  if (enabled.automations !== false) {
+    log.section('Step 8: Create Automations');
+
+    const spaceId = sharedSpace ? sharedSpace.id : undefined;
+
+    const automationDefs = [
+      ['MCG Daily App Reload',
+       'Scheduled daily reload of MCG analytics apps at 06:00 UTC.'],
+      ['MCG Address Correction — Talend Job Trigger',
+       'Triggered by new Stewardship tasks in the Address Cleanup campaign. '
+       + 'Runs the Talend Address Validation Service job on flagged records, writes corrected '
+       + 'addresses back to silver.customers_deduped, and resolves the stewardship task.'],
+    ];
+
+    // Load additional automations from JSON templates
+    const autoDir = path.resolve(SCRIPT_DIR, (cfg.automations && cfg.automations.templateDir) || './automations');
+    if (fs.existsSync(autoDir)) {
+      const templates = fs.readdirSync(autoDir).filter((f) => f.endsWith('.json')).sort();
+      if (templates.length) log.info(`Found ${templates.length} automation template(s) in ${path.basename(autoDir)}/`);
+      for (const tplFile of templates) {
+        try {
+          const tpl = JSON.parse(fs.readFileSync(path.join(autoDir, tplFile), 'utf-8'));
+          const tplName = tpl.name || path.basename(tplFile, '.json');
+          const tplDesc = tpl.description || '';
+          if (!automationDefs.some(([n]) => n === tplName)) {
+            automationDefs.push([tplName, tplDesc]);
+            log.debug(`Loaded template: "${tplName}" from ${tplFile}`);
+          }
+        } catch (err) {
+          log.warn(`Could not parse automation template "${tplFile}": ${err.message}`);
+        }
+      }
+    }
+
+    for (const [autoName, autoDesc] of automationDefs) {
+      try {
+        await client.createAutomation(autoName, autoDesc, spaceId);
+        report.record(`Automation: ${autoName}`, 'OK', 'Created (disabled)');
+      } catch (err) {
+        log.error(`Automation "${autoName}": ${err.message}`);
+        report.record(`Automation: ${autoName}`, 'FAIL', err.message);
+        if (!continueOnError) { report.print(log); process.exit(EXIT_FAILURE); }
+      }
+    }
+    log.info('Automations created in DISABLED state — configure triggers in Qlik Cloud console.');
+  }
+
+  // ---- Create Data Products -----------------------------------------------
+  if (enabled.dataproducts !== false) {
+    log.section('Step 9: Create Data Products (Gold Layer)');
+
+    const dpFile = path.resolve(SCRIPT_DIR, (cfg.dataProducts && cfg.dataProducts.sourceFile) || './data_products.json');
+    if (fs.existsSync(dpFile)) {
+      try {
+        const dpData = JSON.parse(fs.readFileSync(dpFile, 'utf-8'));
+        const products = dpData.dataProducts || [];
+        log.info(`Found ${products.length} data product definition(s) in ${path.basename(dpFile)}`);
+        const spaceId = sharedSpace ? sharedSpace.id : undefined;
+
+        let created = 0, skipped = 0, failedDp = 0;
+        for (const dpDef of products) {
+          try {
+            const result = await client.createDataProduct({
+              name: dpDef.name,
+              description: dpDef.description || '',
+              tags: dpDef.tags,
+              owner: dpDef.owner,
+              sla: dpDef.sla,
+              schema: dpDef.schema,
+              apiSharing: dpDef.apiSharing || false,
+              spaceId,
+            });
+            if (result.notAvailable || result.alreadyExists) skipped++;
+            else created++;
+          } catch (err) {
+            log.error(`Data product "${dpDef.name}": ${err.message}`);
+            failedDp++;
+            if (!continueOnError) throw err;
+          }
+        }
+        log.success(`Data products: ${created} created, ${skipped} skipped, ${failedDp} failed.`);
+        report.record('Data Products', failedDp === 0 ? 'OK' : 'FAIL',
+          `${created} created, ${skipped} skipped, ${failedDp} failed`);
+      } catch (err) {
+        log.error(`Data products step failed: ${err.message}`);
+        report.record('Data Products', 'FAIL', err.message);
+        if (!continueOnError) { report.print(log); process.exit(EXIT_FAILURE); }
+      }
+    } else {
+      log.warn(`${path.basename(dpFile)} not found — skipping data products.`);
+      report.record('Data Products', 'SKIP', 'No definitions file found');
+    }
+  }
+
+  // ---- Create Business Glossary -------------------------------------------
+  if (enabled.glossary !== false) {
+    log.section('Step 10: Create Business Glossary Terms');
+
+    const glFile = path.resolve(SCRIPT_DIR, (cfg.glossary && cfg.glossary.sourceFile) || './glossary_terms.json');
+    if (fs.existsSync(glFile)) {
+      try {
+        const glData = JSON.parse(fs.readFileSync(glFile, 'utf-8'));
+        const glMeta = glData.glossary || {};
+        const terms  = glData.terms || [];
+        log.info(`Found ${terms.length} glossary term(s) in ${path.basename(glFile)}`);
+
+        const glossary = await client.createGlossary(
+          glMeta.name || 'MCG Supply Chain Glossary',
+          glMeta.description || ''
+        );
+
+        if (glossary.notAvailable) {
+          log.warn('Glossary API not available — skipping terms.');
+          report.record('Glossary', 'SKIP', 'API not available (requires Talend Enterprise)');
+        } else {
+          const glossaryId = glossary.id || '';
+          report.record('Glossary', glossaryId ? 'OK' : 'SKIP',
+            `"${glMeta.name || ''}" id=${glossaryId}`);
+
+          if (glossaryId && glossaryId !== 'dry-run-glossary-id') {
+            let createdT = 0, failedT = 0;
+            for (const term of terms) {
+              try {
+                await client.createGlossaryTerm(glossaryId, {
+                  name: term.name,
+                  definition: term.definition || '',
+                  category: term.category || '',
+                  tags: term.tags,
+                });
+                createdT++;
+              } catch (err) {
+                log.error(`Term "${term.name}": ${err.message}`);
+                failedT++;
+                if (!continueOnError) throw err;
+              }
+            }
+            log.success(`Glossary terms: ${createdT} created, ${failedT} failed.`);
+            report.record('Glossary Terms', failedT === 0 ? 'OK' : 'FAIL',
+              `${createdT}/${terms.length} terms`);
+          } else if (glossaryId === 'dry-run-glossary-id') {
+            log.info(`DRY RUN: Would create ${terms.length} glossary terms.`);
+            report.record('Glossary Terms', 'OK', `DRY RUN: ${terms.length} terms`);
+          }
+        }
+      } catch (err) {
+        log.error(`Glossary step failed: ${err.message}`);
+        report.record('Glossary', 'FAIL', err.message);
+        if (!continueOnError) { report.print(log); process.exit(EXIT_FAILURE); }
+      }
+    } else {
+      log.warn(`${path.basename(glFile)} not found — skipping glossary.`);
+      report.record('Glossary', 'SKIP', 'No definitions file found');
+    }
   }
 
   // ---- Final Report -------------------------------------------------------
   const failures = report.print(log);
+
+  // ---- Post-Deployment Checklist ------------------------------------------
+  printChecklist(report, enabled, log);
 
   if (failures > 0) {
     log.warn(`Deployment completed with ${failures} failure(s). Review the log above.`);

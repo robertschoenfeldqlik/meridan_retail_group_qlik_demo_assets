@@ -107,7 +107,7 @@ Failed batch job (9/24)
 | **Data Quality Rules** | Reconciliation rule: if ERP vs. WMS quantity gap exceeds 2% for any SKU/location, flag immediately. |
 | **Trust Score** | Inventory dataset Trust Score drops when reconciliation failures are detected -- visible on dashboards. |
 | **Discovery Agent** | Proactively surfaces: "Inventory discrepancy growing for 3 consecutive days at DC-RTD-01." |
-| **Qlik Sense** | Global Inventory Health Dashboard shows red indicator for Rotterdam DC. |
+| **Qlik Analytics** | Global Inventory Health Dashboard shows red indicator for Rotterdam DC. |
 
 ---
 
@@ -218,7 +218,7 @@ Bad address captured at checkout / loyalty signup
 | **Data Quality (Matching/Dedup)** | Fuzzy matching identifies the 3.2% duplicate pairs with confidence scores |
 | **Data Stewardship** | Ambiguous matches (< 90% confidence) routed to stewards for manual resolution |
 | **Trust Score** | Address dataset Trust Score reflects improvement as standardization progresses |
-| **Qlik Sense** | Delivery failure heat map shows carrier rejection rate by region/postal code |
+| **Qlik Analytics** | Delivery failure heat map shows carrier rejection rate by region/postal code |
 
 ---
 
@@ -346,7 +346,7 @@ No single product master
 | **Data Quality (Matching)** | Fuzzy matching groups "Samsung Elec." / "SAMSUNG" / "Samsung Corp" into one entity |
 | **Data Stewardship** | Ambiguous product matches (is EU-44200 really the same as AM-BT-SPKR-001?) routed to product data team |
 | **Data Catalog** | Publishes the "Golden Product Master" as a governed data product |
-| **Qlik Sense** | Supplier spend dashboard shows consolidated view after dedup -- revealing the true $47M Samsung relationship |
+| **Qlik Analytics** | Supplier spend dashboard shows consolidated view after dedup -- revealing the true $47M Samsung relationship |
 
 ---
 
@@ -494,7 +494,7 @@ The 1-hour error seems small, but at scale across millions of orders it creates 
 | **Qlik Talend Cloud (Transformation)** | Timestamp normalization layer: all timestamps converted to UTC at ingestion, with original value preserved |
 | **Data Quality Rules** | "Every timestamp field must include timezone offset or be explicitly tagged as UTC" |
 | **Qlik Open Lakehouse** | Canonical Iceberg tables store all timestamps as `TIMESTAMPTZ` (UTC with offset) |
-| **Qlik Sense** | Dashboards display in user's local timezone, but calculations always use normalized UTC |
+| **Qlik Analytics** | Dashboards display in user's local timezone, but calculations always use normalized UTC |
 
 ---
 
@@ -594,7 +594,7 @@ Every carrier has its own lifecycle terminology:
 | **Qlik Talend Cloud (Transformation)** | Canonical status mapping: all carrier-specific codes normalized to MCG standard lifecycle |
 | **Data Quality (Standardization)** | Status code normalization ("DELIVERED"/"Zugestellt"/"Completed" → `DELIVERED`) |
 | **Qlik Talend Cloud (Monitoring)** | SFTP file arrival SLA: alert if Correios CSV not received by 06:30 BRT |
-| **Qlik Sense** | Unified last-mile dashboard with carrier-agnostic SLA tracking |
+| **Qlik Analytics** | Unified last-mile dashboard with carrier-agnostic SLA tracking |
 | **Discovery Agent** | "Correios CSV for today has not arrived. 1,247 Brazil shipments have no tracking update." |
 
 ---
@@ -730,7 +730,7 @@ Lettuce recall triggered (contaminated batch at FARM-NL-0042)
 | **Data Catalog + Lineage** | Visual farm-to-shelf lineage for any food product. Click a SKU, see every node in its journey. |
 | **Trust Score** | Traceability completeness tracked: Trust Score improved from 72 → 96 over 6 months |
 | **Data Stewardship** | Missing traceability data generates stewardship tasks assigned to supplier management team |
-| **Qlik Sense** | Compliance Traceability Map: audit-ready visualization of all food product lineage |
+| **Qlik Analytics** | Compliance Traceability Map: audit-ready visualization of all food product lineage |
 | **Qlik Answers** | "Which stores received lettuce batch FARM-NL-2025-09-B42?" -- answered in seconds, not days |
 | **Discovery Agent** | "12 food SKUs received this week are missing farm_origin_id. Compliance gap detected." |
 

@@ -17,7 +17,7 @@
 
 Meridian Commerce Group's supply chain is failing due to fragmented, poor-quality data distributed across **47 source systems** with no unified view. In Q3 2025, data quality failures cost MCG an estimated **$127M annually** in phantom inventory, spoilage, customer service overhead, compliance penalties, and SLA failures.
 
-Project CLARITY proposes implementing the **Qlik platform** (Qlik Talend Cloud, Qlik Open Lakehouse, Qlik Sense, Qlik Answers, and supporting AI capabilities) as MCG's strategic data platform to connect, trust, store, analyze, predict, and converse with supply chain data.
+Project CLARITY proposes implementing the **Qlik platform** (Qlik Talend Cloud, Qlik Open Lakehouse, Qlik Analytics, Qlik Answers, and supporting AI capabilities) as MCG's strategic data platform to connect, trust, store, analyze, predict, and converse with supply chain data.
 
 **Total investment**: $12.4M over 24 months
 **Expected annual benefit**: $85M+ (conservative estimate)
@@ -62,7 +62,7 @@ At the Q3 2025 Board meeting, CEO Ingrid van der Berg stated that data quality a
 | **Qlik Talend Cloud Stewardship** | Human-in-the-loop data governance workflows | Manage exceptions from automated matching (< 90% confidence) |
 | **Qlik Open Lakehouse** | Managed Apache Iceberg storage | Bronze/Silver/Gold data architecture replacing siloed databases |
 | **Qlik Trust Score for AI** | Data quality scoring (Diversity, Timeliness, Accuracy) | Trust scoring for all supply chain data assets |
-| **Qlik Sense (Cloud Analytics)** | Interactive analytics and dashboards | Unified supply chain dashboards replacing Excel reconciliation |
+| **Qlik Analytics (Cloud Analytics)** | Interactive analytics and dashboards | Unified supply chain dashboards replacing Excel reconciliation |
 | **Qlik Answers** | Conversational AI with RAG over structured + unstructured data | Natural language queries: "What is the status of order WEB-2025-10-0094827?" |
 | **Discovery Agent** | Proactive anomaly detection and insight generation | Auto-detect pipeline failures, SLA degradation, spoilage risk |
 | **Qlik AutoML / Predict** | Code-free machine learning | Spoilage prediction, demand forecasting, SLA breach prediction |
@@ -90,7 +90,7 @@ At the Q3 2025 Board meeting, CEO Ingrid van der Berg stated that data quality a
   - Data quality rules applied at Silver tier
   - Trust Score calculated at Gold tier
        ↓
-[Qlik Sense -- Analytics Layer]     [Qlik Answers -- AI Layer]
+[Qlik Analytics -- Analytics Layer]     [Qlik Answers -- AI Layer]
   - Supply chain dashboards           - Natural language queries
   - Inventory accuracy monitors       - SOP/policy document search
   - Cold chain visibility             - Order status lookup
@@ -119,8 +119,8 @@ Additionally, Gold-tier data products will be exported as flat files for downstr
 | Open Lakehouse setup (Bronze/Silver layers) | Month 2-3 | CDO |
 | 4 priority transformation routes (timestamp, inventory, carrier, IoT) | Month 3-5 | CDO |
 | Pipeline health monitoring (resolve silent failure risk) | Month 2 | CDO |
-| Qlik Sense: Inventory accuracy dashboard | Month 4-5 | CDO + WH Ops |
-| Qlik Sense: Cold chain monitoring dashboard | Month 5-6 | CDO + Cold Chain |
+| Qlik Analytics: Inventory accuracy dashboard | Month 4-5 | CDO + WH Ops |
+| Qlik Analytics: Cold chain monitoring dashboard | Month 5-6 | CDO + Cold Chain |
 | Trust Score deployment for Phase 1 data assets | Month 5-6 | CDO |
 
 **Phase 1 expected impact**: Eliminate silent pipeline failures. Reduce inventory inaccuracy from 26% to < 10%. Reduce spoilage monitoring gap.
@@ -133,7 +133,7 @@ Additionally, Gold-tier data products will be exported as flat files for downstr
 | Qlik Talend Cloud Data Quality: Address standardization | Month 7-8 | CDO |
 | Qlik Talend Cloud Data Quality: Supplier dedup | Month 8-9 | CDO |
 | Qlik Talend Cloud Stewardship workflows | Month 9-10 | CDO + Procurement |
-| Qlik Sense: Full supply chain analytics suite | Month 8-12 | CDO + Supply Chain |
+| Qlik Analytics: Full supply chain analytics suite | Month 8-12 | CDO + Supply Chain |
 | Downstream flat file outputs (B2B inventory feeds) | Month 10-11 | CDO + B2B Team |
 | Qlik AutoML: Spoilage prediction model | Month 10-12 | CDO |
 

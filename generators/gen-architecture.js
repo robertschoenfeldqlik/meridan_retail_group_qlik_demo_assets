@@ -246,7 +246,7 @@ function layerBadge(slide, y, label, color) {
   [LX + 2.0, LX + 6.5].forEach(ax => arrow(slide, ax, R2 + RH, ax, R3, C.qlikGreen));
 
   // ── ROW 3: ANALYTICS ──
-  box(slide, LX, R3, 3.0, RH, "Qlik Sense", "2 apps • 10 sheets", C.qlikBlue);
+  box(slide, LX, R3, 3.0, RH, "Qlik Analytics", "2 apps • 10 sheets", C.qlikBlue);
   box(slide, LX + 3.2, R3, 3.0, RH, "Qlik Predict", "Spoilage Risk • SLA Model", C.qlikBlue);
   box(slide, LX + 6.4, R3, 3.35, RH, "Governance & Trust", "Trust Score • Stewardship\nGlossary • Lineage", C.qlikBlue);
 
@@ -570,7 +570,7 @@ function layerBadge(slide, y, label, color) {
 
 
 // ─── DIVIDER ───
-dividerSlide("Analytics &\nAI Layer", "Qlik Sense  •  Predict  •  Answers  •  Discovery Agent  •  MCP");
+dividerSlide("Analytics &\nAI Layer", "Qlik Analytics  •  Predict  •  Answers  •  Discovery Agent  •  MCP");
 
 // =============================================================================
 // SLIDE 8 — ANALYTICS & AI
@@ -578,12 +578,12 @@ dividerSlide("Analytics &\nAI Layer", "Qlik Sense  •  Predict  •  Answers  �
 (function slide_analytics_ai() {
   const slide = contentSlide("Analytics & AI Layer", C.qlikBlue);
 
-  // ── Qlik Sense ──
+  // ── Qlik Analytics ──
   slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
     x: 0.5, y: 1.1, w: 6.1, h: 2.6, fill: { color: C.lightBlue }, rectRadius: 0.12,
     line: { color: C.qlikBlue, width: 1.5 },
   });
-  slide.addText("Qlik Sense — 2 Domain Apps", {
+  slide.addText("Qlik Analytics — 2 Domain Apps", {
     x: 0.5, y: 1.12, w: 6.1, h: 0.42,
     fontSize: 14, color: C.qlikBlue, fontFace: FONT, bold: true, align: "center",
   });
@@ -785,7 +785,7 @@ dividerSlide("The 7 Nightmares", "$127M in annual data quality costs");
     { category: "Data Sources (3)", items: "PostgreSQL WMS (CDC)  •  Apache Kafka 2 topics (streaming)  •  Salesforce CRM (API)", color: C.qlikTeal },
     { category: "Open Lakehouse", items: "8 Bronze tables  •  8 Silver transformations + 1 Talend job  •  7 Gold data products", color: C.qlikGreen },
     { category: "Governance", items: "Trust Score  •  Data Lineage  •  Impact Analysis  •  Profiling  •  25-term Glossary  •  4 Stewardship campaigns", color: C.qlikTeal },
-    { category: "Analytics", items: "2 Qlik Sense apps (10 sheets)  •  MCG Dark Theme  •  Streaming IoT  •  Alerts  •  Reports", color: C.qlikBlue },
+    { category: "Analytics", items: "2 Qlik Analytics apps (10 sheets)  •  MCG Dark Theme  •  Streaming IoT  •  Alerts  •  Reports", color: C.qlikBlue },
     { category: "AI / ML", items: "2 Predict models (Spoilage + SLA)  •  Qlik Answers (25 docs)  •  Discovery Agent  •  MCP Server", color: C.qlikLightGreen },
     { category: "Automation", items: "5 automations: App Reload, Cold Chain Alert, Pipeline Health, WISMO, Address Correction", color: C.qlikGreen },
     { category: "Infrastructure", items: "Docker Compose (Confluent)  •  3 simulators (PG, Kafka, SF)  •  Deploy script  •  Setup guide", color: C.qlikGray },

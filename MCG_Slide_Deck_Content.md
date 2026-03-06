@@ -313,7 +313,7 @@ Let's make this human. The store manager in Munich starts every morning counting
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │  EXPERIENCE LAYER                                            │
-│  Qlik Answers | Discovery Agent | Qlik Sense Dashboards     │
+│  Qlik Answers | Discovery Agent | Qlik Analytics Dashboards     │
 ├─────────────────────────────────────────────────────────────┤
 │  AI & PREDICTION LAYER                                       │
 │  Qlik AutoML | Qlik Predict | MCP Server                    │
@@ -428,7 +428,7 @@ All that integrated, cleansed data needs to live somewhere. The Qlik Open Lakeho
 
 ## SLIDE 18: Phase 4 -- Analyze & Visualize
 
-**Title:** Qlik Cloud Analytics (Qlik Sense)
+**Title:** Qlik Cloud Analytics (Qlik Analytics)
 **Subtitle:** From stale PowerPoints to real-time, interactive intelligence
 
 **Four dashboard examples:**
@@ -458,7 +458,7 @@ All that integrated, cleansed data needs to live somewhere. The Qlik Open Lakeho
 **Nightmares addressed:** All seven -- this is the visibility layer
 
 **Speaker Notes:**
-Now the data is integrated, cleansed, and stored -- let's put it to work. The Qlik Sense dashboards replace stale PowerPoint decks with real-time, interactive intelligence. The global inventory health map replaces the morning spreadsheet ritual. The last-mile dashboard shows SLA performance as it develops, not next week. And the Associative Engine is the secret weapon -- it lets analysts explore connections they didn't know existed. In the demo, an analyst investigating late German deliveries discovers that 78% trace back to a single sub-tier supplier in Vietnam whose port lead times increased. Four datasets, one click, an insight no one thought to look for.
+Now the data is integrated, cleansed, and stored -- let's put it to work. The Qlik Analytics dashboards replace stale PowerPoint decks with real-time, interactive intelligence. The global inventory health map replaces the morning spreadsheet ritual. The last-mile dashboard shows SLA performance as it develops, not next week. And the Associative Engine is the secret weapon -- it lets analysts explore connections they didn't know existed. In the demo, an analyst investigating late German deliveries discovers that 78% trace back to a single sub-tier supplier in Vietnam whose port lead times increased. Four datasets, one click, an insight no one thought to look for.
 
 ---
 
@@ -551,7 +551,7 @@ Twelve months in, here are the results. Inventory accuracy from 74% to 96% -- $3
 - "We found out 4 days late"
 - Manual reconciliation, stale reports, firefighting
 
-**Stage 2: Visibility (Qlik Talend + Qlik Sense)**
+**Stage 2: Visibility (Qlik Talend + Qlik Analytics)**
 - "We can see it in real-time dashboards"
 - Integrated data, quality rules, interactive analytics
 
@@ -577,13 +577,13 @@ The journey MCG took is the journey every data-driven organization follows. From
 | Real-time data integration | Qlik Talend Cloud + Replicate | Fivetran + Airbyte + custom scripts |
 | Data quality & governance | Qlik Talend DQ + Trust Score | Informatica + Great Expectations + custom |
 | Open lakehouse | Qlik Open Lakehouse | Self-managed Iceberg + Tabular |
-| Analytics & visualization | Qlik Sense / Qlik Cloud | Tableau or Power BI + custom data model |
+| Analytics & visualization | Qlik Analytics / Qlik Cloud | Tableau or Power BI + custom data model |
 | Machine learning | Qlik AutoML + Predict | DataRobot or SageMaker + glue code |
 | Conversational AI | Qlik Answers | Custom RAG application + LLM orchestration |
 | Proactive monitoring | Discovery Agent | Custom anomaly detection + alerting |
 | Extensibility | MCP Server | Custom API layer |
 
-**Key point:** Every layer is integrated. Trust Score flows into AI validation. Data Products feed Qlik Sense AND Qlik Answers. CDC streams land in the Lakehouse AND trigger Discovery Agent alerts. **It's one platform, not 10 tools glued together.**
+**Key point:** Every layer is integrated. Trust Score flows into AI validation. Data Products feed Qlik Analytics AND Qlik Answers. CDC streams land in the Lakehouse AND trigger Discovery Agent alerts. **It's one platform, not 10 tools glued together.**
 
 **Speaker Notes:**
 The key differentiator is integration. MCG could have bought eight separate point solutions to address each layer. But every integration between point solutions is another potential failure point, another data copy, another governance gap. With Qlik, the Trust Score that validates data quality is the same Trust Score that validates AI training data. The CDC pipeline that feeds the lakehouse also triggers Discovery Agent alerts. The Data Products that serve dashboards also serve Qlik Answers. It's one platform. That's not a marketing statement -- for MCG, it's the difference between solving the problem and recreating it.

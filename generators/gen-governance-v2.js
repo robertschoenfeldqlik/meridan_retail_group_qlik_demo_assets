@@ -267,7 +267,7 @@ function mtgQ3Review() {
     para("Total investment: $12.4M over 24 months (3 phases)", { bullet: true }),
     para("Conservative annual benefit: $52.7M (60% realization of $87.9M potential)", { bullet: true }),
     para("3-year ROI: 952%", { bullet: true }),
-    para("Platform: Qlik Talend Cloud (data integration + quality) + Qlik Open Lakehouse + Qlik Sense + Qlik Answers + Qlik AutoML", { bullet: true }),
+    para("Platform: Qlik Talend Cloud (data integration + quality) + Qlik Open Lakehouse + Qlik Analytics + Qlik Answers + Qlik AutoML", { bullet: true }),
     para("Phase 1 (Foundation, $5.2M): CDC pipelines, lakehouse, 4 priority transformation routes, pipeline monitoring", { bullet: true }),
     para("Phase 2 (Analytics & Quality, $4.8M): remaining transformation routes, data quality monitoring, AutoML models", { bullet: true }),
     para("Phase 3 (AI & Conversational, $2.4M): Qlik Answers knowledge base, Discovery Agent, MCP Server", { bullet: true }),
@@ -437,7 +437,7 @@ function projClarity() {
         ["Qlik Talend Cloud — Data Quality", "Automated profiling, address standardization, supplier dedup, product master harmonization", "#2, #3, #6"],
         ["Qlik Talend Cloud — Data Stewardship", "Workflow for resolving data quality issues with SLA tracking and accountability", "#1-#7"],
         ["Qlik Open Lakehouse", "Unified Bronze/Silver/Gold data architecture on Apache Iceberg", "#1-#7"],
-        ["Qlik Sense", "Interactive dashboards for supply chain, inventory, cold chain, carrier performance", "#1, #4, #5, #6"],
+        ["Qlik Analytics", "Interactive dashboards for supply chain, inventory, cold chain, carrier performance", "#1, #4, #5, #6"],
         ["Qlik AutoML", "Predictive models for demand forecasting, spoilage risk, delivery SLA prediction", "#1, #6"],
         ["Qlik Answers", "Conversational AI over SOPs, policies, contracts — enables warehouse staff to query procedures", "Operational efficiency"],
         ["Qlik Discovery Agent", "AI agent for automated data exploration and root cause analysis", "#1, #4, #6"],
@@ -458,7 +458,7 @@ function projClarity() {
         ["Carrier Status Normalizer", "Multi-language carrier status mapping (DPD, FedEx, NinjaVan, TransFrio)", "#6"],
         ["IoT Telemetry Pipeline", "Tive sensor data integration with carrier and product context", "#6, spoilage detection"],
         ["Pipeline Health Monitoring", "Heartbeat checks, row-count reconciliation, sync lag alerting for all 28 DCs", "#4"],
-        ["Qlik Sense Dashboards (v1)", "Inventory accuracy, cold chain monitoring, pipeline health", "#1, #4"],
+        ["Qlik Analytics Dashboards (v1)", "Inventory accuracy, cold chain monitoring, pipeline health", "#1, #4"],
       ]
     ),
 

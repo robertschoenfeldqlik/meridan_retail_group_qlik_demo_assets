@@ -1,0 +1,640 @@
+{
+  "_version": "1.0.0",
+  "_description": "Complete Qlik Application Automation definitions for MCG demo. Defines 5 automations with triggers, block configurations, and setup instructions.",
+  "automations": [
+    {
+      "id": "daily_app_reload",
+      "name": "MCG Daily App Reload",
+      "description": "Scheduled daily reload of both MCG analytics apps at 06:00 UTC. Lists apps in the shared space, loops through each, triggers a reload, and sends a Teams notification if any reload fails.",
+      "state": "disabled",
+      "trigger": {
+        "type": "scheduled",
+        "schedule": "0 6 * * *",
+        "description": "Daily at 06:00 UTC"
+      },
+      "blocks": [
+        {
+          "step": 1,
+          "type": "qlik_api",
+          "description": "List apps in MCG shared space",
+          "config": {
+            "endpoint": "GET /api/v1/items",
+            "filter": "resourceType eq 'app' AND spaceId eq '${shared_space_id}'",
+            "extractFields": ["resourceId", "name", "updatedAt"]
+          }
+        },
+        {
+          "step": 2,
+          "type": "loop",
+          "description": "For each app in the space",
+          "config": {
+            "iterateOver": "items_result"
+          }
+        },
+        {
+          "step": 3,
+          "type": "qlik_api",
+          "description": "Trigger app reload",
+          "config": {
+            "endpoint": "POST /api/v1/reloads",
+            "body": {
+              "appId": "${current.resourceId}"
+            }
+          }
+        },
+        {
+          "step": 4,
+          "type": "qlik_api",
+          "description": "Poll reload status until complete",
+          "config": {
+            "endpoint": "GET /api/v1/reloads/${reload_id}",
+            "pollUntil": "status in ('SUCCEEDED', 'FAILED', 'CANCELLED')",
+            "pollInterval": 15,
+            "pollTimeout": 600
+          }
+        },
+        {
+          "step": 5,
+          "type": "condition",
+          "description": "Check if reload failed",
+          "config": {
+            "condition": "reload_status != 'SUCCEEDED'"
+          }
+        },
+        {
+          "step": 6,
+          "type": "microsoft_teams",
+          "description": "Post reload failure notification to Teams",
+          "config": {
+            "action": "post_adaptive_card",
+            "channel": "#mcg-data-engineering",
+            "card": {
+              "type": "AdaptiveCard",
+              "version": "1.4",
+              "body": [
+                {
+                  "type": "TextBlock",
+                  "text": "App Reload Failed: ${current.name}",
+                  "weight": "bolder",
+                  "size": "large",
+                  "color": "attention"
+                },
+                {
+                  "type": "FactSet",
+                  "facts": [
+                    {"title": "App", "value": "${current.name}"},
+                    {"title": "Status", "value": "${reload_status}"},
+                    {"title": "Time", "value": "${timestamp}"},
+                    {"title": "Error", "value": "${error_message}"}
+                  ]
+                }
+              ],
+              "actions": [
+                {
+                  "type": "Action.OpenUrl",
+                  "title": "Open App",
+                  "url": "https://${tenant_url}/sense/app/${current.resourceId}"
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "variables": ["shared_space_id", "tenant_url"],
+      "setupInstructions": {
+        "prerequisites": [
+          "Both MCG analytics apps published in shared space",
+          "Qlik Cloud Automations entitlement active"
+        ],
+        "buildSteps": [
+          "1. Create new automation in Qlik Cloud",
+          "2. Set Schedule trigger: Daily at 06:00 UTC (cron: 0 6 * * *)",
+          "3. Add Qlik Cloud > List Items block filtered to apps in shared space",
+          "4. Add For Each loop block over the items result",
+          "5. Inside loop: Add Qlik Cloud > Create Reload block with appId = current.resourceId",
+          "6. Add Condition block: Check reload_status != SUCCEEDED",
+          "7. On true branch: Add Teams > Post Adaptive Card with failure details",
+          "8. Test with Run Now, then enable schedule"
+        ]
+      }
+    },
+    {
+      "id": "cold_chain_alert",
+      "name": "MCG Cold Chain Alert \u2192 Teams",
+      "description": "Posts an alert to the #mcg-cold-chain-alerts Teams channel when IoT sensors detect a temperature exceedance lasting 15+ minutes on any cold chain shipment.",
+      "state": "disabled",
+      "trigger": {
+        "type": "scheduled",
+        "schedule": "*/5 * * * *",
+        "description": "Runs every 5 minutes, checks gold.cold_chain_compliance for new exceedances"
+      },
+      "blocks": [
+        {
+          "step": 1,
+          "type": "qlik_query",
+          "description": "Query gold.cold_chain_compliance for unalerted exceedances",
+          "config": {
+            "dataProduct": "Cold Chain Compliance",
+            "filter": "exceedance_minutes >= 15 AND alert_sent = false",
+            "fields": ["shipment_id", "route", "carrier", "max_temp_celsius", "exceedance_minutes", "estimated_loss_usd", "product_type", "sensor_count"]
+          }
+        },
+        {
+          "step": 2,
+          "type": "condition",
+          "description": "Check if any results returned",
+          "config": {
+            "condition": "result_count > 0"
+          }
+        },
+        {
+          "step": 3,
+          "type": "loop",
+          "description": "For each exceedance record",
+          "config": {
+            "iterateOver": "query_results"
+          }
+        },
+        {
+          "step": 4,
+          "type": "microsoft_teams",
+          "description": "Post Adaptive Card to Teams channel",
+          "config": {
+            "action": "post_adaptive_card",
+            "channel": "#mcg-cold-chain-alerts",
+            "card": {
+              "type": "AdaptiveCard",
+              "version": "1.4",
+              "body": [
+                {
+                  "type": "TextBlock",
+                  "text": "Cold Chain Alert \u2014 Temperature Exceedance",
+                  "weight": "bolder",
+                  "size": "large",
+                  "color": "attention"
+                },
+                {
+                  "type": "ColumnSet",
+                  "columns": [
+                    {
+                      "type": "Column",
+                      "items": [
+                        {"type": "TextBlock", "text": "Shipment", "weight": "bolder"},
+                        {"type": "TextBlock", "text": "Route"},
+                        {"type": "TextBlock", "text": "Carrier"},
+                        {"type": "TextBlock", "text": "Max Temperature"},
+                        {"type": "TextBlock", "text": "Duration"},
+                        {"type": "TextBlock", "text": "Product Type"},
+                        {"type": "TextBlock", "text": "Est. Exposure"}
+                      ]
+                    },
+                    {
+                      "type": "Column",
+                      "items": [
+                        {"type": "TextBlock", "text": "${shipment_id}"},
+                        {"type": "TextBlock", "text": "${route}"},
+                        {"type": "TextBlock", "text": "${carrier}"},
+                        {"type": "TextBlock", "text": "${max_temp_celsius}\u00b0C", "color": "attention"},
+                        {"type": "TextBlock", "text": "${exceedance_minutes} minutes", "color": "attention"},
+                        {"type": "TextBlock", "text": "${product_type}"},
+                        {"type": "TextBlock", "text": "$${estimated_loss_usd}", "color": "attention"}
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "TextBlock",
+                  "text": "**Action Required:** Contact carrier immediately. See SOP-SC-002 Section 4.",
+                  "wrap": true
+                }
+              ],
+              "actions": [
+                {
+                  "type": "Action.OpenUrl",
+                  "title": "Open Cold Chain Dashboard",
+                  "url": "https://${tenant_url}/sense/app/${cold_chain_app_id}"
+                },
+                {
+                  "type": "Action.OpenUrl",
+                  "title": "View Procedure (SOP-SC-002)",
+                  "url": "https://${tenant_url}/answers/kb/${kb_id}/search?q=cold+chain+procedure"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "step": 5,
+          "type": "qlik_update",
+          "description": "Mark alert as sent to prevent duplicate notifications",
+          "config": {
+            "dataProduct": "Cold Chain Compliance",
+            "update": {"alert_sent": true},
+            "filter": "shipment_id = '${shipment_id}'"
+          }
+        }
+      ],
+      "variables": ["tenant_url", "cold_chain_app_id", "kb_id"],
+      "setupInstructions": {
+        "prerequisites": [
+          "Microsoft Teams connector configured in Qlik Application Automation (OAuth consent required)",
+          "Teams channel '#mcg-cold-chain-alerts' created in the MCG workspace",
+          "gold.cold_chain_compliance data product populated with streaming IoT data",
+          "Qlik Analytics Cold Chain Monitor app published"
+        ],
+        "buildSteps": [
+          "1. In Qlik Cloud > Automations > Create New",
+          "2. Add trigger block: Scheduled (every 5 minutes)",
+          "3. Add Qlik Cloud block: Query data product 'Cold Chain Compliance' with filter",
+          "4. Add Condition block: Check result count > 0",
+          "5. Add Loop block: Iterate over results",
+          "6. Add Microsoft Teams block: Post Adaptive Card (paste template above)",
+          "7. Add Qlik Cloud block: Update alert_sent flag",
+          "8. Test with a manual exceedance record, then enable schedule"
+        ]
+      }
+    },
+    {
+      "id": "pipeline_health_summary",
+      "name": "MCG Pipeline Health Daily Summary \u2192 Teams",
+      "description": "Posts a daily pipeline health summary to #mcg-data-engineering Teams channel at 07:00 UTC. Shows status of all CDC pipelines, data freshness, and Trust Scores.",
+      "state": "disabled",
+      "trigger": {
+        "type": "scheduled",
+        "schedule": "0 7 * * *",
+        "description": "Daily at 07:00 UTC"
+      },
+      "blocks": [
+        {
+          "step": 1,
+          "type": "qlik_query",
+          "description": "Get pipeline health status for all DCs",
+          "config": {
+            "dataProduct": "Supply Chain Health",
+            "aggregation": {
+              "groupBy": ["pipeline_status"],
+              "count": "dc_id",
+              "metrics": ["avg(trust_score)", "max(sync_lag_minutes)"]
+            }
+          }
+        },
+        {
+          "step": 2,
+          "type": "qlik_api",
+          "description": "Get source connection statuses",
+          "config": {
+            "endpoint": "GET /api/v1/data-connections",
+            "extractFields": ["name", "status", "lastSync"]
+          }
+        },
+        {
+          "step": 3,
+          "type": "microsoft_teams",
+          "description": "Post summary to Teams channel",
+          "config": {
+            "action": "post_adaptive_card",
+            "channel": "#mcg-data-engineering",
+            "card": {
+              "type": "AdaptiveCard",
+              "version": "1.4",
+              "body": [
+                {
+                  "type": "TextBlock",
+                  "text": "MCG Pipeline Health \u2014 Daily Summary (${date})",
+                  "weight": "bolder",
+                  "size": "large"
+                },
+                {
+                  "type": "FactSet",
+                  "facts": [
+                    {"title": "Healthy", "value": "${healthy_count}/28 pipelines"},
+                    {"title": "Degraded", "value": "${degraded_count} (sync lag > 30 min)"},
+                    {"title": "Failed", "value": "${failed_count}"}
+                  ]
+                },
+                {
+                  "type": "TextBlock",
+                  "text": "**Data Freshness:**",
+                  "weight": "bolder"
+                },
+                {
+                  "type": "FactSet",
+                  "facts": [
+                    {"title": "PostgreSQL (WMS)", "value": "Last sync: ${pg_last_sync} (${pg_lag} ago)"},
+                    {"title": "Kafka (IoT)", "value": "Streaming: ${kafka_status}"},
+                    {"title": "Salesforce (CRM)", "value": "Last sync: ${sf_last_sync} (${sf_lag} ago)"}
+                  ]
+                },
+                {
+                  "type": "TextBlock",
+                  "text": "**Trust Scores:**",
+                  "weight": "bolder"
+                },
+                {
+                  "type": "FactSet",
+                  "facts": [
+                    {"title": "Inventory", "value": "${inv_trust_score}"},
+                    {"title": "Addresses", "value": "${addr_trust_score}"},
+                    {"title": "Products", "value": "${prod_trust_score}"},
+                    {"title": "Shipments", "value": "${ship_trust_score}"}
+                  ]
+                }
+              ],
+              "actions": [
+                {
+                  "type": "Action.OpenUrl",
+                  "title": "Open Pipeline Monitor",
+                  "url": "https://${tenant_url}/data-integration/pipelines"
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "variables": ["tenant_url"],
+      "setupInstructions": {
+        "prerequisites": [
+          "Microsoft Teams connector configured in Qlik Application Automation",
+          "Teams channel '#mcg-data-engineering' created",
+          "gold.supply_chain_health populated",
+          "All 3 source connections active"
+        ],
+        "buildSteps": [
+          "1. In Qlik Cloud > Automations > Create New",
+          "2. Add trigger: Scheduled (daily at 07:00 UTC)",
+          "3. Add Qlik Cloud block: Query Supply Chain Health data product (aggregate by pipeline_status)",
+          "4. Add Qlik Cloud block: GET /api/v1/data-connections for source statuses",
+          "5. Add variable block: Calculate healthy/degraded/failed counts",
+          "6. Add Microsoft Teams block: Post Adaptive Card (paste template above)",
+          "7. Test manually, then enable schedule"
+        ]
+      }
+    },
+    {
+      "id": "wismo_rate_alert",
+      "name": "MCG WISMO Rate Alert \u2192 Teams",
+      "description": "Monitors the WISMO (Where Is My Order) inquiry rate across all carriers and regions. Posts an alert to #mcg-customer-ops Teams channel when the rate exceeds the configured threshold (default 8%).",
+      "state": "disabled",
+      "trigger": {
+        "type": "scheduled",
+        "schedule": "*/15 * * * *",
+        "description": "Every 15 minutes"
+      },
+      "blocks": [
+        {
+          "step": 1,
+          "type": "qlik_query",
+          "description": "Query gold.customer_delivery_experience for WISMO rate",
+          "config": {
+            "dataProduct": "Customer Delivery Experience",
+            "aggregation": {
+              "groupBy": ["region", "carrier"],
+              "metrics": ["avg(wismo_rate)", "count(order_id)", "sum(wismo_count)"]
+            },
+            "filter": "order_date >= today() - 1"
+          }
+        },
+        {
+          "step": 2,
+          "type": "condition",
+          "description": "Check if any region/carrier exceeds WISMO threshold",
+          "config": {
+            "condition": "any(wismo_rate > ${wismo_threshold|0.08})"
+          }
+        },
+        {
+          "step": 3,
+          "type": "loop",
+          "description": "For each region/carrier exceeding threshold",
+          "config": {
+            "iterateOver": "exceeded_results"
+          }
+        },
+        {
+          "step": 4,
+          "type": "microsoft_teams",
+          "description": "Post WISMO alert to Teams",
+          "config": {
+            "action": "post_adaptive_card",
+            "channel": "#mcg-customer-ops",
+            "card": {
+              "type": "AdaptiveCard",
+              "version": "1.4",
+              "body": [
+                {
+                  "type": "TextBlock",
+                  "text": "WISMO Alert \u2014 High Inquiry Rate",
+                  "weight": "bolder",
+                  "size": "large",
+                  "color": "warning"
+                },
+                {
+                  "type": "FactSet",
+                  "facts": [
+                    {"title": "Region", "value": "${region}"},
+                    {"title": "Carrier", "value": "${carrier}"},
+                    {"title": "WISMO Rate", "value": "${wismo_rate_pct}% (threshold: ${wismo_threshold_pct}%)"},
+                    {"title": "Total Orders (24h)", "value": "${order_count}"},
+                    {"title": "WISMO Inquiries", "value": "${wismo_count}"},
+                    {"title": "Trend", "value": "${trend_arrow} vs. previous period"}
+                  ]
+                },
+                {
+                  "type": "TextBlock",
+                  "text": "**Root Cause Candidates:** Check carrier tracking feed latency, address quality score for region, and recent delivery failures.",
+                  "wrap": true
+                }
+              ],
+              "actions": [
+                {
+                  "type": "Action.OpenUrl",
+                  "title": "Open WISMO Dashboard",
+                  "url": "https://${tenant_url}/sense/app/${delivery_app_id}"
+                },
+                {
+                  "type": "Action.OpenUrl",
+                  "title": "View WISMO Procedure (SOP-CS-001)",
+                  "url": "https://${tenant_url}/answers/kb/${kb_id}/search?q=WISMO+call+handling"
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "variables": ["tenant_url", "delivery_app_id", "kb_id", "wismo_threshold"],
+      "setupInstructions": {
+        "prerequisites": [
+          "Microsoft Teams connector configured in Qlik Application Automation",
+          "Teams channel '#mcg-customer-ops' created",
+          "gold.customer_delivery_experience data product populated",
+          "Delivery & Customer Experience app published"
+        ],
+        "buildSteps": [
+          "1. In Qlik Cloud > Automations > Create New",
+          "2. Add trigger: Scheduled (every 15 minutes)",
+          "3. Add Qlik Cloud block: Query Customer Delivery Experience data product, aggregate by region+carrier",
+          "4. Add Condition block: Check if any wismo_rate > 0.08 (8%)",
+          "5. Add Loop block: Iterate over exceeded results",
+          "6. Add Microsoft Teams block: Post Adaptive Card with WISMO metrics",
+          "7. Set wismo_threshold variable (default 0.08)",
+          "8. Test with lowered threshold, then enable schedule"
+        ]
+      }
+    },
+    {
+      "id": "address_correction_talend",
+      "name": "MCG Address Correction Loop \u2014 Talend",
+      "description": "Monitors Qlik Cloud stewardship tasks for the Address Cleanup campaign. When pending corrections are found, triggers a Talend Cloud address validation job, then updates silver.customers_deduped with corrected addresses and resolves the stewardship tasks.",
+      "state": "disabled",
+      "trigger": {
+        "type": "scheduled",
+        "schedule": "*/30 * * * *",
+        "description": "Every 30 minutes"
+      },
+      "blocks": [
+        {
+          "step": 1,
+          "type": "qlik_api",
+          "description": "Query stewardship tasks for pending address corrections",
+          "config": {
+            "endpoint": "GET /api/v1/stewardship/tasks",
+            "filter": "campaignName eq 'Address Cleanup' AND status eq 'pending'",
+            "extractFields": ["taskId", "recordId", "fieldValues"]
+          }
+        },
+        {
+          "step": 2,
+          "type": "condition",
+          "description": "Check if any pending tasks exist",
+          "config": {
+            "condition": "result_count > 0"
+          }
+        },
+        {
+          "step": 3,
+          "type": "http_request",
+          "description": "Trigger Talend Cloud address validation job",
+          "config": {
+            "method": "POST",
+            "url": "${talend_api_url}/orchestration/executables/${talend_job_id}/run",
+            "headers": {
+              "Authorization": "Bearer ${talend_api_key}",
+              "Content-Type": "application/json"
+            },
+            "body": {
+              "parameters": {
+                "input_records": "${pending_task_records}"
+              }
+            },
+            "timeout": 300
+          }
+        },
+        {
+          "step": 4,
+          "type": "condition",
+          "description": "Wait for Talend job completion and check status",
+          "config": {
+            "condition": "talend_job_status == 'COMPLETED'"
+          }
+        },
+        {
+          "step": 5,
+          "type": "loop",
+          "description": "For each corrected address record",
+          "config": {
+            "iterateOver": "corrected_records"
+          }
+        },
+        {
+          "step": 6,
+          "type": "qlik_update",
+          "description": "Update silver.customers_deduped with corrected address",
+          "config": {
+            "dataProduct": "Customer Delivery Experience",
+            "update": {
+              "address_line1": "${corrected.address_line1}",
+              "address_line2": "${corrected.address_line2}",
+              "city": "${corrected.city}",
+              "postal_code": "${corrected.postal_code}",
+              "address_quality_score": "${corrected.quality_score}"
+            },
+            "filter": "customer_id = '${corrected.customer_id}'"
+          }
+        },
+        {
+          "step": 7,
+          "type": "qlik_api",
+          "description": "Resolve stewardship task",
+          "config": {
+            "endpoint": "PUT /api/v1/stewardship/tasks/${current.taskId}",
+            "body": {
+              "status": "resolved",
+              "resolution": "Address corrected by Talend validation job",
+              "resolvedBy": "automation"
+            }
+          }
+        },
+        {
+          "step": 8,
+          "type": "microsoft_teams",
+          "description": "Post summary of corrections to Teams",
+          "config": {
+            "action": "post_adaptive_card",
+            "channel": "#mcg-data-engineering",
+            "card": {
+              "type": "AdaptiveCard",
+              "version": "1.4",
+              "body": [
+                {
+                  "type": "TextBlock",
+                  "text": "Address Correction Batch Complete",
+                  "weight": "bolder",
+                  "size": "large"
+                },
+                {
+                  "type": "FactSet",
+                  "facts": [
+                    {"title": "Records Processed", "value": "${total_records}"},
+                    {"title": "Corrections Applied", "value": "${corrected_count}"},
+                    {"title": "Avg Quality Score Improvement", "value": "${avg_improvement}"},
+                    {"title": "Tasks Resolved", "value": "${resolved_count}"}
+                  ]
+                }
+              ],
+              "actions": [
+                {
+                  "type": "Action.OpenUrl",
+                  "title": "View Stewardship Campaign",
+                  "url": "https://${tenant_url}/catalog/stewardship"
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "variables": ["tenant_url", "talend_api_url", "talend_api_key", "talend_job_id"],
+      "setupInstructions": {
+        "prerequisites": [
+          "Talend Cloud account with Address Validation job configured",
+          "Qlik Cloud stewardship campaign 'Address Cleanup' active",
+          "Microsoft Teams connector configured (for summary notifications)",
+          "silver.customers_deduped accessible via data product API"
+        ],
+        "buildSteps": [
+          "1. In Qlik Cloud > Automations > Create New",
+          "2. Add trigger: Scheduled (every 30 minutes)",
+          "3. Add Qlik Cloud block: GET /api/v1/stewardship/tasks filtered to 'Address Cleanup' campaign",
+          "4. Add Condition block: Check if pending tasks exist",
+          "5. Add REST API block: POST to Talend Cloud to trigger address validation job",
+          "6. Add Condition block: Wait for Talend job completion",
+          "7. Add Loop block: Iterate over corrected records",
+          "8. Inside loop: Add Qlik Cloud block to update customer record with corrected address",
+          "9. Inside loop: Add Qlik Cloud block to resolve stewardship task",
+          "10. After loop: Add Teams block to post batch summary",
+          "11. Configure Talend API credentials in automation variables",
+          "12. Test with a small batch, then enable schedule"
+        ]
+      }
+    }
+  ]
+}

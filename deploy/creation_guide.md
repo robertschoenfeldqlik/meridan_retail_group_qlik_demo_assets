@@ -1,6 +1,6 @@
 # MCG Full Stack Demo — Qlik Cloud Creation Guide
 
-Step-by-step creation instructions for building Lakehouse tables, Data Products, Analytics Apps (Qlik Sense), and Predict model deployments in Qlik Cloud. This guide assumes prerequisites from `setup_guide.md` Section 1 are complete and data sources are connected.
+Step-by-step creation instructions for building Lakehouse tables, Data Products, Analytics Apps (Qlik Analytics), and Predict model deployments in Qlik Cloud. This guide assumes prerequisites from `setup_guide.md` Section 1 are complete and data sources are connected.
 
 > **Reference:** The demo PowerPoint deck (`MCG_Demo_Overview_Four_Stories.pptx`) provides visual prototypes and slide designs for each component described below. Use the deck's 4-story structure (Integration, Governance, Analytics, AI) as the presentation framework for the built environment.
 
@@ -17,7 +17,7 @@ Step-by-step creation instructions for building Lakehouse tables, Data Products,
    - [2.1 Register Data Products](#21-register-data-products)
    - [2.2 Enable API Sharing](#22-enable-api-sharing)
    - [2.3 Data Marketplace](#23-data-marketplace)
-3. [Analytics Apps (Qlik Sense)](#3-analytics-apps-qlik-sense)
+3. [Analytics Apps (Qlik Analytics)](#3-analytics-apps-qlik-sense)
    - [3.1 Data Flows & Table Recipes in Analytics](#31-data-flows--table-recipes-in-analytics)
    - [3.2 App Architecture — Domain-Based Design](#32-app-architecture--domain-based-design)
    - [3.3 App 1: MCG Supply Chain Operations](#33-app-1-mcg-supply-chain-operations)
@@ -788,7 +788,7 @@ curl -H "Authorization: Bearer <api-key>" \
 
 ---
 
-## 3. Analytics Apps (Qlik Sense)
+## 3. Analytics Apps (Qlik Analytics)
 
 ### 3.1 Data Flows & Table Recipes in Analytics
 
@@ -809,7 +809,7 @@ Data Flows and Table Recipes are central to the analytics experience — they de
 **AI-Assisted SQL in Analytics:**
 - When building custom Table Recipes, use the **AI SQL Assistant** to generate transformation SQL from natural language prompts
 - Example: "Calculate the average delivery time by carrier and region for the last 90 days" → generates the SQL join + aggregation
-- AI SQL is available in the Pipeline Designer and the Data Load Editor within Qlik Sense apps
+- AI SQL is available in the Pipeline Designer and the Data Load Editor within Qlik Analytics apps
 
 > **Demo tip:** Show the full lineage path in the analytics hub: Bronze → Data Flow → Silver → Table Recipe → Gold → Data Product → Analytics App → Dashboard KPI. This demonstrates the full stack from raw data to business insight.
 
@@ -1354,7 +1354,7 @@ POST https://<tenant>.qlikcloud.com/api/v1/ml/predictions
 - **Discovery Agent** queries the Predict API to enrich anomaly alerts with spoilage probability
 - **Automations** call the Predict API to trigger proactive alerts (e.g., "SHP-GRU-BA-20251015 has 78% spoilage risk")
 - **MCP Server** allows Claude to query predictions via natural language ("What's the spoilage risk for active São Paulo shipments?")
-- **Qlik Sense** embeds prediction results as calculated fields in the analytics apps
+- **Qlik Analytics** embeds prediction results as calculated fields in the analytics apps
 
 ---
 
@@ -1366,7 +1366,7 @@ POST https://<tenant>.qlikcloud.com/api/v1/ml/predictions
 | **Silver** | Transformation data flows | 8 | Triggered / scheduled |
 | **Gold** | Table recipes | 7 | 5 min – daily |
 | **Data Products** | Registered + governed | 7 | Matches Gold refresh |
-| **Analytics Apps** | Domain-based Qlik Sense | 2 | Reload schedule |
+| **Analytics Apps** | Domain-based Qlik Analytics | 2 | Reload schedule |
 | **Predict Models** | AutoML deployments | 2 | On-demand / batch |
 | **Total** | | **34 objects** | |
 

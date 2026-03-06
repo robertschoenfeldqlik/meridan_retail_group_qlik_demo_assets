@@ -150,7 +150,7 @@ Based on MCG's analysis of data quality issues in 2025:
 
 ## 8. Compliance and Reporting
 
-- **Monthly**: Data Quality Dashboard published to CDO and all VPs (currently manual Excel; target: Qlik Sense automated dashboard)
+- **Monthly**: Data Quality Dashboard published to CDO and all VPs (currently manual Excel; target: Qlik Analytics automated dashboard)
 - **Quarterly**: Data Quality Report to Board Audit Committee
 - **Annually**: Comprehensive data quality assessment and policy review
 - **On-demand**: Data quality impact assessments for regulatory inquiries

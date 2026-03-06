@@ -466,31 +466,31 @@ Which datasets to build first based on demo impact and story alignment:
 
 | Dataset | Demo Moment | Qlik Products Showcased |
 |---|---|---|
-| **Inventory Positions** | Phantom inventory discovery, ERP/WMS reconciliation | Talend CDC, Data Quality rules, Trust Score, Qlik Sense dashboard |
-| **Shipment & Carrier Tracking** | Carrier format chaos, SLA monitoring, last-mile visibility | Talend integration, standardization, Qlik Sense, Discovery Agent alerts |
+| **Inventory Positions** | Phantom inventory discovery, ERP/WMS reconciliation | Talend CDC, Data Quality rules, Trust Score, Qlik Analytics dashboard |
+| **Shipment & Carrier Tracking** | Carrier format chaos, SLA monitoring, last-mile visibility | Talend integration, standardization, Qlik Analytics, Discovery Agent alerts |
 | **Product Master Data** | Duplicate SKUs, missing weights, supplier name variants | Data profiling, fuzzy matching, Data Catalog, stewardship workflows |
-| **E-Commerce Orders** | WISMO problem, address quality, delivery promise accuracy | Data Quality (address), Qlik Sense order tracking, Qlik Answers Q&A |
+| **E-Commerce Orders** | WISMO problem, address quality, delivery promise accuracy | Data Quality (address), Qlik Analytics order tracking, Qlik Answers Q&A |
 
 ### Tier 2 -- High Value (Enriches the Story)
 
 | Dataset | Demo Moment | Qlik Products Showcased |
 |---|---|---|
 | **Cold-Chain IoT Telemetry** | Spoilage risk, temperature exceedance alerts | Real-time streaming, AutoML spoilage model, Discovery Agent |
-| **Supplier Master** | Name standardization ("Samsung" x4), supplier performance | Data Quality matching, Trust Score, Qlik Sense supplier scorecard |
-| **Demand Forecasts** | Forecast accuracy, manual override impact | AutoML, Trust Score for AI (Diversity), Qlik Sense |
+| **Supplier Master** | Name standardization ("Samsung" x4), supplier performance | Data Quality matching, Trust Score, Qlik Analytics supplier scorecard |
+| **Demand Forecasts** | Forecast accuracy, manual override impact | AutoML, Trust Score for AI (Diversity), Qlik Analytics |
 | **Customer & Address Data** | Address formatting nightmare, delivery success rate | Data Quality standardization, Qlik Answers |
 
 ### Tier 3 -- Nice to Have (Full Story)
 
 | Dataset | Demo Moment | Qlik Products Showcased |
 |---|---|---|
-| **POS Transactions** | Real-time sales signal, POS format differences | Talend integration, Qlik Sense |
-| **Warehouse Operations** | Cycle count variance, event tracking | Qlik Replicate, Qlik Sense |
-| **Returns** | Return reason analysis, restocking efficiency | Qlik Sense, Qlik Answers |
-| **Traceability** | EU compliance, recall readiness | Data Lineage, Catalog, Qlik Sense |
-| **Financial/Cost** | Carrying cost accuracy, spoilage $ impact | Qlik Sense, Qlik Predict |
-| **Carrier Rates** | Cost optimization, contract compliance | Qlik Sense |
-| **Purchase Orders** | Supplier reliability, receipt accuracy | Talend, Qlik Sense |
+| **POS Transactions** | Real-time sales signal, POS format differences | Talend integration, Qlik Analytics |
+| **Warehouse Operations** | Cycle count variance, event tracking | Qlik Replicate, Qlik Analytics |
+| **Returns** | Return reason analysis, restocking efficiency | Qlik Analytics, Qlik Answers |
+| **Traceability** | EU compliance, recall readiness | Data Lineage, Catalog, Qlik Analytics |
+| **Financial/Cost** | Carrying cost accuracy, spoilage $ impact | Qlik Analytics, Qlik Predict |
+| **Carrier Rates** | Cost optimization, contract compliance | Qlik Analytics |
+| **Purchase Orders** | Supplier reliability, receipt accuracy | Talend, Qlik Analytics |
 
 ---
 

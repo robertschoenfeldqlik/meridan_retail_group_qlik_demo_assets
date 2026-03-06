@@ -28,7 +28,7 @@
       ],
       "nightmares": ["#1 Phantom Inventory", "#4 Silent Pipeline Failures"],
       "apiSharing": true,
-      "consumers": ["Qlik Sense (Supply Chain Dashboard)", "Discovery Agent", "MCP Server"]
+      "consumers": ["Qlik Analytics (Supply Chain Dashboard)", "Discovery Agent", "MCP Server"]
     },
     {
       "name": "Last Mile Performance",
@@ -59,7 +59,7 @@
       ],
       "nightmares": ["#2 Address Catastrophe", "#6 Carrier Data Black Hole"],
       "apiSharing": true,
-      "consumers": ["Qlik Sense (Last Mile Dashboard)", "Predict (SLA Model)", "Discovery Agent"]
+      "consumers": ["Qlik Analytics (Last Mile Dashboard)", "Predict (SLA Model)", "Discovery Agent"]
     },
     {
       "name": "Cold Chain Compliance",
@@ -121,7 +121,7 @@
       ],
       "nightmares": ["#3 Product Master Mess"],
       "apiSharing": true,
-      "consumers": ["Qlik Sense (Supply Chain Dashboard)", "Stewardship (Missing Weights)"]
+      "consumers": ["Qlik Analytics (Supply Chain Dashboard)", "Stewardship (Missing Weights)"]
     },
     {
       "name": "Customer Delivery Experience",
@@ -149,7 +149,7 @@
       ],
       "nightmares": ["#2 Address Catastrophe"],
       "apiSharing": true,
-      "consumers": ["Qlik Sense (Customer Dashboard)", "Stewardship (Address Cleanup)"]
+      "consumers": ["Qlik Analytics (Customer Dashboard)", "Stewardship (Address Cleanup)"]
     },
     {
       "name": "Compliance Readiness",
@@ -177,7 +177,7 @@
       ],
       "nightmares": ["#7 Compliance Traceability Gap"],
       "apiSharing": true,
-      "consumers": ["Qlik Sense (Compliance Dashboard)", "NVWA Audit Evidence"]
+      "consumers": ["Qlik Analytics (Compliance Dashboard)", "NVWA Audit Evidence"]
     },
     {
       "name": "Operational Cost Impact",
@@ -203,7 +203,7 @@
       ],
       "nightmares": ["#1 Phantom Inventory", "#2 Address Catastrophe", "#3 Product Master Mess", "#4 Silent Pipeline Failures", "#5 Timestamp Tower of Babel", "#6 Carrier Data Black Hole", "#7 Compliance Traceability Gap"],
       "apiSharing": true,
-      "consumers": ["Qlik Sense (Executive Dashboard)", "CFO Reporting", "Project CLARITY ROI Tracking"]
+      "consumers": ["Qlik Analytics (Executive Dashboard)", "CFO Reporting", "Project CLARITY ROI Tracking"]
     },
     {
       "name": "Order Timeline",
@@ -219,7 +219,7 @@
       },
       "nightmares": ["#5 Timestamp Tower of Babel", "#6 Carrier Data Black Hole"],
       "apiSharing": true,
-      "consumers": ["Qlik Sense (Order Tracking)", "Qlik Answers", "Customer Service"]
+      "consumers": ["Qlik Analytics (Order Tracking)", "Qlik Answers", "Customer Service"]
     }
   ]
 }

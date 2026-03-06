@@ -118,7 +118,7 @@
       "Microsoft Teams connector configured in Qlik Application Automation (OAuth consent required)",
       "Teams channel '#mcg-cold-chain-alerts' created in the MCG workspace",
       "gold.cold_chain_compliance data product populated with streaming IoT data",
-      "Qlik Sense Cold Chain Monitor app published"
+      "Qlik Analytics Cold Chain Monitor app published"
     ],
     "buildSteps": [
       "1. In Qlik Cloud → Automations → Create New",

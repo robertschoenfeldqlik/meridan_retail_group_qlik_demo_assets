@@ -218,7 +218,7 @@ SOP-CS-001 ──→ SHIP-2025-RTD-44821 (example of actual shipment with tracki
 | # | Question | Expected Answer Sources | Key Citations |
 |---|---|---|---|
 | 1 | "What is the annual cost of our data quality problems?" | MCG-POL-015, PROJ-CLARITY | $127M annually: phantom inventory ($48M), spoilage ($57M), WISMO ($14.8M), compliance ($4.2M), carrier SLA ($3.1M). |
-| 2 | "What is Project CLARITY?" | PROJ-CLARITY, MTG-SC-2025-Q3 | Qlik platform implementation: Talend Cloud, Open Lakehouse, Qlik Sense, Qlik Answers, Discovery Agent, AutoML. $12.4M investment. $85M+ annual benefit. |
+| 2 | "What is Project CLARITY?" | PROJ-CLARITY, MTG-SC-2025-Q3 | Qlik platform implementation: Talend Cloud, Open Lakehouse, Qlik Analytics, Qlik Answers, Discovery Agent, AutoML. $12.4M investment. $85M+ annual benefit. |
 | 3 | "What data quality dimensions do we measure?" | MCG-POL-015 | Six dimensions: Completeness, Accuracy, Timeliness, Consistency, Uniqueness, Validity. Aligned with Qlik Trust Score for AI framework. |
 | 4 | "How many data pipeline failures do we have?" | MCG-POL-015, INC-2025-04872 | 23 failures/week, ~25% silent (5-6 undetected at any time). Rotterdam failure went 4.3 days without detection. |
 | 5 | "What is the ROI of Project CLARITY?" | PROJ-CLARITY | 3-year ROI: 952%. Payback: <4 months after Phase 1. Conservative annual benefit: $52.7M. |

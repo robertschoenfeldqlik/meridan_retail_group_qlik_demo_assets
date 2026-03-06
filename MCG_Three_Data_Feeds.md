@@ -356,7 +356,7 @@ Engine:           Remote Engine Gen2 (recommended)
 3. Show streaming data arriving in real-time
 4. Apply transformation: normalize temperature_unit to Celsius, standardize timestamps to UTC
 5. Land data in target (Snowflake / Lakehouse)
-6. Show the temperature exceedance event flowing through to a Qlik Sense dashboard
+6. Show the temperature exceedance event flowing through to a Qlik Analytics dashboard
 7. Discovery Agent alerts on the Sao Paulo-Buenos Aires route anomaly
 
 ### Quick Start Options
@@ -542,7 +542,7 @@ Replication Mode: Full + Incremental (based on SystemModstamp)
 | 9:00 | **Connect Salesforce** -- Show SaaS connector, browse objects | SaaS | Qlik Talend Cloud | Land Contact and Order data. Show the address formatting chaos discovered by profiling. |
 | 12:00 | **Clean the data** -- Apply standardization and matching rules | SaaS + Relational | Data Quality | Address normalization, supplier dedup ("Samsung" x4 → 1), Trust Score before/after |
 | 15:00 | **Connect Kafka** -- Show streaming IoT telemetry | Streaming | Qlik Talend Cloud | Live sensor readings flowing in real-time. Show temperature unit mismatch, timestamp normalization. |
-| 18:00 | **Analyze in Qlik Sense** -- Open the Supply Chain Command Center | All 3 | Qlik Sense | Inventory health (from PG), delivery SLAs (from SF), cold-chain monitor (from Kafka) -- all in one dashboard |
+| 18:00 | **Analyze in Qlik Analytics** -- Open the Supply Chain Command Center | All 3 | Qlik Analytics | Inventory health (from PG), delivery SLAs (from SF), cold-chain monitor (from Kafka) -- all in one dashboard |
 | 21:00 | **AI Layer** -- Ask Qlik Answers a question about the data | All 3 | Qlik Answers | "Which shipments from the Sao Paulo DC are at risk of spoilage?" -- blends Kafka temp data with SF order data |
 | 23:00 | **Proactive alert** -- Show Discovery Agent notification | All 3 | Discovery Agent | "Temperature exceedance on GRU-BA route. 12 shipments affected. Estimated $180K exposure." |
 | 25:00 | **Wrap up** -- Show Trust Score improvement and transformation outcomes | All 3 | Trust Score | Before/after Trust Scores across all three feeds |
@@ -606,7 +606,7 @@ Replication Mode: Full + Incremental (based on SystemModstamp)
 ┌──────────────────────────────────────────────────────────────────────────┐
 │  ANALYTICS + AI                                                          │
 │                                                                          │
-│  Qlik Sense (dashboards) → AutoML (spoilage model) → Qlik Answers (Q&A)│
+│  Qlik Analytics (dashboards) → AutoML (spoilage model) → Qlik Answers (Q&A)│
 │  Discovery Agent (proactive alerts) → MCP Server (extensibility)         │
 └──────────────────────────────────────────────────────────────────────────┘
 ```

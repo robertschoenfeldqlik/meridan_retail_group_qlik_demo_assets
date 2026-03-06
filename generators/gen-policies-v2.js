@@ -244,7 +244,7 @@ function pol015() {
     calloutBox("MCG currently has NO automated enterprise-wide data quality monitoring. Data quality is measured through periodic manual assessments, cycle count results, and incident-driven investigations. The Rotterdam pipeline failure (INC-2025-04872) went undetected for 4.3 days because no system monitors data freshness or pipeline health.", "critical"),
     para("Planned state under Project CLARITY Phase 2:"),
     para("Automated data profiling on all source systems at ingestion (Qlik Talend Cloud)", { bullet: true }),
-    para("Real-time data quality dashboards with Trust Score trending (Qlik Sense)", { bullet: true }),
+    para("Real-time data quality dashboards with Trust Score trending (Qlik Analytics)", { bullet: true }),
     para("Automated alerting when quality thresholds are breached", { bullet: true }),
     para("Data stewardship workflows for issue resolution with SLA tracking", { bullet: true }),
     para("Trust Score for AI to validate data suitability for ML/AI models", { bullet: true }),

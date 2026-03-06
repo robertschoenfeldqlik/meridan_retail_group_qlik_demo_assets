@@ -25,6 +25,13 @@ venv/
 .vscode/
 .idea/
 
+# Deploy UI temp config
+deploy/.config-ui-temp.json
+
 # Environment
 .env
 .env.local
+
+# Backup files
+*.bak
+*.bak2

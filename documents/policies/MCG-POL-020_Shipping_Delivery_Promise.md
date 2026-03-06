@@ -88,7 +88,7 @@ Supply Chain Analytics updates SLA monitoring dashboards (within 48 hours)
 | WISMO rate by region | Daily | Customer Service Ops | Salesforce CRM report |
 | Customer NPS by region | Monthly | Customer Experience | Survey platform |
 
-**Future State**: Qlik Sense dashboard with automated SLA compliance monitoring, integrated with Discovery Agent alerts when breach rates exceed thresholds.
+**Future State**: Qlik Analytics dashboard with automated SLA compliance monitoring, integrated with Discovery Agent alerts when breach rates exceed thresholds.
 
 ## 5. Non-Compliance Tracking
 

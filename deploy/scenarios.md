@@ -8,7 +8,7 @@ Six presenter-ready demo scenarios. Each traverses multiple Qlik Cloud component
 
 **Duration:** 8-10 minutes
 **Nightmares:** #1 (Phantom Inventory), #4 (Silent Pipeline Failures)
-**Components:** PostgreSQL → Lakehouse → Data Flow → Stewardship → Qlik Sense → Discovery Agent → Teams Automation → Qlik Answers
+**Components:** PostgreSQL → Lakehouse → Data Flow → Stewardship → Qlik Analytics → Discovery Agent → Teams Automation → Qlik Answers
 
 ### The Business Problem
 
@@ -38,7 +38,7 @@ Rotterdam DC's WMS-to-SAP CDC pipeline silently failed for 72 hours. SAP showed 
 - Show the Pipeline Health alert that fired at 07:00 UTC
 - Shows: "❌ Failed: 1 (DC-RTD-01 — last sync 72h ago)"
 
-**Step 5 — Show the dashboard (Qlik Sense)**
+**Step 5 — Show the dashboard (Qlik Analytics)**
 - Open Supply Chain Health dashboard → Rotterdam DC panel
 - Red indicator for IRA: 74%
 - Drill into phantom inventory: see the 847-unit discrepancy
@@ -58,7 +58,7 @@ Rotterdam DC's WMS-to-SAP CDC pipeline silently failed for 72 hours. SAP showed 
 
 **Duration:** 8-10 minutes
 **Nightmares:** #2 (Address Catastrophe), #6 (Carrier Data Black Hole)
-**Components:** Salesforce → Lakehouse → Data Flow → Stewardship → Business Glossary → Qlik Sense → Predict
+**Components:** Salesforce → Lakehouse → Data Flow → Stewardship → Business Glossary → Qlik Analytics → Predict
 
 ### The Business Problem
 
@@ -98,7 +98,7 @@ Rotterdam DC's WMS-to-SAP CDC pipeline silently failed for 72 hours. SAP showed 
 - Show feature importance: `address_quality_score` is the #2 predictor
 - Run prediction: "This order to Friedrichstraße 123, Hinterh (truncated) has 72% chance of delivery failure"
 
-**Step 7 — Show Qlik Sense dashboard**
+**Step 7 — Show Qlik Analytics dashboard**
 - Open Last Mile Performance → Address Quality heatmap
 - Show carrier rejection hotspots by postal code region
 - Before/after Trust Score: 0.42 → 0.89 after standardization
@@ -114,7 +114,7 @@ Rotterdam DC's WMS-to-SAP CDC pipeline silently failed for 72 hours. SAP showed 
 
 **Duration:** 10-12 minutes
 **Nightmares:** #4 (Silent Pipelines), #5 (Timestamps), #6 (Carrier Data Black Hole)
-**Components:** Kafka → Lakehouse → Data Flow → Predict → Discovery Agent → Teams → Qlik Sense → Qlik Answers → MCP
+**Components:** Kafka → Lakehouse → Data Flow → Predict → Discovery Agent → Teams → Qlik Analytics → Qlik Answers → MCP
 
 ### The Business Problem
 
@@ -148,7 +148,7 @@ TransFrio Logistics replaced 6 trucks with new Thermo King X4 7500 reefer units 
   - "🚨 Shipment SHP-GRU-BA-20251015: 11.2°C for 42 minutes. Estimated exposure: $18K"
   - Links to dashboard and SOP-SC-002
 
-**Step 6 — Show Qlik Sense**
+**Step 6 — Show Qlik Analytics**
 - Cold Chain Monitor dashboard:
   - Map showing the São Paulo→Buenos Aires route with red temperature dots
   - Trend chart: spoilage rate climbing week over week since July 7
@@ -176,7 +176,7 @@ TransFrio Logistics replaced 6 trucks with new Thermo King X4 7500 reefer units 
 
 **Duration:** 8-10 minutes
 **Nightmares:** #7 (Compliance Gap), #3 (Product Master)
-**Components:** Lakehouse → Data Flow → Stewardship → Qlik Sense → Qlik Answers → Business Glossary
+**Components:** Lakehouse → Data Flow → Stewardship → Qlik Analytics → Qlik Answers → Business Glossary
 
 ### The Business Problem
 
@@ -203,7 +203,7 @@ Listeria detected in organic butter lettuce from an undisclosed backup farm (FAR
 - Look up "EC 178/2002": definition, traceability requirement, link to NVWA
 - Look up "Lot Number": definition, NVWA compliance requirement
 
-**Step 5 — Show Qlik Sense**
+**Step 5 — Show Qlik Analytics**
 - Compliance Traceability dashboard:
   - Map showing store locations color-coded by traceability completeness
   - Trend chart: lot capture rate improving from 85% → 93%
@@ -221,7 +221,7 @@ Listeria detected in organic butter lettuce from an undisclosed backup farm (FAR
 
 **Duration:** 6-8 minutes
 **Nightmares:** #6 (Carrier Data Black Hole), #2 (Address Catastrophe)
-**Components:** Salesforce → Lakehouse → Data Flow → Qlik Sense → Predict → Qlik Answers → Automation
+**Components:** Salesforce → Lakehouse → Data Flow → Qlik Analytics → Predict → Qlik Answers → Automation
 
 ### The Business Problem
 
@@ -238,7 +238,7 @@ NinjaVan contract amendment AMD3 reclassified 5-10 kg parcels from 2-day to 3-da
 - NinjaVan statuses: `Pending Pickup` → `PICKED_UP`, `Completed` → `DELIVERED`
 - Show tracking data availability: only 71% (target 99%)
 
-**Step 3 — Show Qlik Sense**
+**Step 3 — Show Qlik Analytics**
 - Last Mile Performance dashboard → APAC tab:
   - Singapore SLA chart: drops from 88% → 69% in October
   - WISMO rate spike: 30% → 52%
@@ -271,7 +271,7 @@ MCG's data quality crisis costs $127M annually. Project CLARITY is a $12.4M Qlik
 
 **Step 1 — The Problem Landscape (2 min)**
 - Show the PowerPoint: 7 Data Quality Nightmares, $127M annual impact
-- Or use Qlik Sense dashboard: Trust Score overview showing red/amber across all data domains
+- Or use Qlik Analytics dashboard: Trust Score overview showing red/amber across all data domains
 
 **Step 2 — Data Integration: "Connect Everything" (3 min)**
 - Show all 3 source connections in Talend Cloud:
@@ -297,7 +297,7 @@ MCG's data quality crisis costs $127M annually. Project CLARITY is a $12.4M Qlik
 - Data Products: show the 7 governed products with API sharing enabled
 
 **Step 6 — Analytics: "See What Matters" (2 min)**
-- Qlik Sense: Supply Chain Command Center
+- Qlik Analytics: Supply Chain Command Center
 - 4 panels: Inventory Health, Cold Chain, Last Mile, Compliance
 - Drill from global overview → Rotterdam DC → specific SKU
 
@@ -327,7 +327,7 @@ MCG's data quality crisis costs $127M annually. Project CLARITY is a $12.4M Qlik
 | 4 | All 3 source connections tested in Talend Cloud | ☐ |
 | 5 | Open Lakehouse Bronze tables populated | ☐ |
 | 6 | Data flows run successfully (Silver + Gold populated) | ☐ |
-| 7 | Qlik Sense dashboards loaded with data | ☐ |
+| 7 | Qlik Analytics dashboards loaded with data | ☐ |
 | 8 | Predict models trained and deployed | ☐ |
 | 9 | Knowledge Base indexed (25 documents) | ☐ |
 | 10 | Assistant configured with conversation starters | ☐ |

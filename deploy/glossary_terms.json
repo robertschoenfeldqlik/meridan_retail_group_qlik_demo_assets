@@ -122,7 +122,7 @@
     },
     {
       "name": "Data Product",
-      "definition": "A governed, documented, SLA-backed dataset in the Gold layer of the Open Lakehouse, published for consumption via API, Qlik Sense, or downstream feeds. MCG has 7 data products.",
+      "definition": "A governed, documented, SLA-backed dataset in the Gold layer of the Open Lakehouse, published for consumption via API, Qlik Analytics, or downstream feeds. MCG has 7 data products.",
       "owner": "Priya Ramanathan",
       "category": "Data & Technology",
       "relatedNightmare": "All",

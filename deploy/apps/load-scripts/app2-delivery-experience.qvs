@@ -1,0 +1,198 @@
+// =============================================================================
+// MCG Delivery & Customer Experience — Qlik Analytics Load Script
+// =============================================================================
+// Connects to Gold-layer data products in the Open Lakehouse.
+//
+// Gold Tables Used:
+//   - gold.last_mile_performance
+//   - gold.customer_delivery_experience
+//   - gold.order_timeline
+//
+// Streaming Tables (Direct Query):
+//   - bronze.iot_carrier_events
+//   - silver.shipments_canonical
+// =============================================================================
+
+SET ThousandSep=',';
+SET DecimalSep='.';
+SET MoneyThousandSep=',';
+SET MoneyDecimalSep='.';
+SET MoneyFormat='$#,##0.00;-$#,##0.00';
+SET TimeFormat='hh:mm:ss';
+SET DateFormat='YYYY-MM-DD';
+SET TimestampFormat='YYYY-MM-DD hh:mm:ss[.fff]';
+SET FirstWeekDay=0;
+SET BrokenWeeks=1;
+SET ReferenceDay=0;
+SET FirstMonthOfYear=1;
+
+// =============================================================================
+// 1. LAST MILE PERFORMANCE (Gold)
+// =============================================================================
+// Source: gold.last_mile_performance
+// Contains: Carrier SLA performance, on-time rates, address quality impact
+// Refresh: Every 30 minutes
+// =============================================================================
+
+LastMilePerformance:
+LOAD
+    shipment_id                AS [Shipment ID],
+    tracking_number            AS [Tracking Number],
+    carrier                    AS [Carrier],
+    carrier_canonical          AS [Carrier (Canonical)],
+    order_id                   AS [Order ID],
+    destination_country        AS [Country],
+    destination_region         AS [Region],
+    destination_city           AS [City],
+    shipment_status            AS [Shipment Status],
+    status_canonical           AS [Status (Canonical)],
+    status_datetime_utc        AS [Status Time (UTC)],
+    sla_target_hours           AS [SLA Target (hrs)],
+    sla_actual_hours           AS [SLA Actual (hrs)],
+    sla_met                    AS [SLA Met],
+    on_time_flag               AS [On-Time Flag],
+    delivery_attempts          AS [Delivery Attempts],
+    exception_code_canonical   AS [Exception Code],
+    weight_kg                  AS [Weight (kg)],
+    weight_unit                AS [Weight Unit],
+    address_quality_score      AS [Address Quality Score],
+    trust_score                AS [LM Trust Score],
+    snapshot_utc               AS [LM Snapshot Time]
+FROM [lib://MCG Open Lakehouse/gold.last_mile_performance]
+(qvd);
+
+
+// =============================================================================
+// 2. CUSTOMER DELIVERY EXPERIENCE (Gold)
+// =============================================================================
+// Source: gold.customer_delivery_experience
+// Contains: Customer addresses, WISMO rates, address quality, lifetime value
+// Refresh: Hourly
+// =============================================================================
+
+CustomerExperience:
+LOAD
+    customer_id                AS [Customer ID],
+    customer_name              AS [Customer Name],
+    address_clean              AS [Address (Clean)],
+    address_original           AS [Address (Original)],
+    address_quality_score      AS [Addr Quality Score],
+    address_truncated_flag     AS [Address Truncated],
+    destination_country        AS [Customer Country],
+    destination_region         AS [Customer Region],
+    destination_city           AS [Customer City],
+    postal_code                AS [Postal Code],
+    total_orders               AS [Total Orders],
+    wismo_count                AS [WISMO Count],
+    IF(total_orders > 0, wismo_count / total_orders, 0) AS [WISMO Rate],
+    wismo_flag                 AS [WISMO Flag],
+    ltv_usd                    AS [Lifetime Value ($)],
+    trust_score                AS [CX Trust Score]
+FROM [lib://MCG Open Lakehouse/gold.customer_delivery_experience]
+(qvd);
+
+
+// =============================================================================
+// 3. ORDER TIMELINE (Gold)
+// =============================================================================
+// Source: gold.order_timeline
+// Contains: End-to-end order lifecycle milestones, SLA compliance
+// Refresh: Hourly
+// =============================================================================
+
+OrderTimeline:
+LOAD
+    order_id                   AS [Timeline Order ID],
+    shipment_id                AS [Timeline Shipment ID],
+    carrier                    AS [Timeline Carrier],
+    destination_region         AS [Timeline Region],
+    destination_country        AS [Timeline Country],
+    order_placed_utc           AS [Order Placed],
+    picked_utc                 AS [Picked],
+    shipped_utc                AS [Shipped],
+    delivered_utc              AS [Delivered],
+
+    // Duration calculations (hours)
+    IF(NOT IsNull(picked_utc) AND NOT IsNull(order_placed_utc),
+       (picked_utc - order_placed_utc) * 24, Null()) AS [Order-to-Pick (hrs)],
+    IF(NOT IsNull(shipped_utc) AND NOT IsNull(picked_utc),
+       (shipped_utc - picked_utc) * 24, Null()) AS [Pick-to-Ship (hrs)],
+    IF(NOT IsNull(delivered_utc) AND NOT IsNull(shipped_utc),
+       (delivered_utc - shipped_utc) * 24, Null()) AS [Ship-to-Deliver (hrs)],
+    IF(NOT IsNull(delivered_utc) AND NOT IsNull(order_placed_utc),
+       (delivered_utc - order_placed_utc) * 24, Null()) AS [End-to-End (hrs)],
+
+    sla_target_hours           AS [Timeline SLA Target],
+    sla_met                    AS [Timeline SLA Met],
+    max_temperature            AS [Max Temp During Transit],
+    exceedance_flag            AS [Transit Exceedance],
+    spoilage_probability       AS [Transit Spoilage Risk],
+    trust_score                AS [OT Trust Score]
+FROM [lib://MCG Open Lakehouse/gold.order_timeline]
+(qvd);
+
+
+// =============================================================================
+// SHIPMENT STATUS REFERENCE (Static canonical mapping)
+// =============================================================================
+
+StatusRef:
+LOAD * INLINE [
+    StatusCanonical, StatusOrder, StatusColor
+    LABEL_CREATED, 1, #8899AD
+    PICKED_UP, 2, #5BA3CF
+    IN_TRANSIT, 3, #0D7C8F
+    OUT_FOR_DELIVERY, 4, #C4922E
+    DELIVERED, 5, #059669
+    FAILED_ATTEMPT, 6, #DC2626
+    RETURNED, 7, #93579C
+];
+
+
+// =============================================================================
+// CARRIER REFERENCE (SLA targets and metadata)
+// =============================================================================
+
+CarrierRef:
+LOAD * INLINE [
+    CarrierCode, CarrierName, DefaultSLAHours, CoverageRegion
+    FEDEX, FedEx, 72, Global
+    DHL, DHL, 72, Global
+    DPD, DPD, 48, EU
+    GLS, GLS, 48, EU
+    TRANSFRIO, TransFrio, 72, LATAM
+    NINJAVAN, NinjaVan, 48, APAC
+    ARAMEX, Aramex, 96, Middle East/Africa
+    LOCAL-LOS, Lagos Local, 120, Africa
+];
+
+
+// =============================================================================
+// CALENDAR (Master Calendar)
+// =============================================================================
+
+MinMaxDates2:
+LOAD
+    MIN(Date(Floor([LM Snapshot Time]))) AS MinDate,
+    MAX(Date(Floor([LM Snapshot Time]))) AS MaxDate
+RESIDENT LastMilePerformance;
+
+LET vMinDate2 = Peek('MinDate', 0, 'MinMaxDates2');
+LET vMaxDate2 = Peek('MaxDate', 0, 'MinMaxDates2');
+DROP TABLE MinMaxDates2;
+
+Calendar:
+LOAD
+    Date                       AS [Date],
+    Year(Date)                 AS [Year],
+    Month(Date)                AS [Month],
+    MonthName(Date)            AS [Month Name],
+    Day(Date)                  AS [Day],
+    WeekDay(Date)              AS [Weekday],
+    Week(Date)                 AS [Week Number],
+    'Q' & Ceil(Month(Date)/3)  AS [Quarter]
+;
+LOAD
+    Date('$(vMinDate2)' + IterNo() - 1) AS Date
+AUTOGENERATE 1
+WHILE Date('$(vMinDate2)' + IterNo() - 1) <= '$(vMaxDate2)';

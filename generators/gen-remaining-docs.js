@@ -197,7 +197,7 @@ function mtgQ3Review() {
     para("Investment: $12.4M over 24 months", { bullet: true }),
     para("Conservative benefit: $52.7M annually (60% realization of $87.9M potential)", { bullet: true }),
     para("3-year ROI: 952%", { bullet: true }),
-    para("Platform: Qlik Talend Cloud + Open Lakehouse + Qlik Sense + Qlik Answers", { bullet: true }),
+    para("Platform: Qlik Talend Cloud + Open Lakehouse + Qlik Analytics + Qlik Answers", { bullet: true }),
     para("CEO: \"Data quality is now our #1 operational priority for 2026. Priya, schedule the full CLARITY presentation for the CIO review on October 31.\"", { bold: true }),
 
     heading("4. Action Items"),
@@ -332,7 +332,7 @@ function projClarity() {
         ["Qlik Talend Cloud — Data Quality", "Automated profiling, address standardization, supplier deduplication"],
         ["Qlik Talend Cloud — Data Stewardship", "Workflow for resolving data quality issues with SLA tracking"],
         ["Qlik Open Lakehouse", "Unified Bronze/Silver/Gold data architecture on Apache Iceberg"],
-        ["Qlik Sense", "Interactive dashboards for supply chain, inventory, cold chain monitoring"],
+        ["Qlik Analytics", "Interactive dashboards for supply chain, inventory, cold chain monitoring"],
         ["Qlik AutoML", "Predictive models for demand forecasting, spoilage risk, delivery SLA prediction"],
         ["Qlik Answers", "Conversational AI over unstructured documents (SOPs, policies, contracts)"],
         ["Qlik Discovery Agent", "AI agent for automated data exploration and root cause analysis"],
@@ -346,7 +346,7 @@ function projClarity() {
     para("Open Lakehouse Bronze and Silver tiers", { bullet: true }),
     para("4 priority transformation routes: Timestamp Normalizer, Inventory Reconciliation, Carrier Status Normalizer, IoT Telemetry Pipeline", { bullet: true }),
     para("Pipeline health monitoring and alerting (addresses Nightmare #4)", { bullet: true }),
-    para("Inventory accuracy and cold chain dashboards in Qlik Sense", { bullet: true }),
+    para("Inventory accuracy and cold chain dashboards in Qlik Analytics", { bullet: true }),
 
     heading("4.2 Phase 2: Analytics & Quality (Months 6-16)", 2),
     para("Budget: $4.8M"),

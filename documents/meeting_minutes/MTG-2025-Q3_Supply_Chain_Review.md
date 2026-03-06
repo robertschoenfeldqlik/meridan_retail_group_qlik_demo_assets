@@ -123,7 +123,7 @@ Dr. Vasquez provided an update on the NVWA corrective action plan:
 Priya provided a brief update on the data platform evaluation:
 
 - Qlik selected as strategic platform partner (pending CIO approval)
-- Scope includes: real-time data integration (Talend Cloud + CDC), data quality and Trust Score, Open Lakehouse, Qlik Sense analytics, and AI capabilities (Qlik Answers + Discovery Agent)
+- Scope includes: real-time data integration (Talend Cloud + CDC), data quality and Trust Score, Open Lakehouse, Qlik Analytics analytics, and AI capabilities (Qlik Answers + Discovery Agent)
 - Estimated implementation: 6 months for Phase 1 (integration + quality + dashboards), 12 months for full platform including AI
 - Budget: Presentation to CIO scheduled for October 31
 - Expected ROI: $85M+ annually (inventory accuracy, spoilage reduction, analyst productivity, compliance)

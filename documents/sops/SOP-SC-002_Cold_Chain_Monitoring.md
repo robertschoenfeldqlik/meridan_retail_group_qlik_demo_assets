@@ -89,7 +89,7 @@ Target deployment: Q1 2026. Currently in training/validation phase.
 
 **Current model accuracy (validation set): 82% precision at 79% recall.**
 
-The model will surface risk scores directly in the Qlik Sense Supply Chain Command Center dashboard and trigger proactive alerts via the Discovery Agent when a shipment's risk score exceeds the threshold.
+The model will surface risk scores directly in the Qlik Analytics Supply Chain Command Center dashboard and trigger proactive alerts via the Discovery Agent when a shipment's risk score exceeds the threshold.
 
 ## 6. Sao Paulo-Buenos Aires Corridor Issue (Active)
 

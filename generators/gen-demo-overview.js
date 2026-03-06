@@ -209,7 +209,204 @@ stories.forEach((s, i) => {
 });
 
 // ═══════════════════════════════════════════════════
-// SLIDE 2: Agenda — Four Stories
+// SLIDE 2: Technical Architecture — Qlik Cloud Full Stack
+// ═══════════════════════════════════════════════════
+(function slide_technical_architecture() {
+  const s = contentSlide("Technical Architecture — Qlik Cloud Full Stack", C.qlikBlue);
+
+  // ── Helper: row badge on the left ──
+  function rowBadge(label, y, color) {
+    s.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
+      x: 0.3, y, w: 1.35, h: 0.45,
+      fill: { color }, rectRadius: 0.06,
+    });
+    s.addText(label, {
+      x: 0.3, y, w: 1.35, h: 0.45,
+      fontSize: 8, color: C.white, fontFace: FONT, bold: true, align: "center", valign: "middle",
+    });
+  }
+
+  // ── Helper: component box ──
+  function compBox(x, y, w, h, title, subtitle, bgColor) {
+    s.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
+      x, y, w, h: h || 0.95,
+      fill: { color: bgColor || C.lightBg }, rectRadius: 0.08,
+      shadow: { type: "outer", blur: 3, offset: 1, color: "D0D0D0", opacity: 0.3 },
+    });
+    s.addText(title, {
+      x, y: y + 0.08, w, h: 0.38,
+      fontSize: 10, color: C.qlikBlue, fontFace: FONT, bold: true, align: "center",
+    });
+    if (subtitle) {
+      s.addText(subtitle, {
+        x, y: y + 0.42, w, h: 0.38,
+        fontSize: 8, color: C.medGray, fontFace: FONT, align: "center",
+      });
+    }
+  }
+
+  // ── Row 1: DATA SOURCES (y=1.1) ──
+  rowBadge("DATA SOURCES", 1.3, C.qlikTeal);
+  compBox(1.85, 1.1, 3.2, 0.95, "PostgreSQL (WMS)", "CDC — Change Data Capture", C.lightTeal);
+  compBox(5.25, 1.1, 3.2, 0.95, "Apache Kafka (IoT)", "Streaming — Cold Chain & Carrier", C.lightTeal);
+  compBox(8.65, 1.1, 3.2, 0.95, "Salesforce CRM", "API — Contacts, Orders, Products", C.lightTeal);
+
+  // ── Flow arrow 1→2 ──
+  s.addText("▼", { x: 6.1, y: 2.08, w: 1, h: 0.5, fontSize: 18, color: C.qlikGray, fontFace: FONT, align: "center" });
+
+  // ── Row 2: QLIK CLOUD PLATFORM (y=2.7) ──
+  rowBadge("QLIK CLOUD", 2.9, C.qlikGreen);
+  // Large container
+  s.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
+    x: 1.85, y: 2.55, w: 10.0, h: 1.35,
+    fill: { color: C.lightGreen }, rectRadius: 0.1,
+    shadow: { type: "outer", blur: 4, offset: 1, color: "D0D0D0", opacity: 0.25 },
+  });
+  compBox(2.05, 2.65, 3.1, 0.85, "Open Lakehouse", "Bronze → Silver → Gold", C.white);
+  compBox(5.35, 2.65, 3.1, 0.85, "Data Integration", "CDC, Streaming, API Pipelines", C.white);
+  compBox(8.65, 2.65, 3.0, 0.85, "Talend Cloud", "Address Validation & Cleansing", C.white);
+
+  // ── Flow arrow 2→3 ──
+  s.addText("▼", { x: 6.1, y: 3.92, w: 1, h: 0.5, fontSize: 18, color: C.qlikGray, fontFace: FONT, align: "center" });
+
+  // ── Row 3: ANALYTICS & GOVERNANCE (y=4.3) ──
+  rowBadge("ANALYTICS", 4.5, C.qlikBlue);
+  compBox(1.85, 4.3, 3.2, 0.95, "Qlik Analytics", "2 Apps  •  10 Sheets", C.lightBlue);
+  compBox(5.25, 4.3, 3.2, 0.95, "Qlik Predict", "2 AutoML Models", C.lightBlue);
+  compBox(8.65, 4.3, 3.2, 0.95, "Governance", "Trust • Lineage • Glossary • Stewardship", C.lightBlue);
+
+  // ── Flow arrow 3→4 ──
+  s.addText("▼", { x: 6.1, y: 5.28, w: 1, h: 0.5, fontSize: 18, color: C.qlikGray, fontFace: FONT, align: "center" });
+
+  // ── Row 4: AI & OUTCOMES (y=5.7) ──
+  rowBadge("AI & OUTCOMES", 5.9, C.qlikLightGreen);
+  compBox(1.85, 5.7, 2.3, 0.95, "Qlik Answers", "25 Documents", C.lightGreen);
+  compBox(4.35, 5.7, 2.3, 0.95, "Discovery Agent", "Autonomous Analysis", C.lightGreen);
+  compBox(6.85, 5.7, 2.3, 0.95, "MCP Server", "Claude Integration", C.lightGreen);
+  compBox(9.35, 5.7, 2.5, 0.95, "Automations", "Teams Notifications", C.lightGreen);
+
+  // ── Right sidebar callout ──
+  s.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
+    x: 12.1, y: 1.1, w: 1.05, h: 5.55,
+    fill: { color: C.lightBlue }, rectRadius: 0.1,
+    line: { color: C.qlikBlue, width: 1 },
+  });
+  s.addText("7\nNightmares", {
+    x: 12.1, y: 2.0, w: 1.05, h: 1.0,
+    fontSize: 11, color: C.qlikBlue, fontFace: FONT, bold: true, align: "center", valign: "middle",
+    lineSpacingMultiple: 1.1,
+  });
+  s.addText("$127M/yr", {
+    x: 12.1, y: 3.0, w: 1.05, h: 0.5,
+    fontSize: 10, color: C.qlikTeal, fontFace: FONT, bold: true, align: "center", valign: "middle",
+  });
+})();
+
+// ═══════════════════════════════════════════════════
+// SLIDE 3: Functional Architecture — The Four Stories
+// ═══════════════════════════════════════════════════
+(function slide_functional_architecture() {
+  const s = contentSlide("Functional Architecture — The Four Stories", C.qlikGreen);
+
+  // ── Helper: column header badge ──
+  function colHeader(x, w, num, label, color) {
+    s.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
+      x, y: 1.0, w, h: 0.45,
+      fill: { color }, rectRadius: 0.06,
+    });
+    s.addText(`${num}. ${label}`, {
+      x, y: 1.0, w, h: 0.45,
+      fontSize: 11, color: C.white, fontFace: FONT, bold: true, align: "center", valign: "middle",
+    });
+  }
+
+  // ── Helper: column item list ──
+  function colItems(x, w, items, bgColor) {
+    const itemH = 0.38;
+    const startY = 1.6;
+    // Column background
+    s.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
+      x, y: startY - 0.05, w, h: items.length * itemH + 0.2,
+      fill: { color: bgColor }, rectRadius: 0.08,
+      shadow: { type: "outer", blur: 3, offset: 1, color: "D0D0D0", opacity: 0.25 },
+    });
+    items.forEach((item, i) => {
+      s.addText(`▸  ${item}`, {
+        x: x + 0.15, y: startY + i * itemH, w: w - 0.3, h: itemH,
+        fontSize: 9.5, color: C.darkText, fontFace: FONT,
+      });
+    });
+  }
+
+  // ── Helper: flow arrow between columns ──
+  function flowArrow(x) {
+    s.addText("▶", {
+      x: x - 0.25, y: 2.8, w: 0.5, h: 0.5,
+      fontSize: 16, color: C.qlikGray, fontFace: FONT, align: "center",
+    });
+  }
+
+  // ── Column 1: INTEGRATIONS ──
+  colHeader(0.5, 3.0, "1", "Integrations", C.qlikTeal);
+  colItems(0.5, 3.0, [
+    "3 Data Sources",
+    "8 CDC / API / Streaming Pipelines",
+    "Bronze Layer (8 tables)",
+    "Real-time & Batch",
+    "Data Movement Gateway",
+  ], C.lightTeal);
+
+  flowArrow(3.6);
+
+  // ── Column 2: GOVERNANCE ──
+  colHeader(3.7, 3.0, "2", "Governance", C.qlikGreen);
+  colItems(3.7, 3.0, [
+    "8 Transformation Routes",
+    "Silver Layer (cleansed)",
+    "7 Gold Data Products",
+    "Trust Score & Lineage",
+    "Business Glossary (25 terms)",
+    "4 Stewardship Campaigns",
+  ], C.lightGreen);
+
+  flowArrow(6.8);
+
+  // ── Column 3: ANALYTICS ──
+  colHeader(6.9, 3.0, "3", "Analytics", C.qlikBlue);
+  colItems(6.9, 3.0, [
+    "2 Qlik Analytics Apps (10 sheets)",
+    "Agentic Analytics & NLI",
+    "Data Alerts & Reports",
+    "5 Automations (Teams)",
+    "MCG Dark Theme",
+  ], C.lightBlue);
+
+  flowArrow(10.0);
+
+  // ── Column 4: AI & OUTCOMES ──
+  colHeader(10.1, 2.7, "4", "AI & Outcomes", C.qlikLightGreen);
+  colItems(10.1, 2.7, [
+    "2 Predict Models (Spoilage/SLA)",
+    "Qlik Answers (25 docs)",
+    "Discovery Agent",
+    "MCP Server (Claude)",
+    "Closed-Loop Automation",
+  ], C.lightGreen);
+
+  // ── Bottom summary bar ──
+  s.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
+    x: 0.5, y: 5.9, w: 12.3, h: 0.6,
+    fill: { color: C.lightBg }, rectRadius: 0.08,
+    line: { color: C.qlikGray, width: 0.75 },
+  });
+  s.addText("Total:  3 Sources  →  23 Tables  →  9 Flows  →  7 Products  →  10 Sheets  →  2 Models  →  25 Docs  →  5 Automations", {
+    x: 0.7, y: 5.9, w: 11.9, h: 0.6,
+    fontSize: 11, color: C.qlikBlue, fontFace: FONT, bold: true, align: "center", valign: "middle",
+  });
+})();
+
+// ═══════════════════════════════════════════════════
+// SLIDE 4: Agenda — Four Stories
 // ═══════════════════════════════════════════════════
 slide = contentSlide("Demo Agenda — Four Stories, One Platform");
 
@@ -226,8 +423,8 @@ const agendaItems = [
   },
   {
     num: "3", title: "The Analytics Story", color: C.qlikGreen,
-    desc: "Qlik Sense dashboards, Analytics Engine (associative model), Natural Language Insights, Business Logic, native alerting, reporting & subscriptions, automations",
-    components: "Qlik Sense • Analytics Engine • Associative Model • NLI • Business Logic • Alerting • Reporting • Automations",
+    desc: "Qlik Analytics dashboards, Analytics Engine (associative model), Natural Language Insights, Business Logic, native alerting, reporting & subscriptions, automations",
+    components: "Qlik Analytics • Analytics Engine • Associative Model • NLI • Business Logic • Alerting • Reporting • Automations",
   },
   {
     num: "4", title: "The AI & Outcomes Story", color: C.qlikLightGreen,
@@ -778,8 +975,8 @@ yPos = recommendBox(slide, "Stewardship + Glossary", [
 // ═══════════════════════════════════════════════════
 sectionSlide("3", "The Analytics Story", "From stale PowerPoints to real-time, interactive, AI-assisted insights", C.qlikBlue);
 
-// ─── Slide: Qlik Sense Dashboards ───
-slide = contentSlide("Qlik Sense — 7 Analytics Apps", C.qlikGreen);
+// ─── Slide: Qlik Analytics Dashboards ───
+slide = contentSlide("Qlik Analytics — 2 Domain Apps (10 Sheets)", C.qlikGreen);
 
 slide.addText("Interactive dashboards connected to Gold-layer data products with associative exploration", {
   x: 0.5, y: 0.85, w: 12, h: 0.4,
@@ -787,13 +984,8 @@ slide.addText("Interactive dashboards connected to Gold-layer data products with
 });
 
 const apps = [
-  { name: "Supply Chain Health", focus: "Inventory accuracy, pipeline status, DC-level KPIs", nightmare: "#1, #4" },
-  { name: "Last Mile Performance", focus: "Carrier SLAs, rejection rates, WISMO by region", nightmare: "#2, #6" },
-  { name: "Cold Chain Monitoring", focus: "Temperature exceedances, spoilage risk, real-time alerts", nightmare: "#6" },
-  { name: "Product Master 360", focus: "SKU completeness, weight/dims gaps, supplier mapping", nightmare: "#3" },
-  { name: "Customer Delivery Experience", focus: "WISMO rates, delivery promises vs actuals, NPS impact", nightmare: "#2, #6" },
-  { name: "Compliance & Recall Readiness", focus: "Lot traceability, recall simulation, NVWA readiness", nightmare: "#7" },
-  { name: "Executive Cost Impact", focus: "C-level view: $127M cost breakdown by nightmare, ROI tracking", nightmare: "All" },
+  { name: "Supply Chain Operations", focus: "5 sheets: Inventory accuracy, cold chain monitoring, quality, compliance, cost impact", nightmare: "#1, #3, #4, #6, #7" },
+  { name: "Delivery & Customer Exp.", focus: "5 sheets: Last mile performance, order tracking, WISMO analysis, carrier SLAs, addresses", nightmare: "#2, #5, #6" },
 ];
 
 const appHeaders = [
@@ -814,7 +1006,7 @@ slide.addTable([...appHeaders, ...appRows], {
   fontFace: FONT,
   border: { type: "solid", pt: 0.5, color: "D1D5DB" },
   colW: [3.5, 6.3, 2.5],
-  rowH: [0.38, ...Array(7).fill(0.48)],
+  rowH: [0.38, ...Array(2).fill(0.55)],
 });
 
 // ─── Slide: Analytics Engine & Intelligence ───
@@ -988,7 +1180,7 @@ slide.addText("Custom Themes & Extensions: Apply MCG branding (Navy #1B2A4A, Tea
 slide = contentSlide("Analytics Story — What to Show in the Demo", C.qlikGreen);
 
 yPos = 1.1;
-yPos = recommendBox(slide, "Qlik Sense Dashboard Tour", [
+yPos = recommendBox(slide, "Qlik Analytics Dashboard Tour", [
   "Open Supply Chain Health → show Rotterdam DC's IRA at 74%, drill into phantom inventory by SKU",
   "Open Cold Chain Monitoring → show live temperature exceedances on São Paulo→Buenos Aires route",
   "Switch to Executive Cost Impact → C-level view of $127M broken down by nightmare category",
@@ -1014,7 +1206,7 @@ sectionSlide("4", "The AI & Outcomes Story", "From reactive dashboards to proact
 // ─── Slide: Agentic Analytics Experience ───
 slide = contentSlide("Agentic Analytics — Unified AI Experience", C.qlikLightGreen);
 
-slide.addText("A single conversational AI that queries data, reads documents, and reasons across both — GA February 2026", {
+slide.addText("A single conversational AI that queries data, reads documents, and reasons across both — now GA", {
   x: 0.5, y: 0.85, w: 12, h: 0.4,
   fontSize: 14, color: C.medGray, fontFace: FONT, italic: true,
 });
@@ -1074,7 +1266,7 @@ slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
   x: 0.5, y: 4.9, w: 12.3, h: 0.55,
   fill: { color: C.lightGreen }, rectRadius: 0.08,
 });
-slide.addText("✓ Qlik Answers agentic experience reached GA in February 2026 — replaces legacy Insight Advisor with unified conversational AI across data and documents.", {
+slide.addText("✓ Qlik Answers agentic experience is now GA — replaces legacy Insight Advisor with unified conversational AI across data and documents.", {
   x: 0.8, y: 4.95, w: 11.8, h: 0.45,
   fontSize: 12, color: C.qlikGreen, fontFace: FONT, bold: true,
 });
@@ -1218,7 +1410,7 @@ slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
   x: 0.5, y: 4.2, w: 12.3, h: 0.7,
   fill: { color: C.lightGreen }, rectRadius: 0.08,
 });
-slide.addText("Knowledge Mart [NEW]: Automate the RAG pipeline — structured-to-document transformation, vectorization, and incremental loading to vector stores. Keeps Qlik Answers grounded in fresh data. GA July 2025.", {
+slide.addText("Knowledge Mart: Automate the RAG pipeline — structured-to-document transformation, vectorization, and incremental loading to vector stores. Keeps Qlik Answers grounded in fresh data.", {
   x: 0.8, y: 4.25, w: 11.8, h: 0.6,
   fontSize: 11, color: C.qlikLightGreen, fontFace: FONT,
 });
@@ -1301,7 +1493,7 @@ slide = contentSlide("AI & Outcomes Story — What to Show in the Demo", C.qlikL
 
 yPos = 1.1;
 yPos = recommendBox(slide, "Agentic Analytics Experience", [
-  "Open Qlik Answers → ask: \"Which distribution centers have the lowest inventory accuracy?\" → data agent queries Qlik Sense",
+  "Open Qlik Answers → ask: \"Which distribution centers have the lowest inventory accuracy?\" → data agent queries Qlik Analytics",
   "Follow up: \"What happened at Rotterdam in September?\" → document agent pulls INC-2025-04872 with citations",
   "Ask: \"What does Project CLARITY propose to fix this?\" → chain-of-thought reasoning across data + documents",
 ], yPos, C.lightGreen);
@@ -1393,7 +1585,7 @@ const closingMetrics = [
   { val: "3", label: "Live Data Sources", color: C.qlikTeal },
   { val: "23", label: "Lakehouse Tables", color: C.qlikTeal },
   { val: "7", label: "Data Products", color: C.qlikGreen },
-  { val: "7", label: "Dashboards", color: C.qlikGreen },
+  { val: "10", label: "Sheets (2 Apps)", color: C.qlikGreen },
   { val: "2", label: "ML Models", color: C.qlikLightGreen },
   { val: "25", label: "KB Documents", color: C.qlikLightGreen },
 ];

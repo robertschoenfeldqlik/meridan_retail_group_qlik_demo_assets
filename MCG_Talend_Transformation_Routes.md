@@ -87,7 +87,7 @@
 ┌──────────────────┐  ┌───────────────────────┐  ┌──────────────────────────┐
 │  QLIK ANALYTICS  │  │  QLIK AI LAYER        │  │  DOWNSTREAM OUTPUTS      │
 │                  │  │                       │  │                          │
-│  Qlik Sense      │  │  Qlik Answers (RAG)   │  │  B2B Inventory Feed      │
+│  Qlik Analytics      │  │  Qlik Answers (RAG)   │  │  B2B Inventory Feed      │
 │  Dashboards      │  │  Discovery Agent      │  │  (CSV / flat file)       │
 │  Trust Score     │  │  AutoML / Predict     │  │                          │
 │  visualizations  │  │  MCP Server           │  │  Compliance Reports      │
@@ -121,7 +121,7 @@ The architecture follows an **ELT (Extract-Load-Transform)** pattern, NOT a trad
 | Layer | Purpose | Data State | Who Consumes It |
 |---|---|---|---|
 | **Bronze** | Raw landing zone -- exact copy of source data, warts and all. Data arrives here FIRST via Talend ingestion pipelines. | Dirty, as-is from source | Data engineers (debugging, lineage, audit) |
-| **Silver** | Cleansed, standardized, type-converted, deduplicated. Created by Talend transformation routes reading from Bronze. | Clean, consistent, trustworthy | Analysts, data scientists, Qlik Sense |
+| **Silver** | Cleansed, standardized, type-converted, deduplicated. Created by Talend transformation routes reading from Bronze. | Clean, consistent, trustworthy | Analysts, data scientists, Qlik Analytics |
 | **Gold** | Business-ready data products -- pre-aggregated, enriched, governed. Created by Talend routes reading from Silver. | Curated, documented, SLA-backed | Executives, Qlik Answers, Discovery Agent, AutoML, Downstream outputs |
 
 **Key principle:** Bronze preserves the original dirty data so you can always demonstrate the "before" state. Silver is where the transformation magic happens. Gold is what the business and downstream consumers receive.
@@ -848,16 +848,16 @@ Routes must execute in this order (some are parallelizable):
 
 | Table | Route(s) | Consumers | Description |
 |---|---|---|---|
-| `gold.supply_chain_health` | 2 | Qlik Sense, Discovery Agent | Per-warehouse inventory KPIs |
-| `gold.customer_360` | 3 | Qlik Sense, Qlik Answers | Master customer records with quality scores |
-| `gold.product_catalog` | 4 | Qlik Sense, Qlik Answers | Curated product data (complete records only) |
-| `gold.last_mile_performance` | 5, 8 | Qlik Sense, Discovery Agent | Carrier SLA KPIs per region/day |
+| `gold.supply_chain_health` | 2 | Qlik Analytics, Discovery Agent | Per-warehouse inventory KPIs |
+| `gold.customer_360` | 3 | Qlik Analytics, Qlik Answers | Master customer records with quality scores |
+| `gold.product_catalog` | 4 | Qlik Analytics, Qlik Answers | Curated product data (complete records only) |
+| `gold.last_mile_performance` | 5, 8 | Qlik Analytics, Discovery Agent | Carrier SLA KPIs per region/day |
 | `gold.spoilage_risk` | 6 | AutoML, Discovery Agent | ML feature table for spoilage prediction |
-| `gold.supplier_scorecard` | 7 | Qlik Sense, Qlik Answers | Consolidated supplier spend and performance |
-| `gold.order_timeline` | 8 | Qlik Sense, Qlik Answers | Full order journey with all timestamps |
-| `gold.wismo_analysis` | 8 | Qlik Sense | WISMO correlation with data quality |
+| `gold.supplier_scorecard` | 7 | Qlik Analytics, Qlik Answers | Consolidated supplier spend and performance |
+| `gold.order_timeline` | 8 | Qlik Analytics, Qlik Answers | Full order journey with all timestamps |
+| `gold.wismo_analysis` | 8 | Qlik Analytics | WISMO correlation with data quality |
 | `gold.pipeline_health_alerts` | 2, 6 | Discovery Agent | Pipeline freshness and gap alerts |
-| `gold.compliance_traceability` | 2, 4 | Qlik Sense, Qlik Answers | Food product farm-to-shelf lineage |
+| `gold.compliance_traceability` | 2, 4 | Qlik Analytics, Qlik Answers | Food product farm-to-shelf lineage |
 
 ### Trust Score Summary Table
 

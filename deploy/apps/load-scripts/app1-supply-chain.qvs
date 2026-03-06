@@ -1,0 +1,238 @@
+// =============================================================================
+// MCG Supply Chain Operations — Qlik Analytics Load Script
+// =============================================================================
+// Connects to Gold-layer data products in the Open Lakehouse.
+// Assumes data connections already configured in Qlik Cloud.
+//
+// Gold Tables Used:
+//   - gold.supply_chain_health
+//   - gold.cold_chain_compliance
+//   - gold.product_master_360
+//   - gold.compliance_readiness
+//   - gold.operational_cost_impact
+//
+// Streaming Tables (Direct Query):
+//   - silver.iot_normalized
+//   - bronze.iot_carrier_events
+// =============================================================================
+
+SET ThousandSep=',';
+SET DecimalSep='.';
+SET MoneyThousandSep=',';
+SET MoneyDecimalSep='.';
+SET MoneyFormat='$#,##0.00;-$#,##0.00';
+SET TimeFormat='hh:mm:ss';
+SET DateFormat='YYYY-MM-DD';
+SET TimestampFormat='YYYY-MM-DD hh:mm:ss[.fff]';
+SET FirstWeekDay=0;
+SET BrokenWeeks=1;
+SET ReferenceDay=0;
+SET FirstMonthOfYear=1;
+
+// =============================================================================
+// 1. SUPPLY CHAIN HEALTH (Gold)
+// =============================================================================
+// Source: gold.supply_chain_health
+// Contains: IRA metrics, phantom inventory flags, pipeline status, trust scores
+// Refresh: Every 15 minutes
+// =============================================================================
+
+SupplyChainHealth:
+LOAD
+    dc_id                     AS [Distribution Center],
+    sku                       AS [SKU],
+    product_name              AS [Product Name],
+    category                  AS [Category],
+    region                    AS [Region],
+    qty_wms                   AS [WMS Quantity],
+    qty_erp                   AS [ERP Quantity],
+    qty_wms - qty_erp         AS [Variance],
+    IF(qty_erp > 0, (qty_wms - qty_erp) / qty_erp, 0) AS [Variance %],
+    phantom_inventory         AS [Phantom Flag],
+    phantom_critical          AS [Phantom Critical],
+    uom_standard              AS [Unit of Measure],
+    storage_zone_standard     AS [Storage Zone],
+    lot_number                AS [Lot Number],
+    lot_missing               AS [Lot Missing Flag],
+    pipeline_status           AS [Pipeline Status],
+    sync_lag_minutes          AS [Sync Lag (min)],
+    trust_score               AS [Trust Score],
+    snapshot_utc              AS [Snapshot Time]
+FROM [lib://MCG Open Lakehouse/gold.supply_chain_health]
+(qvd);
+
+// Derive IRA calculation
+IRA_Calc:
+LOAD
+    [Distribution Center],
+    COUNT(DISTINCT [SKU]) AS [Total SKUs],
+    SUM(IF([Phantom Flag] = 0, 1, 0)) AS [Accurate SKUs],
+    SUM(IF([Phantom Flag] = 1, 1, 0)) AS [Phantom Units],
+    IF(COUNT([SKU]) > 0,
+       SUM(IF([Phantom Flag] = 0, 1, 0)) / COUNT([SKU]),
+       0) AS [IRA %]
+RESIDENT SupplyChainHealth
+GROUP BY [Distribution Center];
+
+
+// =============================================================================
+// 2. COLD CHAIN COMPLIANCE (Gold)
+// =============================================================================
+// Source: gold.cold_chain_compliance
+// Contains: Temperature data, exceedances, spoilage risk, sensor health
+// Refresh: Every 5 minutes (near real-time)
+// =============================================================================
+
+ColdChainCompliance:
+LOAD
+    shipment_id               AS [Shipment ID],
+    route                     AS [Route],
+    carrier                   AS [Carrier],
+    product_type              AS [Product Type],
+    avg_temp_celsius           AS [Avg Temperature (°C)],
+    max_temp_celsius           AS [Max Temperature (°C)],
+    min_temp_celsius           AS [Min Temperature (°C)],
+    exceedance_minutes         AS [Exceedance Duration (min)],
+    exceedance_flag            AS [Exceedance Flag],
+    pre_cool_compliant         AS [Pre-Cool Compliant],
+    spoilage_flag              AS [Spoilage Flag],
+    spoilage_probability       AS [Spoilage Probability],
+    estimated_loss_usd         AS [Estimated Loss ($)],
+    sensor_count               AS [Sensor Count],
+    data_gap_flag              AS [Data Gap Flag],
+    alert_sent                 AS [Alert Sent],
+    trust_score                AS [CC Trust Score],
+    snapshot_utc               AS [CC Snapshot Time]
+FROM [lib://MCG Open Lakehouse/gold.cold_chain_compliance]
+(qvd);
+
+
+// =============================================================================
+// 3. PRODUCT MASTER 360 (Gold)
+// =============================================================================
+// Source: gold.product_master_360
+// Contains: Harmonized product data, SKU resolution, weight completeness
+// Refresh: Hourly
+// =============================================================================
+
+ProductMaster:
+LOAD
+    canonical_sku              AS [Canonical SKU],
+    legacy_sku_am              AS [Legacy SKU (Americas)],
+    legacy_sku_eu              AS [Legacy SKU (Europe)],
+    product_name_en            AS [Product Name],
+    category                   AS [Product Category],
+    weight_kg                  AS [Weight (kg)],
+    weight_missing_flag        AS [Weight Missing],
+    dimensions_cm              AS [Dimensions (cm)],
+    uom_standard               AS [Standard UoM],
+    gtin                       AS [GTIN],
+    supplier_id                AS [Supplier ID],
+    supplier_name              AS [Supplier Name],
+    supplier_count             AS [Supplier Count],
+    country_of_origin          AS [Country of Origin],
+    perishable                 AS [Perishable],
+    trust_score                AS [Product Trust Score]
+FROM [lib://MCG Open Lakehouse/gold.product_master_360]
+(qvd);
+
+
+// =============================================================================
+// 4. COMPLIANCE READINESS (Gold)
+// =============================================================================
+// Source: gold.compliance_readiness
+// Contains: Lot traceability, farm-to-shelf, NVWA compliance
+// Refresh: Daily
+// =============================================================================
+
+ComplianceReadiness:
+LOAD
+    sku                        AS [Compliance SKU],
+    product_name               AS [Compliance Product],
+    category                   AS [Compliance Category],
+    lot_number                 AS [Compliance Lot],
+    farm_origin                AS [Farm Origin],
+    country_of_origin          AS [Origin Country],
+    dc_id                      AS [Compliance DC],
+    dc_receipt_utc             AS [DC Receipt Time],
+    store_receipt_utc          AS [Store Receipt Time],
+    trace_complete_flag        AS [Trace Complete],
+    trace_completeness_pct     AS [Trace Completeness %],
+    nvwa_applicable            AS [NVWA Applicable],
+    trust_score                AS [Compliance Trust Score]
+FROM [lib://MCG Open Lakehouse/gold.compliance_readiness]
+(qvd);
+
+
+// =============================================================================
+// 5. OPERATIONAL COST IMPACT (Gold)
+// =============================================================================
+// Source: gold.operational_cost_impact
+// Contains: Cost attribution by nightmare, trends, remediation progress
+// Refresh: Daily
+// =============================================================================
+
+OperationalCost:
+LOAD
+    nightmare_id               AS [Nightmare #],
+    nightmare_name             AS [Nightmare Name],
+    cost_category              AS [Cost Category],
+    cost_usd                   AS [Cost ($)],
+    cost_trend                 AS [Cost Trend],
+    incidents_count            AS [Incident Count],
+    period                     AS [Period],
+    region                     AS [Cost Region],
+    dc_id                      AS [Cost DC],
+    remediation_pct            AS [Remediation Progress %],
+    remediation_target_pct     AS [Remediation Target %],
+    trust_score                AS [Cost Trust Score]
+FROM [lib://MCG Open Lakehouse/gold.operational_cost_impact]
+(qvd);
+
+
+// =============================================================================
+// CALENDAR (Master Calendar for time intelligence)
+// =============================================================================
+
+MinMaxDates:
+LOAD
+    MIN(Date(Floor([Snapshot Time]))) AS MinDate,
+    MAX(Date(Floor([Snapshot Time]))) AS MaxDate
+RESIDENT SupplyChainHealth;
+
+LET vMinDate = Peek('MinDate', 0, 'MinMaxDates');
+LET vMaxDate = Peek('MaxDate', 0, 'MinMaxDates');
+DROP TABLE MinMaxDates;
+
+Calendar:
+LOAD
+    Date                       AS [Date],
+    Year(Date)                 AS [Year],
+    Month(Date)                AS [Month],
+    MonthName(Date)            AS [Month Name],
+    Day(Date)                  AS [Day],
+    WeekDay(Date)              AS [Weekday],
+    Week(Date)                 AS [Week Number],
+    'Q' & Ceil(Month(Date)/3)  AS [Quarter]
+;
+LOAD
+    Date('$(vMinDate)' + IterNo() - 1) AS Date
+AUTOGENERATE 1
+WHILE Date('$(vMinDate)' + IterNo() - 1) <= '$(vMaxDate)';
+
+
+// =============================================================================
+// NIGHTMARE REFERENCE (Static mapping)
+// =============================================================================
+
+NightmareRef:
+LOAD * INLINE [
+    NightmareID, NightmareName, AnnualCost, Description
+    1, Phantom Inventory, 41000000, ERP vs WMS mismatch causing stockouts
+    2, Address Catastrophe, 31000000, 11% format issues causing 4.7% carrier rejection
+    3, Product Master Mess, 14000000, 8200 missing weights and duplicate suppliers
+    4, Silent Pipeline Failures, 4000000, Rotterdam CDC: 72h undetected outage
+    5, Timestamp Tower of Babel, 6000000, Mixed UTC/local/bare timestamps across sources
+    6, Carrier Data Black Hole, 22000000, 6 carriers 5 languages no canonical mapping
+    7, Compliance Traceability Gap, 9000000, Lettuce recall: 11 days vs 24h requirement
+];

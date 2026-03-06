@@ -321,13 +321,13 @@ Aggregated, governed, SLA-backed data products for business consumption.
 
 | Table | Input (Silver) | Consumers | Key Fields |
 |---|---|---|---|
-| `gold.supply_chain_health` | inventory_reconciled, timestamps_audit | Qlik Sense, Discovery Agent | DC, SKU, qty_wms, qty_erp, variance, trust_score, pipeline_status |
-| `gold.last_mile_performance` | shipments_canonical, orders_enriched, customers_deduped | Qlik Sense, Predict | carrier, region, sla_target, sla_actual, on_time_pct, address_quality_score |
+| `gold.supply_chain_health` | inventory_reconciled, timestamps_audit | Qlik Analytics, Discovery Agent | DC, SKU, qty_wms, qty_erp, variance, trust_score, pipeline_status |
+| `gold.last_mile_performance` | shipments_canonical, orders_enriched, customers_deduped | Qlik Analytics, Predict | carrier, region, sla_target, sla_actual, on_time_pct, address_quality_score |
 | `gold.cold_chain_compliance` | iot_normalized, shipments_canonical | Predict, Discovery Agent | shipment_id, route, carrier, avg_temp, max_temp, exceedance_min, spoilage_flag |
-| `gold.customer_delivery_experience` | customers_deduped, orders_enriched | Qlik Sense | customer_id, name, address_clean, total_orders, wismo_count, ltv |
-| `gold.compliance_readiness` | products_harmonized, inventory_reconciled | Compliance, Qlik Sense | sku, lot_number, farm_origin, dc_receipt, store_receipt, trace_complete_flag |
+| `gold.customer_delivery_experience` | customers_deduped, orders_enriched | Qlik Analytics | customer_id, name, address_clean, total_orders, wismo_count, ltv |
+| `gold.compliance_readiness` | products_harmonized, inventory_reconciled | Compliance, Qlik Analytics | sku, lot_number, farm_origin, dc_receipt, store_receipt, trace_complete_flag |
 | `gold.operational_cost_impact` | inventory_reconciled, products_harmonized | B2B API, flat file export | sku, product_name, dc, qty_available, uom, unit_price, trust_score |
-| `gold.order_timeline` | orders_enriched, shipments_canonical, iot_normalized | Qlik Sense, Answers | order_id, customer, order_dt, pick_dt, ship_dt, deliver_dt, total_hours, sla_met |
+| `gold.order_timeline` | orders_enriched, shipments_canonical, iot_normalized | Qlik Analytics, Answers | order_id, customer, order_dt, pick_dt, ship_dt, deliver_dt, total_hours, sla_met |
 
 **Total: 7 Gold tables**
 
@@ -637,7 +637,7 @@ Body: { "model_id": "<spoilage-model-id>", "features": { "route": "GRU-BA", "car
 | Space | Type | Purpose | Contents |
 |---|---|---|---|
 | `MCG Demo - Development` | Shared | Dev workspace for building apps and flows | Data connections, data flow drafts, dev apps |
-| `MCG Demo - Published` | Managed | Production analytics for end users | Published Qlik Sense apps, scheduled reports |
+| `MCG Demo - Published` | Managed | Production analytics for end users | Published Qlik Analytics apps, scheduled reports |
 | `MCG Demo - Data` | Shared | Data products + governance artifacts | Data products, glossary, stewardship campaigns, catalog |
 
 ### 6.2 Resource Assignment
@@ -649,8 +649,8 @@ Body: { "model_id": "<spoilage-model-id>", "features": { "route": "GRU-BA", "car
 | Salesforce connection | MCG Demo - Development |
 | Open Lakehouse | MCG Demo - Data |
 | Data Products (7) | MCG Demo - Data |
-| Qlik Sense apps (dev) | MCG Demo - Development |
-| Qlik Sense apps (published) | MCG Demo - Published |
+| Qlik Analytics apps (dev) | MCG Demo - Development |
+| Qlik Analytics apps (published) | MCG Demo - Published |
 | Knowledge Base | MCG Demo - Data |
 | Assistant | MCG Demo - Published |
 | Automations | MCG Demo - Development |
@@ -918,7 +918,7 @@ python deploy/deploy_qlik.py  # Includes glossary import step
 
 **Build in Qlik Application Automation:**
 
-1. **Trigger:** Qlik Sense Reload Task Complete → check `gold.cold_chain_compliance` for new exceedance rows
+1. **Trigger:** Qlik Analytics Reload Task Complete → check `gold.cold_chain_compliance` for new exceedance rows
    - Alternative trigger: Webhook from IoT pipeline when exceedance detected
 
 2. **Condition Block:** Filter for `exceedance_minutes >= 15 AND alert_sent = FALSE`

@@ -119,7 +119,7 @@ MCG operates a basic spoilage prediction model (deployed Q1 2025):
 The Project CLARITY platform will enable:
 - Real-time feature engineering from IoT telemetry
 - Automated model retraining on new data
-- Embedded predictions in Qlik Sense dashboards
+- Embedded predictions in Qlik Analytics dashboards
 - Discovery Agent proactive alerts when spoilage risk exceeds threshold
 
 ## 7. Compliance Requirements

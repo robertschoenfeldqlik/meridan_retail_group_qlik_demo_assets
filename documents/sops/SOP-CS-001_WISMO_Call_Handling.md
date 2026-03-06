@@ -111,7 +111,7 @@ Average handle time for a WISMO call: **8.5 minutes** (target: 4 minutes).
 
 The Qlik platform implementation will introduce:
 - **Qlik Answers**: Agents can ask "What is the status of order WEB-2025-10-0094827?" in natural language and receive a unified answer drawing from all 5 systems simultaneously.
-- **Unified tracking dashboard** (Qlik Sense): Single-screen view of order journey from placement to delivery.
+- **Unified tracking dashboard** (Qlik Analytics): Single-screen view of order journey from placement to delivery.
 - **Proactive outreach**: Discovery Agent will detect delayed shipments and trigger automated customer notifications BEFORE the customer calls.
 
 Expected impact: WISMO call volume reduction of **55%**, handle time reduction to **3 minutes**, customer satisfaction improvement to **4.2/5.0**.

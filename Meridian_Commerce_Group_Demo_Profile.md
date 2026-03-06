@@ -205,13 +205,13 @@ MCG selects Qlik as its strategic data platform partner. Here is how every layer
 
 ---
 
-### Phase 4: ANALYZE & VISUALIZE -- Qlik Cloud Analytics (Qlik Sense)
+### Phase 4: ANALYZE & VISUALIZE -- Qlik Cloud Analytics (Qlik Analytics)
 
 **Challenge addressed:** Stale PowerPoint decks, no single source of truth, analysts spending 70% of time on data prep
 
 #### Executive Supply Chain Command Center
 
-A Qlik Sense application provides MCG's leadership with a real-time, interactive view:
+A Qlik Analytics application provides MCG's leadership with a real-time, interactive view:
 
 - **Global Inventory Health Dashboard:** Heat map of all 1,140 stores and 28 DCs showing real-time inventory accuracy (ERP vs. WMS vs. physical count reconciliation). Red/yellow/green indicators replace the morning spreadsheet ritual.
 - **Last-Mile Delivery Performance:** Live SLA tracking across all 42 carriers and 38 countries. Drill from global view → region → country → carrier → individual shipment. The 22% APAC SLA breach rate is visible *as it develops*, not in next week's PowerPoint.
@@ -237,7 +237,7 @@ The Qlik Associative Engine enables discoveries that traditional query-based BI 
 | **Demand Forecast Accuracy Model** | AutoML trains on 3 years of historical sales, weather, promotional calendar, and local event data to predict SKU-level demand at each store. Code-free interface means supply chain analysts (not just data scientists) build and iterate on models. |
 | **Delivery Delay Predictor** | Predicts the probability of last-mile SLA breach for each in-transit shipment based on carrier, route, weather, and historical performance. Proactive re-routing decisions replace reactive firefighting. |
 | **Spoilage Risk Scoring** | ML model scores every fresh/grocery item in every DC based on cold-chain data, time-in-transit, and demand velocity. Items above the risk threshold trigger automated markdown or redistribution recommendations. |
-| **Qlik Predict Integration** | ML predictions surface directly inside Qlik Sense dashboards. A store manager doesn't need to understand the model -- they see "Spoilage Risk: HIGH" on a specific product and the recommended action (markdown/transfer/reorder). |
+| **Qlik Predict Integration** | ML predictions surface directly inside Qlik Analytics dashboards. A store manager doesn't need to understand the model -- they see "Spoilage Risk: HIGH" on a specific product and the recommended action (markdown/transfer/reorder). |
 | **Model Monitoring & Retraining** | AutoML continuously monitors model drift. When APAC carrier performance patterns shift due to monsoon season, the delivery delay model automatically triggers retraining with fresh data. |
 | **AI Trust Score Validation** | Before any model is deployed, the Trust Score for AI validates that training data meets Diversity, Timeliness, and Accuracy thresholds. No model goes into production on questionable data. |
 
@@ -299,7 +299,7 @@ MCG's internal engineering team builds custom AI assistants using their preferre
                     +-------------------------------------------------+
                     |           MCG USER EXPERIENCE LAYER              |
                     |                                                   |
-                    |  Qlik Answers    Discovery Agent    Qlik Sense   |
+                    |  Qlik Answers    Discovery Agent    Qlik Analytics   |
                     |  (Conversational) (Proactive Alerts) (Dashboards)|
                     +-------------------------------------------------+
                                          |
@@ -359,8 +359,8 @@ MCG's internal engineering team builds custom AI assistants using their preferre
 | 2 | 3 min | **Data Quality & Trust Score** | Profile a raw carrier data feed -- show the address anomalies and duplicate supplier records discovered automatically. Show Trust Score dashboard with historization trending upward. |
 | 3 | 2 min | **Trust Score for AI** | Evaluate an ML training dataset. Show Diversity, Timeliness, and Accuracy dimensions. Flag the APAC data gap before it biases a model. |
 | 4 | 2 min | **Qlik Open Lakehouse** | Show the Iceberg table catalog. Demonstrate multi-engine access: same inventory table queried from both Snowflake (BI) and Spark (ML). |
-| 5 | 5 min | **Qlik Sense** | Walk through the Supply Chain Command Center: global inventory health → drill to problem DC → last-mile carrier performance → spoilage risk map. Show associative discovery finding the Vietnam port connection. |
-| 6 | 3 min | **Qlik AutoML / Predict** | Show the delivery delay prediction model. Open Qlik Sense and show embedded ML predictions on in-transit shipments. Highlight model monitoring detecting drift. |
+| 5 | 5 min | **Qlik Analytics** | Walk through the Supply Chain Command Center: global inventory health → drill to problem DC → last-mile carrier performance → spoilage risk map. Show associative discovery finding the Vietnam port connection. |
+| 6 | 3 min | **Qlik AutoML / Predict** | Show the delivery delay prediction model. Open Qlik Analytics and show embedded ML predictions on in-transit shipments. Highlight model monitoring detecting drift. |
 | 7 | 4 min | **Qlik Answers** | Ask natural language questions: "Why are Singapore SLAs declining?" Show the blended structured + unstructured answer with citations. Then: "Which Munich products need reorder before the weekend?" |
 | 8 | 3 min | **Discovery Agent** | Show the proactive alert feed: pipeline failure detection, cold-chain risk, carrier opportunity, and Trust Score degradation -- all surfaced without anyone asking a question. |
 | **Total** | **~25 min** | **Full Stack** | |
@@ -371,7 +371,7 @@ MCG's internal engineering team builds custom AI assistants using their preferre
 
 1. **Data Quality is the Foundation, Not an Afterthought:** MCG's story proves that even the best analytics and AI are worthless on bad data. Qlik's approach puts quality and trust *first* -- profiling, rules, stewardship, and Trust Scores before a single dashboard is built.
 
-2. **From Reactive to Proactive to Autonomous:** The journey moves from "we found out 4 days late" (before Qlik) → "we see it in real-time dashboards" (Qlik Sense) → "the system tells us before we ask" (Discovery Agent) → "the system recommends the action" (Qlik Answers + AutoML).
+2. **From Reactive to Proactive to Autonomous:** The journey moves from "we found out 4 days late" (before Qlik) → "we see it in real-time dashboards" (Qlik Analytics) → "the system tells us before we ask" (Discovery Agent) → "the system recommends the action" (Qlik Answers + AutoML).
 
 3. **Open, Not Locked In:** Qlik Open Lakehouse on Apache Iceberg means MCG's data is accessible from any compute engine. Their Snowflake investment is preserved. The MCP Server means their custom AI tools can access governed data. No walled garden.
 
