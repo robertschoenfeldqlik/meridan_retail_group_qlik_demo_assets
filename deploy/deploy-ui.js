@@ -553,6 +553,11 @@ function runDockerCompose(res, options) {
 
   activeDockerProcess = child;
 
+  // SSE heartbeat — keeps the connection alive during long Docker pulls
+  const heartbeat = setInterval(() => {
+    try { res.write(':heartbeat\n\n'); } catch (_) {}
+  }, 10000);
+
   child.stdout.on('data', (chunk) => {
     for (const line of chunk.toString().split('\n').filter(Boolean)) {
       send('log', { level: 'info', text: line });
@@ -568,6 +573,7 @@ function runDockerCompose(res, options) {
   });
 
   child.on('close', (code) => {
+    clearInterval(heartbeat);
     activeDockerProcess = null;
     send('status', {
       state: 'done',
@@ -578,6 +584,7 @@ function runDockerCompose(res, options) {
   });
 
   child.on('error', (err) => {
+    clearInterval(heartbeat);
     activeDockerProcess = null;
     send('log', { level: 'error', text: `Process error: ${err.message}` });
     send('status', { state: 'error', message: err.message });
@@ -585,6 +592,7 @@ function runDockerCompose(res, options) {
   });
 
   res.on('close', () => {
+    clearInterval(heartbeat);
     if (activeDockerProcess === child) {
       child.kill('SIGTERM');
       activeDockerProcess = null;
@@ -646,6 +654,11 @@ function runDeploy(res, options) {
 
   activeProcess = child;
 
+  // SSE heartbeat — keeps the connection alive during long operations (e.g. Docker pulls)
+  const heartbeat = setInterval(() => {
+    try { res.write(':heartbeat\n\n'); } catch (_) {}
+  }, 10000);
+
   child.stdout.on('data', (chunk) => {
     const lines = chunk.toString().split('\n').filter(Boolean);
     for (const line of lines) {
@@ -666,6 +679,7 @@ function runDeploy(res, options) {
   });
 
   child.on('close', (code) => {
+    clearInterval(heartbeat);
     activeProcess = null;
     if (tempConfig && fs.existsSync(tempConfig)) {
       try { fs.unlinkSync(tempConfig); } catch (_) {}
@@ -679,6 +693,7 @@ function runDeploy(res, options) {
   });
 
   child.on('error', (err) => {
+    clearInterval(heartbeat);
     activeProcess = null;
     send('log', { level: 'error', text: `Process error: ${err.message}` });
     send('status', { state: 'error', message: err.message });
@@ -686,6 +701,7 @@ function runDeploy(res, options) {
   });
 
   res.on('close', () => {
+    clearInterval(heartbeat);
     if (activeProcess === child) {
       child.kill('SIGTERM');
       activeProcess = null;
