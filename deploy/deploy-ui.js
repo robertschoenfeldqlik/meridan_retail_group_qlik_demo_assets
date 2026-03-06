@@ -622,15 +622,19 @@ function runDeploy(res, options) {
   send('status', { state: 'starting', message: 'Starting deployment...' });
   send('log', { level: 'info', text: `> node ${args.join(' ')}` });
 
-  // Write config with user's overrides
+  // Write config with user's overrides — save to both config.json (persist) and temp file (deploy)
   let tempConfig = null;
   if (options.config) {
     try {
+      // Save to config.json so form selections persist across reloads
+      const mainConfig = path.join(SCRIPT_DIR, 'config.json');
+      fs.writeFileSync(mainConfig, JSON.stringify(options.config, null, 2));
+      // Also write temp copy for the deploy process
       tempConfig = path.join(SCRIPT_DIR, '.config-ui-temp.json');
       fs.writeFileSync(tempConfig, JSON.stringify(options.config, null, 2));
       args.push('--config', tempConfig);
     } catch (e) {
-      send('log', { level: 'warn', text: `Could not write temp config: ${e.message}` });
+      send('log', { level: 'warn', text: `Could not write config: ${e.message}` });
     }
   }
 
@@ -1414,8 +1418,8 @@ function getHTML() {
       <button class="active" onclick="showPage(0)"><span class="step-num">1</span>Connection & Auth<span class="step-check" id="check-0"></span></button>
       <button onclick="showPage(1)"><span class="step-num">2</span>Docker Containers<span class="step-check" id="check-1"></span></button>
       <button onclick="showPage(2)"><span class="step-num">3</span>Spaces & Infrastructure<span class="step-check" id="check-2"></span></button>
-      <button onclick="showPage(3)"><span class="step-num">4</span>Build Apps & Theme<span class="step-check" id="check-3"></span></button>
-      <button onclick="showPage(4)"><span class="step-num">5</span>Data Connections<span class="step-check" id="check-4"></span></button>
+      <button onclick="showPage(3)"><span class="step-num">4</span>Data Connections<span class="step-check" id="check-3"></span></button>
+      <button onclick="showPage(4)"><span class="step-num">5</span>Build Apps & Theme<span class="step-check" id="check-4"></span></button>
       <button onclick="showPage(5)"><span class="step-num">6</span>Knowledge Base & Docs<span class="step-check" id="check-5"></span></button>
       <button onclick="showPage(6)"><span class="step-num">7</span>Automations<span class="step-check" id="check-6"></span></button>
       <button onclick="showPage(7)"><span class="step-num">8</span>Data Products<span class="step-check" id="check-7"></span></button>
@@ -1616,56 +1620,18 @@ function getHTML() {
         </div>
       </div>
 
-      <!-- Page 3: Build Apps & Theme -->
+      <!-- Page 3: Data Connections -->
       <div class="wizard-page" id="page-3">
-        <div class="page-title">Build Apps & Theme</div>
-        <div class="page-desc">Build Qlik Analytics apps via Engine API and upload the MCG custom theme.</div>
-
-        <div class="section-divider">App Definitions</div>
-        <div id="build-app-defs">
-          <div style="font-size:12px;color:var(--text-dim)">Loading app definitions...</div>
-        </div>
-
-        <div class="section-divider">Build Options</div>
-        <div class="toggle-row">
-          <label>Verbose Logging</label>
-          <label class="switch"><input type="checkbox" id="build-opt-verbose" checked><span class="slider"></span></label>
-        </div>
-
-        <div class="section-divider">Actions</div>
-        <div class="btn-row">
-          <button class="btn btn-deploy" id="btn-build-apps" onclick="startBuildApps(false)">Build Apps</button>
-          <button class="btn btn-dry" id="btn-build-dry" onclick="startBuildApps(true)">Build (Dry Run)</button>
-        </div>
-        <div class="btn-row" id="build-stop-row" style="display:none;margin-top:6px">
-          <button class="btn btn-stop" onclick="stopBuildApps()">Stop Build</button>
-        </div>
-
-        <div id="build-summary" style="margin-top:12px;display:none">
-          <div class="section-divider">Build Result</div>
-          <div id="build-summary-content" style="font-size:12px"></div>
-        </div>
-
-        <div class="section-divider" style="margin-top:20px">Theme Upload</div>
-        <div class="toggle-row">
-          <label>Enable Theme Upload</label>
-          <label class="switch"><input type="checkbox" id="f-en-theme" checked><span class="slider"></span></label>
-        </div>
-        <div class="field">
-          <label>Theme Name</label>
-          <input type="text" id="f-theme-name" placeholder="MCG Dark Theme">
-        </div>
-        <div id="theme-files"><!-- populated by JS --></div>
-      </div>
-
-      <!-- Page 4: Data Connections -->
-      <div class="wizard-page" id="page-4">
         <div class="page-title">Data Connections</div>
         <div class="page-desc">Configure source system connections for PostgreSQL, Salesforce, Kafka, and S3.</div>
 
         <div class="toggle-row">
           <label>Enable Data Connections</label>
           <label class="switch"><input type="checkbox" id="f-en-connections" checked><span class="slider"></span></label>
+        </div>
+
+        <div id="docker-prefill-banner" style="display:none;margin:8px 0 12px;padding:10px 14px;border-radius:var(--radius);background:rgba(13,124,143,0.12);border:1px solid rgba(13,124,143,0.3);font-size:12px;color:var(--teal)">
+          &#9432; Docker containers are enabled — PostgreSQL and Kafka fields have been pre-filled with Docker-local values. You can override them if connecting to external services.
         </div>
 
         <div class="section-divider">PostgreSQL (WMS)</div>
@@ -1780,6 +1746,48 @@ function getHTML() {
             <input type="password" id="f-s3-secret-key" placeholder="AWS secret key">
           </div>
         </div>
+      </div>
+
+      <!-- Page 4: Build Apps & Theme -->
+      <div class="wizard-page" id="page-4">
+        <div class="page-title">Build Apps & Theme</div>
+        <div class="page-desc">Build Qlik Analytics apps via Engine API and upload the MCG custom theme.</div>
+
+        <div class="section-divider">App Definitions</div>
+        <div id="build-app-defs">
+          <div style="font-size:12px;color:var(--text-dim)">Loading app definitions...</div>
+        </div>
+
+        <div class="section-divider">Build Options</div>
+        <div class="toggle-row">
+          <label>Verbose Logging</label>
+          <label class="switch"><input type="checkbox" id="build-opt-verbose" checked><span class="slider"></span></label>
+        </div>
+
+        <div class="section-divider">Actions</div>
+        <div class="btn-row">
+          <button class="btn btn-deploy" id="btn-build-apps" onclick="startBuildApps(false)">Build Apps</button>
+          <button class="btn btn-dry" id="btn-build-dry" onclick="startBuildApps(true)">Build (Dry Run)</button>
+        </div>
+        <div class="btn-row" id="build-stop-row" style="display:none;margin-top:6px">
+          <button class="btn btn-stop" onclick="stopBuildApps()">Stop Build</button>
+        </div>
+
+        <div id="build-summary" style="margin-top:12px;display:none">
+          <div class="section-divider">Build Result</div>
+          <div id="build-summary-content" style="font-size:12px"></div>
+        </div>
+
+        <div class="section-divider" style="margin-top:20px">Theme Upload</div>
+        <div class="toggle-row">
+          <label>Enable Theme Upload</label>
+          <label class="switch"><input type="checkbox" id="f-en-theme" checked><span class="slider"></span></label>
+        </div>
+        <div class="field">
+          <label>Theme Name</label>
+          <input type="text" id="f-theme-name" placeholder="MCG Dark Theme">
+        </div>
+        <div id="theme-files"><!-- populated by JS --></div>
       </div>
 
       <!-- Page 5: Knowledge Base & Docs -->
@@ -2000,7 +2008,8 @@ function getHTML() {
       b.classList.toggle('active', i === idx);
     });
     if (idx === 9) renderSummary();
-    if (idx === 3) renderBuildAppsPage();
+    if (idx === 3) prefillFromDocker();
+    if (idx === 4) renderBuildAppsPage();
     if (idx === 6) renderBuildAutomationsPage();
   }
 
@@ -2067,6 +2076,7 @@ function getHTML() {
 
     // Enabled components
     const en = cfg.enabledComponents || {};
+    setCheck('f-en-docker', en.docker !== false);
     setCheck('f-en-spaces', en.spaces !== false);
     setCheck('f-en-infra', en.infrastructure !== false);
     setCheck('f-en-connections', en.connections !== false);
@@ -2304,6 +2314,56 @@ function getHTML() {
       sel.value === 'SASL_SSL' ? 'grid' : 'none';
   }
 
+  // --- Docker → Data Connections prefill ---
+  function prefillFromDocker() {
+    const dockerEnabled = document.getElementById('f-en-docker') && document.getElementById('f-en-docker').checked;
+    const banner = document.getElementById('docker-prefill-banner');
+    if (!dockerEnabled) {
+      if (banner) banner.style.display = 'none';
+      return;
+    }
+
+    const profile = document.getElementById('f-docker-profile') ? document.getElementById('f-docker-profile').value : '';
+    const hasPostgres = ['full-stack', 'full-stack-dmg', 'kafka'].indexOf(profile) !== -1 || profile === 'full-stack' || profile === 'full-stack-dmg';
+    const hasKafka = ['full-stack', 'full-stack-dmg', 'kafka'].indexOf(profile) !== -1;
+
+    // Prefill PostgreSQL fields from Docker env values (only if currently empty or placeholder-like)
+    if (hasPostgres || profile === 'full-stack' || profile === 'full-stack-dmg') {
+      const pgHost = document.getElementById('f-pg-host');
+      const pgPort = document.getElementById('f-pg-port');
+      const pgDb   = document.getElementById('f-pg-database');
+      const pgUser = document.getElementById('f-pg-username');
+      const pgPass = document.getElementById('f-pg-password');
+      const pgName = document.getElementById('f-pg-name');
+
+      const dockerPgDb   = document.getElementById('f-docker-pg-db')   ? document.getElementById('f-docker-pg-db').value   : 'mcg_wms';
+      const dockerPgUser = document.getElementById('f-docker-pg-user') ? document.getElementById('f-docker-pg-user').value : 'mcg_admin';
+      const dockerPgPass = document.getElementById('f-docker-pg-pass') ? document.getElementById('f-docker-pg-pass').value : 'mcg_demo_2025';
+
+      if (!pgHost.value) pgHost.value = 'localhost';
+      if (!pgPort.value || pgPort.value === '5432') pgPort.value = '5432';
+      if (!pgDb.value)   pgDb.value = dockerPgDb;
+      if (!pgUser.value) pgUser.value = dockerPgUser;
+      if (!pgPass.value) pgPass.value = dockerPgPass;
+      if (!pgName.value) pgName.value = 'MCG WMS Database';
+    }
+
+    // Prefill Kafka fields from Docker env values
+    if (hasKafka) {
+      const kafkaBootstrap = document.getElementById('f-kafka-bootstrap');
+      const kafkaProtocol  = document.getElementById('f-kafka-protocol');
+      const kafkaName      = document.getElementById('f-kafka-name');
+
+      if (!kafkaBootstrap.value) kafkaBootstrap.value = 'localhost:9092';
+      if (!kafkaName.value) kafkaName.value = 'MCG IoT Telemetry';
+      if (kafkaProtocol) kafkaProtocol.value = 'PLAINTEXT';
+      // Hide SASL fields for Docker local
+      document.getElementById('kafka-sasl-fields').style.display = 'none';
+    }
+
+    if (banner) banner.style.display = 'block';
+  }
+
   // --- Docker page ---
   function renderDockerPage(docker, cfg) {
     // Compose file status
@@ -2356,8 +2416,14 @@ function getHTML() {
       document.getElementById('dmg-settings').style.display =
         (v === 'dmg' || v === 'full-stack-dmg') ? 'block' : 'none';
     };
-    sel.addEventListener('change', toggleDmg);
+    sel.addEventListener('change', () => { toggleDmg(); prefillFromDocker(); });
     toggleDmg();
+
+    // Also trigger prefill when Docker enable toggle changes
+    const dockerToggle = document.getElementById('f-en-docker');
+    if (dockerToggle) {
+      dockerToggle.addEventListener('change', () => { prefillFromDocker(); });
+    }
   }
 
   const COMPOSE_MAP = {

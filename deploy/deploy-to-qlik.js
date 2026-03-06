@@ -24,7 +24,7 @@ const http  = require('http');
 const fs    = require('fs');
 const path  = require('path');
 const url   = require('url');
-const { execSync } = require('child_process');
+const { spawn } = require('child_process');
 
 // ---------------------------------------------------------------------------
 //  Constants
@@ -1217,22 +1217,54 @@ async function main() {
   }
 
   // ---- Docker Containers ---------------------------------------------------
+  // Compose files live in infrastructure/ (not infrastructure/kafka/).
+  // Each "profile" maps to a separate compose file:
+  //   full-stack     → docker-compose.full-stack.yml   (Kafka + simulators)
+  //   full-stack-dmg → docker-compose.full-stack-dmg.yml (Kafka + sims + DMG)
+  //   kafka          → kafka/docker-compose.yml        (Kafka only)
+  //   simulators     → docker-compose.simulators.yml   (simulators only)
+  //   dmg            → docker-compose.dmg.yml          (DMG gateway only)
+  const COMPOSE_FILES = {
+    'full-stack':     'docker-compose.full-stack.yml',
+    'full-stack-dmg': 'docker-compose.full-stack-dmg.yml',
+    'kafka':          'kafka/docker-compose.yml',
+    'simulators':     'docker-compose.simulators.yml',
+    'dmg':            'docker-compose.dmg.yml',
+  };
+
   if (enabled.docker !== false) {
     log.section('Step 2: Docker Containers');
     try {
-      const infraDir = path.resolve(SCRIPT_DIR, '..', 'infrastructure', 'kafka');
+      const infraDir = path.resolve(SCRIPT_DIR, '..', 'infrastructure');
       const profile = cfg.docker && cfg.docker.profile || 'full-stack';
-      if (!fs.existsSync(path.join(infraDir, 'docker-compose.yml'))) {
-        throw new Error('docker-compose.yml not found in infrastructure/kafka/');
+      const composeFile = COMPOSE_FILES[profile];
+      if (!composeFile) {
+        throw new Error(`Unknown Docker profile: "${profile}". Valid: ${Object.keys(COMPOSE_FILES).join(', ')}`);
+      }
+      const composePath = path.join(infraDir, composeFile);
+      if (!fs.existsSync(composePath)) {
+        throw new Error(`Compose file not found: ${composePath}`);
       }
       if (dryRun) {
-        log.ok(`[DRY RUN] Would start Docker profile "${profile}" in ${infraDir}`);
+        log.success(`[DRY RUN] Would start Docker stack "${profile}" via ${composeFile}`);
       } else {
-        log.info(`Starting Docker Compose (profile: ${profile})...`);
-        const cmd = `docker compose --profile ${profile} up -d`;
-        const output = execSync(cmd, { cwd: infraDir, timeout: 120000, encoding: 'utf-8', stdio: ['ignore', 'pipe', 'pipe'] });
-        if (output.trim()) log.debug(output.trim());
-        log.ok(`Docker containers started (profile: ${profile})`);
+        log.info(`Starting Docker Compose (${profile})... this may take several minutes on first pull`);
+        log.info(`Compose file: ${composeFile}`);
+        await new Promise((resolve, reject) => {
+          const child = spawn('docker', ['compose', '-f', composeFile, 'up', '-d'], {
+            cwd: infraDir,
+            stdio: ['ignore', 'pipe', 'pipe'],
+          });
+          let stderr = '';
+          child.stdout.on('data', (d) => { d.toString().trim().split('\n').forEach(l => l.trim() && log.info(l.trim())); });
+          child.stderr.on('data', (d) => { const s = d.toString(); stderr += s; s.trim().split('\n').forEach(l => l.trim() && log.info(l.trim())); });
+          child.on('close', (code) => {
+            if (code === 0) { resolve(); }
+            else { reject(new Error(`docker compose exited with code ${code}\n${stderr.slice(-500)}`)); }
+          });
+          child.on('error', reject);
+        });
+        log.success(`Docker containers started (${profile})`);
       }
       report.record('Docker Containers', 'OK', `profile=${profile}`);
     } catch (err) {
