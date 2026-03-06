@@ -34,8 +34,6 @@
 #   Use host.docker.internal as the hostname (e.g., host.docker.internal:8080)
 # =============================================================================
 
-version: "3.8"
-
 include:
   - path: kafka/docker-compose.yml
   - path: docker-compose.simulators.yml

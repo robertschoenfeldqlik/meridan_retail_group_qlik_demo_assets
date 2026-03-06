@@ -40,8 +40,6 @@
 #   → Paste token into Qlik Cloud: Administration → Data Gateways → Register
 # =============================================================================
 
-version: "3.8"
-
 include:
   - path: kafka/docker-compose.yml
   - path: docker-compose.dmg.yml
