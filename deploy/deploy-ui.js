@@ -229,7 +229,6 @@ function runBuildApps(res, options) {
     cwd: PROJECT_DIR,
     env: { ...process.env },
     stdio: ['ignore', 'pipe', 'pipe'],
-    shell: true,
   });
 
   activeBuildProcess = child;
@@ -352,7 +351,6 @@ function runBuildAutomations(res, options) {
     cwd: PROJECT_DIR,
     env: { ...process.env },
     stdio: ['ignore', 'pipe', 'pipe'],
-    shell: true,
   });
 
   activeBuildAutoProcess = child;
@@ -640,7 +638,6 @@ function runDeploy(res, options) {
     cwd: PROJECT_DIR,
     env: { ...process.env },
     stdio: ['ignore', 'pipe', 'pipe'],
-    shell: true,
   });
 
   activeProcess = child;
@@ -2876,6 +2873,7 @@ function getHTML() {
     renderPreflight();
     const el = document.getElementById('deploy-summary');
     const en = {
+      docker: isChecked('f-en-infra') && isChecked('f-infra-docker'),
       infrastructure: isChecked('f-en-infra'),
       spaces: isChecked('f-en-spaces'),
       connections: isChecked('f-en-connections'),
@@ -2895,12 +2893,13 @@ function getHTML() {
     html += '<div style="margin-bottom:4px"><strong>Auth:</strong> ' + esc(auth) + '</div>';
     html += '</div>';
 
+    const dockerProfile = getVal('f-docker-profile') || 'none';
     const steps = [
+      ['docker', 'Docker Containers (' + esc(dockerProfile) + ')'],
       ['infrastructure', 'Infrastructure (Kafka)'],
       ['spaces', 'Spaces'],
       ['connections', 'Data Connections'],
       ['theme', 'Theme Upload'],
-      ['apps', 'App Import'],
       ['knowledge', 'Knowledge Base & Docs'],
       ['assistant', 'Qlik Answers Assistant'],
       ['automations', 'Automations'],
