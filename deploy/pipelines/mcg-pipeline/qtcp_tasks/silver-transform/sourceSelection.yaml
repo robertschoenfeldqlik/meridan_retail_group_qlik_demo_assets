@@ -1,0 +1,9 @@
+includePatterns:
+  - tablePattern: '%'
+    sourceTask: 'wms-cdc-landing-4101'
+    type: TABLE
+  - tablePattern: '%'
+    sourceTask: 'crm-landing-4102'
+    type: TABLE
+excludePatterns: []
+explicitlySelected: []

@@ -1,0 +1,13 @@
+sourceConnection: '{{task.wms-cdc-landing-4101.sourceConnection}}'
+includePatterns: []
+excludePatterns: []
+explicitlySelected:
+  - name: inventory_positions
+    schema: '{{task.wms-cdc-landing-4101:null$_$public.schema}}'
+    type: TABLE
+  - name: warehouse_events
+    schema: '{{task.wms-cdc-landing-4101:null$_$public.schema}}'
+    type: TABLE
+  - name: shipments
+    schema: '{{task.wms-cdc-landing-4101:null$_$public.schema}}'
+    type: TABLE

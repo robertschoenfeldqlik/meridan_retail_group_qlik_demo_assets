@@ -1,0 +1,5 @@
+properties:
+  type: DATA_PIPELINE
+  platformType: QLIK_OPEN_LAKEHOUSE
+  name: MCG Demo Pipeline
+  description: Meridian Commerce Group end-to-end pipeline — PostgreSQL WMS CDC, Salesforce CRM, and Kafka IoT telemetry landed to bronze, cleansed to silver, and served as gold data products.

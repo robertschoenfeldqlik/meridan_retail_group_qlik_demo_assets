@@ -32,6 +32,8 @@ jobs:
           node -c deploy/deploy-to-qlik.js
           echo "Checking deploy-ui.js..."
           node -c deploy/deploy-ui.js
+          echo "Checking zip-utils.js..."
+          node -c deploy/zip-utils.js
 
       - name: Syntax check — generators
         run: |
@@ -53,6 +55,18 @@ jobs:
             echo "  $f"
             node -e "JSON.parse(require('fs').readFileSync('$f','utf-8'))"
           done
+          echo "Checking pipeline bindings..."
+          node -e "JSON.parse(require('fs').readFileSync('deploy/pipelines/mcg-pipeline/qtcp_bindings_definition.json','utf-8'))"
+
+      - name: Pipeline project ZIP round-trip
+        run: |
+          node -e "
+            const { zipDirectory, unzipBuffer } = require('./deploy/zip-utils');
+            const zip = zipDirectory('deploy/pipelines/mcg-pipeline', { exclude: ['README.md','schema','.vscode','.github','.gitignore','CLAUDE.md'] });
+            const files = unzipBuffer(zip);
+            if (files.length < 10) { console.error('Expected >=10 entries, got ' + files.length); process.exit(1); }
+            console.log('ZIP round-trip OK: ' + files.length + ' entries, ' + zip.length + ' bytes');
+          "
 
       - name: Validate Docker Compose files
         run: |

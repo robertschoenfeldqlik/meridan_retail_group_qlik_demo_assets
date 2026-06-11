@@ -1,0 +1,9 @@
+scheduling:
+  - schedulingType: TIME_BASED
+    enabled: true
+    description: Incremental Salesforce sync every 15 minutes
+    timeBasedScheduling:
+      schedule:
+        - 'RRULE:FREQ=MINUTELY;INTERVAL=15'
+      startDateTime: '2026-01-01T00:00:00.000Z'
+      timezone: 'Etc/UTC'

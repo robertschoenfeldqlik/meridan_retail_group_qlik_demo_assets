@@ -1,0 +1,9 @@
+includePatterns:
+  - tablePattern: '%'
+    sourceTask: 'silver-transform-4201'
+    type: TABLE
+  - tablePattern: '%'
+    sourceTask: 'iot-streaming-transform-4202'
+    type: TABLE
+excludePatterns: []
+explicitlySelected: []

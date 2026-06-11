@@ -33,7 +33,10 @@
     "automations": true,
     "dataproducts": true,
     "glossary": true,
-    "comment_components": "Toggle individual deployment steps on/off. 'infrastructure' controls Kafka Docker/topic setup."
+    "webhooks": true,
+    "reloadtasks": true,
+    "pipelines": true,
+    "comment_components": "Toggle individual deployment steps on/off. 'infrastructure' controls Kafka Docker/topic setup. 'pipelines' imports the declarative QTCP pipeline project (Step 13)."
   },
 
   "infrastructure": {
@@ -131,6 +134,17 @@
   "glossary": {
     "sourceFile": "./glossary_terms.json",
     "comment_sourceFile": "JSON file with 25 business glossary terms. Loaded automatically by deploy script."
+  },
+
+  "pipelines": {
+    "projectName": "MCG Demo Pipeline",
+    "sourceDir": "./pipelines/mcg-pipeline",
+    "platformType": "QLIK_OPEN_LAKEHOUSE",
+    "databaseName": "",
+    "warehouseName": "",
+    "prepare": false,
+    "bindings": {},
+    "comment_pipelines": "Declarative QTCP pipeline project (YAML) imported via the DI Projects API (preview). Bindings for connections/schemas/clusters are resolved automatically from this config; 'bindings' holds exact-key overrides. databaseName defaults to the lakehouse name. Set prepare=true to validate+prepare tasks right after import. Round-trip UI edits back to the repo with: npm run deploy:export-pipeline"
   },
 
   "automations": {

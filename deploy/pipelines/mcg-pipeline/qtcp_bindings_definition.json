@@ -1,0 +1,27 @@
+{
+  "variables": {
+    "task.wms-cdc-landing-4101.sourceConnection": "",
+    "task.wms-cdc-landing-4101.taskSchema": "",
+    "task.wms-cdc-landing-4101:null$_$public.schema": "",
+    "task.crm-landing-4102.sourceConnection": "",
+    "task.crm-landing-4102.taskSchema": "",
+    "task.iot-streaming-landing-4103.sourceConnection": "",
+    "task.iot-streaming-landing-4103.lakehouseCluster": "",
+    "task.silver-transform-4201.internalSchema": "",
+    "task.silver-transform-4201.taskSchema": "",
+    "task.silver-transform-4201.databaseName": "",
+    "task.silver-transform-4201.warehouseName": "",
+    "task.iot-streaming-transform-4202.internalSchema": "",
+    "task.iot-streaming-transform-4202.taskSchema": "",
+    "task.iot-streaming-transform-4202.lakehouseCluster": "",
+    "task.gold-datamart-4301.internalSchema": "",
+    "task.gold-datamart-4301.taskSchema": "",
+    "task.gold-datamart-4301.databaseName": "",
+    "task.gold-datamart-4301.warehouseName": ""
+  },
+  "connectionProperties": {
+    "task.wms-cdc-landing-4101.sourceConnection": {},
+    "task.crm-landing-4102.sourceConnection": {},
+    "task.iot-streaming-landing-4103.sourceConnection": {}
+  }
+}

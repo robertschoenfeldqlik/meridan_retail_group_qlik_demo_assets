@@ -1,0 +1,13 @@
+properties:
+  name: MCG Silver Transform
+  id: silver-transform-4201
+  type: TRANSFORM
+  description: Cleanses and standardizes bronze WMS and CRM data — timestamp normalization, UoM and zone standardization, carrier status canonicalization, address standardization, SKU harmonization, and supplier dedup.
+settings:
+  artifactsLocation:
+    internalSchema: '{{task.silver-transform-4201.internalSchema}}'
+    taskSchema: '{{task.silver-transform-4201.taskSchema}}'
+    databaseName: '{{task.silver-transform-4201.databaseName}}'
+  taskRuntime:
+    warehouseSelection:
+      warehouseName: '{{task.silver-transform-4201.warehouseName}}'

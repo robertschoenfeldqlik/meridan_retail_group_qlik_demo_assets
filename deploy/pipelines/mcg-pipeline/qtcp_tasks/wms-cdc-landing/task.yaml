@@ -1,0 +1,9 @@
+properties:
+  name: MCG WMS CDC Landing
+  id: wms-cdc-landing-4101
+  type: LAKE_LANDING
+  description: Continuous change data capture from the PostgreSQL warehouse management system into the bronze layer.
+settings:
+  landingDwSettings:
+    landingArtifactsLocation:
+      dataAssetSchema: '{{task.wms-cdc-landing-4101.taskSchema}}'

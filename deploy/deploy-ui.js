@@ -2073,6 +2073,17 @@ function getHTML() {
 
         <div class="section-divider">Products from data_products.json</div>
         <div id="dp-list"><!-- populated by JS --></div>
+
+        <div class="section-divider">Declarative Pipeline (Preview)</div>
+        <div class="toggle-row">
+          <label>Import Declarative Pipeline Project</label>
+          <label class="switch"><input type="checkbox" id="f-en-pipelines" checked><span class="slider"></span></label>
+        </div>
+        <div class="field">
+          <label>Project Name</label>
+          <input type="text" id="f-pipelines-name" placeholder="MCG Demo Pipeline">
+          <div class="hint">Imports the YAML project from deploy/pipelines/mcg-pipeline via the DI Projects API and resolves connection/cluster bindings automatically. Round-trip UI edits back into the repo with <code>npm run deploy:export-pipeline</code>.</div>
+        </div>
       </div>
 
       <!-- Page 8: Glossary -->
@@ -2273,6 +2284,12 @@ function getHTML() {
     setCheck('f-en-automations', en.automations !== false);
     setCheck('f-en-dataproducts', en.dataproducts !== false);
     setCheck('f-en-glossary', en.glossary !== false);
+    setCheck('f-en-pipelines', en.pipelines !== false);
+
+    // Pipelines
+    if (cfg.pipelines) {
+      setVal('f-pipelines-name', cfg.pipelines.projectName);
+    }
 
     // Data Connections
     if (cfg.dataConnections) {
@@ -2988,6 +3005,14 @@ function getHTML() {
         automations: isChecked('f-en-automations'),
         dataproducts: isChecked('f-en-dataproducts'),
         glossary: isChecked('f-en-glossary'),
+        pipelines: isChecked('f-en-pipelines'),
+      },
+      pipelines: {
+        projectName: getVal('f-pipelines-name') || 'MCG Demo Pipeline',
+        sourceDir: './pipelines/mcg-pipeline',
+        platformType: 'QLIK_OPEN_LAKEHOUSE',
+        prepare: false,
+        bindings: {},
       },
       infrastructure: {
         useDocker: isChecked('f-infra-docker'),
@@ -3169,6 +3194,7 @@ function getHTML() {
       automations: isChecked('f-en-automations'),
       dataproducts: isChecked('f-en-dataproducts'),
       glossary: isChecked('f-en-glossary'),
+      pipelines: isChecked('f-en-pipelines'),
     };
 
     const tenant = getVal('f-tenant-host') + '.' + getVal('f-tenant-region');
@@ -3190,6 +3216,7 @@ function getHTML() {
       ['automations', 'Automations'],
       ['dataproducts', 'Data Products'],
       ['glossary', 'Business Glossary'],
+      ['pipelines', 'Declarative Pipeline'],
     ];
 
     html += '<table style="width:100%;font-size:12px;border-collapse:collapse">';

@@ -1,0 +1,6 @@
+includePatterns:
+  - tablePattern: '%'
+    sourceTask: 'iot-streaming-landing-4103'
+    type: TABLE
+excludePatterns: []
+explicitlySelected: []

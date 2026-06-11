@@ -35,3 +35,8 @@ deploy/.config-ui-temp.json
 # Backup files
 *.bak
 *.bak2
+
+# QTCP declarative pipeline schema kit (Qlik internal preview - not for public repos)
+deploy/pipelines/schema/
+deploy/pipelines/.vscode/
+deploy/pipelines/**/copilot-instructions.md

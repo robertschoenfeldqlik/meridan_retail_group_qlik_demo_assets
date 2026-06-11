@@ -1,0 +1,13 @@
+properties:
+  name: MCG Gold Datamart
+  id: gold-datamart-4301
+  type: DATAMART
+  description: Business-ready gold layer — supply chain health and last-mile performance data products consumed by analytics apps and the data product catalog.
+settings:
+  artifactsLocation:
+    internalSchema: '{{task.gold-datamart-4301.internalSchema}}'
+    taskSchema: '{{task.gold-datamart-4301.taskSchema}}'
+    databaseName: '{{task.gold-datamart-4301.databaseName}}'
+  taskRuntime:
+    warehouseSelection:
+      warehouseName: '{{task.gold-datamart-4301.warehouseName}}'

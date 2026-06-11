@@ -1,0 +1,8 @@
+sourceConnection: '{{task.iot-streaming-landing-4103.sourceConnection}}'
+includePatterns: []
+excludePatterns: []
+explicitlySelected:
+  - name: mcg.iot.cold-chain
+    outputDatasetName: iot_cold_chain
+  - name: mcg.iot.carrier-events
+    outputDatasetName: iot_carrier_events

@@ -1,0 +1,6 @@
+scheduling:
+  - schedulingType: EVENT_BASED
+    enabled: true
+    description: Run when the streaming landing task delivers new data
+    eventBasedScheduling:
+      eventSchedulingType: ANY_INPUT_TASK

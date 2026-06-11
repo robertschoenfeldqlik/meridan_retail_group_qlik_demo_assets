@@ -12,6 +12,7 @@ A complete, deployable demo environment showcasing the full Qlik platform — fr
 | **Analytics** | Dashboard mockups, Qlik theme, app definitions for Supply Chain & Delivery |
 | **AI / NLP** | Qlik Answers knowledge base with 25 operational documents + AI assistant |
 | **Governance** | Business glossary (25 terms), 8 Gold-layer data products, data lineage |
+| **Data Pipelines** | Declarative QTCP pipeline (YAML) — bronze/silver/gold tasks imported via the DI Projects API |
 | **Automations** | Teams alerting for cold-chain breaches and pipeline health |
 | **Content Generation** | 21 Node.js generators for documents, presentations, SOPs, and glossaries |
 | **Demo Scripts** | 13 guided walkthrough scripts covering every platform capability |
@@ -54,6 +55,8 @@ End-To-End Demo/
 │   ├── apps/                   # .qvf app files + HTML mockups
 │   ├── automations/            # Teams alert JSON templates
 │   ├── themes/                 # MCG dark theme (.zip + source)
+│   ├── pipelines/              # Declarative QTCP pipeline project (YAML)
+│   ├── zip-utils.js            # Zero-dependency ZIP create/extract
 │   ├── data_products.json      # 8 Gold-layer data product definitions
 │   └── glossary_terms.json     # 25 business glossary terms
 │
@@ -100,6 +103,7 @@ End-To-End Demo/
 | `npm run ui` | Launch the deployment web UI on port 3939 |
 | `npm run deploy` | Run the Node.js deployer (uses `deploy/config.json`) |
 | `npm run deploy:dry-run` | Preview deployment without making API calls |
+| `npm run deploy:export-pipeline` | Export the tenant's declarative pipeline project back into `deploy/pipelines/` |
 | `npm run generate` | Run all document/presentation generators |
 | `npm run docker:up` | Start full stack (Kafka + simulators) |
 | `npm run docker:up:dmg` | Start full stack with DMG gateway |

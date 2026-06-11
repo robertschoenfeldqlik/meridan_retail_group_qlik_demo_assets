@@ -8,6 +8,8 @@
 //    node deploy/deploy-to-qlik.js --config ./my.json    # custom config path
 //    node deploy/deploy-to-qlik.js --dry-run             # preview without changes
 //    node deploy/deploy-to-qlik.js --verbose             # extra logging
+//    node deploy/deploy-to-qlik.js --export-pipeline     # pull the tenant's declarative
+//                                                        # pipeline project back into the repo
 //
 //  Environment variable overrides (take precedence over config.json):
 //    QLIK_TENANT_HOST   — tenant hostname  (e.g. "my-tenant")
@@ -25,6 +27,7 @@ const fs    = require('fs');
 const path  = require('path');
 const url   = require('url');
 const { spawn, spawnSync } = require('child_process');
+const { zipDirectory, unzipToDirectory } = require('./zip-utils');
 
 // ---------------------------------------------------------------------------
 //  Constants
@@ -43,7 +46,7 @@ const EXIT_FAILURE = 1;
 // ---------------------------------------------------------------------------
 
 function parseArgs(argv) {
-  const args = { configPath: DEFAULT_CONFIG_PATH, dryRun: false, verbose: false, cleanupDataProducts: false };
+  const args = { configPath: DEFAULT_CONFIG_PATH, dryRun: false, verbose: false, cleanupDataProducts: false, exportPipeline: false };
   for (let i = 2; i < argv.length; i++) {
     switch (argv[i]) {
       case '--config':
@@ -58,6 +61,9 @@ function parseArgs(argv) {
         break;
       case '--cleanup-dataproducts':
         args.cleanupDataProducts = true;
+        break;
+      case '--export-pipeline':
+        args.exportPipeline = true;
         break;
       case '--help':
         printUsage();
@@ -81,6 +87,8 @@ Options:
   --dry-run                 Preview actions without making API calls
   --verbose                 Enable detailed logging
   --cleanup-dataproducts    Delete all data products from tenant, then exit
+  --export-pipeline         Export the tenant's declarative pipeline project (YAML)
+                            into deploy/pipelines/, then exit
   --help                    Show this message
 `);
 }
@@ -166,7 +174,7 @@ function applyEnvOverrides(cfg) {
  * Make an HTTP(S) request and return { statusCode, headers, body }.
  * `body` is parsed as JSON when the response Content-Type is application/json.
  */
-function requestOnce(method, reqUrl, { headers = {}, body = null, rawBody = null, timeout = 60000 } = {}) {
+function requestOnce(method, reqUrl, { headers = {}, body = null, rawBody = null, timeout = 60000, binary = false } = {}) {
   return new Promise((resolve, reject) => {
     const parsed = new URL(reqUrl);
     const transport = parsed.protocol === 'https:' ? https : http;
@@ -195,12 +203,16 @@ function requestOnce(method, reqUrl, { headers = {}, body = null, rawBody = null
         if (rc > 10) { res.resume(); reject(new Error(`Too many redirects (>10): ${reqUrl}`)); return; }
         const redirectUrl = new URL(res.headers.location, reqUrl).toString();
         res.resume(); // drain response
-        resolve(requestOnce(method, redirectUrl, { headers, body, rawBody, timeout, _redirectCount: rc }));
+        resolve(requestOnce(method, redirectUrl, { headers, body, rawBody, timeout, binary, _redirectCount: rc }));
         return;
       }
       const chunks = [];
       res.on('data', (chunk) => chunks.push(chunk));
       res.on('end', () => {
+        if (binary) {
+          resolve({ statusCode: res.statusCode, headers: res.headers, body: Buffer.concat(chunks) });
+          return;
+        }
         const raw = Buffer.concat(chunks).toString('utf-8');
         let parsed = raw;
         const ct = (res.headers['content-type'] || '').toLowerCase();
@@ -1151,6 +1163,163 @@ class QlikClient {
     }
     throw new Error(`Reload task create failed (${res.statusCode}): ${JSON.stringify(res.body)}`);
   }
+
+  // ========================================================================
+  //  DI PROJECTS — Declarative Data Pipelines (preview API)
+  // ========================================================================
+
+  async findDiProjectByName(name, spaceId) {
+    try {
+      const query = spaceId ? { spaceId } : {};
+      const projects = await this._getAll('/api/v1/di-projects', query);
+      return projects.find((p) => p.name === name) || null;
+    } catch (err) {
+      this.log.debug(`DI project list failed: ${err.message}`);
+      return null;
+    }
+  }
+
+  async createDiProject({ name, description, spaceId, platformType }) {
+    const existing = await this.findDiProjectByName(name, spaceId);
+    if (existing) {
+      this.log.success(`DI project already exists: "${name}" (${existing.id}) — reusing.`);
+      return existing;
+    }
+    if (this.dryRun) {
+      this.log.info(`DRY RUN: Would create DI project "${name}" (${platformType})`);
+      return { id: 'dry-run-di-project-id', name };
+    }
+    const payload = {
+      name,
+      type: 'DATA_PIPELINE',
+      platformType: platformType || 'QLIK_OPEN_LAKEHOUSE',
+      description: description || '',
+    };
+    if (spaceId) payload.space = spaceId;
+    const res = await this._post('/api/v1/di-projects', payload);
+    if (res.statusCode === 200 || res.statusCode === 201) {
+      this.log.success(`Created DI project "${name}" (${res.body.id})`);
+      return res.body;
+    }
+    if (res.statusCode === 409) {
+      this.log.warn(`DI project "${name}" already exists (409) — fetching.`);
+      const found = await this.findDiProjectByName(name, spaceId);
+      if (found) return found;
+    }
+    throw new Error(`DI project create failed (${res.statusCode}): ${JSON.stringify(res.body)}`);
+  }
+
+  /**
+   * Pre-import structural validation of a project definitions ZIP.
+   * Preview utility endpoint — returns { available: false } when the tenant
+   * does not expose it yet, so callers can continue without it.
+   */
+  async validateProjectDefinitions(zipBuffer) {
+    const { boundary, payload } = buildMultipart([
+      { name: 'zip', filename: 'project.zip', contentType: 'application/zip', value: zipBuffer },
+    ]);
+    const res = await this._postRaw(
+      '/api/v1/di-projects/utils/actions/validate-project-definitions',
+      payload,
+      { 'Content-Type': `multipart/form-data; boundary=${boundary}` }
+    );
+    if ([404, 405, 501].includes(res.statusCode)) return { available: false };
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      const issues = (res.body && (res.body.errors || res.body.issues)) || [];
+      if (Array.isArray(issues) && issues.length > 0) {
+        return { available: true, ok: false, detail: JSON.stringify(issues).slice(0, 800) };
+      }
+      return { available: true, ok: true };
+    }
+    return { available: true, ok: false, detail: `HTTP ${res.statusCode}: ${JSON.stringify(res.body).slice(0, 800)}` };
+  }
+
+  async importDiProject(projectId, zipBuffer) {
+    if (this.dryRun) {
+      this.log.info(`DRY RUN: Would import ${zipBuffer.length} bytes of definitions into DI project ${projectId}`);
+      return { status: 'dry-run' };
+    }
+    const { boundary, payload } = buildMultipart([
+      { name: 'zip', filename: 'project.zip', contentType: 'application/zip', value: zipBuffer },
+    ]);
+    const res = await this._postRaw(
+      `/api/v1/di-projects/${projectId}/actions/import`,
+      payload,
+      { 'Content-Type': `multipart/form-data; boundary=${boundary}` }
+    );
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      const actionId = res.body && (res.body.actionId || res.body.id);
+      if (res.statusCode === 202 && actionId) return this._pollDiAction(actionId, 'import');
+      return res.body || { status: 'imported' };
+    }
+    throw new Error(`DI project import failed (${res.statusCode}): ${JSON.stringify(res.body).slice(0, 800)}`);
+  }
+
+  async _pollDiAction(actionId, label, { timeoutMs = 300000, intervalMs = 3000 } = {}) {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      const res = await this._get(`/api/v1/di-projects/actions/${actionId}`);
+      if (res.statusCode === 200 && res.body) {
+        const status = String(res.body.status || res.body.state || '').toUpperCase();
+        if (['COMPLETED', 'SUCCESS', 'SUCCEEDED', 'DONE'].includes(status)) return res.body;
+        if (['FAILED', 'ERROR', 'CANCELLED'].includes(status)) {
+          throw new Error(`DI ${label} action ${actionId} failed: ${JSON.stringify(res.body).slice(0, 500)}`);
+        }
+        this.log.debug(`DI ${label} action ${actionId}: ${status || 'in progress'}…`);
+      }
+      await sleep(intervalMs);
+    }
+    throw new Error(`DI ${label} action ${actionId} timed out after ${timeoutMs / 1000}s`);
+  }
+
+  async getDiProjectBindings(projectId) {
+    const res = await this._get(`/api/v1/di-projects/${projectId}/bindings`, { recalculate: 'true' });
+    if (res.statusCode === 200) return res.body || {};
+    throw new Error(`DI bindings fetch failed (${res.statusCode}): ${JSON.stringify(res.body).slice(0, 400)}`);
+  }
+
+  async updateDiProjectBindings(projectId, variables) {
+    if (this.dryRun) {
+      this.log.info(`DRY RUN: Would set ${Object.keys(variables).length} binding variable(s) on DI project ${projectId}`);
+      return;
+    }
+    const res = await this._put(`/api/v1/di-projects/${projectId}/bindings`, { variables });
+    if (res.statusCode >= 200 && res.statusCode < 300) return res.body;
+    throw new Error(`DI bindings update failed (${res.statusCode}): ${JSON.stringify(res.body).slice(0, 800)}`);
+  }
+
+  async exportDiProject(projectId, { mode = 'MINIMAL', includeBindings = true } = {}) {
+    const fullUrl = `${this.baseUrl}/api/v1/di-projects/${projectId}/actions/export`;
+    this.log.debug(`POST ${fullUrl} (export, mode=${mode})`);
+    const res = await request('POST', fullUrl, {
+      headers: this._authHeaders({ Accept: 'application/zip, application/json' }),
+      body: { mode, includeBindings },
+      binary: true,
+      timeout: 300000,
+    });
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      const ct = String(res.headers['content-type'] || '').toLowerCase();
+      if (ct.includes('zip') || ct.includes('octet-stream') || (res.body.length > 4 && res.body.readUInt32LE(0) === 0x04034b50)) {
+        return res.body; // ZIP bytes
+      }
+      throw new Error(`DI export returned unexpected content-type "${ct}" (${res.body.length} bytes)`);
+    }
+    throw new Error(`DI project export failed (${res.statusCode}): ${res.body.toString('utf-8').slice(0, 800)}`);
+  }
+
+  async prepareDiProject(projectId) {
+    if (this.dryRun) {
+      this.log.info(`DRY RUN: Would prepare DI project ${projectId}`);
+      return;
+    }
+    const res = await this._post(`/api/v1/di-projects/${projectId}/actions/prepare`, { allowRecreate: false });
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      const actionId = res.body && (res.body.actionId || res.body.id);
+      if (res.statusCode === 202 && actionId) return this._pollDiAction(actionId, 'prepare');
+      return res.body;
+    }
+    throw new Error(`DI project prepare failed (${res.statusCode}): ${JSON.stringify(res.body).slice(0, 800)}`);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -1217,6 +1386,92 @@ function buildKafkaProperties(cfg) {
 
 function buildS3Properties(/* cfg */) {
   return { connectionProperties: {}, _configureInUI: true };
+}
+
+// ---------------------------------------------------------------------------
+//  Declarative pipeline binding resolution
+// ---------------------------------------------------------------------------
+
+/**
+ * Compute values for the {{...}} binding variables declared in the project's
+ * qtcp_bindings_definition.json. Connection variables resolve to live
+ * connection IDs on the tenant; schemas/clusters/warehouse come from config
+ * conventions. cfg.pipelines.bindings entries override any computed value.
+ */
+async function resolvePipelineBindings(client, cfg, log, srcDir) {
+  const bindingsPath = path.join(srcDir, 'qtcp_bindings_definition.json');
+  if (!fs.existsSync(bindingsPath)) {
+    log.warn('No qtcp_bindings_definition.json found — skipping binding resolution.');
+    return {};
+  }
+  const defs = JSON.parse(fs.readFileSync(bindingsPath, 'utf-8'));
+  const names = Object.keys(defs.variables || {});
+  const pCfg = cfg.pipelines || {};
+  const dc = cfg.dataConnections || {};
+  const clusters = cfg.clusters || {};
+  const lakehouseName = (cfg.lakehouse && cfg.lakehouse.name) || '';
+
+  const connIdCache = {};
+  async function connectionValue(connName) {
+    if (!connName) return '';
+    if (!(connName in connIdCache)) {
+      try {
+        const conn = await client.findDataConnectionByName(connName);
+        connIdCache[connName] = conn ? (conn.id || connName) : connName;
+        if (!conn) log.warn(`Connection "${connName}" not found on tenant — binding falls back to the name.`);
+      } catch (err) {
+        log.debug(`Connection lookup failed for "${connName}": ${err.message}`);
+        connIdCache[connName] = connName;
+      }
+    }
+    return connIdCache[connName];
+  }
+
+  // Medallion tier by task reference: datamarts → gold, transforms → silver,
+  // landings (everything else) → bronze.
+  function schemaForTask(taskRef) {
+    if (/gold|datamart/.test(taskRef)) return 'gold';
+    if (/transform/.test(taskRef)) return 'silver';
+    return 'bronze';
+  }
+
+  const resolved = {};
+  for (const name of names) {
+    const m = name.match(/^task\.([^.]+)\.(.+)$/);
+    if (!m) continue;
+    const [, taskRefRaw, prop] = m;
+    const schemaMatch = taskRefRaw.match(/:null\$_\$(.+)$/);
+    const taskRef = taskRefRaw.replace(/:null\$_\$.+$/, '');
+    let value = '';
+
+    if (schemaMatch && prop === 'schema') {
+      value = schemaMatch[1];
+    } else if (prop === 'sourceConnection') {
+      let connName = '';
+      if (/wms|postgres/.test(taskRef))        connName = (dc.postgresql && dc.postgresql.name) || '';
+      else if (/crm|salesforce|sf/.test(taskRef)) connName = (dc.salesforce && dc.salesforce.name) || '';
+      else if (/iot|kafka|stream/.test(taskRef))  connName = (dc.kafka && dc.kafka.name) || '';
+      value = await connectionValue(connName);
+    } else if (prop === 'taskSchema') {
+      value = schemaForTask(taskRef);
+    } else if (prop === 'internalSchema') {
+      value = `${schemaForTask(taskRef)}__internal`;
+    } else if (prop === 'databaseName') {
+      value = pCfg.databaseName || lakehouseName;
+    } else if (prop === 'warehouseName') {
+      value = pCfg.warehouseName || '';
+    } else if (prop === 'lakehouseCluster') {
+      const cluster = /iot|stream/.test(taskRef) ? clusters.streaming : clusters.cdc;
+      value = (cluster && cluster.name) || '';
+    }
+
+    if (value) resolved[name] = value;
+  }
+
+  for (const [k, v] of Object.entries(pCfg.bindings || {})) {
+    if (v !== undefined && v !== null && v !== '') resolved[k] = v;
+  }
+  return resolved;
 }
 
 // ---------------------------------------------------------------------------
@@ -1428,6 +1683,33 @@ async function main() {
       log.error(`Cleanup failed: ${err.message}`);
     }
     process.exit(EXIT_SUCCESS);
+  }
+
+  // ---- Standalone pipeline export mode --------------------------------------
+  // Pulls the tenant's declarative pipeline project (YAML definitions) back
+  // into the repo, so a project refined in the QTCP UI can be committed and
+  // redeployed to any tenant.
+  if (args.exportPipeline) {
+    log.section('Export: Declarative Pipeline Project');
+    try {
+      const pCfg = cfg.pipelines || {};
+      const projectName = pCfg.projectName || 'MCG Demo Pipeline';
+      const destDir = path.resolve(SCRIPT_DIR, pCfg.sourceDir || './pipelines/mcg-pipeline');
+
+      const project = await client.findDiProjectByName(projectName);
+      if (!project) throw new Error(`DI project "${projectName}" not found on tenant.`);
+      log.info(`Exporting "${projectName}" (${project.id}) → ${destDir}`);
+
+      const zipBuf = await client.exportDiProject(project.id);
+      const files = unzipToDirectory(zipBuf, destDir);
+      log.success(`Exported ${files.length} file(s):`);
+      for (const f of files) log.info(`  ${f}`);
+      log.info('Review the changes with git diff, then commit to version the pipeline.');
+      process.exit(EXIT_SUCCESS);
+    } catch (err) {
+      log.error(`Pipeline export failed: ${err.message}`);
+      process.exit(EXIT_FAILURE);
+    }
   }
 
   // ---- Docker Containers ---------------------------------------------------
@@ -1999,12 +2281,6 @@ async function main() {
   if (enabled.reloadtasks !== false) {
     log.section('Step 12: Create Reload Tasks');
 
-    // Reload tasks require app IDs. We look up apps that were created/published
-    // in this deployment session and match them by name.
-    const publishedApps = report.rows
-      .filter((r) => r.component === 'App' && (r.status === 'OK' || r.status === 'SKIP'))
-      .map((r) => r.detail);
-
     const reloadTaskDefs = (cfg.reloadtasks && cfg.reloadtasks.definitions) || [];
 
     if (reloadTaskDefs.length === 0) {
@@ -2032,6 +2308,85 @@ async function main() {
     log.section('Step 12: Create Reload Tasks');
     log.info('Skipped (disabled).');
     report.record('Reload Tasks', 'SKIP', 'disabled');
+  }
+
+  // ---- Step 13: Declarative Data Pipeline -----------------------------------
+  if (enabled.pipelines !== false) {
+    log.section('Step 13: Import Declarative Data Pipeline');
+    try {
+      const pCfg = cfg.pipelines || {};
+      const projectName = pCfg.projectName || 'MCG Demo Pipeline';
+      const srcDir = path.resolve(SCRIPT_DIR, pCfg.sourceDir || './pipelines/mcg-pipeline');
+
+      if (!fs.existsSync(path.join(srcDir, 'qtcp_project.yaml'))) {
+        log.warn(`No declarative project found at ${srcDir} — skipping.`);
+        report.record('Declarative Pipeline', 'SKIP', 'qtcp_project.yaml not found');
+      } else {
+        const zipBuf = zipDirectory(srcDir, {
+          exclude: ['README.md', 'schema', '.vscode', '.github', '.gitignore', 'CLAUDE.md'],
+        });
+        log.info(`Packaged declarative project (${(zipBuf.length / 1024).toFixed(1)} KB) from ${path.relative(PROJECT_DIR, srcDir)}`);
+
+        if (dryRun) {
+          log.info(`DRY RUN: Would validate definitions, create/find DI project "${projectName}", import, and resolve bindings.`);
+          report.record('Declarative Pipeline', 'OK', 'dry run — packaged only');
+        } else {
+          // 1. Pre-validate the definitions ZIP (preview utility endpoint)
+          const validation = await client.validateProjectDefinitions(zipBuf);
+          if (validation.available === false) {
+            log.warn('Validate-definitions API not available on this tenant — continuing without pre-validation.');
+          } else if (validation.ok === false) {
+            throw new Error(`Project definitions failed validation: ${validation.detail}`);
+          } else {
+            log.success('Project definitions validated.');
+          }
+
+          // 2. Create (or reuse) the DI project in the shared space
+          let spaceId = sharedSpace ? sharedSpace.id : undefined;
+          if (!spaceId && cfg.spaces && cfg.spaces.shared) {
+            const found = await client.findSpaceByName(cfg.spaces.shared);
+            if (found) spaceId = found.id;
+          }
+          const project = await client.createDiProject({
+            name: projectName,
+            description: 'MCG bronze/silver/gold pipeline — imported from declarative YAML definitions.',
+            spaceId,
+            platformType: pCfg.platformType || 'QLIK_OPEN_LAKEHOUSE',
+          });
+
+          // 3. Import the YAML definitions
+          await client.importDiProject(project.id, zipBuf);
+          log.success(`Imported definitions into "${projectName}" (${project.id}).`);
+
+          // 4. Resolve binding variables against this tenant and push them
+          const variables = await resolvePipelineBindings(client, cfg, log, srcDir);
+          if (Object.keys(variables).length > 0) {
+            await client.updateDiProjectBindings(project.id, variables);
+            log.success(`Set ${Object.keys(variables).length} binding variable(s) (connections, schemas, clusters).`);
+          } else {
+            log.warn('No binding variables resolved — set them in the QTCP UI or cfg.pipelines.bindings.');
+          }
+
+          // 5. Optionally prepare (creates physical artifacts on the platform)
+          if (pCfg.prepare === true) {
+            await client.prepareDiProject(project.id);
+            log.success('Project prepared — tasks are ready to run.');
+          } else {
+            log.info('Skipping prepare (set pipelines.prepare=true to prepare tasks automatically).');
+          }
+
+          report.record('Declarative Pipeline', 'OK', `"${projectName}" imported${pCfg.prepare ? ' + prepared' : ''}`);
+        }
+      }
+    } catch (err) {
+      log.error(`Declarative pipeline deployment failed: ${err.message}`);
+      report.record('Declarative Pipeline', 'FAIL', err.message);
+      if (!continueOnError) { report.print(log); process.exit(EXIT_FAILURE); }
+    }
+  } else {
+    log.section('Step 13: Import Declarative Data Pipeline');
+    log.info('Skipped (disabled).');
+    report.record('Declarative Pipeline', 'SKIP', 'disabled');
   }
 
   // ---- Final Report -------------------------------------------------------
