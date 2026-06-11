@@ -1,0 +1,42 @@
+properties:
+  name: order_delivery_timeline
+  id: order_delivery_timeline
+  type: CUSTOM
+  inputDatasets:
+    - taskId: crm-landing-4102
+      name: sf_orders
+    - taskId: wms-cdc-landing-4101
+      name: shipments
+  customDatasetSettings:
+    incremental: false
+    customSql:
+      expressionStatement: |-
+        SELECT
+          o.Order_ID__c AS order_id,
+          o.Contact__c AS contact_id,
+          o.Order_Date__c AS order_date,
+          o.SKU__c AS sku,
+          o.Product_Name__c AS product_name,
+          o.Fulfillment_Method__c AS fulfillment_method,
+          o.Carrier__c AS carrier_code,
+          o.Tracking_Number__c AS tracking_number,
+          o.Order_Status__c AS order_status,
+          o.Promised_Delivery__c AS promised_delivery,
+          o.Actual_Delivery__c AS actual_delivery,
+          CASE WHEN o.Tracking_Number__c IS NULL THEN TRUE ELSE FALSE END AS tracking_missing,
+          CASE
+            WHEN o.Actual_Delivery__c IS NOT NULL AND o.Actual_Delivery__c > o.Promised_Delivery__c THEN TRUE
+            ELSE FALSE
+          END AS delivered_late,
+          CASE
+            WHEN o.Actual_Delivery__c IS NOT NULL THEN DATEDIFF(o.Actual_Delivery__c, o.Promised_Delivery__c)
+            ELSE NULL
+          END AS days_late,
+          o.WISMO_Flag__c AS wismo_flag,
+          s.shipment_id,
+          s.shipment_status AS carrier_status_raw,
+          s.delivery_attempts,
+          s.exception_code
+        FROM sf_orders o
+        LEFT JOIN shipments s
+          ON o.Order_ID__c = s.order_id

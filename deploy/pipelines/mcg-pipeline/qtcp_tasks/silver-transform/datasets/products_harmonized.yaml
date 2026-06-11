@@ -1,0 +1,34 @@
+properties:
+  name: products_harmonized
+  id: products_harmonized
+  type: CUSTOM
+  inputDatasets:
+    - taskId: crm-landing-4102
+      name: sf_products
+  customDatasetSettings:
+    incremental: false
+    customSql:
+      expressionStatement: |-
+        SELECT
+          SKU__c AS sku,
+          Legacy_SKU_Americas__c AS legacy_sku_americas,
+          Legacy_SKU_EU__c AS legacy_sku_eu,
+          Product_Name__c AS product_name,
+          Category_L1__c AS category_l1,
+          Category_L2__c AS category_l2,
+          COALESCE(Category_L3__c, 'UNCLASSIFIED') AS category_l3,
+          COALESCE(
+            NULLIF(Weight_KG__c, 0),
+            AVG(NULLIF(Weight_KG__c, 0)) OVER (PARTITION BY Category_L1__c)
+          ) AS weight_kg,
+          CASE WHEN Weight_KG__c IS NULL OR Weight_KG__c = 0 THEN TRUE ELSE FALSE END AS weight_imputed,
+          Country_of_Origin__c AS country_of_origin,
+          CASE WHEN Country_of_Origin__c IS NULL AND Category_L1__c = 'Grocery' THEN TRUE ELSE FALSE END AS origin_missing_compliance_risk,
+          Supplier_Name__c AS supplier_name_raw,
+          CASE
+            WHEN UPPER(Supplier_Name__c) LIKE 'SAMSUNG%' THEN 'Samsung Electronics'
+            WHEN UPPER(Supplier_Name__c) LIKE 'FRESHDIRECT%' OR UPPER(Supplier_Name__c) LIKE 'FRESH DIRECT%' THEN 'FreshDirect'
+            WHEN UPPER(Supplier_Name__c) LIKE 'TRANSFRIO%' OR UPPER(Supplier_Name__c) LIKE 'TRANS FRIO%' THEN 'TransFrio'
+            ELSE TRIM(Supplier_Name__c)
+          END AS supplier_canonical
+        FROM sf_products

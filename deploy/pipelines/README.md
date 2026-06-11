@@ -15,6 +15,27 @@ The MCG bronze → silver → gold pipeline, defined as **declarative YAML** (Ql
 | MCG IoT Streaming Transform | `STREAMING_TRANSFORM` | bronze IoT → `silver` | Event: any input task |
 | MCG Gold Datamart | `DATAMART` | silver → `gold` | Event: any input task |
 
+## Transformation content (datasets)
+
+The silver/gold logic from the creation guide is encoded declaratively in each task's `datasets/` folder:
+
+| Dataset | Task | Technique | Implements |
+|---|---|---|---|
+| `inventory_reconciled` | silver-transform | `CUSTOM` SQL | UoM + storage-zone standardization (KALT/FROID → CHILLED…), phantom-inventory + negative-qty flags, lot compliance, 0.1–1.0 trust score (Nightmares #1/#3/#7) |
+| `warehouse_events_clean` | silver-transform | `CUSTOM` SQL | event_type canonicalization (RCV/INBOUND_RECEIPT → RECEIVE…), bin-format normalization, per-DC timezone → UTC timestamps (Nightmare #5) |
+| `shipments_canonical` | silver-transform | `CUSTOM` SQL | 6-carrier status vocabularies (EN/DE/PT) → 6 universal stages, country → ISO codes, lbs → kg, delivered-without-timestamp flag (Nightmares #2/#6) |
+| `addresses_standardized` | silver-transform | `CUSTOM` SQL | City/state/postal/country normalization, 0–1 address quality score (Nightmare #2) |
+| `products_harmonized` | silver-transform | `CUSTOM` SQL | Legacy SKU columns retained for resolution, weight imputation via category average (window fn), supplier canonicalization, origin-compliance flag (Nightmares #3/#7) |
+| `suppliers_deduped` | silver-transform | `CUSTOM` SQL | Canonical supplier rollup with variant counts |
+| `order_delivery_timeline` | silver-transform | `CUSTOM` SQL | Orders ⋈ shipments lifecycle, late-delivery + days-late + WISMO metrics (Nightmare #4) |
+| `iot_normalized` | iot-streaming-transform | Column expressions | °F → °C conversion, GPS-gap / unregistered-sensor / low-battery flags (streaming-safe, no custom SQL) |
+| `supply_chain_health` | gold-datamart | `CUSTOM` SQL | Per-DC inventory accuracy KPIs + cycle-count variance |
+| `last_mile_performance` | gold-datamart | `CUSTOM` SQL | Per-carrier/country SLA, on-time rate, WISMO rate, address quality |
+
+The CRM landing additionally carries a `transformationRules.yaml` that renames Salesforce objects to the documented bronze names (`Contact` → `sf_contacts`, `MCG_Order__c` → `sf_orders`, `MCG_Product__c` → `sf_products`).
+
+SQL is written as portable ANSI (CASE/COALESCE/window functions); the lakehouse engine compiles it at prepare time. If an expression needs dialect tweaks, fix it in the QTCP UI and run `npm run deploy:export-pipeline` to round-trip the correction back here.
+
 Environment-specific values (connection IDs, schemas, lakehouse clusters, warehouse) are **never hardcoded** — they are `{{binding}}` variables declared in `qtcp_bindings_definition.json`. At deploy time, Step 13:
 
 1. Zips `mcg-pipeline/` (pure-Node, no dependencies — see `../zip-utils.js`)

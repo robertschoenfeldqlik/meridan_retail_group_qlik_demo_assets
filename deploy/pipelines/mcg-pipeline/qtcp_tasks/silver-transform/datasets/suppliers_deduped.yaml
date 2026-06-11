@@ -1,0 +1,28 @@
+properties:
+  name: suppliers_deduped
+  id: suppliers_deduped
+  type: CUSTOM
+  inputDatasets:
+    - taskId: crm-landing-4102
+      name: sf_products
+  customDatasetSettings:
+    incremental: false
+    customSql:
+      expressionStatement: |-
+        SELECT
+          supplier_canonical,
+          COUNT(DISTINCT supplier_name_raw) AS variant_count,
+          COUNT(*) AS product_count
+        FROM (
+          SELECT
+            Supplier_Name__c AS supplier_name_raw,
+            CASE
+              WHEN UPPER(Supplier_Name__c) LIKE 'SAMSUNG%' THEN 'Samsung Electronics'
+              WHEN UPPER(Supplier_Name__c) LIKE 'FRESHDIRECT%' OR UPPER(Supplier_Name__c) LIKE 'FRESH DIRECT%' THEN 'FreshDirect'
+              WHEN UPPER(Supplier_Name__c) LIKE 'TRANSFRIO%' OR UPPER(Supplier_Name__c) LIKE 'TRANS FRIO%' THEN 'TransFrio'
+              ELSE TRIM(Supplier_Name__c)
+            END AS supplier_canonical
+          FROM sf_products
+          WHERE Supplier_Name__c IS NOT NULL
+        ) suppliers
+        GROUP BY supplier_canonical

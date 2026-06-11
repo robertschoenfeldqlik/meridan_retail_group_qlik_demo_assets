@@ -1,0 +1,36 @@
+properties:
+  name: iot_normalized
+  id: iot_normalized
+  inputDatasets:
+    - taskId: iot-streaming-landing-4103
+      name: iot_cold_chain
+transformations:
+  columnTransformations:
+    - action: ADD
+      columnName: temperature_c
+      newDataType:
+        type: REAL8
+      expression:
+        expressionStatement: |-
+          CASE WHEN UPPER(${temperature_unit}) = 'F' THEN ROUND((${temperature_value} - 32) * 5.0 / 9.0, 2) ELSE ${temperature_value} END
+    - action: ADD
+      columnName: gps_gap
+      newDataType:
+        type: BOOLEAN
+      expression:
+        expressionStatement: |-
+          CASE WHEN ${gps_latitude} IS NULL OR ${gps_longitude} IS NULL THEN TRUE ELSE FALSE END
+    - action: ADD
+      columnName: sensor_unregistered
+      newDataType:
+        type: BOOLEAN
+      expression:
+        expressionStatement: |-
+          CASE WHEN ${shipment_id} IS NULL THEN TRUE ELSE FALSE END
+    - action: ADD
+      columnName: battery_low
+      newDataType:
+        type: BOOLEAN
+      expression:
+        expressionStatement: |-
+          CASE WHEN ${battery_level_pct} < 10 THEN TRUE ELSE FALSE END
