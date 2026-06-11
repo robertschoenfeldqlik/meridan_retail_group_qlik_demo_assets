@@ -427,14 +427,14 @@ function module03() {
     dataTable(
       ["Route", "Silver Table", "Nightmare(s)", "Key Transformation"],
       [
-        ["Timestamp Normalization", "silver.timestamps_audit", "#5", "All timestamps to UTC with source tracking"],
+        ["Timestamp Normalization", "silver.warehouse_events_clean", "#5", "All timestamps to UTC with per-DC timezone handling"],
         ["Inventory Reconciliation", "silver.inventory_reconciled", "#1, #4", "WMS vs ERP comparison, phantom detection"],
-        ["Address Standardization", "silver.customers_deduped", "#2", "Fuzzy matching, postal code normalization"],
+        ["Address Standardization", "silver.addresses_standardized", "#2", "Fuzzy matching, postal code normalization"],
         ["Product Master Harmonization", "silver.products_harmonized", "#3", "SKU resolution, weight/UoM standardization"],
         ["Carrier Canonicalization", "silver.shipments_canonical", "#6", "Multi-language status mapping to MCG codes"],
         ["IoT Normalization", "silver.iot_normalized", "#5, #6", "Celsius normalization, GPS gap detection"],
         ["Supplier Dedup", "silver.suppliers_deduped", "#3", "Fuzzy name matching, canonical ID assignment"],
-        ["Order Timeline", "silver.orders_enriched", "#5, #6", "End-to-end order lifecycle assembly"],
+        ["Order Timeline", "silver.order_delivery_timeline", "#5, #6", "End-to-end order lifecycle assembly"],
       ]
     ),
 
@@ -464,9 +464,18 @@ function module03() {
     numberedItem(1, "Navigate to Data Integration > Lakehouse > Show Bronze tables receiving data"),
     numberedItem(2, 'Open bronze.inventory_positions — show raw data with quality issues visible (null lot numbers, timestamp mismatches)'),
     numberedItem(3, 'Navigate to a Silver transformation route — show the Pipeline Designer visual flow'),
-    numberedItem(4, 'Show before/after: bronze.sf_contacts (messy addresses) vs silver.customers_deduped (standardized)'),
+    numberedItem(4, 'Show before/after: bronze.sf_contacts (messy addresses) vs silver.addresses_standardized (standardized)'),
     numberedItem(5, 'Open a Gold table recipe — show how Silver tables combine into business-ready products'),
     numberedItem(6, 'Highlight refresh schedules: real-time CDC, 5-min streaming, 15-min batch'),
+
+    heading("Pipelines as Code (Declarative Pipelines — Preview)", 3),
+    para("The entire pipeline you just saw — landing tasks, transformations, schedules, and bindings — is also defined as version-controlled YAML in deploy/pipelines/mcg-pipeline/. This is the declarative pipelines capability (QTCP preview): the whole project can be rebuilt on any tenant from the repo."),
+    numberedItem(1, "Show the YAML project in VS Code: qtcp_project.yaml, one folder per task, datasets with custom SQL"),
+    numberedItem(2, "Build the import package:"),
+    promptBox("npm run pipeline:zip", "Terminal Command"),
+    numberedItem(3, "In Qlik Cloud: Data Integration > your project > Import — select the generated mcg-pipeline.zip"),
+    numberedItem(4, "Show the round-trip: refine a transformation in the UI, then export it back to the repo for git versioning"),
+    calloutBox("Talking point: Pipelines as code means the medallion architecture is reproducible, reviewable, and versioned. A new tenant goes from empty to a full bronze/silver/gold pipeline in minutes — and every transformation change has a git history. AI assistants can author and validate the YAML directly against the published schemas.", "info"),
 
     tellAnnotation("close", "What you just saw is raw data arriving from three systems, getting cleansed through 8 transformation routes that directly address MCG's 7 data nightmares, and emerging as 7 governed Gold data products — each with an owner, an SLA, and a Trust Score. Full lineage at every step."),
     interactionPrompt("Which of these transformation routes — inventory reconciliation, address standardization, carrier canonicalization — resonates most with your current challenges?"),
@@ -923,7 +932,7 @@ function module10() {
 
     heading("Campaign 1: Address Cleanup", 3),
     metadataTable([
-      ["Source", "silver.customers_deduped (fuzzy match candidates with 85-90% confidence)"],
+      ["Source", "silver.addresses_standardized (fuzzy match candidates with 85-90% confidence)"],
       ["Records", "~640 address pairs (3.2% of 20,000 customer records)"],
       ["Assignee", "Customer Data Team (Sophie Muller)"],
       ["Task Type", "Merge/Split decision"],
@@ -1091,7 +1100,7 @@ function module12() {
 
     heading("Address Correction Loop (Advanced)", 3),
     numberedItem(1, "Show the Stewardship-to-Talend-to-Lakehouse loop:"),
-    para("  Steward approves address merge in campaign > Automation triggers > Talend Job runs address validation > Corrected record written to silver.customers_deduped > Gold tables refresh > Predict model improves", { indent: true }),
+    para("  Steward approves address merge in campaign > Automation triggers > Talend Job runs address validation > Corrected record written to silver.addresses_standardized > Gold tables refresh > Predict model improves", { indent: true }),
     calloutBox("Talking point: This is the closed-loop data quality cycle. Detection (profiling) > Notification (alert) > Review (stewardship) > Correction (Talend job) > Validation (Trust Score). Fully automated except the human judgment step."),
 
     heading("Talking Points", 2),
@@ -1177,7 +1186,7 @@ function module13() {
 
     heading("MCP Demo Scenario 1: Rotterdam Inventory", 3),
     promptBox("What is the current inventory accuracy rate at Rotterdam DC, and what is causing the issues?", "Ask Claude"),
-    expectedBox("Claude uses MCP to query gold.supply_chain_health filtered by dc = DC-RTD-01. Gets: IRA = 74%, phantom_units = 847, pipeline_status = RECOVERED. Then queries silver.orders_enriched for affected orders. Finally pulls context from INC-2025-04872 (Rotterdam Pipeline Failure) via Qlik Answers.\n\nResponse: Rotterdam DC IRA is 74%, significantly below the 97% target. Root cause: silent pipeline failure INC-2025-04872 where WMS-to-SAP CDC sync stopped for 72 hours due to an expired TLS certificate. Created 847 phantom units across 143 SKUs, costing EUR 30,500. Pipeline recovered; Project CLARITY Phase 1 will extend monitoring to all 28 DCs."),
+    expectedBox("Claude uses MCP to query gold.supply_chain_health filtered by dc = DC-RTD-01. Gets: IRA = 74%, phantom_units = 847, pipeline_status = RECOVERED. Then queries silver.order_delivery_timeline for affected orders. Finally pulls context from INC-2025-04872 (Rotterdam Pipeline Failure) via Qlik Answers.\n\nResponse: Rotterdam DC IRA is 74%, significantly below the 97% target. Root cause: silent pipeline failure INC-2025-04872 where WMS-to-SAP CDC sync stopped for 72 hours due to an expired TLS certificate. Created 847 phantom units across 143 SKUs, costing EUR 30,500. Pipeline recovered; Project CLARITY Phase 1 will extend monitoring to all 28 DCs."),
 
     heading("MCP Demo Scenario 2: Cold Chain Risk", 3),
     promptBox("What is the current spoilage risk for active TransFrio shipments on the Sao Paulo to Buenos Aires route?", "Ask Claude"),

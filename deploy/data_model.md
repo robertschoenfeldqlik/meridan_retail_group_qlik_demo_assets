@@ -242,7 +242,7 @@ Output of Talend transformation routes.
 | `silver.shipments_canonical` | Carrier Status Canonicalization | Status mapped to 6 universal stages, country codes standardized |
 | `silver.addresses_standardized` | Address Standardization | Parsed, geocoded, quality scored |
 | `silver.products_harmonized` | Product Master Harmonization | SKU resolved, weights imputed, supplier deduped |
-| `silver.iot_telemetry_normalized` | IoT Telemetry Normalization | Temp converted to Celsius, timestamps UTC, GPS gaps flagged |
+| `silver.iot_normalized` | IoT Telemetry Normalization | Temp converted to Celsius, timestamps UTC, GPS gaps flagged |
 | `silver.suppliers_deduped` | Supplier Master Dedup | Fuzzy-matched, canonical name assigned |
 | `silver.order_delivery_timeline` | Order-to-Delivery Timeline | Full lifecycle with SLA calc |
 

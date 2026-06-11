@@ -9,6 +9,7 @@
     "deploy:dry-run": "node deploy/deploy-to-qlik.js --dry-run",
     "deploy:verbose": "node deploy/deploy-to-qlik.js --verbose",
     "deploy:export-pipeline": "node deploy/deploy-to-qlik.js --export-pipeline",
+    "pipeline:zip": "node deploy/build-pipeline-zip.js",
     "build-apps": "node deploy/build-apps.js",
     "build-apps:dry-run": "node deploy/build-apps.js --dry-run",
     "build-automations": "node deploy/build-automations.js",

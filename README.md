@@ -11,7 +11,7 @@ A complete, deployable demo environment showcasing the full Qlik platform — fr
 | **Deployment** | Automated scripts (Python + Node.js + Web UI) to provision a full Qlik Cloud tenant |
 | **Analytics** | Dashboard mockups, Qlik theme, app definitions for Supply Chain & Delivery |
 | **AI / NLP** | Qlik Answers knowledge base with 25 operational documents + AI assistant |
-| **Governance** | Business glossary (25 terms), 8 Gold-layer data products, data lineage |
+| **Governance** | Business glossary (25 terms), 7 Gold-layer data products, data lineage |
 | **Data Pipelines** | Declarative QTCP pipeline (YAML) — bronze/silver/gold tasks imported via the DI Projects API |
 | **Automations** | Teams alerting for cold-chain breaches and pipeline health |
 | **Content Generation** | 21 Node.js generators for documents, presentations, SOPs, and glossaries |

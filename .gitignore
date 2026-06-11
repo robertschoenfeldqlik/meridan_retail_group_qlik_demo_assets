@@ -40,3 +40,6 @@ deploy/.config-ui-temp.json
 deploy/pipelines/schema/
 deploy/pipelines/.vscode/
 deploy/pipelines/**/copilot-instructions.md
+
+# Generated pipeline import package
+deploy/pipelines/*.zip
