@@ -248,12 +248,12 @@ function module01() {
 
     heading("Step 1: Start PostgreSQL & Seed WMS Data", 3),
     numberedItem(1, "Ensure PostgreSQL is running (Docker, RDS, or local install)"),
-    numberedItem(2, "Verify database mcg_wms exists with user qlik_reader"),
-    numberedItem(3, "Run the simulator to seed initial data:"),
-    promptBox("python simulators/postgres_simulator.py --host localhost --port 5432 --database mcg_wms --user qlik_reader --password <pw> --mode seed", "Terminal Command"),
+    numberedItem(2, "Verify database mcg_wms exists with user mcg_admin"),
+    numberedItem(3, "Run the simulator to create schema and seed initial data:"),
+    promptBox("python simulators/postgres_simulator.py --host localhost --port 5432 --db mcg_wms --user mcg_admin --password mcg_demo_2025 --setup-only", "Terminal Command"),
     numberedItem(4, "Verify 3 tables created: inventory_positions (~5,000 rows), warehouse_events (~20,000), shipments (~8,000)"),
-    numberedItem(5, "Start continuous mode for live CDC during demo:"),
-    promptBox("python simulators/postgres_simulator.py --host localhost --port 5432 --database mcg_wms --user qlik_reader --password <pw> --mode continuous", "Terminal Command"),
+    numberedItem(5, "Start continuous simulation for live CDC during demo (runs until Ctrl+C):"),
+    promptBox("python simulators/postgres_simulator.py --host localhost --port 5432 --db mcg_wms --user mcg_admin --password mcg_demo_2025", "Terminal Command"),
     calloutBox("Talking point: The PostgreSQL simulator injects intentional data quality issues — phantom inventory (ERP says 50, WMS says 42), missing lot numbers on 15% of perishables, and timestamp drift between systems.", "warning"),
 
     heading("Step 2: Start Kafka & IoT Simulator", 3),
@@ -291,7 +291,7 @@ function module01() {
       ["Issue", "Cause", "Fix"],
       [
         ["Docker compose fails", "Docker Desktop not running", "Start Docker Desktop, wait 30s, retry"],
-        ["PostgreSQL connection refused", "Wrong host/port or database not created", "Verify with: psql -h localhost -U qlik_reader -d mcg_wms"],
+        ["PostgreSQL connection refused", "Wrong host/port or database not created", "Verify with: psql -h localhost -U mcg_admin -d mcg_wms"],
         ["Kafka topics not created", "Init container failed", "Run: docker compose exec kafka kafka-topics --bootstrap-server kafka:9092 --list"],
         ["Salesforce auth error", "Expired security token", "Settings > Reset My Security Token in Salesforce"],
       ]
@@ -320,7 +320,7 @@ function module02() {
     numberedItem(2, "API key generated (Profile > API Keys)"),
     numberedItem(3, "All three data sources running (Module 1 complete)"),
     numberedItem(4, "Data Movement Gateway installed (for PostgreSQL CDC)"),
-    numberedItem(5, "Remote Engine Gen2 installed (for Kafka streaming)"),
+    numberedItem(5, "Data Gateway - Streaming installed (for Kafka streaming)"),
 
     heading("Demo Methodology: Tell → Show → Tell", 2),
     limbicOpening("MCG had a data engineer who spent 3 days debugging a broken pipeline — only to discover it was feeding the wrong Kafka topic to the wrong team's dashboard. No governance, no separation, no audit trail. That single incident delayed a product launch by two weeks.", "Case Study"),
@@ -348,7 +348,7 @@ function module02() {
         ["Host", "your-postgres-host (or localhost for Docker)"],
         ["Port", "5432"],
         ["Database", "mcg_wms"],
-        ["Username", "qlik_reader"],
+        ["Username", "mcg_admin"],
         ["Schema", "public"],
       ]
     ),
@@ -356,7 +356,7 @@ function module02() {
     numberedItem(5, 'Verify tables visible: inventory_positions, warehouse_events, shipments'),
 
     heading("Step 3: Kafka Connection", 3),
-    numberedItem(1, "Select Apache Kafka connector via Remote Engine Gen2"),
+    numberedItem(1, "Select Apache Kafka connector via Data Gateway - Streaming"),
     numberedItem(2, "Configure bootstrap servers: localhost:9092 (Docker) or your-broker:9092 (external)"),
     numberedItem(3, "Test connection — should show 2 topics: mcg.iot.cold-chain, mcg.iot.carrier-events"),
     calloutBox("Talking point: Kafka streaming data flows continuously — no batch windows, no stale data. Temperature readings arrive every 5 seconds. This is how you catch a cold chain exceedance before product spoils."),
@@ -383,7 +383,7 @@ function module02() {
         ["Connection test fails", "Firewall blocking port", "Ensure outbound access to data source from Gateway/Engine"],
         ["Gateway not paired", "Pairing token expired", "Generate new token in Administration > Gateways"],
         ["Salesforce auth fails", "IP restriction", "Add Qlik Cloud IP ranges to Salesforce trusted IPs"],
-        ["Topics not visible", "Wrong bootstrap server", "Verify broker address and port; check Remote Engine logs"],
+        ["Topics not visible", "Wrong bootstrap server", "Verify broker address and port; check Data Gateway - Streaming logs"],
       ]
     ),
   ];
@@ -443,13 +443,13 @@ function module03() {
     dataTable(
       ["Gold Table", "Owner", "Refresh", "Key Metric"],
       [
-        ["gold.supply_chain_health", "Henrik Jansen (VP Warehouse Ops)", "15 min", "IRA target: 97%"],
-        ["gold.last_mile_performance", "Sophie Muller (EU Logistics)", "30 min", "On-time target: 92%"],
-        ["gold.cold_chain_compliance", "Thomas Brennan (VP Supply Chain)", "5 min", "Streaming IoT"],
-        ["gold.product_master_360", "Thomas Berger (Product Data Mgr)", "1 hour", "8,200 missing weights"],
-        ["gold.customer_delivery_experience", "Lisa Park (Head of CX)", "1 hour", "WISMO rate: 41%"],
-        ["gold.compliance_readiness", "Dr. Elena Vasquez (CCO)", "Daily", "Lot capture: 85%"],
-        ["gold.operational_cost_impact", "CFO Office", "Daily", "$127M annual impact"],
+        ["gold.supply_chain_health",     "Henrik Jansen (VP Warehouse Ops)",    "15 min", "IRA target: 97%"],
+        ["gold.last_mile_performance",   "Sophie Müller (EU Logistics Mgr)",    "30 min", "On-time target: 92%"],
+        ["gold.cold_chain_compliance",   "Lars Eriksson (Cold Chain & Quality)", "5 min",  "Exceedance rate: < 2%"],
+        ["gold.product_master_health",   "Thomas Berger (Procurement Mgr)",     "1 hour", "Completeness: > 95%"],
+        ["gold.compliance_traceability", "Dr. Elena Vasquez (Chief Compliance Officer)", "30 min", "Lot capture rate: 100%"],
+        ["gold.pipeline_timestamp_audit","Priya Ramanathan (Chief Data Officer)",        "5 min",  "Trust Score target: 0.95"],
+        ["gold.customer_quality_index",  "Sophie Müller (EU Logistics Mgr)",    "1 hour", "Address quality: > 0.85"],
       ]
     ),
 
@@ -510,7 +510,7 @@ function module04() {
     numberedItem(2, "Show the visual lineage graph tracing back through:"),
     para("  Gold table > Silver transformation route > Bronze landing table > PostgreSQL CDC pipeline > Source database", { indent: true }),
     numberedItem(3, "Click on a field (e.g., ira_pct) to show field-level lineage"),
-    numberedItem(4, 'Repeat for gold.cold_chain_compliance — shows the Kafka streaming path'),
+    numberedItem(4, 'Repeat for gold.last_mile_performance — shows the carrier data streaming path'),
     calloutBox("Talking point: When the Rotterdam pipeline failed silently for 72 hours, nobody could trace what was affected. With Qlik lineage, you can see exactly which downstream tables and dashboards depend on any source."),
 
     heading("Step 2: Impact Analysis", 3),
@@ -602,7 +602,7 @@ function module05() {
     numberedItem(3, "Accept or modify rules — violations automatically route to Stewardship campaigns"),
 
     heading("Step 3: API Sharing", 3),
-    numberedItem(1, "Enable API sharing on Supply Chain Health, Last Mile Performance, Cold Chain Compliance"),
+    numberedItem(1, "Enable API sharing on Supply Chain Health, Last Mile Performance"),
     numberedItem(2, "Show the API endpoint URL for each product"),
     numberedItem(3, "Test with a curl command or Postman request"),
     calloutBox("Talking point: API sharing means these data products aren't locked in Qlik — they feed Discovery Agent, MCP Server, external dashboards, and partner portals. Data products become a service, not just a table."),
@@ -610,7 +610,7 @@ function module05() {
     heading("Step 4: Data Marketplace", 3),
     numberedItem(1, "Open the Data Marketplace self-service portal"),
     numberedItem(2, "Browse data products — show AI-generated descriptions and Trust Scores"),
-    numberedItem(3, 'Search by tag: "cold-chain" — should find Cold Chain Compliance product'),
+    numberedItem(3, 'Search by tag: "carrier" — should find Last Mile Performance product'),
     numberedItem(4, "Demonstrate access request workflow for a business user"),
 
     tellAnnotation("close", "What you saw is data as a product: owned, documented, quality-scored, and accessible via API. No more shadow datasets, no more tribal knowledge, no more 'which version of the customer table is right?'"),
@@ -778,7 +778,7 @@ function module08() {
 
     heading("Model 1: Spoilage Risk Predictor", 2),
     metadataTable([
-      ["Data Source", "gold.cold_chain_compliance"],
+      ["Data Source", "silver.iot_normalized"],
       ["Target Variable", "spoilage_flag (binary classification)"],
       ["Key Features", "carrier, route_id, avg_temp_celsius, max_temp_celsius, exceedance_minutes, pre_cool_compliant, product_category, weight_kg, month, day_of_week"],
       ["Business Value", "Predict which in-transit shipments will spoil before they arrive"],
@@ -787,7 +787,7 @@ function module08() {
 
     heading("Demo Walk-Through: Spoilage Model", 3),
     numberedItem(1, "Navigate to Qlik Predict > Create Experiment"),
-    numberedItem(2, "Select data source: gold.cold_chain_compliance"),
+    numberedItem(2, "Select data source: silver.iot_normalized"),
     numberedItem(3, "Select target: spoilage_flag (binary classification)"),
     numberedItem(4, "Review auto-selected features — note max_temp_celsius and route_id as top predictors"),
     numberedItem(5, "Train model — show AutoML trying multiple algorithms"),
@@ -984,13 +984,13 @@ function module10() {
 
     heading("Talking Points", 2),
     tellAnnotation("close", "Four campaigns, four different domain teams, one unified workflow. The key: corrections approved in Stewardship flow back through the Lakehouse automatically. This is a closed-loop data quality cycle — not a one-time cleanup but a continuous improvement process."),
-    valueChain(["Assign data quality tasks to domain experts who understand the data", "resolve quality issues that automation can't handle", "continuously improve data quality instead of accepting the $3.1M annual cost of bad addresses"]),
+    valueChain(["Assign data quality tasks to domain experts who understand the data", "resolve quality issues that automation can't handle", "continuously improve data quality instead of accepting the $3.1M annual cost of bad carrier delivery failures"]),
 
     talkingPoint("Not everything can be automated — Stewardship puts humans in the loop where judgment matters"),
     talkingPoint("Domain experts review data quality issues they actually understand (logistics people for addresses, procurement for suppliers)"),
     talkingPoint("Campaign dashboards show progress — management sees task completion rates"),
     talkingPoint("Approved corrections feed back into the Lakehouse — the closed-loop data quality cycle"),
-    talkingPoint("The alternative is ignoring these issues — which costs MCG $3.1M/year for addresses alone"),
+    talkingPoint("The alternative is ignoring these issues — $3.1M/year in carrier delivery failures from bad addresses, plus $14.8M in WISMO call costs. The full Address Catastrophe is $31M once you include customer churn"),
   ];
 }
 
@@ -1080,7 +1080,7 @@ function module12() {
     heading("Cold Chain Alert (Primary Demo)", 3),
     numberedItem(1, "Navigate to Automations > MCG Cold Chain Alert > Edit"),
     numberedItem(2, "Walk through the 5 automation blocks:"),
-    para("  Block 1: Query gold.cold_chain_compliance for unalerted exceedances", { indent: true }),
+    para("  Block 1: Query silver.iot_normalized for unalerted exceedances", { indent: true }),
     para("  Block 2: Condition check — any results?", { indent: true }),
     para("  Block 3: Loop over each exceedance record", { indent: true }),
     para("  Block 4: Post Adaptive Card to Teams channel", { indent: true }),
@@ -1130,7 +1130,7 @@ function module13() {
     heading("Part A: Discovery Agent", 2),
 
     heading("Setup", 3),
-    numberedItem(1, "Enable Discovery Agent on Gold data products: Supply Chain Health, Cold Chain Compliance, Last Mile Performance"),
+    numberedItem(1, "Enable Discovery Agent on Gold data products: Supply Chain Health, Last Mile Performance"),
     numberedItem(2, "Configure alert thresholds:"),
     dataTable(
       ["Threshold", "Value", "Purpose"],
@@ -1142,7 +1142,7 @@ function module13() {
     ),
 
     heading("Demo Scenario: TransFrio Spoilage Detection", 3),
-    para("The Discovery Agent monitors gold.cold_chain_compliance and detects an anomaly pattern:"),
+    para("The Discovery Agent monitors silver.iot_normalized and detects an anomaly pattern:"),
     numberedItem(1, "Temperature exceedance rate on GRU-BA route spiked from 2.1% to 8.8% over 3 weeks"),
     numberedItem(2, "Agent correlates: fleet metadata shows 6 truck replacements in the same period"),
     numberedItem(3, "Agent generates alert:"),
@@ -1155,19 +1155,33 @@ function module13() {
     heading("Part B: MCP Server", 2),
 
     heading("Setup", 3),
-    numberedItem(1, "Install: npx @qlik/mcp-server"),
-    numberedItem(2, "Set environment variables: QLIK_TENANT_URL, QLIK_API_KEY"),
-    numberedItem(3, "Configure Claude Desktop or Claude Code:"),
-    promptBox('{\n  "mcpServers": {\n    "qlik": {\n      "command": "npx",\n      "args": ["-y", "@qlik/mcp-server"],\n      "env": {\n        "QLIK_TENANT_URL": "https://your-tenant.us.qlikcloud.com",\n        "QLIK_API_KEY": "your-api-key"\n      }\n    }\n  }\n}', "Claude Desktop Config (claude_desktop_config.json)"),
-    numberedItem(4, 'Test connection: Ask Claude "List the spaces in my Qlik tenant"'),
+    para("The Qlik MCP Server is cloud-hosted — no local installation required. It runs at your tenant URL and is accessed via the SSE (Server-Sent Events) transport. No npm package exists; the server is built into Qlik Cloud."),
+    numberedItem(1, "Generate an API key: Qlik Cloud Profile > API Keys > Generate new key"),
+    numberedItem(2, "Add the Qlik MCP server to Claude Desktop config (claude_desktop_config.json):"),
+    promptBox('{\n  "mcpServers": {\n    "qlik": {\n      "url": "https://your-tenant.us.qlikcloud.com/api/ai/mcp",\n      "headers": {\n        "Authorization": "Bearer YOUR_API_KEY_HERE"\n      }\n    }\n  }\n}', "Claude Desktop Config (claude_desktop_config.json)"),
+    numberedItem(3, "Restart Claude Desktop — the Qlik MCP server connects automatically over SSE"),
+    numberedItem(4, 'Test: Ask Claude "Search my Qlik tenant for supply chain apps"'),
+    calloutBox("Key talking point: The Qlik MCP Server exposes 71 tools across 11 categories — App Discovery, Bookmarks, Business Glossary, Datasets & Data Quality, Data Exploration, Data Products, Lineage, Master Items, Selections, Visualization & Sheets. These are live Qlik Cloud capabilities, not simulated responses.", "info"),
+    dataTable(
+      ["MCP Tool Category", "Key Tools", "MCG Demo Use Case"],
+      [
+        ["App Discovery",           "qlik_search, qlik_describe_app, qlik_list_apps",               "Find supply chain and delivery apps"],
+        ["Data Products",           "qlik_list_data_products, qlik_get_data_product",               "Browse all 7 Gold data products"],
+        ["Business Glossary",       "qlik_list_terms, qlik_get_term",                               "Look up 'phantom inventory', 'WISMO'"],
+        ["Data Exploration",        "qlik_get_fields, qlik_evaluate_expression",                    "Query gold.supply_chain_health"],
+        ["Lineage",                 "qlik_get_lineage",                                             "Trace phantom inventory to source CDC pipeline"],
+        ["Datasets & Data Quality", "qlik_list_datasets, qlik_get_trust_score",                    "Check Trust Scores across all data products"],
+        ["Visualization & Sheets",  "qlik_list_sheets, qlik_get_visualization",                    "Navigate Supply Chain Operations app sheets"],
+      ]
+    ),
 
     heading("MCP Demo Scenario 1: Rotterdam Inventory", 3),
     promptBox("What is the current inventory accuracy rate at Rotterdam DC, and what is causing the issues?", "Ask Claude"),
-    expectedBox("Claude uses MCP to query gold.supply_chain_health filtered by dc = DC-RTD-01. Gets: IRA = 74%, phantom_units = 847, pipeline_status = RECOVERED. Then queries gold.order_timeline for affected orders. Finally pulls context from INC-2025-04872 (Rotterdam Pipeline Failure) via Qlik Answers.\n\nResponse: Rotterdam DC IRA is 74%, significantly below the 97% target. Root cause: silent pipeline failure INC-2025-04872 where WMS-to-SAP CDC sync stopped for 72 hours due to an expired TLS certificate. Created 847 phantom units across 143 SKUs, costing EUR 30,500. Pipeline recovered; Project CLARITY Phase 1 will extend monitoring to all 28 DCs."),
+    expectedBox("Claude uses MCP to query gold.supply_chain_health filtered by dc = DC-RTD-01. Gets: IRA = 74%, phantom_units = 847, pipeline_status = RECOVERED. Then queries silver.orders_enriched for affected orders. Finally pulls context from INC-2025-04872 (Rotterdam Pipeline Failure) via Qlik Answers.\n\nResponse: Rotterdam DC IRA is 74%, significantly below the 97% target. Root cause: silent pipeline failure INC-2025-04872 where WMS-to-SAP CDC sync stopped for 72 hours due to an expired TLS certificate. Created 847 phantom units across 143 SKUs, costing EUR 30,500. Pipeline recovered; Project CLARITY Phase 1 will extend monitoring to all 28 DCs."),
 
     heading("MCP Demo Scenario 2: Cold Chain Risk", 3),
     promptBox("What is the current spoilage risk for active TransFrio shipments on the Sao Paulo to Buenos Aires route?", "Ask Claude"),
-    expectedBox("Claude queries gold.cold_chain_compliance for route=GRU-BA and carrier=TransFrio with active shipments. Returns: 4 active shipments, 2 with spoilage_probability > 70%. Pulls INC-2025-05102 for context about the fleet change and TRN-2025-002 for the Thermo King X4 7500 startup procedure."),
+    expectedBox("Claude queries silver.iot_normalized for route=GRU-BA and carrier=TransFrio with active shipments. Returns: 4 active shipments, 2 with exceedance_minutes > 30. Pulls INC-2025-05102 for context about the fleet change and TRN-2025-002 for the Thermo King X4 7500 startup procedure."),
 
     heading("MCP Demo Scenario 3: Carrier SLA Analysis", 3),
     promptBox("Compare carrier on-time delivery performance across APAC. Which carrier is worst and why?", "Ask Claude"),
@@ -1175,16 +1189,16 @@ function module13() {
 
     heading("MCP Demo Scenario 4: Customer WISMO Impact", 3),
     promptBox("What is our WISMO rate and how much is it costing us?", "Ask Claude"),
-    expectedBox("Claude queries gold.customer_delivery_experience. Returns: overall WISMO rate 41%, cost per inquiry $2.30. Singapore worst at 52% (up from 30% pre-October). Annual WISMO cost: ~$4.2M. Pulls SOP-CS-001 for the current handling procedure and suggests process improvements."),
+    expectedBox("Claude queries gold.last_mile_performance filtered by wismo_flag=TRUE. Returns: overall WISMO rate 41%, cost per inquiry $2.30. Singapore worst at 52% (up from 30% pre-October). Annual WISMO cost: ~$4.2M. Pulls SOP-CS-001 for the current handling procedure and suggests process improvements."),
 
     heading("MCP Demo Scenario 5: Compliance Audit", 3),
     promptBox("How ready are we for the next NVWA food safety audit? What are our biggest gaps?", "Ask Claude"),
-    expectedBox("Claude queries gold.compliance_readiness filtered by nvwa_applicable=TRUE. Returns: 85% lot capture rate (target 100%), 30% of lettuce records missing trace_complete. Pulls COMP-2025-NVWA for the 5 findings from the last audit and RCL-2025-003 for the recall timeline. Recommends prioritizing lot number capture for perishables."),
+    expectedBox("Claude queries silver.inventory_reconciled filtered by nvwa_applicable=TRUE. Returns: 85% lot capture rate (target 100%), 30% of lettuce records missing trace_complete. Pulls COMP-2025-NVWA for the 5 findings from the last audit and RCL-2025-003 for the recall timeline. Recommends prioritizing lot number capture for perishables."),
 
     divider(),
 
     tellAnnotation("close", "Two AI capabilities that complete the picture: the Discovery Agent proactively monitors your data products and finds anomalies before anyone asks. The MCP Server lets AI agents like Claude query your real-time Qlik data and documents in a single conversation. Together, they shift your operating model from 'search for problems' to 'problems find you.'"),
-    interactionPrompt("If an AI agent could monitor all 8 of your data products 24/7 and alert you to anomalies — what would you stop doing manually?"),
+    interactionPrompt("If an AI agent could monitor all of your data products 24/7 and alert you to anomalies — what would you stop doing manually?"),
     valueChain(["Deploy AI agents that proactively monitor data quality and operational metrics", "combine structured data with document intelligence in natural language conversations", "shift from reactive analytics to proactive, AI-driven operational intelligence"]),
 
     heading("Talking Points", 2),

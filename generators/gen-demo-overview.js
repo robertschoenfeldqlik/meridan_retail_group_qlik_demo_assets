@@ -545,8 +545,8 @@ const layers = [
     tables: "warehouse_events_clean • inventory_reconciled • addresses_standardized • products_harmonized • shipments_canonical • iot_telemetry_normalized • suppliers_deduped • order_delivery_timeline",
   },
   {
-    name: "GOLD", label: "Business-Ready Data Products", count: "7 tables", color: C.qlikBlue, bg: C.lightBlue,
-    tables: "supply_chain_health • last_mile_performance • cold_chain_compliance • product_master_360 • customer_delivery_experience • compliance_readiness • operational_cost_impact",
+    name: "GOLD", label: "Business-Ready Data Products", count: "2 tables", color: C.qlikBlue, bg: C.lightBlue,
+    tables: "supply_chain_health • last_mile_performance",
   },
 ];
 
@@ -667,11 +667,6 @@ slide.addText("Governed, curated datasets with ownership, quality signals, and A
 const products = [
   { name: "Supply Chain Health", owner: "Henrik Jansen", refresh: "15 min", trust: "4.5", api: true },
   { name: "Last Mile Performance", owner: "Sophie Muller", refresh: "30 min", trust: "4.2", api: true },
-  { name: "Cold Chain Compliance", owner: "Henrik Jansen", refresh: "5 min", trust: "4.8", api: true },
-  { name: "Product Master 360", owner: "Thomas Berger", refresh: "1 hour", trust: "3.9", api: true },
-  { name: "Customer Delivery Experience", owner: "Lisa Park", refresh: "1 hour", trust: "4.1", api: false },
-  { name: "Compliance Readiness", owner: "Maria Santos", refresh: "1 hour", trust: "4.6", api: false },
-  { name: "Operational Cost Impact", owner: "CFO Office", refresh: "Daily", trust: "4.3", api: false },
 ];
 
 const dpHeaders = [
@@ -962,7 +957,7 @@ yPos = recommendBox(slide, "Data Products Walk-Through", [
 yPos = recommendBox(slide, "Lineage + Impact Analysis + Trust Score", [
   "Click gold.supply_chain_health → Lineage view → trace field-level path from PostgreSQL → Bronze → Silver → Gold",
   "Click Impact Analysis → show which apps, reports, and ML models depend on this data product",
-  "Show Trust Score on gold.cold_chain_compliance → highlight Validity (4.2), Completeness (3.8), Discoverability (5.0)",
+  "Show Trust Score on gold.last_mile_performance → highlight Validity (4.5), Completeness (4.2), Discoverability (5.0)",
 ], yPos, C.lightGreen);
 
 yPos = recommendBox(slide, "Stewardship + Glossary", [
@@ -1293,7 +1288,7 @@ slide.addText("Train, deploy, and share ML models without code — predictions s
 const models = [
   {
     name: "Spoilage Risk Predictor", type: "Regression", color: C.qlikTeal,
-    source: "gold.cold_chain_compliance",
+    source: "silver.iot_normalized",
     target: "spoilage_risk_score",
     features: "max_temp_celsius, exceedance_minutes, humidity_avg, product_category, route_id, season",
     scenario: "Predict which São Paulo→Buenos Aires shipments will spoil before arrival",
@@ -1463,9 +1458,9 @@ slide.addText("Connect AI agents (Claude, GPT) directly to Qlik data", {
   fontSize: 12, color: C.medGray, fontFace: FONT, italic: true,
 });
 const mcpItems = [
-  "npx @qlik/mcp-server",
+  "Cloud-hosted SSE endpoint: <tenant>/api/ai/mcp",
+  "71 tools: App Discovery, Lineage, Data Products, Glossary...",
   "Query data products via natural language",
-  "List spaces, apps, connections programmatically",
   "Works with Claude Desktop, Claude Code, others",
   "MCG: \"What is IRA at Rotterdam DC?\"",
   "Response: \"74%, 847 phantom units, 143 SKUs\"",

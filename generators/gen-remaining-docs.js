@@ -350,7 +350,7 @@ function projClarity() {
 
     heading("4.2 Phase 2: Analytics & Quality (Months 6-16)", 2),
     para("Budget: $4.8M"),
-    para("Remaining 4 transformation routes: Address Standardization, Product Master Harmonizer, Supplier Identity Resolution, Order Timeline Builder", { bullet: true }),
+    para("Remaining 4 transformation routes: Address Standardization, Product Master Harmonizer, Supplier Identity Resolution, Order Enrichment", { bullet: true }),
     para("Enterprise data quality monitoring with Trust Score", { bullet: true }),
     para("Data stewardship workflows", { bullet: true }),
     para("AutoML models for demand and spoilage prediction", { bullet: true }),

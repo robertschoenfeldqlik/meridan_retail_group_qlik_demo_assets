@@ -467,7 +467,7 @@ function projClarity() {
     para("Address Standardization — postal address validation and correction for EU, Americas, APAC (addresses Nightmare #2)", { bullet: true }),
     para("Product Master Harmonizer — cross-system SKU matching, weight/dimension completion (addresses #3)", { bullet: true }),
     para("Supplier Identity Resolution — fuzzy matching to create canonical supplier records across SAP, WMS, Salesforce (addresses #3)", { bullet: true }),
-    para("Order Timeline Builder — end-to-end order tracking from PO to delivery with unified timestamps (#5, #6, #7)", { bullet: true }),
+    para("Order Enrichment — end-to-end order tracking from PO to delivery with unified timestamps (#5, #6, #7)", { bullet: true }),
     para("Enterprise Data Quality Trust Score — automated scoring across all 6 quality dimensions (#1-#7)", { bullet: true }),
     para("Data Stewardship Workflows — issue routing, SLA tracking, accountability framework", { bullet: true }),
     para("Qlik AutoML models — demand forecasting (reduce phantom inventory), spoilage risk prediction, delivery SLA prediction", { bullet: true }),

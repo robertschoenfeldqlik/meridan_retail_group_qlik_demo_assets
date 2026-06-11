@@ -64,7 +64,7 @@ function carrierNV() {
     para("2.2. Under the Master Agreement, NinjaVan provides next-day, 2-day, 3-day, and 5-day delivery services segmented by parcel weight band."),
     para("2.3. NinjaVan has undertaken an operational review of its Singapore network capacity and determined that parcels in the 5-10 kg weight band require reclassification to a 3-day delivery window due to changes in sorting facility throughput and last-mile vehicle load optimization."),
     para("2.4. This Amendment formalizes the service level reclassification and associated rate adjustment for the 5-10 kg weight band, effective from the Amendment Effective Date."),
-    calloutBox("CRITICAL NOTICE: This Amendment was executed on 18 September 2025 with an effective date of 01 October 2025. However, MCG's e-commerce fulfillment team (headed by Priya Nair, E-Commerce Operations Manager) was NOT notified of the SLA change until 22 October 2025 — more than 3 weeks after the effective date. During this period, the MCG Singapore website and mobile app continued to display '2-day delivery' promises for 5-10 kg orders, resulting in false delivery commitments to approximately 14,000 customers per month.", "critical"),
+    calloutBox("CRITICAL NOTICE: This Amendment was executed on 18 September 2025 with an effective date of 01 October 2025. However, MCG's e-commerce fulfillment team (headed by Priya Ramanathan, E-Commerce Operations Manager) was NOT notified of the SLA change until 22 October 2025 — more than 3 weeks after the effective date. During this period, the MCG Singapore website and mobile app continued to display '2-day delivery' promises for 5-10 kg orders, resulting in false delivery commitments to approximately 14,000 customers per month.", "critical"),
 
     // ── SECTION 3: SERVICE LEVEL MODIFICATION ──
     heading("3. Service Level Modification"),
@@ -305,7 +305,7 @@ function carrierNV() {
       ["Role", "Name", "Email", "Phone"],
       [
         ["Regional Logistics Manager APAC", "Wei Lin Tan", "wltan@meridiancommerce.com", "+65 6234 8801"],
-        ["E-Commerce Operations Manager", "Priya Nair", "pnair@meridiancommerce.com", "+65 6234 8815"],
+        ["E-Commerce Operations Manager", "Priya Ramanathan", "pramanathan@meridiancommerce.com", "+65 6234 8815"],
         ["APAC Finance Controller", "David Loh", "dloh@meridiancommerce.com", "+65 6234 8820"],
         ["Legal Counsel, APAC", "Rachel Goh", "rgoh@meridiancommerce.com", "+65 6234 8830"],
         ["VP Supply Chain", "Thomas Brennan", "tbrennan@meridiancommerce.com", "+31 10 798 4100"],

@@ -156,10 +156,10 @@ function buildCreationGuide() {
     // ─── 1.3 Kafka Streaming Pipelines ──────────────────────────────────
     pageBreak(),
     heading("1.3 Kafka Streaming Pipelines (2 Topics)", 2),
-    para("These pipelines stream IoT sensor data from Apache Kafka topics in real-time using the Remote Engine Gen2."),
+    para("These pipelines stream IoT sensor data from Apache Kafka topics in real-time using the Data Gateway - Streaming."),
 
     heading("Prerequisites", 3),
-    para("Remote Engine Gen2 deployed and connected to Qlik Cloud", { bullet: true }),
+    para("Data Gateway - Streaming deployed and connected to Qlik Cloud", { bullet: true }),
     para("Kafka connection created (see Setup Guide Section 7.2)", { bullet: true }),
     para("Docker Kafka stack running: npm run docker:up", { bullet: true }),
     para("IoT simulator producing messages: verify in Confluent Control Center at localhost:9021", { bullet: true }),
@@ -288,7 +288,7 @@ function buildCreationGuide() {
         ["5", "Carrier Canonicalization", "shipments, iot_carrier_events", "shipments_canonical", "#6"],
         ["6", "IoT Normalization", "iot_cold_chain", "iot_normalized", "#4, #5"],
         ["7", "Supplier Deduplication", "sf_products", "suppliers_deduped", "#3"],
-        ["8", "Order-to-Delivery Timeline", "orders_enriched, shipments_canonical, iot_normalized, inventory_reconciled", "order_timeline", "#5, #6"],
+        ["8", "Order-to-Delivery Timeline", "orders_enriched, shipments_canonical, iot_normalized, inventory_reconciled", "orders_enriched (enriched)", "#5, #6"],
       ]
     ),
 
@@ -484,13 +484,13 @@ function buildCreationGuide() {
     dataTable(
       ["Gold Table", "Source Silver Tables", "Refresh", "Owner", "Key Metrics"],
       [
-        ["supply_chain_health", "inventory_reconciled, timestamps_audit", "15 min", "Henrik Jansen", "IRA %, phantom count, trust score by DC"],
-        ["last_mile_performance", "shipments_canonical, orders_enriched, customers_deduped", "30 min", "Sophie Muller", "On-time %, carrier SLA, address quality score"],
-        ["cold_chain_compliance", "iot_normalized, shipments_canonical", "5 min", "Thomas Brennan", "Exceedance count, spoilage probability"],
-        ["product_master_360", "products_harmonized, suppliers_deduped", "1 hour", "Thomas Berger", "Weight completeness, supplier dedup, GTIN coverage"],
-        ["customer_delivery_experience", "customers_deduped, orders_enriched", "1 hour", "Lisa Park", "WISMO rate (41%), address quality impact"],
-        ["compliance_readiness", "products_harmonized, inventory_reconciled", "Daily", "Dr. Elena Vasquez", "Lot capture rate (85%), traceability completeness"],
-        ["operational_cost_impact", "All Silver tables", "Daily", "CFO Office", "Cost by nightmare ($127M annual), trends"],
+        ["supply_chain_health",      "inventory_reconciled, timestamps_audit",                          "15 min", "Henrik Jansen",     "IRA %, phantom_units, pipeline_status, trust_score by DC"],
+        ["last_mile_performance",    "shipments_canonical, orders_enriched, customers_deduped",         "30 min", "Sophie Müller",     "on_time_pct, sla_met, address_quality_score, wismo_flag by carrier/region"],
+        ["cold_chain_compliance",    "iot_normalized, shipments_canonical",                             "5 min",  "Lars Eriksson",     "exceedance_minutes, spoilage_risk_score, pre_cool_compliant by route/carrier"],
+        ["product_master_health",    "product_master_harmonized, supplier_canonical",                   "1 hour", "Thomas Berger",     "completeness_score, weight_complete, supplier_duplicate_flag by SKU"],
+        ["compliance_traceability",  "lot_trace_unified, inventory_reconciled",                         "30 min", "Dr. Elena Vasquez", "lot_capture_rate, trace_complete, recall_risk_flag, nvwa_applicable by lot"],
+        ["pipeline_timestamp_audit", "timestamps_audit",                                                "5 min",  "Priya Ramanathan",  "pipeline status, lag_minutes, timezone_anomalies, trust_score per pipeline"],
+        ["customer_quality_index",   "customers_deduped, orders_enriched, shipments_canonical",         "1 hour", "Sophie Müller",     "address_quality_score, delivery_failure_rate, wismo_rate, is_duplicate by customer"],
       ]
     ),
 
@@ -505,7 +505,7 @@ function buildCreationGuide() {
     numberedItem("7", "Publish to the Data Marketplace for self-service discovery"),
     screenshot("Data Product registration showing AI-generated description, semantic types, and API sharing toggle"),
 
-    calloutBox("Trust Score: Each data product automatically receives a Trust Score based on 5 dimensions: Validity, Completeness, Discoverability, Usage, and AI-Specific quality. The Trust Score is visible in the Data Marketplace and helps consumers evaluate data fitness.", "info"),
+    calloutBox("Trust Score: Each data product automatically receives a Qlik Trust Score based on 5 dimensions: Freshness (how recently data was updated), Completeness (null rate on key fields), Accuracy (validation rule pass rate), Consistency (cross-table reconciliation), and Timeliness (pipeline SLA adherence). The Trust Score is visible in the Data Marketplace and helps consumers evaluate data fitness for use.", "info"),
 
     // ═══════════════════════════════════════════════════════════════════════
     // PART 4: QLIK AUTOMATIONS
@@ -573,7 +573,7 @@ function buildCreationGuide() {
       ["Block #", "Type", "Configuration"],
       [
         ["1", "Scheduled Start", "Cron: */5 * * * * (Every 5 minutes)"],
-        ["2", "Qlik Cloud → Query Data", "Data Product: Cold Chain Compliance; Filter: exceedance_minutes >= 15 AND alert_sent = false; Fields: shipment_id, route, carrier, max_temp_celsius, exceedance_minutes, estimated_loss_usd, product_type"],
+        ["2", "Qlik Cloud → Query Data", "Silver Table: silver.iot_normalized; Filter: exceedance_minutes >= 15 AND alert_sent = false; Fields: shipment_id, route, carrier, max_temp_celsius, exceedance_minutes, estimated_loss_usd, product_type"],
         ["3", "Control → Condition", "If result_count > 0 → continue; else → end"],
         ["4", "Control → Loop", "Iterate over query results"],
         ["5", "Microsoft Teams → Post Adaptive Card", "See card template below"],
@@ -632,7 +632,7 @@ function buildCreationGuide() {
       ["Block #", "Type", "Configuration"],
       [
         ["1", "Scheduled Start", "Cron: */30 * * * * (Every 30 minutes)"],
-        ["2", "Qlik Cloud → Query Data", "Data Product: Customer Delivery Experience; Filter: wismo_rate > 0.40; Group by: carrier, destination_region"],
+        ["2", "Qlik Cloud → Query Data", "Data Product: Last Mile Performance; Filter: wismo_flag = true AND on_time_pct < 0.60; Group by: carrier, destination_region"],
         ["3", "Control → Condition", "If results exist → continue; else → end"],
         ["4", "Microsoft Teams → Post Message", "Channel: #mcg-customer-ops; Include: carrier, region, WISMO rate, affected order count, dashboard link"],
       ]
@@ -654,7 +654,7 @@ function buildCreationGuide() {
         ["5", "Control → Verify", "Check records_processed, records_corrected, avg_confidence_score"],
         ["6", "Qlik Cloud → Update", "Mark stewardship tasks as \"Resolved\" or \"Needs Manual Review\""],
         ["7", "Microsoft Teams → Post Card", "Post results to #mcg-data-engineering with correction count and confidence"],
-        ["8", "Qlik Cloud → Trigger Refresh", "Refresh downstream Gold tables: customer_delivery_experience, last_mile_performance"],
+        ["8", "Qlik Cloud → Trigger Refresh", "Refresh downstream tables: silver.orders_enriched, gold.last_mile_performance"],
       ]
     ),
 

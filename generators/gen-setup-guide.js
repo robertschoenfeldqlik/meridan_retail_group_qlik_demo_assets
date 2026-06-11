@@ -327,7 +327,7 @@ function sectionDataConnections() {
         ["Host", "your-server-ip (or localhost for local Docker)"],
         ["Port", "5432"],
         ["Database", "mcg_wms"],
-        ["Username", "qlik_reader"],
+        ["Username", "mcg_admin"],
         ["Password", "(set during db:schema step)"],
       ]
     ),
@@ -350,7 +350,7 @@ function sectionDataConnections() {
       ]
     ),
     screenshot("Kafka connection settings in Qlik Cloud with bootstrap servers and topic configuration"),
-    calloutBox("Kafka connections from Qlik Cloud to an on-premises Kafka cluster require Qlik Remote Engine Gen2 (Data Gateway). For cloud-hosted Kafka (e.g., Confluent Cloud), a direct connection is possible with SASL authentication.", "info"),
+    calloutBox("Kafka connections from Qlik Cloud to an on-premises Kafka cluster require Data Gateway - Streaming. For cloud-hosted Kafka (e.g., Confluent Cloud), a direct connection is possible with SASL authentication.", "info"),
 
     heading("7.3 Salesforce Connection (CRM)", 2),
     para("This connection provides customer and order data from Salesforce CRM."),
@@ -450,15 +450,15 @@ function sectionLakehouse() {
     heading("8.4 Gold Layer (7 Data Products)", 2),
     para("The gold layer contains business-ready, governed data products created from silver layer sources. Use Table Recipes to define the gold tables:"),
     dataTable(
-      ["Gold Table", "Source (Silver)", "Business Purpose"],
+      ["Gold Table", "Source (Silver)", "Owner", "Refresh", "Business Purpose"],
       [
-        ["gold.supply_chain_360", "orders_cleansed + inventory_current + shipments_enriched", "Unified supply chain view for operations dashboards"],
-        ["gold.customer_experience", "contacts_unified + orders_crm + carrier_events_parsed", "Customer journey and delivery experience analytics"],
-        ["gold.cold_chain_compliance", "cold_chain_readings + shipments_enriched", "Temperature compliance and spoilage risk scoring"],
-        ["gold.last_mile_performance", "shipments_enriched + carrier_events_parsed", "Delivery SLA tracking and carrier performance metrics"],
-        ["gold.inventory_health", "inventory_current + orders_cleansed", "Real-time inventory accuracy and phantom inventory detection"],
-        ["gold.product_catalog", "products_master + inventory_current", "Enriched product data with availability and quality metrics"],
-        ["gold.operational_kpis", "All silver tables", "Pre-aggregated KPIs for executive dashboards"],
+        ["gold.supply_chain_health",      "inventory_reconciled + timestamps_audit",                        "Henrik Jansen",        "15 min", "Inventory accuracy, phantom inventory detection, and pipeline health KPIs per DC"],
+        ["gold.last_mile_performance",    "shipments_canonical + orders_enriched + customers_deduped",      "Sophie Müller",        "30 min", "Carrier SLA metrics, address quality scoring, and WISMO correlation by region"],
+        ["gold.cold_chain_compliance",    "iot_normalized + shipments_canonical",                           "Lars Eriksson",        "5 min",  "Temperature exceedance monitoring, spoilage risk scoring, carrier cold chain compliance"],
+        ["gold.product_master_health",    "product_master_harmonized + supplier_canonical",                 "Thomas Berger",        "1 hour", "SKU completeness, weight/UoM coverage, supplier deduplication status"],
+        ["gold.compliance_traceability",  "lot_trace_unified + inventory_reconciled",                       "Dr. Elena Vasquez",    "30 min", "Farm-to-shelf lot traceability, recall readiness, NVWA regulatory compliance status"],
+        ["gold.pipeline_timestamp_audit", "timestamps_audit",                                               "Priya Ramanathan",     "5 min",  "CDC pipeline health, data freshness, timestamp normalization status — early-warning for silent failures"],
+        ["gold.customer_quality_index",   "customers_deduped + orders_enriched + shipments_canonical",      "Sophie Müller",        "1 hour", "Address quality scoring, deduplication status, delivery failure rate, WISMO rate by customer"],
       ]
     ),
   ];
@@ -570,8 +570,8 @@ function sectionGlossary() {
     heading("11.2 Link Terms to Data Assets", 2),
     para("After importing, link glossary terms to their corresponding data assets:"),
     para("Link 'Phantom Inventory' to gold.inventory_health data product", { bullet: true }),
-    para("Link 'Cold Chain' to gold.cold_chain_compliance data product", { bullet: true }),
-    para("Link 'WISMO' to gold.customer_experience data product", { bullet: true }),
+    para("Link 'Cold Chain' to gold.supply_chain_health data product", { bullet: true }),
+    para("Link 'WISMO' to gold.last_mile_performance data product", { bullet: true }),
     para("Link 'Trust Score' to all data products (as a governance concept)", { bullet: true }),
     calloutBox("Linking glossary terms to data assets enables contextual help in analytics apps. When users hover over a field linked to a glossary term, the definition appears automatically.", "success"),
   ];
@@ -590,7 +590,7 @@ function sectionAutomations() {
         ["1", "Daily App Reload", "Schedule", "Reload MCG analytics apps with latest data", "06:00 UTC daily"],
         ["2", "Cold Chain Alert \u2192 Teams", "Data threshold", "Send Teams alert when temperature exceeds 8\u00B0C", "Every 5 minutes"],
         ["3", "Pipeline Health Summary \u2192 Teams", "Schedule", "Post daily pipeline status summary to Teams", "07:00 UTC daily"],
-        ["4", "WISMO Rate Alert \u2192 Teams", "Data threshold", "Alert when WISMO rate exceeds 15% in any region", "Hourly check"],
+        ["4", "WISMO Rate Alert \u2192 Teams", "Data threshold", "Alert when WISMO rate exceeds 40% for any carrier or region combination", "Every 30 minutes"],
         ["5", "Address Correction Loop \u2192 Talend", "Event", "Trigger Talend job for address standardization", "On new stewardship resolution"],
       ]
     ),
@@ -624,7 +624,7 @@ function sectionPredict() {
       ["Setting", "Value"],
       [
         ["Experiment name", "MCG Spoilage Risk Predictor"],
-        ["Source", "gold.cold_chain_compliance"],
+        ["Source", "silver.iot_normalized"],
         ["Target column", "spoilage_risk_score"],
         ["Problem type", "Regression"],
         ["Training split", "80/20"],
@@ -710,8 +710,8 @@ function sectionVerification() {
         ["11", "Salesforce Connection", "Test connection in Qlik Cloud", "Connection test succeeds"],
         ["12", "Lakehouse (Bronze)", "Check Data Integration \u2192 Lakehouse", "8 pipelines running, data flowing"],
         ["13", "Lakehouse (Silver)", "Check silver schema tables", "8 tables with transformed data"],
-        ["14", "Lakehouse (Gold)", "Check gold schema tables", "7 data products with data"],
-        ["15", "Data Products", "Data Integration \u2192 Data Products", "7 products registered with Trust Scores"],
+        ["14", "Lakehouse (Gold)", "Check gold schema tables", "2 data products with data"],
+        ["15", "Data Products", "Data Integration \u2192 Data Products", "2 products registered with Trust Scores"],
         ["16", "Qlik Answers", "Ask a test question", "Returns relevant answer with citations"],
         ["17", "Business Glossary", "Governance \u2192 Business Glossary", "25 terms across 5 categories"],
         ["18", "Automations", "Check automation run history", "Automations executing on schedule"],

@@ -401,9 +401,6 @@ function layerBadge(slide, y, label, color) {
     { x: 8.8, w: 3.9, label: "GOLD", sub: "Governed Data Products", color: C.qlikBlue, bg: C.lightBlue,
       items: [
         "supply_chain_health", "last_mile_performance",
-        "cold_chain_compliance", "product_master_360",
-        "customer_delivery_experience", "compliance_readiness",
-        "operational_cost_impact",
       ]},
   ];
 
@@ -515,13 +512,13 @@ function layerBadge(slide, y, label, color) {
   const slide = contentSlide("7 Gold-Layer Data Products", C.qlikBlue);
 
   const products = [
-    { name: "Supply Chain Health", owner: "Henrik Jansen", refresh: "15 min", kpi: "IRA: 97% target", color: C.qlikTeal },
-    { name: "Last Mile Performance", owner: "Sophie Muller", refresh: "30 min", kpi: "On-time: 92%", color: C.qlikGreen },
-    { name: "Cold Chain Compliance", owner: "Thomas Brennan", refresh: "5 min", kpi: "Spoilage risk score", color: C.qlikTeal },
-    { name: "Product Master 360", owner: "Thomas Berger", refresh: "1 hour", kpi: "8,200 missing weights", color: C.qlikGreen },
-    { name: "Customer Delivery Exp.", owner: "Lisa Park", refresh: "1 hour", kpi: "WISMO: 41%", color: C.qlikBlue },
-    { name: "Compliance Readiness", owner: "Dr. Elena Vasquez", refresh: "Daily", kpi: "Lot capture: 85%", color: C.qlikBlue },
-    { name: "Operational Cost Impact", owner: "CFO Office", refresh: "Daily", kpi: "$127M annual", color: C.qlikTeal },
+    { name: "Supply Chain Health",      owner: "Henrik Jansen",  refresh: "15 min", kpi: "IRA: 97% target",          color: C.qlikTeal },
+    { name: "Last Mile Performance",    owner: "Sophie Müller",  refresh: "30 min", kpi: "On-time: 92%",             color: C.qlikGreen },
+    { name: "Cold Chain Compliance",    owner: "Lars Eriksson",  refresh: "5 min",  kpi: "Exceedance: < 2%",         color: C.qlikBlue },
+    { name: "Product Master Health",    owner: "Thomas Berger",  refresh: "1 hour", kpi: "Completeness: > 95%",      color: C.qlikLightGreen },
+    { name: "Compliance Traceability",  owner: "Dr. E. Vasquez", refresh: "30 min", kpi: "Lot capture: 100%",        color: C.qlikTeal },
+    { name: "Pipeline & Timestamp Audit", owner: "P. Ramanathan", refresh: "5 min",  kpi: "Trust Score: 0.95 target", color: C.qlikGreen },
+    { name: "Customer Quality Index",   owner: "Sophie Müller",  refresh: "1 hour", kpi: "Address quality: > 0.85",  color: C.qlikBlue },
   ];
 
   products.forEach((p, i) => {
@@ -753,7 +750,7 @@ dividerSlide("The 7 Nightmares", "$127M in annual data quality costs");
   });
   const infra = [
     { x: 0.75, label: "Data Movement\nGateway", sub: "On-prem PostgreSQL" },
-    { x: 3.25, label: "Remote Engine\nGen2", sub: "Kafka connectivity" },
+    { x: 3.25, label: "Data Gateway\nStreaming", sub: "Kafka connectivity" },
     { x: 5.75, label: "Docker Compose", sub: "Confluent Platform" },
     { x: 8.25, label: "IoT Simulator", sub: "kafka_iot_simulator.py" },
     { x: 10.55, label: "WMS Simulator", sub: "postgres_simulator.py" },
