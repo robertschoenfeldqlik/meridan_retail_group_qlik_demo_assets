@@ -163,7 +163,7 @@ Creates automation scaffolds in disabled state:
 
 ### 8. Data Products (Gold Layer)
 
-Registers 8 data products from `data_products.json` (requires Talend Enterprise tier).
+Registers 2 data products from `data_products.json`: Supply Chain Health and Last Mile Performance.
 
 ### 9. Business Glossary
 

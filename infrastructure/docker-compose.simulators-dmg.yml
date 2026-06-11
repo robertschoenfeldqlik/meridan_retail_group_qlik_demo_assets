@@ -116,5 +116,5 @@ networks:
     driver: bridge
     name: mcg-sim-net
   mcg-kafka-net:
-    external: true
+    driver: bridge
     name: mcg-kafka-net

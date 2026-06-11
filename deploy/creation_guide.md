@@ -465,7 +465,7 @@ Source (dirty) → Data Flow 3 (standardize) → Stewardship (human review)
 |---|---|
 | **Name** | `MCG - Order to Delivery Timeline` |
 | **Input** | `bronze.sf_orders`, `silver.shipments_canonical`, `silver.iot_normalized`, `silver.inventory_reconciled` |
-| **Output** | `silver.orders_enriched` + `gold.order_timeline` |
+| **Output** | `silver.orders_enriched` |
 | **Nightmares** | #5 (Timestamps), #6 (Carrier Black Hole) |
 
 **Pipeline Designer Steps:**
@@ -484,7 +484,7 @@ Source (dirty) → Data Flow 3 (standardize) → Stewardship (human review)
    - `sla_met = TRUE` if delivered on or before promise
    - `sla_met = FALSE` if delivered late or undelivered
 5. **IoT Enrich** — If cold chain shipment, attach `max_temperature`, `exceedance_flag` from `silver.iot_normalized`
-6. **Output** → `silver.orders_enriched` (detail) + `gold.order_timeline` (aggregated)
+6. **Output** → `silver.orders_enriched`
 
 #### Silver Verification Checklist
 
@@ -552,128 +552,14 @@ Gold tables aggregate Silver data into business-ready data products. Each is bui
    - `avg_address_quality = AVG(address_quality_score)`
 3. **Output columns:** `carrier`, `destination_country`, `destination_region`, `total_shipments`, `on_time_pct`, `avg_delivery_hours`, `failed_attempts`, `avg_address_quality`, `wismo_rate`, `sla_target_hours`, `snapshot_timestamp`
 
-#### Table Recipe 3: `gold.cold_chain_compliance`
-
-| Setting | Value |
-|---|---|
-| **Description** | Temperature exceedance events + spoilage risk scores |
-| **Input** | `silver.iot_normalized`, `silver.shipments_canonical` |
-| **Refresh** | Every 5 minutes |
-| **Consumers** | Supply Chain Operations App, Predict Model 1, Discovery Agent |
-
-**Recipe Steps:**
-
-1. **Filter** `silver.iot_normalized` where `exceedance = TRUE` or `data_gap = TRUE`
-2. **Aggregate** by `shipment_id` + `route_id`:
-   - `avg_temp_celsius = AVG(temperature_value)`
-   - `max_temp_celsius = MAX(temperature_value)`
-   - `exceedance_minutes = SUM(duration_minutes) where exceedance = TRUE`
-   - `gap_count = COUNT(*) where data_gap = TRUE`
-3. **Enrich** with shipment context from `silver.shipments_canonical`:
-   - `carrier`, `route`, `origin_facility`, `product_category`
-4. **Spoilage Score** — Calculate risk (0.0 – 1.0) based on temp severity × duration × product sensitivity
-5. **Output columns:** `shipment_id`, `route_id`, `carrier`, `origin_facility`, `avg_temp_celsius`, `max_temp_celsius`, `exceedance_minutes`, `gap_count`, `spoilage_risk_score`, `spoilage_flag`, `pre_cool_compliant`, `product_category`, `snapshot_timestamp`
-
-#### Table Recipe 4: `gold.product_master_360`
-
-| Setting | Value |
-|---|---|
-| **Description** | Unified product catalog with trust scores |
-| **Input** | `silver.products_harmonized`, `silver.suppliers_deduped` |
-| **Refresh** | Hourly |
-| **Consumers** | Supply Chain Operations App |
-
-**Recipe Steps:**
-
-1. **Join** products → canonical suppliers on supplier mapping
-2. **Enrich** with quality metrics:
-   - `data_completeness = (non-null fields / total fields)`
-   - `sku_resolved = TRUE if canonical_sku assigned`
-   - `weight_valid = TRUE if weight_kg > 0 and NOT NULL`
-   - `origin_documented = TRUE if country_of_origin IS NOT NULL`
-3. **Trust Score** — Composite score combining completeness, validity, consistency
-4. **Output columns:** `canonical_sku`, `legacy_sku_am`, `legacy_sku_eu`, `product_name_en`, `product_name_original`, `category_l1`, `category_l2`, `category_l3`, `weight_kg`, `canonical_supplier_id`, `canonical_supplier_name`, `country_of_origin`, `trust_score`, `data_completeness`, `perishable`
-
-#### Table Recipe 5: `gold.customer_delivery_experience`
-
-| Setting | Value |
-|---|---|
-| **Description** | WISMO rates + delivery experience by carrier and region |
-| **Input** | `silver.orders_enriched`, `silver.customers_deduped` |
-| **Refresh** | Hourly |
-| **Consumers** | Delivery & Customer Experience App |
-
-**Recipe Steps:**
-
-1. **Join** orders → customers on `contact_id`
-2. **Aggregate** by `carrier` + `destination_region`:
-   - `total_orders = COUNT(*)`
-   - `wismo_count = SUM(wismo_flag)`
-   - `wismo_rate = wismo_count / total_orders`
-   - `avg_delivery_days = AVG(order_to_delivery_hours / 24)`
-   - `sla_breach_rate = SUM(NOT sla_met) / total_orders`
-3. **Customer-level** — Also aggregate per customer:
-   - `customer_total_orders`, `customer_wismo_count`, `customer_ltv`
-4. **Output columns:** `carrier`, `destination_region`, `destination_country`, `total_orders`, `wismo_count`, `wismo_rate`, `avg_delivery_days`, `sla_breach_rate`, `period_start`, `period_end`
-
-#### Table Recipe 6: `gold.compliance_readiness`
-
-| Setting | Value |
-|---|---|
-| **Description** | Lot traceability + recall readiness per product |
-| **Input** | `silver.inventory_reconciled`, `silver.products_harmonized` |
-| **Refresh** | Hourly |
-| **Consumers** | Supply Chain Operations App |
-
-**Recipe Steps:**
-
-1. **Join** inventory → products on `sku` / `canonical_sku`
-2. **Traceability Assessment:**
-   - `lot_documented = TRUE` if lot_number is present
-   - `origin_documented = TRUE` if country_of_origin is present
-   - `supplier_documented = TRUE` if canonical_supplier_id is present
-   - `trace_complete = lot_documented AND origin_documented AND supplier_documented`
-3. **Recall Readiness Score:**
-   - 1.0 = full traceability chain (farm → supplier → DC → customer)
-   - 0.5 = partial (missing lot or origin)
-   - 0.0 = untraceable
-4. **Output columns:** `canonical_sku`, `product_name`, `category`, `dc_id`, `lot_number`, `country_of_origin`, `canonical_supplier`, `trace_complete`, `recall_readiness_score`, `perishable`, `nvwa_applicable`
-
-#### Table Recipe 7: `gold.operational_cost_impact`
-
-| Setting | Value |
-|---|---|
-| **Description** | $127M nightmare cost attribution per DC and category |
-| **Input** | All Silver tables |
-| **Refresh** | Daily |
-| **Consumers** | Supply Chain Operations App (Executive sheet) |
-
-**Recipe Steps:**
-
-1. **Nightmare Attribution** — Calculate cost impact per nightmare category:
-   - #1 Phantom Inventory: `phantom_count × avg_unit_cost × 1.3 (carrying cost)`
-   - #2 Address Failures: `failed_attempts × $12 per reattempt`
-   - #3 Product Master: `sku_mismatch_count × avg_order_value × 0.05 (error rate)`
-   - #4 Silent Pipelines: `downtime_hours × orders_per_hour × avg_margin`
-   - #5 Timestamp Chaos: `mis-routed_shipments × rerouting_cost`
-   - #6 Carrier Black Hole: `wismo_calls × $2.30 + sla_penalties`
-   - #7 Compliance Gap: `recall_cost + regulatory_fines`
-2. **Aggregate** by `dc_id`, `nightmare_category`, `month`
-3. **Output columns:** `dc_id`, `region`, `nightmare_id`, `nightmare_name`, `monthly_cost_impact`, `annual_projected`, `top_contributing_sku`, `top_contributing_carrier`, `remediation_status`
-
 #### Gold Verification Checklist
 
 | Table | Refresh | Key Metric to Verify |
 |---|---|---|
 | `gold.supply_chain_health` | 15 min | IRA percentage per DC |
 | `gold.last_mile_performance` | 30 min | On-time delivery % by carrier |
-| `gold.cold_chain_compliance` | 5 min | Exceedance event count |
-| `gold.product_master_360` | 1 hour | Trust score distribution |
-| `gold.customer_delivery_experience` | 1 hour | WISMO rate by region |
-| `gold.compliance_readiness` | 1 hour | Trace-complete percentage |
-| `gold.operational_cost_impact` | Daily | Total cost attribution |
 
-**Total: 7 Gold tables**
+**Total: 2 Gold tables**
 
 ---
 
@@ -689,11 +575,6 @@ Register each Gold table as a governed Data Product with metadata, ownership, an
 |---|---|---|---|---|---|
 | 1 | **Supply Chain Health** | `gold.supply_chain_health` | Henrik Jansen (VP Warehouse Ops) | `inventory`, `phantom`, `pipeline-health` | Every 15 min |
 | 2 | **Last Mile Performance** | `gold.last_mile_performance` | Sophie Müller (EU Logistics Mgr) | `carrier`, `sla`, `delivery` | Every 30 min |
-| 3 | **Cold Chain Compliance** | `gold.cold_chain_compliance` | Thomas Brennan (VP Supply Chain) | `cold-chain`, `iot`, `risk`, `spoilage` | Every 5 min |
-| 4 | **Product Master 360** | `gold.product_master_360` | Thomas Berger (Product Data Mgr) | `product`, `sku`, `master-data` | Hourly |
-| 5 | **Customer Delivery Experience** | `gold.customer_delivery_experience` | Lisa Park (Head of CX) | `customer`, `wismo`, `delivery` | Hourly |
-| 6 | **Compliance Readiness** | `gold.compliance_readiness` | Dr. Elena Vasquez (CCO) | `compliance`, `nvwa`, `traceability` | Hourly |
-| 7 | **Operational Cost Impact** | `gold.operational_cost_impact` | CFO Office | `cost`, `executive`, `nightmare` | Daily |
 
 **For each data product:**
 
@@ -757,11 +638,6 @@ For data products that need external consumption:
 |---|---|---|
 | Supply Chain Health | ✅ Enable | Discovery Agent, MCP Server, external dashboards |
 | Last Mile Performance | ✅ Enable | Predict model training, partner portals |
-| Cold Chain Compliance | ✅ Enable | Predict model training, automated alerting |
-| Product Master 360 | ✅ Enable | B2B partners, e-commerce sync |
-| Customer Delivery Experience | Optional | Internal analytics only |
-| Compliance Readiness | Optional | Internal compliance team |
-| Operational Cost Impact | Optional | Executive reporting only |
 
 **API endpoint format:**
 ```
@@ -779,11 +655,10 @@ curl -H "Authorization: Bearer <api-key>" \
 **Navigate to:** Data Governance → Data Marketplace
 
 1. Enable the Data Marketplace on your tenant
-2. Verify all 7 data products appear in the self-service portal
+2. Verify both data products appear in the self-service portal
 3. Add rich descriptions for business user discoverability:
    - **Supply Chain Health:** "Real-time inventory accuracy, phantom inventory alerts, and pipeline health for all 9 DCs"
    - **Last Mile Performance:** "Carrier SLA metrics, delivery success rates, and address quality scores by region"
-   - **Cold Chain Compliance:** "Temperature monitoring, spoilage risk scores, and cold chain exceedance events"
 4. Test: business user can browse, search by tag, and request access
 
 ---
@@ -819,9 +694,9 @@ Instead of one app per data product, MCG uses a **domain-based architecture** wi
 
 | App | Domain | Data Sources | Primary Users |
 |---|---|---|---|
-| **MCG Supply Chain Operations** | Internal operations: inventory, cold chain, products, compliance, cost | **Gold:** `supply_chain_health`, `cold_chain_compliance`, `product_master_360`, `compliance_readiness`, `operational_cost_impact` | VP Warehouse Ops, Supply Chain Team, Quality, Compliance |
+| **MCG Supply Chain Operations** | Internal operations: inventory, pipeline health | **Gold:** `supply_chain_health` | VP Warehouse Ops, Supply Chain Team |
 | | | **Streaming:** `mcg.iot.cold-chain`, `mcg.iot.carrier-events` (via Bronze/Silver for real-time monitoring) | |
-| **MCG Delivery & Customer Experience** | External delivery + customer facing: last mile, orders, WISMO | **Gold:** `last_mile_performance`, `customer_delivery_experience`, `order_timeline` | Logistics Managers, Customer Experience, Regional VPs |
+| **MCG Delivery & Customer Experience** | External delivery: last mile, SLA, address quality | **Gold:** `last_mile_performance` | Logistics Managers, Customer Experience, Regional VPs |
 | | | **Streaming:** `mcg.iot.carrier-events` (via Bronze for live tracking updates) | |
 
 **Benefits of domain-based design:**
@@ -848,10 +723,6 @@ LIB CONNECT TO 'MCG Demo Lakehouse';
 
 // ─── Gold Tables (aggregated, governed) ───
 LOAD * FROM [gold.supply_chain_health];
-LOAD * FROM [gold.cold_chain_compliance];
-LOAD * FROM [gold.product_master_360];
-LOAD * FROM [gold.compliance_readiness];
-LOAD * FROM [gold.operational_cost_impact];
 
 // ─── Streaming IoT Data (real-time from Lakehouse) ───
 // Cold chain sensor readings — live temperature, humidity, GPS, alerts
@@ -882,60 +753,29 @@ LOAD * FROM [bronze.iot_carrier_events];
 
 #### Sheet 2: Cold Chain Monitoring (Streaming: `mcg.iot.cold-chain`)
 
-> **Data source:** Real-time IoT telemetry from Kafka topic `mcg.iot.cold-chain` via `silver.iot_normalized` + `gold.cold_chain_compliance` (aggregated)
+> **Data source:** Real-time IoT telemetry from Kafka topic `mcg.iot.cold-chain` via `silver.iot_normalized`
 
 | Object | Type | Data |
 |---|---|---|
 | Active Exceedances | KPI | Count where `exceedance_minutes > 0` and shipment active |
 | **Live Temperature Feed** | Line chart (streaming) | `temperature_value` over `timestamp` by `sensor_id` — `silver.iot_normalized`, auto-refreshes |
 | Temperature Heatmap | Pivot table | `route_id` × `hour` → avg temp, red cells for exceedance |
-| Spoilage Risk Scatter | Scatter | X: `exceedance_minutes`, Y: `spoilage_risk_score`, bubble = `estimated_loss` |
 | **Sensor Health** | Table | `sensor_id`, `battery_level_pct`, `last_reading_utc`, `data_gap` — Lakehouse query for real-time status |
 | Route Performance | Bar chart | Exceedance rate by `route_id` |
 | **GPS Tracking Map** | Map | Live `gps_latitude`/`gps_longitude` from `silver.iot_normalized` — shipment positions with alert colors |
-| Sensor Gap Timeline | Gantt / bar | `data_gap = TRUE` events plotted on timeline |
-| At-Risk Shipments | Table | Active shipments with `spoilage_risk_score > 0.5` — sortable |
 
 **Filter pane:** Route, Carrier, Product Category, Sensor ID, Date Range
 
-#### Sheet 3: Product Data Quality
+#### Sheet 3: Pipeline Health
 
 | Object | Type | Data |
 |---|---|---|
-| Product Completeness | KPI | `Avg(data_completeness)` |
-| Missing Weights | KPI | Count where `weight_valid = FALSE` |
-| SKU Resolution Status | Pie chart | Resolved vs legacy-only vs unmapped |
-| Trust Score by Category | Bar chart | `avg(trust_score)` by `category_l1` |
-| Supplier Consolidation | Sankey / table | Original supplier names → canonical names (dedup view) |
-| Product Detail | Table | Full product list with quality flags — searchable |
+| Pipeline Status | KPI | Count of `pipeline_status = HEALTHY` vs DEGRADED/FAILED |
+| Sync Lag by DC | Bar chart | `sync_lag_minutes` by `dc_id` |
+| Pipeline Status Timeline | Line chart | `pipeline_status` changes over `last_sync_utc` |
+| Trust Score Distribution | Histogram | `trust_score` frequency across DCs |
 
-**Filter pane:** Category L1/L2, Supplier, Perishable flag
-
-#### Sheet 4: Compliance & Recall Readiness
-
-| Object | Type | Data |
-|---|---|---|
-| Trace-Complete Rate | KPI | `Sum(trace_complete) / Count(*)` — target 100% |
-| Missing Lot Numbers | KPI | Count where `lot_documented = FALSE` and `perishable = TRUE` |
-| Recall Readiness by Category | Bar chart | `avg(recall_readiness_score)` by product category |
-| Traceability Gaps | Table | Products with `trace_complete = FALSE` — shows which element missing |
-| Compliance Timeline | Line | Trace-complete rate trending over months |
-| NVWA Risk Products | Table | Perishable products with `nvwa_applicable = TRUE` and low readiness |
-
-**Filter pane:** Category, DC, Perishable, NVWA Applicable
-
-#### Sheet 5: Executive Cost Impact
-
-| Object | Type | Data |
-|---|---|---|
-| Total Annual Impact | KPI | `Sum(annual_projected)` — $127M headline |
-| Cost by Nightmare | Treemap / bar | `annual_projected` by `nightmare_name` |
-| Cost by DC | Bar chart | `Sum(monthly_cost_impact)` by `dc_id` |
-| Nightmare Deep Dive | Combo chart | Monthly trend per nightmare with remediation overlay |
-| Top Offenders | Table | Top 10 SKU/carrier/DC combinations by cost |
-| Remediation Progress | Bullet chart | Actual vs target per nightmare category |
-
-**Filter pane:** Nightmare category, Region, DC, Time period
+**Filter pane:** Region, DC, Pipeline Status, Date Range
 
 ---
 
@@ -952,8 +792,6 @@ LIB CONNECT TO 'MCG Demo Lakehouse';
 
 // ─── Gold Tables (aggregated, governed) ───
 LOAD * FROM [gold.last_mile_performance];
-LOAD * FROM [gold.customer_delivery_experience];
-LOAD * FROM [gold.order_timeline];
 
 // ─── Streaming Carrier Events (real-time via Lakehouse query) ───
 // Live carrier tracking updates from Kafka topic mcg.iot.carrier-events
@@ -1188,7 +1026,7 @@ SECTION APPLICATION;
 
 | Setting | Value |
 |---|---|
-| **Dataset** | `gold.cold_chain_compliance` (from Lakehouse) |
+| **Dataset** | `silver.iot_normalized` (from Lakehouse) |
 | **Filter** | Historical shipments with known outcomes (`spoilage_flag IS NOT NULL`) |
 | **Min rows** | 5,000+ for reliable model |
 

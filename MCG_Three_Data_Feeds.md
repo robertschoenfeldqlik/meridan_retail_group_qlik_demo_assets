@@ -347,7 +347,7 @@ Bootstrap Servers: <your-kafka-broker>:9092
 Topic:            mcg.iot.cold-chain
 Message Format:   JSON
 Security:         SASL_SSL (for Confluent Cloud) or PLAINTEXT (local)
-Engine:           Remote Engine Gen2 (recommended)
+Engine:           Data Gateway - Streaming (recommended)
 ```
 
 **Demo flow:**
@@ -575,7 +575,7 @@ Replication Mode: Full + Incremental (based on SystemModstamp)
 │  ┌────────────────────────────────────────────────────────────────────┐  │
 │  │ DATA INTEGRATION LAYER                                              │  │
 │  │  • PostgreSQL CDC connector (Data Movement Gateway)                 │  │
-│  │  • Kafka streaming connector (Remote Engine Gen2)                   │  │
+│  │  • Kafka streaming connector (Data Gateway - Streaming)                   │  │
 │  │  • Salesforce SaaS connector (Standard)                             │  │
 │  │  • Pipeline orchestration + monitoring + alerting                   │  │
 │  └────────────────────────────────────────────────────────────────────┘  │

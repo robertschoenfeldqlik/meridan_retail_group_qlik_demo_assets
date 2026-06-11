@@ -162,7 +162,7 @@ TransFrio Logistics replaced 6 trucks with new Thermo King X4 7500 reefer units 
 
 **Step 8 — Show MCP integration (optional)**
 - Open Claude → "What's the spoilage risk for active TransFrio shipments?"
-- Claude uses Qlik MCP to query `gold.cold_chain_compliance` + Qlik Answers for context
+- Claude uses Qlik MCP to query `silver.iot_normalized` + Qlik Answers for context
 - Returns combined data + operational procedure guidance
 
 **Talking Points:**
@@ -190,7 +190,7 @@ Listeria detected in organic butter lettuce from an undisclosed backup farm (FAR
 - "If this lettuce batch is contaminated, we can't tell which stores have it"
 
 **Step 2 — Show the compliance data product (Gold)**
-- `gold.compliance_readiness`: query `sku = 'MCG-GRO-LET-001'`
+- `silver.inventory_reconciled`: query `sku = 'MCG-GRO-LET-001'`
 - Some rows have complete farm-to-store tracing. Others have gaps.
 - `trace_complete_flag = FALSE` for 30% of lettuce records
 

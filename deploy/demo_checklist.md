@@ -15,7 +15,7 @@ Master checklist of everything required to stand up the full Meridian Commerce G
 ### PostgreSQL Database
 - [ ] PostgreSQL instance running (Docker, RDS, or local)
 - [ ] Database `mcg_wms` created
-- [ ] Read user `qlik_reader` created with SELECT + REPLICATION permissions
+- [ ] User `mcg_admin` has SELECT + REPLICATION permissions (or create a dedicated read user)
 - [ ] Logical replication enabled (`wal_level = logical` in postgresql.conf)
 - [ ] Run simulator: `python simulators/postgres_simulator.py` — verify 3 tables created (`inventory_positions`, `warehouse_events`, `shipments`)
 - [ ] Let simulator run for 10-15 minutes to seed initial data volume
@@ -68,7 +68,7 @@ Master checklist of everything required to stand up the full Meridian Commerce G
 - [ ] Salesforce connection created via Standard connector
   - [ ] Test connection successful
   - [ ] Objects visible: `Contact`, `MCG_Order__c`, `MCG_Product__c`
-- [ ] Kafka connection created via Remote Engine Gen2
+- [ ] Kafka connection created via Data Gateway - Streaming
   - [ ] Test connection successful
   - [ ] Topics visible: `mcg.iot.cold-chain`, `mcg.iot.carrier-events`
 - [ ] S3/Cloud Storage connection created (for Lakehouse target)
@@ -107,12 +107,7 @@ Master checklist of everything required to stand up the full Meridian Commerce G
 ### Gold Layer — Data Products
 - [ ] Table recipe: `gold.supply_chain_health` (15 min refresh)
 - [ ] Table recipe: `gold.last_mile_performance` (30 min refresh)
-- [ ] Table recipe: `gold.cold_chain_compliance` (5 min refresh)
-- [ ] Table recipe: `gold.product_master_360` (1 hour refresh)
-- [ ] Table recipe: `gold.customer_delivery_experience` (1 hour refresh)
-- [ ] Table recipe: `gold.compliance_readiness` (1 hour refresh)
-- [ ] Table recipe: `gold.operational_cost_impact` (daily refresh)
-- [ ] Verify all 7 Gold tables have aggregated data
+- [ ] Verify all 2 Gold tables have aggregated data
 
 ---
 
@@ -121,7 +116,7 @@ Master checklist of everything required to stand up the full Meridian Commerce G
 ### Data Lineage
 - [ ] Verify field-level lineage visible from source → Bronze → Silver → Gold
 - [ ] Walk through lineage for `gold.supply_chain_health` (traces back to PostgreSQL CDC)
-- [ ] Walk through lineage for `gold.cold_chain_compliance` (traces back to Kafka IoT)
+- [ ] Walk through lineage for `gold.last_mile_performance` (traces back to carrier shipment data)
 - [ ] Verify data flow routes appear in lineage graphs
 
 ### Impact Analysis
@@ -136,7 +131,7 @@ Master checklist of everything required to stand up the full Meridian Commerce G
 - [ ] Capture profiling results for demo screenshots
 
 ### Trust Score
-- [ ] Enable Trust Score on all 7 Gold-layer data products
+- [ ] Enable Trust Score on both Gold-layer data products
 - [ ] Verify Trust Score dimensions: Validity, Completeness, Discoverability, Usage
 - [ ] Enable Trust Score for AI (Accuracy, Diversity, Timeliness) if Enterprise edition
 - [ ] Verify Trust Score drops visibly when pipeline failure is simulated (DC-RTD-01 scenario)
@@ -149,11 +144,6 @@ Master checklist of everything required to stand up the full Meridian Commerce G
 ### Register Data Products (with AI-Driven Descriptions)
 - [ ] "Supply Chain Health" registered with tags and owner (Henrik Jansen)
 - [ ] "Last Mile Performance" registered (Sophie Müller)
-- [ ] "Cold Chain Compliance" registered (Thomas Brennan)
-- [ ] "Product Master 360" registered (Thomas Berger)
-- [ ] "Customer Delivery Experience" registered (Lisa Park)
-- [ ] "Compliance Readiness" registered (Dr. Elena Vasquez)
-- [ ] "Operational Cost Impact" registered (CFO Office)
 - [ ] **AI-Driven Descriptions** — For each data product:
   - [ ] Click **Generate Description** to auto-create metadata from schema + sample data
   - [ ] Review and refine AI-generated product-level descriptions
@@ -161,7 +151,7 @@ Master checklist of everything required to stand up the full Meridian Commerce G
   - [ ] Publish descriptions for Data Marketplace discoverability
 
 ### Semantic Types & AI-Suggested Validation Rules
-- [ ] Review AI-detected semantic types on all 7 data products (e.g., `dc_id` → Identifier, `ira_pct` → Percentage, `carrier` → Categorical)
+- [ ] Review AI-detected semantic types on both data products (e.g., `dc_id` → Identifier, `ira_pct` → Percentage, `carrier` → Categorical)
 - [ ] Confirm or override detected types for key columns (see `creation_guide.md` Section 2.2 for 10 examples)
 - [ ] Review AI-suggested validation rules:
   - [ ] Range constraints (e.g., `ira_pct` between 0.0 – 1.0)
@@ -174,14 +164,12 @@ Master checklist of everything required to stand up the full Meridian Commerce G
 ### API Sharing (Governance Capability)
 - [ ] API sharing enabled for "Supply Chain Health" (Discovery Agent, MCP Server, external dashboards)
 - [ ] API sharing enabled for "Last Mile Performance" (Predict model training, partner portals)
-- [ ] API sharing enabled for "Cold Chain Compliance" (Predict model training, automated alerting)
-- [ ] API sharing enabled for "Product Master 360" (B2B partners, e-commerce sync)
 - [ ] Test API endpoint returns data (curl or Postman)
 - [ ] Verify API sharing maintains lineage, audit trails, and Trust Score visibility
 
 ### Data Marketplace
 - [ ] Enable Data Marketplace on Gold-layer data products
-- [ ] Verify all 7 data products appear in self-service portal with AI-generated descriptions
+- [ ] Verify both data products appear in self-service portal with AI-generated descriptions
 - [ ] Test: business user can browse, search by tag, and request access to data products
 
 ---
@@ -190,13 +178,13 @@ Master checklist of everything required to stand up the full Meridian Commerce G
 
 ### Build or Import Apps (Domain-Based Design — 2 Apps)
 - [ ] **MCG Supply Chain Operations** app created
-  - Gold tables: `supply_chain_health`, `cold_chain_compliance`, `product_master_360`, `compliance_readiness`, `operational_cost_impact`
+  - Gold table: `supply_chain_health`
   - Streaming: `mcg.iot.cold-chain` via `silver.iot_normalized`, `mcg.iot.carrier-events` via `bronze.iot_carrier_events`
-  - Sheets: Inventory Health, Cold Chain Monitoring (streaming), Product Data Quality, Compliance & Recall, Executive Cost Impact
+  - Sheets: Inventory Health, Cold Chain Monitoring (streaming), Pipeline Health
 - [ ] **MCG Delivery & Customer Experience** app created
-  - Gold tables: `last_mile_performance`, `customer_delivery_experience`, `order_timeline`
+  - Gold table: `last_mile_performance`
   - Streaming: `mcg.iot.carrier-events` via `bronze.iot_carrier_events`, `silver.shipments_canonical`
-  - Sheets: Last Mile Performance, Live Shipment Tracking (streaming), WISMO & Customer Impact, Order Timeline, Address Quality Impact
+  - Sheets: Last Mile Performance, Live Shipment Tracking (streaming), WISMO & Customer Impact, Address Quality Impact
 
 ### Qlik Answers & Business Logic (Agentic Analytics — GA Feb 2026)
 - [ ] Configure Business Logic Logical Model in each app (define dimensions, measures, relationships)
@@ -247,7 +235,7 @@ Master checklist of everything required to stand up the full Meridian Commerce G
 
 ### Model 1: Spoilage Risk Predictor
 - [ ] Create ML experiment in Qlik Cloud
-- [ ] Data source: `gold.cold_chain_compliance`
+- [ ] Data source: `silver.iot_normalized`
 - [ ] Target: `spoilage_risk_score` (regression)
 - [ ] Features: max_temp_celsius, exceedance_minutes, humidity_avg, product_category, route_id, season
 - [ ] Train model and select best performer
@@ -378,11 +366,15 @@ Master checklist of everything required to stand up the full Meridian Commerce G
 ## Phase 12: MCP Server & Agentic AI
 
 ### MCP Server
-- [ ] Install Qlik MCP server: `npx @qlik/mcp-server`
-- [ ] Set environment variables: `QLIK_TENANT_URL`, `QLIK_API_KEY`
-- [ ] Configure Claude Desktop or Claude Code (see `setup_guide.md` Section 13)
-- [ ] Test MCP connection: Ask Claude "List the spaces in my Qlik tenant"
+- [ ] Generate API key: Qlik Cloud Profile → API Keys → Generate new key
+- [ ] Add SSE MCP server to Claude Desktop config (`claude_desktop_config.json`):
+  ```json
+  { "mcpServers": { "qlik": { "url": "https://your-tenant.us.qlikcloud.com/api/ai/mcp", "headers": { "Authorization": "Bearer YOUR_API_KEY" } } } }
+  ```
+- [ ] Restart Claude Desktop — no local install required (cloud-hosted SSE endpoint)
+- [ ] Test MCP connection: Ask Claude "Search my Qlik tenant for supply chain apps"
 - [ ] Test data product query: Ask Claude "What is the current inventory accuracy at DC-RTD-01?"
+- [ ] Verify MCP tool catalog: 71 tools across App Discovery, Lineage, Data Products, Business Glossary, and more
 
 ### Agentic Analytics (GA February 2026)
 - [ ] Enable Agentic Analytics experience in Qlik Cloud (delivered via Qlik Answers)

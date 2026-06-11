@@ -5,12 +5,13 @@
 //
 // Gold Tables Used:
 //   - gold.last_mile_performance
-//   - gold.customer_delivery_experience
-//   - gold.order_timeline
+//
+// Silver Tables Used:
+//   - silver.orders_enriched
+//   - silver.shipments_canonical
 //
 // Streaming Tables (Direct Query):
 //   - bronze.iot_carrier_events
-//   - silver.shipments_canonical
 // =============================================================================
 
 SET ThousandSep=',';
@@ -63,10 +64,10 @@ FROM [lib://MCG Open Lakehouse/gold.last_mile_performance]
 
 
 // =============================================================================
-// 2. CUSTOMER DELIVERY EXPERIENCE (Gold)
+// 2. ORDERS ENRICHED (Silver — replaces former gold.customer_delivery_experience + gold.order_timeline)
 // =============================================================================
-// Source: gold.customer_delivery_experience
-// Contains: Customer addresses, WISMO rates, address quality, lifetime value
+// Source: silver.orders_enriched
+// Contains: Customer addresses, WISMO rates, order lifecycle milestones, SLA compliance
 // Refresh: Hourly
 // =============================================================================
 
@@ -88,16 +89,14 @@ LOAD
     wismo_flag                 AS [WISMO Flag],
     ltv_usd                    AS [Lifetime Value ($)],
     trust_score                AS [CX Trust Score]
-FROM [lib://MCG Open Lakehouse/gold.customer_delivery_experience]
+FROM [lib://MCG Open Lakehouse/silver.orders_enriched]
 (qvd);
 
 
 // =============================================================================
-// 3. ORDER TIMELINE (Gold)
+// 3. ORDER TIMELINE (derived from silver.orders_enriched)
 // =============================================================================
-// Source: gold.order_timeline
 // Contains: End-to-end order lifecycle milestones, SLA compliance
-// Refresh: Hourly
 // =============================================================================
 
 OrderTimeline:
@@ -128,7 +127,7 @@ LOAD
     exceedance_flag            AS [Transit Exceedance],
     spoilage_probability       AS [Transit Spoilage Risk],
     trust_score                AS [OT Trust Score]
-FROM [lib://MCG Open Lakehouse/gold.order_timeline]
+FROM [lib://MCG Open Lakehouse/silver.orders_enriched]
 (qvd);
 
 

@@ -254,11 +254,6 @@ Aggregated, enriched, ready for analytics and API sharing.
 |-------|-------------|---------|
 | `gold.supply_chain_health` | Inventory accuracy + pipeline health KPIs per DC/SKU | 15 min |
 | `gold.last_mile_performance` | Carrier SLA metrics + address quality by region | 30 min |
-| `gold.cold_chain_compliance` | Temperature exceedance events + spoilage risk scores | 5 min |
-| `gold.product_master_360` | Unified product catalog with trust scores | 1 hour |
-| `gold.customer_delivery_experience` | WISMO rates + NPS correlation by carrier/region | 1 hour |
-| `gold.compliance_readiness` | Lot traceability, recall readiness per product | 1 hour |
-| `gold.operational_cost_impact` | $127M nightmare cost attribution per DC/category | Daily |
 
 ---
 

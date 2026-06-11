@@ -6,13 +6,13 @@
 //
 // Gold Tables Used:
 //   - gold.supply_chain_health
-//   - gold.cold_chain_compliance
-//   - gold.product_master_360
-//   - gold.compliance_readiness
-//   - gold.operational_cost_impact
+//
+// Silver Tables Used:
+//   - silver.iot_normalized
+//   - silver.products_harmonized
+//   - silver.inventory_reconciled
 //
 // Streaming Tables (Direct Query):
-//   - silver.iot_normalized
 //   - bronze.iot_carrier_events
 // =============================================================================
 
@@ -76,14 +76,14 @@ GROUP BY [Distribution Center];
 
 
 // =============================================================================
-// 2. COLD CHAIN COMPLIANCE (Gold)
+// 2. IOT NORMALIZED (Silver — replaces former gold.cold_chain_compliance)
 // =============================================================================
-// Source: gold.cold_chain_compliance
+// Source: silver.iot_normalized
 // Contains: Temperature data, exceedances, spoilage risk, sensor health
 // Refresh: Every 5 minutes (near real-time)
 // =============================================================================
 
-ColdChainCompliance:
+ColdChainData:
 LOAD
     shipment_id               AS [Shipment ID],
     route                     AS [Route],
@@ -103,14 +103,14 @@ LOAD
     alert_sent                 AS [Alert Sent],
     trust_score                AS [CC Trust Score],
     snapshot_utc               AS [CC Snapshot Time]
-FROM [lib://MCG Open Lakehouse/gold.cold_chain_compliance]
+FROM [lib://MCG Open Lakehouse/silver.iot_normalized]
 (qvd);
 
 
 // =============================================================================
-// 3. PRODUCT MASTER 360 (Gold)
+// 3. PRODUCTS HARMONIZED (Silver — replaces former gold.product_master_360)
 // =============================================================================
-// Source: gold.product_master_360
+// Source: silver.products_harmonized
 // Contains: Harmonized product data, SKU resolution, weight completeness
 // Refresh: Hourly
 // =============================================================================
@@ -133,14 +133,14 @@ LOAD
     country_of_origin          AS [Country of Origin],
     perishable                 AS [Perishable],
     trust_score                AS [Product Trust Score]
-FROM [lib://MCG Open Lakehouse/gold.product_master_360]
+FROM [lib://MCG Open Lakehouse/silver.products_harmonized]
 (qvd);
 
 
 // =============================================================================
-// 4. COMPLIANCE READINESS (Gold)
+// 4. INVENTORY RECONCILED (Silver — replaces former gold.compliance_readiness)
 // =============================================================================
-// Source: gold.compliance_readiness
+// Source: silver.inventory_reconciled
 // Contains: Lot traceability, farm-to-shelf, NVWA compliance
 // Refresh: Daily
 // =============================================================================
@@ -160,33 +160,7 @@ LOAD
     trace_completeness_pct     AS [Trace Completeness %],
     nvwa_applicable            AS [NVWA Applicable],
     trust_score                AS [Compliance Trust Score]
-FROM [lib://MCG Open Lakehouse/gold.compliance_readiness]
-(qvd);
-
-
-// =============================================================================
-// 5. OPERATIONAL COST IMPACT (Gold)
-// =============================================================================
-// Source: gold.operational_cost_impact
-// Contains: Cost attribution by nightmare, trends, remediation progress
-// Refresh: Daily
-// =============================================================================
-
-OperationalCost:
-LOAD
-    nightmare_id               AS [Nightmare #],
-    nightmare_name             AS [Nightmare Name],
-    cost_category              AS [Cost Category],
-    cost_usd                   AS [Cost ($)],
-    cost_trend                 AS [Cost Trend],
-    incidents_count            AS [Incident Count],
-    period                     AS [Period],
-    region                     AS [Cost Region],
-    dc_id                      AS [Cost DC],
-    remediation_pct            AS [Remediation Progress %],
-    remediation_target_pct     AS [Remediation Target %],
-    trust_score                AS [Cost Trust Score]
-FROM [lib://MCG Open Lakehouse/gold.operational_cost_impact]
+FROM [lib://MCG Open Lakehouse/silver.inventory_reconciled]
 (qvd);
 
 

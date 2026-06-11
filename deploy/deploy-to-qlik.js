@@ -43,10 +43,11 @@ const EXIT_FAILURE = 1;
 // ---------------------------------------------------------------------------
 
 function parseArgs(argv) {
-  const args = { configPath: DEFAULT_CONFIG_PATH, dryRun: false, verbose: false };
+  const args = { configPath: DEFAULT_CONFIG_PATH, dryRun: false, verbose: false, cleanupDataProducts: false };
   for (let i = 2; i < argv.length; i++) {
     switch (argv[i]) {
       case '--config':
+        if (i + 1 >= argv.length) { console.error('--config requires a path argument'); process.exit(EXIT_FAILURE); }
         args.configPath = path.resolve(argv[++i]);
         break;
       case '--dry-run':
@@ -54,6 +55,9 @@ function parseArgs(argv) {
         break;
       case '--verbose':
         args.verbose = true;
+        break;
+      case '--cleanup-dataproducts':
+        args.cleanupDataProducts = true;
         break;
       case '--help':
         printUsage();
@@ -73,10 +77,11 @@ function printUsage() {
 Usage: node deploy-to-qlik.js [OPTIONS]
 
 Options:
-  --config <path>   Path to config JSON (default: deploy/config.json)
-  --dry-run         Preview actions without making API calls
-  --verbose         Enable detailed logging
-  --help            Show this message
+  --config <path>           Path to config JSON (default: deploy/config.json)
+  --dry-run                 Preview actions without making API calls
+  --verbose                 Enable detailed logging
+  --cleanup-dataproducts    Delete all data products from tenant, then exit
+  --help                    Show this message
 `);
 }
 
@@ -127,6 +132,7 @@ function loadConfig(configPath) {
 
 function stripCommentKeys(obj) {
   if (obj === null || typeof obj !== 'object') return;
+  if (Array.isArray(obj)) { obj.forEach(stripCommentKeys); return; }
   for (const key of Object.keys(obj)) {
     if (key.startsWith('comment_')) {
       delete obj[key];
@@ -137,6 +143,8 @@ function stripCommentKeys(obj) {
 }
 
 function applyEnvOverrides(cfg) {
+  cfg.tenant = cfg.tenant || {};
+  cfg.auth = cfg.auth || {};
   if (process.env.QLIK_TENANT_HOST)        cfg.tenant.hostname = process.env.QLIK_TENANT_HOST;
   if (process.env.QLIK_REGION)             cfg.tenant.region   = process.env.QLIK_REGION;
   if (process.env.QLIK_API_KEY)            cfg.auth.apiKey     = process.env.QLIK_API_KEY;
@@ -181,11 +189,13 @@ function requestOnce(method, reqUrl, { headers = {}, body = null, rawBody = null
     }
 
     const req = transport.request(opts, (res) => {
-      // Follow 301/302/307/308 redirects
+      // Follow 301/302/307/308 redirects (max 10)
       if ([301, 302, 307, 308].includes(res.statusCode) && res.headers.location) {
+        const rc = (opts._redirectCount || 0) + 1;
+        if (rc > 10) { res.resume(); reject(new Error(`Too many redirects (>10): ${reqUrl}`)); return; }
         const redirectUrl = new URL(res.headers.location, reqUrl).toString();
         res.resume(); // drain response
-        resolve(requestOnce(method, redirectUrl, { headers, body, rawBody, timeout }));
+        resolve(requestOnce(method, redirectUrl, { headers, body, rawBody, timeout, _redirectCount: rc }));
         return;
       }
       const chunks = [];
@@ -233,6 +243,7 @@ async function request(method, reqUrl, opts = {}, { maxRetries = 3, backoff = 2.
       throw err;
     }
   }
+  throw new Error(`Request failed after ${maxRetries} retries: ${method} ${reqUrl}`);
 }
 
 function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
@@ -388,7 +399,12 @@ class QlikClient {
         throw new Error(`GET ${apiPath} failed (${res.statusCode}): ${JSON.stringify(res.body)}`);
       }
 
-      const data = res.body.data || res.body;
+      // Detect the array of items — APIs may wrap in data, dataSources, automations, etc.
+      let data = res.body.data || res.body;
+      if (!Array.isArray(data) && typeof res.body === 'object' && res.body !== null) {
+        const arrayKey = Object.keys(res.body).find(k => Array.isArray(res.body[k]));
+        if (arrayKey) data = res.body[arrayKey];
+      }
       if (Array.isArray(data)) items.push(...data);
 
       // Handle Qlik pagination via links.next.href
@@ -529,17 +545,23 @@ class QlikClient {
    *   3. POST /api/v1/data-connections — create with properties
    */
   async discoverDataSourceByType(keyword) {
-    const sources = await this._getAll('/api/v1/data-sources');
-    // Match by sourceType or name (case-insensitive substring)
+    const res = await this._get('/api/v1/data-sources', { limit: 100 });
+    if (res.statusCode !== 200) {
+      this.log.warn(`Data sources discovery failed (${res.statusCode})`);
+      return null;
+    }
+    // API returns { dataSources: [...] }, not { data: [...] }
+    const sources = res.body.dataSources || res.body.data || (Array.isArray(res.body) ? res.body : []);
     const kw = keyword.toLowerCase();
     return sources.find((s) =>
+      (s.dataSourceId || '').toLowerCase() === kw ||
       (s.sourceType || '').toLowerCase().includes(kw) ||
-      (s.name || '').toLowerCase().includes(kw) ||
+      (s.dataSourceName || '').toLowerCase().includes(kw) ||
       (s.dataSourceType || '').toLowerCase().includes(kw)
     ) || null;
   }
 
-  async createDataConnection(name, dataSourceId, connectionProperties, spaceId) {
+  async createDataConnection(name, dataSourceId, connectionProperties, spaceId, dataSource) {
     const existing = await this.findDataConnectionByName(name);
     if (existing) {
       this.log.success(`Data connection already exists: "${name}" (${existing.qID || existing.id}) — skipping.`);
@@ -557,13 +579,22 @@ class QlikClient {
       type: dataSourceId,
       qConnectStatement: '',
       space: spaceId || undefined,
-      ...connectionProperties,
     };
+    // Add qType from the discovered data source provider (required for ODBC connectors)
+    if (dataSource && dataSource.provider) {
+      payload.qType = dataSource.provider;
+    }
+    // Merge connection-specific properties (may override qConnectStatement, add qUsername, etc.)
+    const { _configureInUI: configureInUI, ...cleanProps } = connectionProperties;
+    Object.assign(payload, cleanProps);
 
     const res = await this._post('/api/v1/data-connections', payload);
     if (res.statusCode === 200 || res.statusCode === 201) {
       const connId = res.body.qID || res.body.id;
       this.log.success(`Created data connection "${name}" (${connId})`);
+      if (configureInUI) {
+        this.log.info(`  → Configure connection details in Qlik Cloud UI: Manage → Data connections → "${name}"`);
+      }
       return res.body;
     }
 
@@ -636,7 +667,14 @@ class QlikClient {
       const all = await this._getAll(`/api/v1/knowledgebases/${kbId}/datasources`);
       return all.find((ds) => ds.name === name);
     }
-    throw new Error(`Failed to create KB datasource (${res.statusCode}): ${JSON.stringify(res.body)}`);
+    // Handle tenant-side configuration issues (e.g., fileconfig not found)
+    const bodyStr = JSON.stringify(res.body);
+    if (bodyStr.includes('fileconfig') || res.statusCode === 500) {
+      this.log.warn(`KB datasource creation returned ${res.statusCode}: ${bodyStr}`);
+      this.log.warn('This is typically a tenant-side configuration issue. KB datasource will be skipped.');
+      return { id: null, name, notAvailable: true };
+    }
+    throw new Error(`Failed to create KB datasource (${res.statusCode}): ${bodyStr}`);
   }
 
   async uploadDocumentToKB(kbId, dsId, filePath) {
@@ -835,20 +873,39 @@ class QlikClient {
   //  DATA PRODUCTS
   // ========================================================================
 
-  async findDataProductByName(name) {
+  async findDataProductByName(name, spaceId) {
+    // Primary: try the Data Governance API
     try {
       const products = await this._getAll('/api/data-governance/data-products');
-      return products.find((dp) => dp.name === name) || null;
-    } catch (_) {
-      return null;
+      this.log.debug(`Data products lookup: found ${products.length} existing product(s)`);
+      const match = products.find((dp) => dp.name === name);
+      if (match) return match;
+    } catch (err) {
+      this.log.debug(`Data products API lookup failed (${err.message}) — trying Items API fallback.`);
     }
+    // Fallback: use the Items API with name filter (works even when Data Governance GET returns 405)
+    try {
+      const filter = spaceId
+        ? `name eq "${name}" and resourceType eq "dataproduct" and spaceId eq "${spaceId}"`
+        : `name eq "${name}" and resourceType eq "dataproduct"`;
+      const res = await this._get(`/api/v1/items?${new URLSearchParams({ filter, limit: '100' })}`);
+      const items = (res.body && res.body.data) || [];
+      this.log.debug(`Items API fallback: found ${items.length} data product item(s) matching "${name}"`);
+      if (items.length > 0) {
+        const match = items[0];
+        return { id: match.resourceId || match.id, name: match.name, alreadyExists: true };
+      }
+    } catch (err2) {
+      this.log.debug(`Items API fallback also failed: ${err2.message}`);
+    }
+    return null;
   }
 
   async createDataProduct({ name, description, tags, owner, sla, schema, apiSharing, spaceId }) {
-    const existing = await this.findDataProductByName(name);
+    const existing = await this.findDataProductByName(name, spaceId);
     if (existing) {
       this.log.success(`Data product already exists: "${name}" (${existing.id || '?'}) — skipping.`);
-      return existing;
+      return { ...existing, alreadyExists: true };
     }
 
     if (this.dryRun) {
@@ -858,7 +915,9 @@ class QlikClient {
 
     const payload = { name, description };
     if (spaceId) payload.spaceId = spaceId;
-    if (tags) payload.tags = tags;
+    // Note: tags are omitted — API expects tag UUIDs but we have string names.
+    // Tags can be assigned manually in the Qlik Cloud UI after deployment.
+    if (tags && tags.length) this.log.debug(`Skipping ${tags.length} tag(s) for "${name}" (require UUIDs).`);
     if (owner) payload.owner = owner;
     if (sla) payload.sla = sla;
     if (schema) payload.schema = schema;
@@ -870,14 +929,63 @@ class QlikClient {
       return res.body;
     }
     if (res.statusCode === 409) {
-      this.log.warn(`Data product "${name}" may already exist.`);
-      return { name, alreadyExists: true };
+      this.log.warn(`Data product "${name}" already exists (409).`);
+      return (await this.findDataProductByName(name)) || { name, alreadyExists: true };
     }
     if (res.statusCode === 404) {
       this.log.warn(`Data products API not available (404). Talend Enterprise tier may be required for "${name}".`);
       return { name, notAvailable: true };
     }
     throw new Error(`Data product create failed (${res.statusCode}): ${JSON.stringify(res.body)}`);
+  }
+
+  async deleteDataProduct(id) {
+    const res = await this._delete(`/api/data-governance/data-products/${id}`);
+    if (res.statusCode === 200 || res.statusCode === 204) {
+      this.log.success(`Deleted data product ${id}`);
+      return true;
+    }
+    if (res.statusCode === 404) {
+      this.log.warn(`Data product ${id} not found (already deleted?)`);
+      return false;
+    }
+    throw new Error(`Failed to delete data product ${id} (${res.statusCode}): ${JSON.stringify(res.body)}`);
+  }
+
+  async listAllDataProducts() {
+    // Try governance API first
+    try {
+      const products = await this._getAll('/api/data-governance/data-products');
+      return products || [];
+    } catch (err) {
+      this.log.debug(`Data governance API list failed: ${err.message}`);
+    }
+    // Fallback: Items API
+    try {
+      const res = await this._get('/api/v1/items?resourceType=dataproduct&limit=100');
+      const items = (res.body && res.body.data) || [];
+      return items.map(it => ({ id: it.resourceId || it.id, name: it.name }));
+    } catch (err2) {
+      this.log.debug(`Items API fallback failed: ${err2.message}`);
+    }
+    return [];
+  }
+
+  async deleteAllDataProducts(keepNames = []) {
+    const all = await this.listAllDataProducts();
+    this.log.info(`Found ${all.length} data product(s) in tenant`);
+    let deleted = 0, kept = 0;
+    for (const dp of all) {
+      if (keepNames.includes(dp.name)) {
+        this.log.info(`  Keeping: "${dp.name}" (${dp.id})`);
+        kept++;
+        continue;
+      }
+      this.log.info(`  Deleting: "${dp.name}" (${dp.id})`);
+      await this.deleteDataProduct(dp.id);
+      deleted++;
+    }
+    return { deleted, kept, total: all.length };
   }
 
   // ========================================================================
@@ -921,7 +1029,24 @@ class QlikClient {
     throw new Error(`Glossary create failed (${res.statusCode}): ${JSON.stringify(res.body)}`);
   }
 
-  async createGlossaryTerm(glossaryId, { name, definition, category, tags }) {
+  async listGlossaryTerms(glossaryId) {
+    try {
+      return await this._getAll(`/api/data-governance/glossaries/${glossaryId}/terms`);
+    } catch (_) {
+      return [];
+    }
+  }
+
+  async createGlossaryTerm(glossaryId, { name, definition, category, tags }, existingTerms) {
+    // Check if term already exists (by name)
+    if (existingTerms && existingTerms.length > 0) {
+      const found = existingTerms.find((t) => t.name === name);
+      if (found) {
+        this.log.debug(`Term "${name}" already exists (${found.id || '?'}) — skipping.`);
+        return { ...found, alreadyExists: true };
+      }
+    }
+
     if (this.dryRun) {
       this.log.debug(`DRY RUN: Would create glossary term "${name}"`);
       return { id: 'dry-run-term-id', name };
@@ -929,7 +1054,7 @@ class QlikClient {
 
     const payload = { name, definition };
     if (category) payload.category = category;
-    if (tags) payload.tags = tags;
+    // Tags omitted — API expects UUIDs, not string names
 
     const res = await this._post(`/api/data-governance/glossaries/${glossaryId}/terms`, payload);
     if (res.statusCode === 200 || res.statusCode === 201) {
@@ -941,6 +1066,90 @@ class QlikClient {
       return { name, alreadyExists: true };
     }
     throw new Error(`Term "${name}" create failed (${res.statusCode}): ${JSON.stringify(res.body)}`);
+  }
+
+  // ========================================================================
+  //  WEBHOOKS  (/api/v1/webhooks)
+  // ========================================================================
+
+  async findWebhookByName(name) {
+    try {
+      const hooks = await this._getAll('/api/v1/webhooks');
+      return hooks.find((h) => h.name === name) || null;
+    } catch (err) {
+      this.log.debug(`Webhook list failed: ${err.message}`);
+      return null;
+    }
+  }
+
+  async createWebhook({ name, url, eventTypes, description, enabled = true }) {
+    const existing = await this.findWebhookByName(name);
+    if (existing) {
+      this.log.success(`Webhook already exists: "${name}" (${existing.id}) — skipping.`);
+      return existing;
+    }
+    if (this.dryRun) {
+      this.log.info(`DRY RUN: Would create webhook "${name}" → ${url}`);
+      return { id: 'dry-run-webhook-id', name };
+    }
+    const payload = { name, url, eventTypes, description: description || '', enabled };
+    const res = await this._post('/api/v1/webhooks', payload);
+    if (res.statusCode === 200 || res.statusCode === 201) {
+      this.log.success(`Created webhook "${name}" (${res.body.id}) for events: ${eventTypes.join(', ')}`);
+      return res.body;
+    }
+    if (res.statusCode === 409) {
+      this.log.warn(`Webhook "${name}" already exists (409).`);
+      return this.findWebhookByName(name);
+    }
+    throw new Error(`Webhook create failed (${res.statusCode}): ${JSON.stringify(res.body)}`);
+  }
+
+  // ========================================================================
+  //  RELOAD TASKS  (/api/v1/reload-tasks)
+  // ========================================================================
+
+  async findReloadTaskByName(name) {
+    try {
+      const tasks = await this._getAll('/api/v1/reload-tasks');
+      return tasks.find((t) => t.name === name) || null;
+    } catch (err) {
+      this.log.debug(`Reload task list failed: ${err.message}`);
+      return null;
+    }
+  }
+
+  async createReloadTask({ name, appId, cronExpression, timeZone, description }) {
+    const existing = await this.findReloadTaskByName(name);
+    if (existing) {
+      this.log.success(`Reload task already exists: "${name}" (${existing.id}) — skipping.`);
+      return existing;
+    }
+    if (this.dryRun) {
+      this.log.info(`DRY RUN: Would create reload task "${name}" for app ${appId}`);
+      return { id: 'dry-run-task-id', name };
+    }
+    const payload = {
+      name,
+      appId,
+      description: description || '',
+      recurrence: {
+        type: 'recurrence',
+        cronExpression,
+        timeZone: timeZone || 'UTC',
+      },
+      partial: false,
+    };
+    const res = await this._post('/api/v1/reload-tasks', payload);
+    if (res.statusCode === 200 || res.statusCode === 201) {
+      this.log.success(`Created reload task "${name}" (${res.body.id}) cron: ${cronExpression}`);
+      return res.body;
+    }
+    if (res.statusCode === 409) {
+      this.log.warn(`Reload task "${name}" already exists (409).`);
+      return this.findReloadTaskByName(name);
+    }
+    throw new Error(`Reload task create failed (${res.statusCode}): ${JSON.stringify(res.body)}`);
   }
 }
 
@@ -983,40 +1192,31 @@ function buildPostgresProperties(cfg) {
   };
 }
 
-function buildSalesforceProperties(cfg) {
-  return {
-    connectionProperties: {
-      username: cfg.username,
-      password: cfg.password,
-      securityToken: cfg.securityToken,
-      isSandbox: cfg.isSandbox || false,
-    },
-  };
+// Salesforce, Kafka, and S3 connectors use REST-based data sources whose
+// property schemas are defined server-side. We create the connection shell
+// with an empty connectionProperties object (API requires at least one of
+// qConnectStatement or connectionProperties). Users configure credentials
+// in the Qlik Cloud UI after deployment.
+function buildSalesforceProperties(/* cfg */) {
+  return { connectionProperties: {}, _configureInUI: true };
 }
 
 function buildKafkaProperties(cfg) {
-  return {
-    connectionProperties: {
-      bootstrapServers: cfg.bootstrapServers,
-      topic: cfg.topic,
-      securityProtocol: cfg.securityProtocol || 'SASL_SSL',
-      saslMechanism: cfg.saslMechanism || 'PLAIN',
-      saslUsername: cfg.saslUsername,
-      saslPassword: cfg.saslPassword,
-    },
-  };
+  // Kafka connections use qConnectStatement like ODBC connectors
+  const parts = [
+    `CUSTOM CONNECT TO "provider=QlikConnectorsCommonService.exe;`,
+    `connectstr=kafka;`,
+    `bootstrapservers=${cfg.bootstrapServers || 'localhost:9092'};`,
+    `securityprotocol=${cfg.securityProtocol || 'PLAINTEXT'}"`,
+  ];
+  const props = { qConnectStatement: parts.join('') };
+  if (cfg.saslUsername) props.qUsername = cfg.saslUsername;
+  if (cfg.saslPassword) props.qPassword = cfg.saslPassword;
+  return props;
 }
 
-function buildS3Properties(cfg) {
-  return {
-    connectionProperties: {
-      bucketName: cfg.bucketName,
-      region: cfg.region,
-      accessKeyId: cfg.accessKeyId,
-      secretAccessKey: cfg.secretAccessKey,
-      prefix: cfg.prefix || '',
-    },
-  };
+function buildS3Properties(/* cfg */) {
+  return { connectionProperties: {}, _configureInUI: true };
 }
 
 // ---------------------------------------------------------------------------
@@ -1139,6 +1339,8 @@ function printChecklist(report, enabled, log) {
     ['automations',  'Create Automations (scheduled reloads, alerts, Talend address correction)'],
     ['dataproducts', 'Create Data Products (Gold layer definitions)'],
     ['glossary',     'Create Business Glossary Terms'],
+    ['webhooks',     'Create Webhooks (app reload + pipeline health events)'],
+    ['reloadtasks',  'Create Reload Tasks (scheduled app refreshes)'],
   ];
 
   let idx = 1;
@@ -1216,6 +1418,18 @@ async function main() {
     process.exit(EXIT_FAILURE);
   }
 
+  // ---- Standalone cleanup mode ---------------------------------------------
+  if (args.cleanupDataProducts) {
+    log.section('Cleanup: Delete All Data Products');
+    try {
+      const { deleted, total } = await client.deleteAllDataProducts([]);
+      log.success(`Deleted ${deleted} of ${total} data product(s) from tenant.`);
+    } catch (err) {
+      log.error(`Cleanup failed: ${err.message}`);
+    }
+    process.exit(EXIT_SUCCESS);
+  }
+
   // ---- Docker Containers ---------------------------------------------------
   // Compose files live in infrastructure/ (not infrastructure/kafka/).
   // Each "profile" maps to a separate compose file:
@@ -1225,11 +1439,12 @@ async function main() {
   //   simulators     → docker-compose.simulators.yml   (simulators only)
   //   dmg            → docker-compose.dmg.yml          (DMG gateway only)
   const COMPOSE_FILES = {
-    'full-stack':     'docker-compose.full-stack.yml',
-    'full-stack-dmg': 'docker-compose.full-stack-dmg.yml',
-    'kafka':          'kafka/docker-compose.yml',
-    'simulators':     'docker-compose.simulators.yml',
-    'dmg':            'docker-compose.dmg.yml',
+    'full-stack':       'docker-compose.full-stack.yml',
+    'full-stack-dmg':   'docker-compose.full-stack-dmg.yml',
+    'kafka':            'kafka/docker-compose.yml',
+    'simulators':       'docker-compose.simulators.yml',
+    'simulators-dmg':   'docker-compose.simulators-dmg.yml',
+    'dmg':              'docker-compose.dmg.yml',
   };
 
   if (enabled.docker !== false) {
@@ -1250,24 +1465,85 @@ async function main() {
       } else {
         // Check if containers are already running
         const psResult = spawnSync('docker', ['compose', '-f', composeFile, 'ps', '--status', 'running', '-q'], {
-          cwd: infraDir, shell: true, encoding: 'utf-8', timeout: 15000,
+          cwd: infraDir, encoding: 'utf-8', timeout: 15000,
         });
         const runningIds = (psResult.stdout || '').trim().split('\n').filter(Boolean);
 
         if (runningIds.length > 0) {
           // Containers already up — report and continue
           const psNames = spawnSync('docker', ['compose', '-f', composeFile, 'ps', '--status', 'running', '--format', '{{.Name}}'], {
-            cwd: infraDir, shell: true, encoding: 'utf-8', timeout: 15000,
+            cwd: infraDir, encoding: 'utf-8', timeout: 15000,
           });
           const names = (psNames.stdout || '').trim().split('\n').filter(Boolean);
           log.success(`Docker containers already running (${names.length} containers)`);
           for (const n of names) { log.info(`  ✓ ${n}`); }
         } else {
+          // Clean up any stale/stopped containers to avoid name conflicts
+          const psAllResult = spawnSync('docker', ['compose', '-f', composeFile, 'ps', '-a', '-q'], {
+            cwd: infraDir, encoding: 'utf-8', timeout: 15000,
+          });
+          const staleIds = (psAllResult.stdout || '').trim().split('\n').filter(Boolean);
+          if (staleIds.length > 0) {
+            log.warn(`Found ${staleIds.length} stale container(s) — removing before fresh deploy...`);
+            spawnSync('docker', ['compose', '-f', composeFile, 'down', '--remove-orphans'], {
+              cwd: infraDir, encoding: 'utf-8', timeout: 60000,
+            });
+            log.info('Stale containers removed.');
+          }
+          // --- RPM resolution for DMG profiles ---
+          const isDmg = (profile === 'dmg' || profile === 'full-stack-dmg');
+          if (isDmg) {
+            const rpmDir = path.join(infraDir, 'dmg', 'gateway', 'rpmfiles');
+            const rpmDest = path.join(rpmDir, 'gateway.rpm');
+            const rpmPath = cfg.docker && cfg.docker.rpmPath || '';
+            const rpmUrl = cfg.docker && cfg.docker.rpmUrl || '';
+
+            if (fs.existsSync(rpmDest) && fs.statSync(rpmDest).size > 0) {
+              log.info('Gateway RPM already in build context — skipping download');
+            } else if (rpmPath) {
+              log.info(`Resolving RPM from local path: ${rpmPath}`);
+              if (!fs.existsSync(rpmPath)) {
+                throw new Error(`RPM file not found at: ${rpmPath}`);
+              }
+              if (!fs.existsSync(rpmDir)) fs.mkdirSync(rpmDir, { recursive: true });
+              fs.copyFileSync(rpmPath, rpmDest);
+              log.success(`Copied RPM to build context: ${rpmDest}`);
+            } else if (rpmUrl) {
+              log.info(`Downloading RPM from: ${rpmUrl}`);
+              if (!fs.existsSync(rpmDir)) fs.mkdirSync(rpmDir, { recursive: true });
+              await new Promise((resolve, reject) => {
+                const dl = spawn('curl', ['-L', '-f', '-o', rpmDest, '--progress-bar', rpmUrl], {
+                  cwd: infraDir, stdio: ['ignore', 'pipe', 'pipe'],
+                });
+                dl.stderr.on('data', (d) => {
+                  d.toString().trim().split('\n').forEach(l => l.trim() && log.info(l.trim()));
+                });
+                dl.on('close', (code) => {
+                  if (code === 0) resolve();
+                  else reject(new Error(`RPM download failed (curl exit code ${code})`));
+                });
+                dl.on('error', reject);
+              });
+              log.success(`RPM downloaded to build context: ${rpmDest}`);
+            } else if (!fs.existsSync(rpmDest)) {
+              const rpmFiles = fs.existsSync(rpmDir) ? fs.readdirSync(rpmDir).filter(f => f.endsWith('.rpm')) : [];
+              if (rpmFiles.length === 0) {
+                throw new Error('Gateway RPM not found. Provide a file path or download URL in Docker config.');
+              }
+              log.info(`Found RPM in build context: ${rpmFiles[0]}`);
+            } else {
+              log.info('Gateway RPM found in build context');
+            }
+          }
+
+          const dockerArgs = ['compose', '-f', composeFile, 'up', '-d'];
+          if (isDmg) dockerArgs.push('--build');
+
           log.info(`Starting Docker Compose (${profile})... this may take several minutes on first pull`);
           log.info(`Compose file: ${composeFile}`);
           await new Promise((resolve, reject) => {
-            const child = spawn('docker', ['compose', '-f', composeFile, 'up', '-d'], {
-              cwd: infraDir, stdio: ['ignore', 'pipe', 'pipe'], shell: true,
+            const child = spawn('docker', dockerArgs, {
+              cwd: infraDir, stdio: ['ignore', 'pipe', 'pipe'],
             });
             let stderr = '';
             child.stdout.on('data', (d) => { d.toString().trim().split('\n').forEach(l => l.trim() && log.info(l.trim())); });
@@ -1323,10 +1599,10 @@ async function main() {
     log.section('Step 4: Create Data Connections');
 
     const connectionDefs = [
-      { key: 'postgresql', keyword: 'postgres',   buildProps: buildPostgresProperties,   label: 'PostgreSQL (MCG WMS)' },
-      { key: 'salesforce', keyword: 'salesforce', buildProps: buildSalesforceProperties, label: 'Salesforce (MCG CRM)' },
-      { key: 'kafka',      keyword: 'kafka',      buildProps: buildKafkaProperties,      label: 'Kafka (IoT Telemetry)' },
-      { key: 's3',         keyword: 's3',          buildProps: buildS3Properties,          label: 'S3 (Flat File Outputs)' },
+      { key: 'postgresql', keyword: 'postgres',   buildProps: buildPostgresProperties,   label: 'PostgreSQL (MCG WMS)',    required: ['host', 'database'] },
+      { key: 'salesforce', keyword: 'sfdc',        buildProps: buildSalesforceProperties, label: 'Salesforce (MCG CRM)',   required: ['username', 'password'] },
+      { key: 'kafka',      keyword: 'kafka',      buildProps: buildKafkaProperties,      label: 'Kafka (IoT Telemetry)',  required: ['bootstrapServers'] },
+      { key: 's3',         keyword: 's3',          buildProps: buildS3Properties,          label: 'S3 (Flat File Outputs)', required: ['bucketName', 'region'] },
     ];
 
     for (const def of connectionDefs) {
@@ -1336,14 +1612,21 @@ async function main() {
         report.record(`Connection: ${def.label}`, 'SKIP', 'Not configured');
         continue;
       }
+      // Skip if required credential fields are empty
+      const missing = (def.required || []).filter(f => !connCfg[f]);
+      if (missing.length > 0) {
+        log.warn(`${def.label}: missing required fields (${missing.join(', ')}) — skipping. Configure in Qlik Cloud UI.`);
+        report.record(`Connection: ${def.label}`, 'SKIP', `Missing: ${missing.join(', ')}`);
+        continue;
+      }
 
       try {
         log.info(`Discovering data source type for: ${def.keyword}`);
         const dataSource = await client.discoverDataSourceByType(def.keyword);
-        const dataSourceId = dataSource ? (dataSource.dataSourceType || dataSource.sourceType || dataSource.id || def.keyword) : def.keyword;
+        const dataSourceId = dataSource ? (dataSource.dataSourceId || dataSource.dataSourceType || dataSource.sourceType || def.keyword) : def.keyword;
 
         if (dataSource) {
-          log.debug(`Found data source: ${dataSource.name || dataSource.dataSourceType} (id=${dataSourceId})`);
+          log.debug(`Found data source: ${dataSource.dataSourceName || dataSource.name || dataSourceId} (id=${dataSourceId}, provider=${dataSource.provider || 'n/a'})`);
         } else {
           log.warn(`Data source type "${def.keyword}" not found via discovery — using keyword as fallback.`);
         }
@@ -1353,7 +1636,8 @@ async function main() {
           connCfg.name || `MCG ${def.label}`,
           dataSourceId,
           props,
-          sharedSpace ? sharedSpace.id : undefined
+          sharedSpace ? sharedSpace.id : undefined,
+          dataSource
         );
         report.record(`Connection: ${def.label}`, 'OK', connCfg.name);
       } catch (err) {
@@ -1407,7 +1691,10 @@ async function main() {
       report.record('Knowledge Base', 'OK', `"${kbName}" id=${knowledgeBase.id}`);
 
       kbDatasource = await client.createKBFileDatasource(knowledgeBase.id, 'MCG Documents');
-      report.record('KB Datasource', 'OK', `id=${kbDatasource.id}`);
+      if (kbDatasource.notAvailable) {
+        report.record('KB Datasource', 'SKIP', 'Tenant configuration issue — skipping uploads');
+      } else {
+        report.record('KB Datasource', 'OK', `id=${kbDatasource.id}`);
 
       const docsDir = path.resolve(SCRIPT_DIR, (cfg.documents && cfg.documents.sourceDir) || '../documents');
       const allDocxFiles = findFiles(docsDir, '.docx');
@@ -1446,6 +1733,7 @@ async function main() {
       log.info('Triggering knowledge base sync/indexing...');
       await client.syncKBDatasource(knowledgeBase.id, kbDatasource.id);
       report.record('KB Sync', 'OK', 'Indexing triggered');
+      } // end if !notAvailable
     } catch (err) {
       log.error(`Knowledge base setup failed: ${err.message}`);
       report.record('Knowledge Base', 'FAIL', err.message);
@@ -1551,6 +1839,17 @@ async function main() {
         log.info(`Found ${products.length} data product definition(s) in ${path.basename(dpFile)}`);
         const spaceId = sharedSpace ? sharedSpace.id : undefined;
 
+        // Clean up stale data products not in current definitions
+        const desiredNames = products.map(p => p.name);
+        try {
+          const { deleted: staleDeleted } = await client.deleteAllDataProducts(desiredNames);
+          if (staleDeleted > 0) {
+            log.success(`Removed ${staleDeleted} stale data product(s) not in current definitions.`);
+          }
+        } catch (cleanupErr) {
+          log.warn(`Data product cleanup failed (non-fatal): ${cleanupErr.message}`);
+        }
+
         let created = 0, skipped = 0, failedDp = 0;
         for (const dpDef of products) {
           try {
@@ -1616,25 +1915,30 @@ async function main() {
             `"${glMeta.name || ''}" id=${glossaryId}`);
 
           if (glossaryId && glossaryId !== 'dry-run-glossary-id') {
-            let createdT = 0, failedT = 0;
+            const existingTerms = await client.listGlossaryTerms(glossaryId);
+            if (existingTerms.length > 0) {
+              log.info(`Found ${existingTerms.length} existing term(s) in glossary — will skip duplicates.`);
+            }
+            let createdT = 0, skippedT = 0, failedT = 0;
             for (const term of terms) {
               try {
-                await client.createGlossaryTerm(glossaryId, {
+                const result = await client.createGlossaryTerm(glossaryId, {
                   name: term.name,
                   definition: term.definition || '',
                   category: term.category || '',
                   tags: term.tags,
-                });
-                createdT++;
+                }, existingTerms);
+                if (result.alreadyExists) skippedT++;
+                else createdT++;
               } catch (err) {
                 log.error(`Term "${term.name}": ${err.message}`);
                 failedT++;
                 if (!continueOnError) throw err;
               }
             }
-            log.success(`Glossary terms: ${createdT} created, ${failedT} failed.`);
+            log.success(`Glossary terms: ${createdT} created, ${skippedT} skipped, ${failedT} failed.`);
             report.record('Glossary Terms', failedT === 0 ? 'OK' : 'FAIL',
-              `${createdT}/${terms.length} terms`);
+              `${createdT} created, ${skippedT} skipped`);
           } else if (glossaryId === 'dry-run-glossary-id') {
             log.info(`DRY RUN: Would create ${terms.length} glossary terms.`);
             report.record('Glossary Terms', 'OK', `DRY RUN: ${terms.length} terms`);
@@ -1653,6 +1957,81 @@ async function main() {
     log.section('Step 10: Create Business Glossary Terms');
     log.info('Skipped (disabled).');
     report.record('Glossary', 'SKIP', 'disabled');
+  }
+
+  // ---- Step 11: Webhooks --------------------------------------------------
+  if (enabled.webhooks !== false) {
+    log.section('Step 11: Create Webhooks');
+
+    const webhookDefs = (cfg.webhooks && cfg.webhooks.definitions) || [
+      {
+        name: 'MCG App Reload Completed',
+        url: (cfg.webhooks && cfg.webhooks.targetUrl) || 'https://your-endpoint.example.com/hooks/qlik-reload',
+        eventTypes: ['com.qlik.v1.app.reload.finished'],
+        description: 'Fires after any MCG analytics app reload completes — triggers downstream refresh notifications',
+        enabled: true,
+      },
+      {
+        name: 'MCG Pipeline Health Alert',
+        url: (cfg.webhooks && cfg.webhooks.targetUrl) || 'https://your-endpoint.example.com/hooks/qlik-pipeline',
+        eventTypes: ['com.qlik.v1.datafile.created', 'com.qlik.v1.datafile.updated'],
+        description: 'Fires on data file events — used as proxy for pipeline health monitoring',
+        enabled: true,
+      },
+    ];
+
+    for (const hook of webhookDefs) {
+      try {
+        await client.createWebhook(hook);
+        report.record('Webhook', 'OK', hook.name);
+      } catch (err) {
+        log.warn(`Webhook "${hook.name}": ${err.message} — skipping (non-fatal).`);
+        report.record('Webhook', 'WARN', `${hook.name}: ${err.message}`);
+      }
+    }
+  } else {
+    log.section('Step 11: Create Webhooks');
+    log.info('Skipped (disabled).');
+    report.record('Webhooks', 'SKIP', 'disabled');
+  }
+
+  // ---- Step 12: Reload Tasks ----------------------------------------------
+  if (enabled.reloadtasks !== false) {
+    log.section('Step 12: Create Reload Tasks');
+
+    // Reload tasks require app IDs. We look up apps that were created/published
+    // in this deployment session and match them by name.
+    const publishedApps = report.rows
+      .filter((r) => r.component === 'App' && (r.status === 'OK' || r.status === 'SKIP'))
+      .map((r) => r.detail);
+
+    const reloadTaskDefs = (cfg.reloadtasks && cfg.reloadtasks.definitions) || [];
+
+    if (reloadTaskDefs.length === 0) {
+      log.info('No reload task definitions found in config — using defaults (app IDs must be set in config.reloadtasks.definitions).');
+      log.info('Example config entry:');
+      log.info('  "reloadtasks": { "definitions": [{ "name": "MCG Supply Chain Reload", "appId": "<app-id>", "cronExpression": "0 */15 * * * *", "timeZone": "UTC" }] }');
+      report.record('Reload Tasks', 'SKIP', 'No definitions configured — add app IDs to config.reloadtasks.definitions');
+    } else {
+      for (const task of reloadTaskDefs) {
+        if (!task.appId) {
+          log.warn(`Reload task "${task.name}" missing appId — skipping.`);
+          report.record('Reload Task', 'SKIP', `${task.name}: no appId`);
+          continue;
+        }
+        try {
+          await client.createReloadTask(task);
+          report.record('Reload Task', 'OK', `${task.name} (cron: ${task.cronExpression})`);
+        } catch (err) {
+          log.warn(`Reload task "${task.name}": ${err.message} — skipping (non-fatal).`);
+          report.record('Reload Task', 'WARN', `${task.name}: ${err.message}`);
+        }
+      }
+    }
+  } else {
+    log.section('Step 12: Create Reload Tasks');
+    log.info('Skipped (disabled).');
+    report.record('Reload Tasks', 'SKIP', 'disabled');
   }
 
   // ---- Final Report -------------------------------------------------------

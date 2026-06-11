@@ -55,8 +55,8 @@ The Data Movement Gateway enables CDC from on-prem or cloud-hosted databases.
 ```bash
 docker run -d --name mcg-wms-db \
   -e POSTGRES_DB=mcg_wms \
-  -e POSTGRES_USER=qlik_reader \
-  -e POSTGRES_PASSWORD=<your-password> \
+  -e POSTGRES_USER=mcg_admin \
+  -e POSTGRES_PASSWORD=mcg_demo_2025 \
   -p 5432:5432 \
   postgres:16 \
   -c wal_level=logical \
@@ -83,9 +83,14 @@ SELECT pg_create_logical_replication_slot('qlik_cdc_slot', 'pgoutput');
 ```bash
 # Install Python dependencies and run the simulator
 pip install psycopg2-binary
+
+# Create schema and seed initial data (runs once, then exits)
 python simulators/postgres_simulator.py --host localhost --port 5432 \
-  --database mcg_wms --user qlik_reader --password <your-password> \
-  --mode seed    # Initial seed load
+  --db mcg_wms --user mcg_admin --password mcg_demo_2025 --setup-only
+
+# Start continuous simulation for CDC during demo (runs until Ctrl+C)
+python simulators/postgres_simulator.py --host localhost --port 5432 \
+  --db mcg_wms --user mcg_admin --password mcg_demo_2025
 ```
 
 ### 1.4 Apache Kafka Setup
@@ -174,12 +179,12 @@ python simulators/kafka_iot_simulator.py --bootstrap-servers localhost:9092 \
    python simulators/salesforce_simulator.py --instance https://your-dev-org.my.salesforce.com
    ```
 
-### 1.6 Remote Engine Gen2 (for Kafka)
+### 1.6 Data Gateway - Streaming (for Kafka)
 
-- In Qlik Cloud: **Administration** → **Remote Engines** → **Create**
+- In Qlik Cloud: **Administration** → **Data Gateways** → **Add** → **Data Gateway - Streaming**
 - Download and install on a machine with network access to your Kafka cluster
 - Register with the pairing token from Qlik Cloud
-- Verify status shows "Paired" in Administration → Remote Engines
+- Verify status shows "Connected" in Administration → Data Gateways
 
 ---
 
@@ -198,8 +203,8 @@ python simulators/kafka_iot_simulator.py --bootstrap-servers localhost:9092 \
 | Port | `5432` |
 | Database | `mcg_wms` |
 | Schema | `public` |
-| Username | `qlik_reader` |
-| Password | `<your-password>` |
+| Username | `mcg_admin` |
+| Password | `mcg_demo_2025` (or your chosen password) |
 | CDC Method | Log-based (WAL) |
 
 **Tables captured (3):**
@@ -224,7 +229,7 @@ python simulators/kafka_iot_simulator.py --bootstrap-servers localhost:9092 \
 |---|---|
 | Connector type | Apache Kafka |
 | Connection name | `MCG IoT Telemetry` |
-| Engine | Remote Engine Gen2 |
+| Engine | Data Gateway - Streaming |
 | Bootstrap servers | `<your-kafka-broker>:9092` |
 | Security protocol | SASL_SSL (Confluent Cloud) or PLAINTEXT (Docker) |
 | SASL mechanism | PLAIN |
@@ -323,13 +328,8 @@ Aggregated, governed, SLA-backed data products for business consumption.
 |---|---|---|---|
 | `gold.supply_chain_health` | inventory_reconciled, timestamps_audit | Qlik Analytics, Discovery Agent | DC, SKU, qty_wms, qty_erp, variance, trust_score, pipeline_status |
 | `gold.last_mile_performance` | shipments_canonical, orders_enriched, customers_deduped | Qlik Analytics, Predict | carrier, region, sla_target, sla_actual, on_time_pct, address_quality_score |
-| `gold.cold_chain_compliance` | iot_normalized, shipments_canonical | Predict, Discovery Agent | shipment_id, route, carrier, avg_temp, max_temp, exceedance_min, spoilage_flag |
-| `gold.customer_delivery_experience` | customers_deduped, orders_enriched | Qlik Analytics | customer_id, name, address_clean, total_orders, wismo_count, ltv |
-| `gold.compliance_readiness` | products_harmonized, inventory_reconciled | Compliance, Qlik Analytics | sku, lot_number, farm_origin, dc_receipt, store_receipt, trace_complete_flag |
-| `gold.operational_cost_impact` | inventory_reconciled, products_harmonized | B2B API, flat file export | sku, product_name, dc, qty_available, uom, unit_price, trust_score |
-| `gold.order_timeline` | orders_enriched, shipments_canonical, iot_normalized | Qlik Analytics, Answers | order_id, customer, order_dt, pick_dt, ship_dt, deliver_dt, total_hours, sla_met |
 
-**Total: 7 Gold tables**
+**Total: 2 Gold tables**
 
 ---
 
@@ -541,7 +541,7 @@ A dedicated **Talend Job** deployed as a reusable address validation service, ca
 | Property | Value |
 |---|---|
 | Input | `silver.orders_enriched` (from Salesforce), `silver.shipments_canonical`, `silver.iot_normalized`, `silver.inventory_reconciled` |
-| Output | `gold.order_timeline` |
+| Output | `silver.orders_enriched` |
 | Nightmare | #5 (Timestamps), #6 (Carrier Black Hole) |
 
 **Table Recipe:**
@@ -554,7 +554,7 @@ A dedicated **Talend Job** deployed as a reusable address validation service, ca
 3. **Duration Calc** — Order-to-delivery hours, pick-to-ship hours, ship-to-deliver hours
 4. **SLA Check** — Compare actual delivery to promised delivery → `sla_met = TRUE/FALSE`
 5. **IoT Enrich** — If cold chain shipment, attach max_temperature, exceedance_flag
-6. **Write** → `gold.order_timeline`
+6. **Write** → `silver.orders_enriched`
 
 ---
 
@@ -568,11 +568,6 @@ In **Data Integration → Data Products → Create**:
 |---|---|---|---|---|
 | Supply Chain Health | `gold.supply_chain_health` | Henrik Jansen (VP Warehouse Ops) | `inventory`, `phantom`, `pipeline-health` | Refreshed every 15 min |
 | Last Mile Performance | `gold.last_mile_performance` | Sophie Müller (EU Logistics Mgr) | `carrier`, `sla`, `delivery` | Refreshed every 30 min |
-| Cold Chain Compliance | `gold.cold_chain_compliance` | Thomas Brennan (VP Supply Chain) | `cold-chain`, `iot`, `risk` | Refreshed real-time (streaming) |
-| Customer Delivery Experience | `gold.customer_delivery_experience` | Lisa Park (Head of CX) | `customer`, `address`, `wismo` | Refreshed hourly |
-| Compliance Readiness | `gold.compliance_readiness` | Dr. Elena Vasquez (CCO) | `compliance`, `nvwa`, `traceability` | Refreshed daily |
-| Operational Cost Impact | `gold.operational_cost_impact` | CFO Office | `b2b`, `api`, `inventory` | Refreshed daily 06:00 UTC |
-| Order Timeline | `gold.order_timeline` | Wei Lin Tan (APAC Logistics) | `order`, `timeline`, `sla` | Refreshed every 30 min |
 
 ### 5.2 AI-Driven Descriptions & Semantic Types
 
@@ -676,14 +671,14 @@ Or manually in Qlik Cloud: **Administration → Spaces → Create Space**
 | Property | Value |
 |---|---|
 | **Name** | MCG Cold Chain Compliance Predictor |
-| **Training data** | `gold.cold_chain_compliance` (historical shipments with known outcomes) |
+| **Training data** | `silver.iot_normalized` (historical shipments with known outcomes) |
 | **Target variable** | `spoilage_flag` (binary: TRUE/FALSE) |
 | **Feature columns** | `carrier`, `route`, `avg_temp_celsius`, `max_temp_celsius`, `exceedance_minutes`, `pre_cool_compliant`, `month`, `day_of_week`, `weight_kg` |
 | **Algorithm** | Auto (Qlik selects best: typically gradient boosting for binary classification) |
 | **Nightmare tie-in** | #6 (Carrier Data Black Hole) + INC-2025-05102 (TransFrio Spoilage) |
 
 **Setup in Qlik Cloud:**
-1. **AutoML** → **Create Experiment** → Select `gold.cold_chain_compliance` dataset
+1. **AutoML** → **Create Experiment** → Select `silver.iot_normalized` dataset
 2. Set target: `spoilage_flag`
 3. Select features (exclude IDs, timestamps)
 4. Train → Review model performance (expect ~85% accuracy on demo data)
@@ -918,7 +913,7 @@ python deploy/deploy_qlik.py  # Includes glossary import step
 
 **Build in Qlik Application Automation:**
 
-1. **Trigger:** Qlik Analytics Reload Task Complete → check `gold.cold_chain_compliance` for new exceedance rows
+1. **Trigger:** Qlik Analytics Reload Task Complete → check `silver.iot_normalized` for new exceedance rows
    - Alternative trigger: Webhook from IoT pipeline when exceedance detected
 
 2. **Condition Block:** Filter for `exceedance_minutes >= 15 AND alert_sent = FALSE`
@@ -1003,8 +998,8 @@ python deploy/deploy_qlik.py  # Includes glossary import step
 1. In Qlik Cloud: **Analytics** → **Discovery Agent** → **Enable**
 2. Connect to data products:
    - `gold.supply_chain_health`
-   - `gold.cold_chain_compliance`
    - `gold.last_mile_performance`
+   - `silver.iot_normalized`
 3. Set monitoring frequency: continuous (streaming data products) or 15-min intervals
 
 ### 12.2 Demo Scenario: TransFrio Spoilage Detection
@@ -1012,7 +1007,7 @@ python deploy/deploy_qlik.py  # Includes glossary import step
 **Narrative:** The Discovery Agent should detect the spoilage anomaly on the São Paulo→Buenos Aires route the same way Roberto Almeida's team eventually did — but in hours instead of weeks.
 
 **What the Agent monitors:**
-- `gold.cold_chain_compliance`: temperature exceedance rates by route and carrier
+- `silver.iot_normalized`: temperature exceedance rates by route and carrier
 - `gold.supply_chain_health`: pipeline health and data freshness
 
 **Expected Discovery Agent alert:**
@@ -1062,83 +1057,92 @@ The Model Context Protocol (MCP) server exposes Qlik Cloud data and analytics to
 - Trigger automations
 - Access the business glossary
 
-### 13.2 Installation
+### 13.2 How it Works
 
-```bash
-# Install via npm (global)
-npm install -g @qlik/mcp-server
+The Qlik MCP Server is **cloud-hosted** — there is no npm package to install and no local process to run. It exposes a **Server-Sent Events (SSE)** endpoint directly from your Qlik Cloud tenant:
 
-# Or run via npx (no install)
-npx @qlik/mcp-server
 ```
+https://your-tenant.us.qlikcloud.com/api/ai/mcp
+```
+
+You configure your AI client (Claude Desktop, Claude Code, etc.) to connect to this URL with an API key for authentication. The MCP server exposes **71 tools** across 11 categories:
+
+| Category | Example Tools |
+|---|---|
+| App Discovery | `qlik_search`, `qlik_describe_app`, `qlik_list_apps` |
+| Data Products | `qlik_list_data_products`, `qlik_get_data_product` |
+| Business Glossary | `qlik_list_terms`, `qlik_get_term` |
+| Data Exploration | `qlik_get_fields`, `qlik_evaluate_expression` |
+| Lineage | `qlik_get_lineage` |
+| Datasets & Data Quality | `qlik_list_datasets`, `qlik_get_trust_score` |
+| Visualization & Sheets | `qlik_list_sheets`, `qlik_get_visualization` |
 
 ### 13.3 Configuration for Claude Desktop
 
-Edit `~/.config/claude/claude_desktop_config.json` (macOS/Linux) or `%APPDATA%\Claude\claude_desktop_config.json` (Windows):
+1. Generate an API key: **Qlik Cloud → Profile → API Keys → Generate new key**
+2. Edit `~/.config/claude/claude_desktop_config.json` (macOS/Linux) or `%APPDATA%\Claude\claude_desktop_config.json` (Windows):
 
 ```json
 {
   "mcpServers": {
     "qlik": {
-      "command": "npx",
-      "args": ["-y", "@qlik/mcp-server"],
-      "env": {
-        "QLIK_TENANT_URL": "https://mcg-demo.us.qlikcloud.com",
-        "QLIK_API_KEY": "your-api-key-here"
+      "url": "https://your-tenant.us.qlikcloud.com/api/ai/mcp",
+      "headers": {
+        "Authorization": "Bearer YOUR_API_KEY_HERE"
       }
     }
   }
 }
 ```
 
+3. Restart Claude Desktop — the server connects automatically over SSE.
+
 ### 13.4 Configuration for Claude Code
 
-Edit `.claude/settings.json` in your project root:
+Edit `.claude/settings.json` in your project root (or run `claude mcp add`):
 
 ```json
 {
   "mcpServers": {
     "qlik": {
-      "command": "npx",
-      "args": ["-y", "@qlik/mcp-server"],
-      "env": {
-        "QLIK_TENANT_URL": "https://mcg-demo.us.qlikcloud.com",
-        "QLIK_API_KEY": "your-api-key-here"
+      "url": "https://your-tenant.us.qlikcloud.com/api/ai/mcp",
+      "headers": {
+        "Authorization": "Bearer YOUR_API_KEY_HERE"
       }
     }
   }
 }
+```
+
+Or use the Claude Code CLI:
+```bash
+claude mcp add --transport sse qlik https://your-tenant.us.qlikcloud.com/api/ai/mcp \
+  --header "Authorization: Bearer YOUR_API_KEY_HERE"
 ```
 
 ### 13.5 Troubleshooting MCP Connection Issues
 
-**Common reasons LLMs don't register the Qlik MCP connection:**
-
 | Issue | Symptom | Fix |
 |---|---|---|
-| **npm/npx not in PATH** | MCP server process fails to start | Ensure Node.js 18+ is installed and `npx` is in system PATH |
-| **API key invalid/expired** | Server starts but tools return 401 | Generate a new API key in Qlik Cloud Settings → API Keys |
-| **Tenant URL wrong** | Connection timeout | Verify the full URL including region: `https://tenant.us.qlikcloud.com` (not just `tenant`) |
-| **Package not found** | `@qlik/mcp-server` not found | Check the exact npm package name — it may be `@qlik-oss/qlik-mcp-server` or similar. Search npmjs.com |
-| **Firewall blocking** | Timeout on MCP tool calls | Ensure outbound HTTPS (443) to `*.qlikcloud.com` is allowed |
-| **Claude Desktop version** | MCP tools don't appear in tool list | Update Claude Desktop to latest version; MCP requires v0.7+ |
-| **Config syntax error** | MCP server not listed in available tools | Validate JSON syntax in config file; common error: trailing commas |
-| **Environment variable missing** | Server starts but can't authenticate | Both `QLIK_TENANT_URL` and `QLIK_API_KEY` must be set in the `env` block |
-| **Permission scope** | Some operations fail with 403 | API key needs sufficient permissions: data access, app read, space access |
+| **API key invalid/expired** | Tools return 401 errors | Generate a new API key in Qlik Cloud Profile → API Keys |
+| **Tenant URL wrong** | Connection timeout or 404 | Verify the full URL including region: `https://tenant.us.qlikcloud.com/api/ai/mcp` |
+| **Firewall blocking** | SSE connection times out | Ensure outbound HTTPS (443) to `*.qlikcloud.com` is allowed |
+| **Claude Desktop version** | MCP tools don't appear | Update Claude Desktop to latest version |
+| **Config syntax error** | MCP server not listed in tools | Validate JSON syntax; common error: trailing commas |
+| **Permission scope** | Some operations fail with 403 | API key needs data access + app read + space access permissions |
 
 **Debug steps:**
-1. Test the MCP server standalone:
-   ```bash
-   QLIK_TENANT_URL=https://mcg-demo.us.qlikcloud.com \
-   QLIK_API_KEY=your-key \
-   npx @qlik/mcp-server
-   ```
-2. Check Claude Desktop logs: **Help → Show Logs** → look for MCP connection errors
-3. Verify API key works directly:
+1. Verify API key works directly:
    ```bash
    curl -H "Authorization: Bearer your-key" \
-     https://mcg-demo.us.qlikcloud.com/api/v1/users/me
+     https://your-tenant.us.qlikcloud.com/api/v1/users/me
    ```
+2. Test SSE endpoint is reachable:
+   ```bash
+   curl -N -H "Authorization: Bearer your-key" \
+     https://your-tenant.us.qlikcloud.com/api/ai/mcp
+   ```
+3. Check Claude Desktop logs: **Help → Show Logs** → look for MCP connection errors
 
 ### 13.6 Demo Scenario: Claude + Qlik MCP
 
@@ -1148,7 +1152,7 @@ Edit `.claude/settings.json` in your project root:
 **Claude's process (via MCP):**
 1. Uses Qlik MCP tool to query `gold.supply_chain_health` filtered by `dc = 'DC-RTD-01'`
 2. Gets: IRA = 74%, phantom_units = 847, pipeline_status = "RECOVERED"
-3. Uses Qlik MCP to query `gold.order_timeline` for affected orders
+3. Uses Qlik MCP to query `silver.orders_enriched` for affected orders
 4. Uses Qlik Answers to pull context from INC-2025-04872 (Rotterdam Pipeline Failure)
 
 **Claude's response:**

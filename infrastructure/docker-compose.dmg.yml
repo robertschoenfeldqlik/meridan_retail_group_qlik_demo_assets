@@ -16,7 +16,8 @@
 #   1. Clone the submodule:
 #      git submodule update --init
 #   2. Download the Gateway RPM from:
-#      https://github.com/qlik-download/saas-download-links/releases
+#      https://github.com/qlik-download/hdd-replication-agent-artifacts/releases
+#      (or set docker.rpmUrl in deploy/config.json for auto-download)
 #   3. Place the RPM as:
 #      infrastructure/dmg/gateway/rpmfiles/gateway.rpm
 #
@@ -97,11 +98,11 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres || exit 1"]
-      interval: 10s
+      test: ["CMD-SHELL", "/usr/pgsql-15/bin/pg_isready -U postgres || exit 1"]
+      interval: 15s
       timeout: 10s
-      retries: 30
-      start_period: 60s
+      retries: 40
+      start_period: 120s
     restart: unless-stopped
 
 volumes:
@@ -113,5 +114,5 @@ networks:
     driver: bridge
     name: mcg-sim-net
   mcg-kafka-net:
-    external: true
+    driver: bridge
     name: mcg-kafka-net

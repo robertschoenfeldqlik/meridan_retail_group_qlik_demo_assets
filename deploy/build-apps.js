@@ -232,6 +232,15 @@ function requestOnce(method, reqUrl, { headers = {}, body = null, rawBody = null
     }
 
     const req = transport.request(opts, (res) => {
+      // Follow 301/302/307/308 redirects (max 10)
+      if ([301, 302, 307, 308].includes(res.statusCode) && res.headers.location) {
+        const rc = (opts._redirectCount || 0) + 1;
+        if (rc > 10) { res.resume(); reject(new Error(`Too many redirects (>10): ${reqUrl}`)); return; }
+        const redirectUrl = new URL(res.headers.location, reqUrl).toString();
+        res.resume(); // drain response
+        resolve(requestOnce(method, redirectUrl, { headers, body, rawBody, timeout, _redirectCount: rc }));
+        return;
+      }
       const chunks = [];
       res.on('data', (chunk) => chunks.push(chunk));
       res.on('end', () => {

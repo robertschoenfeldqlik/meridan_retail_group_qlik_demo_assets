@@ -78,7 +78,7 @@ Step-by-step instructions for configuring each automation in the Qlik Cloud UI a
 - Method: `GET`
 - URL: `https://<tenant>/api/v1/data-products/<spoilage-risk-product-id>/data`
 - Query parameter / filter: `exceedance_minutes >= 15`
-- **Alternative:** Use the **Qlik Cloud > Query Data Source** block if available in your version, pointing at the `gold.cold_chain_compliance` table
+- **Alternative:** Use the **Qlik Cloud > Query Data Source** block if available in your version, pointing at the `silver.iot_normalized` table
 
 #### Block 3: Condition Check
 - Add block: **Control > If/Else**
@@ -196,7 +196,7 @@ Pipeline Health Summary:
 - **Every 30 minutes**
 
 #### Block 2: Query WISMO Data
-- Query `gold.customer_delivery_experience`
+- Query `silver.orders_enriched`
 - Filter: `wismo_rate > 0.50` (50% threshold)
 - Group by: `carrier`, `destination_region`
 
@@ -322,7 +322,7 @@ Bronze (dirty addresses) → Data Flow 3 (standardization) → Silver (quality-s
 
 #### Block 8: Trigger Downstream Refresh (Optional)
 - If corrected addresses changed significantly, trigger a data flow refresh:
-  - Reload `gold.customer_delivery_experience` table recipe
+  - Reload `silver.orders_enriched` table recipe
   - Reload `gold.last_mile_performance` (address quality affects delivery SLAs)
 - This ensures the Predict SLA model picks up improved address quality scores
 

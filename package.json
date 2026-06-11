@@ -21,6 +21,7 @@
     "docker:up:dmg": "cd infrastructure && docker compose -f docker-compose.full-stack-dmg.yml up -d --build",
     "docker:up:kafka": "cd infrastructure && docker compose -f kafka/docker-compose.yml up -d",
     "docker:up:simulators": "cd infrastructure && docker compose -f docker-compose.simulators.yml up -d",
+    "docker:up:simulators-dmg": "cd infrastructure && docker compose -f docker-compose.simulators-dmg.yml up -d",
     "docker:up:dmg-only": "cd infrastructure && docker compose -f docker-compose.dmg.yml up -d --build",
     "docker:down": "cd infrastructure && docker compose -f docker-compose.full-stack.yml down",
     "docker:down:dmg": "cd infrastructure && docker compose -f docker-compose.full-stack-dmg.yml down",
