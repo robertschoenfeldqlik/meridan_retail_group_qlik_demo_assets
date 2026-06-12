@@ -188,6 +188,21 @@ function discoverFiles() {
   }
   result.pipeline.exists = result.pipeline.projects.length > 0;
 
+  // Qlik MCP sheet-authoring prompts (for the Build Apps page)
+  const promptsPath = path.join(SCRIPT_DIR, 'apps', 'mcp-sheet-prompts.json');
+  result.mcpPrompts = { exists: false, apps: [] };
+  if (fs.existsSync(promptsPath)) {
+    try {
+      const mp = JSON.parse(fs.readFileSync(promptsPath, 'utf-8'));
+      result.mcpPrompts = {
+        exists: true,
+        endpoint: (mp.mcpSetup && mp.mcpSetup.endpoint) || '',
+        testPrompt: (mp.mcpSetup && mp.mcpSetup.testPrompt) || '',
+        apps: mp.apps || [],
+      };
+    } catch (_) {}
+  }
+
   const glPath = path.join(SCRIPT_DIR, 'glossary_terms.json');
   result.glossary = { exists: fs.existsSync(glPath), path: glPath, count: 0, items: [] };
   if (result.glossary.exists) {
@@ -2037,6 +2052,15 @@ function getHTML() {
           <label>Verbose Logging</label>
           <label class="switch"><input type="checkbox" id="build-opt-verbose" checked><span class="slider"></span></label>
         </div>
+        <div class="toggle-row">
+          <label>Create sheets via Qlik MCP (build empty apps only)</label>
+          <label class="switch"><input type="checkbox" id="f-apps-sheets-mcp" checked><span class="slider"></span></label>
+        </div>
+        <div class="hint">ON (recommended): the build creates each app empty — just the load script, mapped to the gold data products and silver datasets — and you author the sheets conversationally with the Qlik MCP prompts below. OFF: the legacy builder creates master items and sheets from app-definitions via the Engine API.</div>
+
+        <div class="section-divider">Sheet Prompts (Qlik MCP)</div>
+        <div class="hint">Connect Claude Desktop/Code to your tenant's MCP endpoint (<code>https://&lt;tenant&gt;/api/ai/mcp</code> with an API key), then copy one prompt per sheet. Field names match the QVS load scripts exactly, which load from the pipeline's data products.</div>
+        <div id="mcp-prompts-list"><!-- populated by JS --></div>
 
         <div class="section-divider">Actions</div>
         <div class="btn-row">
@@ -2416,6 +2440,11 @@ function getHTML() {
     setCheck('f-en-dataproducts', en.dataproducts !== false);
     setCheck('f-en-glossary', en.glossary !== false);
     setCheck('f-en-pipelines', en.pipelines !== false);
+
+    // Apps
+    if (cfg.apps) {
+      setCheck('f-apps-sheets-mcp', cfg.apps.sheetsViaMcp !== false);
+    }
 
     // Pipelines
     if (cfg.pipelines) {
@@ -2883,6 +2912,49 @@ function getHTML() {
     }
 
     el.innerHTML = html;
+    renderMcpPrompts();
+  }
+
+  // --- Qlik MCP sheet prompts (Build Apps page) ---
+  let mcpPromptTexts = [];
+  function renderMcpPrompts() {
+    const el = document.getElementById('mcp-prompts-list');
+    if (!el) return;
+    const mp = (discoveredFiles && discoveredFiles.mcpPrompts) || { exists: false, apps: [] };
+    if (!mp.exists || mp.apps.length === 0) {
+      el.innerHTML = '<div style="font-size:12px;color:var(--text-dim)">No mcp-sheet-prompts.json found in deploy/apps/</div>';
+      return;
+    }
+    mcpPromptTexts = [];
+    let html = '';
+    if (mp.testPrompt) {
+      const ti = mcpPromptTexts.push(mp.testPrompt) - 1;
+      html += '<div class="dp-card"><div class="dp-name">Connection test</div>' +
+        '<div class="dp-meta">' + esc(mp.testPrompt) + '</div>' +
+        '<button class="btn btn-dry" style="margin-top:6px;font-size:11px;padding:3px 10px" onclick="copyMcpPrompt(' + ti + ', this)">Copy prompt</button></div>';
+    }
+    for (const app of mp.apps) {
+      html += '<div style="font-size:13px;font-weight:700;color:var(--text);margin:10px 0 6px">' + esc(app.appName) +
+        ' <span style="font-weight:400;color:var(--text-dim);font-size:11px">(' + esc(app.dataProduct || '') + ')</span></div>';
+      for (const sheet of (app.sheets || [])) {
+        const i = mcpPromptTexts.push(sheet.prompt) - 1;
+        html += '<div class="dp-card">' +
+          '<div class="dp-name">' + esc(sheet.title) + '</div>' +
+          '<div class="dp-meta" style="white-space:normal">' + esc(sheet.prompt.slice(0, 180)) + '&hellip;</div>' +
+          '<button class="btn btn-dry" style="margin-top:6px;font-size:11px;padding:3px 10px" onclick="copyMcpPrompt(' + i + ', this)">Copy prompt</button>' +
+          '</div>';
+      }
+    }
+    el.innerHTML = html;
+  }
+
+  function copyMcpPrompt(i, btn) {
+    const text = mcpPromptTexts[i] || '';
+    navigator.clipboard.writeText(text).then(() => {
+      const old = btn.textContent;
+      btn.textContent = 'Copied!';
+      setTimeout(() => { btn.textContent = old; }, 1500);
+    });
   }
 
   function startBuildApps(dryRun) {
@@ -3221,7 +3293,7 @@ function getHTML() {
         teamsWebhookUrl: getVal('f-teams-webhook'),
       },
       documents: { sourceDir: '../documents' },
-      apps: { sourceDir: './apps' },
+      apps: { sourceDir: './apps', sheetsViaMcp: isChecked('f-apps-sheets-mcp') },
       options: {
         dryRun: false,
         verbose: isChecked('opt-verbose'),

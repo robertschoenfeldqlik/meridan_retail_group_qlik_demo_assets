@@ -1,17 +1,21 @@
 // =============================================================================
 // MCG Delivery & Customer Experience — Qlik Analytics Load Script
 // =============================================================================
-// Connects to Gold-layer data products in the Open Lakehouse.
+// Loads directly from the data products and silver datasets created by the
+// MCG Batch + Streaming Pipelines (declarative QTCP projects).
 //
-// Gold Tables Used:
-//   - gold.last_mile_performance
+// Data Product (Gold):
+//   - gold.last_mile_performance      (per carrier/country KPIs — Data Product "Last Mile Performance")
 //
-// Silver Tables Used:
-//   - silver.orders_enriched
-//   - silver.shipments_canonical
+// Silver datasets (detail):
+//   - silver.order_delivery_timeline  (order lifecycle behind the gold KPIs)
+//   - silver.shipments_canonical      (canonical carrier shipment statuses)
+//   - silver.addresses_standardized   (customer addresses + quality scores)
 //
-// Streaming Tables (Direct Query):
+// Bronze (live feed):
 //   - bronze.iot_carrier_events
+//
+// The connection name matches the deploy config (dataConnections / bindings).
 // =============================================================================
 
 SET ThousandSep=',';
@@ -27,162 +31,140 @@ SET BrokenWeeks=1;
 SET ReferenceDay=0;
 SET FirstMonthOfYear=1;
 
+LIB CONNECT TO 'MCG Open Lakehouse';
+
 // =============================================================================
-// 1. LAST MILE PERFORMANCE (Gold)
-// =============================================================================
-// Source: gold.last_mile_performance
-// Contains: Carrier SLA performance, on-time rates, address quality impact
-// Refresh: Every 30 minutes
+// 1. LAST MILE PERFORMANCE — Data Product (gold, carrier/country grain)
 // =============================================================================
 
 LastMilePerformance:
 LOAD
-    shipment_id                AS [Shipment ID],
-    tracking_number            AS [Tracking Number],
-    carrier                    AS [Carrier],
-    carrier_canonical          AS [Carrier (Canonical)],
-    order_id                   AS [Order ID],
-    destination_country        AS [Country],
-    destination_region         AS [Region],
-    destination_city           AS [City],
-    shipment_status            AS [Shipment Status],
-    status_canonical           AS [Status (Canonical)],
-    status_datetime_utc        AS [Status Time (UTC)],
-    sla_target_hours           AS [SLA Target (hrs)],
-    sla_actual_hours           AS [SLA Actual (hrs)],
-    sla_met                    AS [SLA Met],
-    on_time_flag               AS [On-Time Flag],
-    delivery_attempts          AS [Delivery Attempts],
-    exception_code_canonical   AS [Exception Code],
-    weight_kg                  AS [Weight (kg)],
-    weight_unit                AS [Weight Unit],
-    address_quality_score      AS [Address Quality Score],
-    trust_score                AS [LM Trust Score],
-    snapshot_utc               AS [LM Snapshot Time]
-FROM [lib://MCG Open Lakehouse/gold.last_mile_performance]
-(qvd);
-
+    carrier_code             AS [Carrier],
+    destination_country      AS [Country],
+    orders                   AS [Orders],
+    delivered_orders         AS [Delivered Orders],
+    late_deliveries          AS [Late Deliveries],
+    on_time_rate             AS [On-Time Rate],
+    avg_days_late            AS [Avg Days Late],
+    wismo_inquiries          AS [WISMO Inquiries],
+    wismo_rate               AS [WISMO Rate],
+    tracking_missing_count   AS [Tracking Missing Count],
+    avg_address_quality      AS [Avg Address Quality];
+SELECT carrier_code, destination_country, orders, delivered_orders,
+       late_deliveries, on_time_rate, avg_days_late, wismo_inquiries,
+       wismo_rate, tracking_missing_count, avg_address_quality
+FROM gold.last_mile_performance;
 
 // =============================================================================
-// 2. ORDERS ENRICHED (Silver — replaces former gold.customer_delivery_experience + gold.order_timeline)
-// =============================================================================
-// Source: silver.orders_enriched
-// Contains: Customer addresses, WISMO rates, order lifecycle milestones, SLA compliance
-// Refresh: Hourly
-// =============================================================================
-
-CustomerExperience:
-LOAD
-    customer_id                AS [Customer ID],
-    customer_name              AS [Customer Name],
-    address_clean              AS [Address (Clean)],
-    address_original           AS [Address (Original)],
-    address_quality_score      AS [Addr Quality Score],
-    address_truncated_flag     AS [Address Truncated],
-    destination_country        AS [Customer Country],
-    destination_region         AS [Customer Region],
-    destination_city           AS [Customer City],
-    postal_code                AS [Postal Code],
-    total_orders               AS [Total Orders],
-    wismo_count                AS [WISMO Count],
-    IF(total_orders > 0, wismo_count / total_orders, 0) AS [WISMO Rate],
-    wismo_flag                 AS [WISMO Flag],
-    ltv_usd                    AS [Lifetime Value ($)],
-    trust_score                AS [CX Trust Score]
-FROM [lib://MCG Open Lakehouse/silver.orders_enriched]
-(qvd);
-
-
-// =============================================================================
-// 3. ORDER TIMELINE (derived from silver.orders_enriched)
-// =============================================================================
-// Contains: End-to-end order lifecycle milestones, SLA compliance
+// 2. ORDER TIMELINE — silver.order_delivery_timeline (order grain)
 // =============================================================================
 
 OrderTimeline:
 LOAD
-    order_id                   AS [Timeline Order ID],
-    shipment_id                AS [Timeline Shipment ID],
-    carrier                    AS [Timeline Carrier],
-    destination_region         AS [Timeline Region],
-    destination_country        AS [Timeline Country],
-    order_placed_utc           AS [Order Placed],
-    picked_utc                 AS [Picked],
-    shipped_utc                AS [Shipped],
-    delivered_utc              AS [Delivered],
-
-    // Duration calculations (hours)
-    IF(NOT IsNull(picked_utc) AND NOT IsNull(order_placed_utc),
-       (picked_utc - order_placed_utc) * 24, Null()) AS [Order-to-Pick (hrs)],
-    IF(NOT IsNull(shipped_utc) AND NOT IsNull(picked_utc),
-       (shipped_utc - picked_utc) * 24, Null()) AS [Pick-to-Ship (hrs)],
-    IF(NOT IsNull(delivered_utc) AND NOT IsNull(shipped_utc),
-       (delivered_utc - shipped_utc) * 24, Null()) AS [Ship-to-Deliver (hrs)],
-    IF(NOT IsNull(delivered_utc) AND NOT IsNull(order_placed_utc),
-       (delivered_utc - order_placed_utc) * 24, Null()) AS [End-to-End (hrs)],
-
-    sla_target_hours           AS [Timeline SLA Target],
-    sla_met                    AS [Timeline SLA Met],
-    max_temperature            AS [Max Temp During Transit],
-    exceedance_flag            AS [Transit Exceedance],
-    spoilage_probability       AS [Transit Spoilage Risk],
-    trust_score                AS [OT Trust Score]
-FROM [lib://MCG Open Lakehouse/silver.orders_enriched]
-(qvd);
-
+    order_id              AS [Order ID],
+    contact_id            AS [Contact ID],
+    order_date            AS [Order Date],
+    sku                   AS [SKU],
+    product_name          AS [Product Name],
+    fulfillment_method    AS [Fulfillment Method],
+    carrier_code          AS [Carrier],
+    tracking_number       AS [Tracking Number],
+    order_status          AS [Order Status],
+    promised_delivery     AS [Promised Delivery],
+    actual_delivery       AS [Actual Delivery],
+    tracking_missing      AS [Tracking Missing Flag],
+    delivered_late        AS [Delivered Late Flag],
+    days_late             AS [Days Late],
+    wismo_flag            AS [WISMO Flag],
+    shipment_id           AS [Shipment ID],
+    carrier_status_raw    AS [Carrier Status],
+    delivery_attempts     AS [Delivery Attempts],
+    exception_code        AS [Exception Code];
+SELECT order_id, contact_id, order_date, sku, product_name,
+       fulfillment_method, carrier_code, tracking_number, order_status,
+       promised_delivery, actual_delivery, tracking_missing, delivered_late,
+       days_late, wismo_flag, shipment_id, carrier_status_raw,
+       delivery_attempts, exception_code
+FROM silver.order_delivery_timeline;
 
 // =============================================================================
-// SHIPMENT STATUS REFERENCE (Static canonical mapping)
+// 3. SHIPMENTS CANONICAL — silver.shipments_canonical
+// =============================================================================
+// Linked to OrderTimeline via [Shipment ID]; other fields aliased to avoid
+// synthetic keys.
 // =============================================================================
 
-StatusRef:
-LOAD * INLINE [
-    StatusCanonical, StatusOrder, StatusColor
-    LABEL_CREATED, 1, #8899AD
-    PICKED_UP, 2, #5BA3CF
-    IN_TRANSIT, 3, #0D7C8F
-    OUT_FOR_DELIVERY, 4, #C4922E
-    DELIVERED, 5, #059669
-    FAILED_ATTEMPT, 6, #DC2626
-    RETURNED, 7, #93579C
-];
-
-
-// =============================================================================
-// CARRIER REFERENCE (SLA targets and metadata)
-// =============================================================================
-
-CarrierRef:
-LOAD * INLINE [
-    CarrierCode, CarrierName, DefaultSLAHours, CoverageRegion
-    FEDEX, FedEx, 72, Global
-    DHL, DHL, 72, Global
-    DPD, DPD, 48, EU
-    GLS, GLS, 48, EU
-    TRANSFRIO, TransFrio, 72, LATAM
-    NINJAVAN, NinjaVan, 48, APAC
-    ARAMEX, Aramex, 96, Middle East/Africa
-    LOCAL-LOS, Lagos Local, 120, Africa
-];
-
-
-// =============================================================================
-// CALENDAR (Master Calendar)
-// =============================================================================
-
-MinMaxDates2:
+ShipmentsCanonical:
 LOAD
-    MIN(Date(Floor([LM Snapshot Time]))) AS MinDate,
-    MAX(Date(Floor([LM Snapshot Time]))) AS MaxDate
-RESIDENT LastMilePerformance;
+    shipment_id                   AS [Shipment ID],
+    tracking_number               AS [Ship Tracking Number],
+    carrier_code                  AS [Ship Carrier],
+    order_id                      AS [Ship Order ID],
+    shipment_status_raw           AS [Status (Raw)],
+    shipment_status               AS [Status (Canonical)],
+    status_datetime_raw           AS [Status Time (Raw)],
+    origin_facility               AS [Origin DC],
+    destination_city              AS [Ship-To City],
+    destination_country           AS [Ship-To Country],
+    estimated_delivery            AS [Estimated Delivery],
+    actual_delivery               AS [Ship Actual Delivery],
+    delivery_attempts             AS [Ship Delivery Attempts],
+    exception_code                AS [Ship Exception Code],
+    weight_kg                     AS [Weight (kg)],
+    delivered_without_timestamp   AS [Delivered w/o Timestamp Flag];
+SELECT shipment_id, tracking_number, carrier_code, order_id,
+       shipment_status_raw, shipment_status, status_datetime_raw,
+       origin_facility, destination_city, destination_country,
+       estimated_delivery, actual_delivery, delivery_attempts,
+       exception_code, weight_kg, delivered_without_timestamp
+FROM silver.shipments_canonical;
 
-LET vMinDate2 = Peek('MinDate', 0, 'MinMaxDates2');
-LET vMaxDate2 = Peek('MaxDate', 0, 'MinMaxDates2');
-DROP TABLE MinMaxDates2;
+// =============================================================================
+// 4. CUSTOMER ADDRESSES — silver.addresses_standardized
+// =============================================================================
+// Linked to OrderTimeline via [Contact ID].
+// =============================================================================
+
+CustomerAddresses:
+LOAD
+    contact_id              AS [Contact ID],
+    first_name              AS [First Name],
+    last_name               AS [Last Name],
+    email                   AS [Email],
+    city                    AS [Customer City],
+    state_region            AS [Customer Region],
+    postal_code             AS [Postal Code],
+    country_iso             AS [Customer Country],
+    address_quality_score   AS [Address Quality Score];
+SELECT contact_id, first_name, last_name, email, city, state_region,
+       postal_code, country_iso, address_quality_score
+FROM silver.addresses_standardized;
+
+// =============================================================================
+// 5. LIVE CARRIER EVENTS — bronze.iot_carrier_events (raw stream)
+// =============================================================================
+
+CarrierEventsLive:
+LOAD *;
+SELECT * FROM bronze.iot_carrier_events;
+
+// =============================================================================
+// CALENDAR (Master Calendar for time intelligence)
+// =============================================================================
+
+MinMaxDates:
+LOAD
+    MIN(Date(Floor([Order Date]))) AS MinDate,
+    MAX(Date(Floor([Order Date]))) AS MaxDate
+RESIDENT OrderTimeline;
+
+LET vMinDate = Peek('MinDate', 0, 'MinMaxDates');
+LET vMaxDate = Peek('MaxDate', 0, 'MinMaxDates');
+DROP TABLE MinMaxDates;
 
 Calendar:
 LOAD
-    Date                       AS [Date],
+    Date                       AS [Order Date],
     Year(Date)                 AS [Year],
     Month(Date)                AS [Month],
     MonthName(Date)            AS [Month Name],
@@ -192,6 +174,6 @@ LOAD
     'Q' & Ceil(Month(Date)/3)  AS [Quarter]
 ;
 LOAD
-    Date('$(vMinDate2)' + IterNo() - 1) AS Date
+    Date('$(vMinDate)' + IterNo() - 1) AS Date
 AUTOGENERATE 1
-WHILE Date('$(vMinDate2)' + IterNo() - 1) <= '$(vMaxDate2)';
+WHILE Date('$(vMinDate)' + IterNo() - 1) <= '$(vMaxDate)';

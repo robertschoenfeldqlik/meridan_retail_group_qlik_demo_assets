@@ -1,19 +1,21 @@
 // =============================================================================
 // MCG Supply Chain Operations — Qlik Analytics Load Script
 // =============================================================================
-// Connects to Gold-layer data products in the Open Lakehouse.
-// Assumes data connections already configured in Qlik Cloud.
+// Loads directly from the data products and silver datasets created by the
+// MCG Batch + Streaming Pipelines (declarative QTCP projects).
 //
-// Gold Tables Used:
-//   - gold.supply_chain_health
+// Data Product (Gold):
+//   - gold.supply_chain_health        (per-DC KPIs — Data Product "Supply Chain Health")
 //
-// Silver Tables Used:
-//   - silver.iot_normalized
-//   - silver.products_harmonized
-//   - silver.inventory_reconciled
+// Silver datasets (detail / live):
+//   - silver.inventory_reconciled     (position-grain detail behind the gold KPIs)
+//   - silver.products_harmonized      (product master)
+//   - silver.iot_normalized           (cold-chain telemetry, streaming pipeline)
 //
-// Streaming Tables (Direct Query):
+// Bronze (live feed):
 //   - bronze.iot_carrier_events
+//
+// The connection name matches the deploy config (dataConnections / bindings).
 // =============================================================================
 
 SET ThousandSep=',';
@@ -29,140 +31,118 @@ SET BrokenWeeks=1;
 SET ReferenceDay=0;
 SET FirstMonthOfYear=1;
 
+LIB CONNECT TO 'MCG Open Lakehouse';
+
 // =============================================================================
-// 1. SUPPLY CHAIN HEALTH (Gold)
-// =============================================================================
-// Source: gold.supply_chain_health
-// Contains: IRA metrics, phantom inventory flags, pipeline status, trust scores
-// Refresh: Every 15 minutes
+// 1. SUPPLY CHAIN HEALTH — Data Product (gold, per-DC grain)
 // =============================================================================
 
 SupplyChainHealth:
 LOAD
-    dc_id                     AS [Distribution Center],
-    sku                       AS [SKU],
-    product_name              AS [Product Name],
-    category                  AS [Category],
-    region                    AS [Region],
-    qty_wms                   AS [WMS Quantity],
-    qty_erp                   AS [ERP Quantity],
-    qty_wms - qty_erp         AS [Variance],
-    IF(qty_erp > 0, (qty_wms - qty_erp) / qty_erp, 0) AS [Variance %],
-    phantom_inventory         AS [Phantom Flag],
-    phantom_critical          AS [Phantom Critical],
-    uom_standard              AS [Unit of Measure],
-    storage_zone_standard     AS [Storage Zone],
-    lot_number                AS [Lot Number],
-    lot_missing               AS [Lot Missing Flag],
-    pipeline_status           AS [Pipeline Status],
-    sync_lag_minutes          AS [Sync Lag (min)],
-    trust_score               AS [Trust Score],
-    snapshot_utc              AS [Snapshot Time]
-FROM [lib://MCG Open Lakehouse/gold.supply_chain_health]
-(qvd);
+    location_id                                          AS [Distribution Center],
+    sku_positions                                        AS [SKU Positions],
+    total_on_hand                                        AS [Total On Hand],
+    phantom_suspect_count                                AS [Phantom Suspect Count],
+    negative_qty_count                                   AS [Negative Qty Count],
+    lot_missing_count                                    AS [Lot Missing Count],
+    avg_trust_score                                      AS [Avg Trust Score],
+    cycle_count_events                                   AS [Cycle Count Events],
+    avg_cycle_count_variance                             AS [Avg Cycle Count Variance],
+    IF(sku_positions > 0,
+       1 - (phantom_suspect_count / sku_positions), 0)   AS [IRA %];
+SELECT location_id, sku_positions, total_on_hand, phantom_suspect_count,
+       negative_qty_count, lot_missing_count, avg_trust_score,
+       cycle_count_events, avg_cycle_count_variance
+FROM gold.supply_chain_health;
 
-// Derive IRA calculation
-IRA_Calc:
+// =============================================================================
+// 2. INVENTORY DETAIL — silver.inventory_reconciled (position grain)
+// =============================================================================
+
+InventoryDetail:
 LOAD
-    [Distribution Center],
-    COUNT(DISTINCT [SKU]) AS [Total SKUs],
-    SUM(IF([Phantom Flag] = 0, 1, 0)) AS [Accurate SKUs],
-    SUM(IF([Phantom Flag] = 1, 1, 0)) AS [Phantom Units],
-    IF(COUNT([SKU]) > 0,
-       SUM(IF([Phantom Flag] = 0, 1, 0)) / COUNT([SKU]),
-       0) AS [IRA %]
-RESIDENT SupplyChainHealth
-GROUP BY [Distribution Center];
-
-
-// =============================================================================
-// 2. IOT NORMALIZED (Silver — replaces former gold.cold_chain_compliance)
-// =============================================================================
-// Source: silver.iot_normalized
-// Contains: Temperature data, exceedances, spoilage risk, sensor health
-// Refresh: Every 5 minutes (near real-time)
-// =============================================================================
-
-ColdChainData:
-LOAD
-    shipment_id               AS [Shipment ID],
-    route                     AS [Route],
-    carrier                   AS [Carrier],
-    product_type              AS [Product Type],
-    avg_temp_celsius           AS [Avg Temperature (°C)],
-    max_temp_celsius           AS [Max Temperature (°C)],
-    min_temp_celsius           AS [Min Temperature (°C)],
-    exceedance_minutes         AS [Exceedance Duration (min)],
-    exceedance_flag            AS [Exceedance Flag],
-    pre_cool_compliant         AS [Pre-Cool Compliant],
-    spoilage_flag              AS [Spoilage Flag],
-    spoilage_probability       AS [Spoilage Probability],
-    estimated_loss_usd         AS [Estimated Loss ($)],
-    sensor_count               AS [Sensor Count],
-    data_gap_flag              AS [Data Gap Flag],
-    alert_sent                 AS [Alert Sent],
-    trust_score                AS [CC Trust Score],
-    snapshot_utc               AS [CC Snapshot Time]
-FROM [lib://MCG Open Lakehouse/silver.iot_normalized]
-(qvd);
-
+    location_id           AS [Distribution Center],
+    sku                   AS [SKU],
+    lot_number            AS [Lot Number],
+    quantity_on_hand      AS [Qty On Hand],
+    quantity_available    AS [Qty Available],
+    quantity_reserved     AS [Qty Reserved],
+    quantity_in_transit   AS [Qty In Transit],
+    unit_of_measure       AS [Unit of Measure],
+    storage_zone          AS [Storage Zone],
+    logic_error           AS [Negative Qty Flag],
+    phantom_suspect       AS [Phantom Suspect Flag],
+    lot_missing           AS [Lot Missing Flag],
+    last_count_date       AS [Last Count Date],
+    snapshot_timestamp    AS [Snapshot Time],
+    trust_score           AS [Position Trust Score];
+SELECT location_id, sku, lot_number, quantity_on_hand, quantity_available,
+       quantity_reserved, quantity_in_transit, unit_of_measure, storage_zone,
+       logic_error, phantom_suspect, lot_missing, last_count_date,
+       snapshot_timestamp, trust_score
+FROM silver.inventory_reconciled;
 
 // =============================================================================
-// 3. PRODUCTS HARMONIZED (Silver — replaces former gold.product_master_360)
-// =============================================================================
-// Source: silver.products_harmonized
-// Contains: Harmonized product data, SKU resolution, weight completeness
-// Refresh: Hourly
+// 3. PRODUCT MASTER — silver.products_harmonized
 // =============================================================================
 
 ProductMaster:
 LOAD
-    canonical_sku              AS [Canonical SKU],
-    legacy_sku_am              AS [Legacy SKU (Americas)],
-    legacy_sku_eu              AS [Legacy SKU (Europe)],
-    product_name_en            AS [Product Name],
-    category                   AS [Product Category],
-    weight_kg                  AS [Weight (kg)],
-    weight_missing_flag        AS [Weight Missing],
-    dimensions_cm              AS [Dimensions (cm)],
-    uom_standard               AS [Standard UoM],
-    gtin                       AS [GTIN],
-    supplier_id                AS [Supplier ID],
-    supplier_name              AS [Supplier Name],
-    supplier_count             AS [Supplier Count],
-    country_of_origin          AS [Country of Origin],
-    perishable                 AS [Perishable],
-    trust_score                AS [Product Trust Score]
-FROM [lib://MCG Open Lakehouse/silver.products_harmonized]
-(qvd);
-
+    sku                              AS [SKU],
+    legacy_sku_americas              AS [Legacy SKU (Americas)],
+    legacy_sku_eu                    AS [Legacy SKU (EU)],
+    product_name                     AS [Product Name],
+    category_l1                      AS [Category],
+    category_l2                      AS [Subcategory],
+    category_l3                      AS [Category Detail],
+    weight_kg                        AS [Weight (kg)],
+    weight_imputed                   AS [Weight Imputed Flag],
+    country_of_origin                AS [Country of Origin],
+    origin_missing_compliance_risk   AS [Origin Compliance Risk],
+    supplier_name_raw                AS [Supplier (Raw)],
+    supplier_canonical               AS [Supplier];
+SELECT sku, legacy_sku_americas, legacy_sku_eu, product_name, category_l1,
+       category_l2, category_l3, weight_kg, weight_imputed, country_of_origin,
+       origin_missing_compliance_risk, supplier_name_raw, supplier_canonical
+FROM silver.products_harmonized;
 
 // =============================================================================
-// 4. INVENTORY RECONCILED (Silver — replaces former gold.compliance_readiness)
-// =============================================================================
-// Source: silver.inventory_reconciled
-// Contains: Lot traceability, farm-to-shelf, NVWA compliance
-// Refresh: Daily
+// 4. COLD CHAIN TELEMETRY — silver.iot_normalized (streaming pipeline)
 // =============================================================================
 
-ComplianceReadiness:
+ColdChainTelemetry:
 LOAD
-    sku                        AS [Compliance SKU],
-    product_name               AS [Compliance Product],
-    category                   AS [Compliance Category],
-    lot_number                 AS [Compliance Lot],
-    farm_origin                AS [Farm Origin],
-    country_of_origin          AS [Origin Country],
-    dc_id                      AS [Compliance DC],
-    dc_receipt_utc             AS [DC Receipt Time],
-    store_receipt_utc          AS [Store Receipt Time],
-    trace_complete_flag        AS [Trace Complete],
-    trace_completeness_pct     AS [Trace Completeness %],
-    nvwa_applicable            AS [NVWA Applicable],
-    trust_score                AS [Compliance Trust Score]
-FROM [lib://MCG Open Lakehouse/silver.inventory_reconciled]
-(qvd);
+    sensor_id             AS [Sensor ID],
+    shipment_id           AS [IoT Shipment ID],
+    timestamp             AS [Reading Time],
+    temperature_value     AS [Temp (Raw)],
+    temperature_unit      AS [Temp Unit],
+    temperature_c         AS [Temperature (°C)],
+    humidity_pct          AS [Humidity %],
+    light_exposure        AS [Light Exposure],
+    shock_detected        AS [Shock Detected],
+    gps_latitude          AS [GPS Lat],
+    gps_longitude         AS [GPS Lon],
+    gps_gap               AS [GPS Gap Flag],
+    battery_level_pct     AS [Battery %],
+    battery_low           AS [Battery Low Flag],
+    sensor_unregistered   AS [Sensor Unregistered Flag],
+    alert_flag            AS [Temp Alert Flag],
+    warehouse_id          AS [Distribution Center],
+    route_id              AS [Route];
+SELECT sensor_id, shipment_id, timestamp, temperature_value, temperature_unit,
+       temperature_c, humidity_pct, light_exposure, shock_detected,
+       gps_latitude, gps_longitude, gps_gap, battery_level_pct, battery_low,
+       sensor_unregistered, alert_flag, warehouse_id, route_id
+FROM silver.iot_normalized;
 
+// =============================================================================
+// 5. LIVE CARRIER EVENTS — bronze.iot_carrier_events (raw stream)
+// =============================================================================
+
+CarrierEventsLive:
+LOAD *;
+SELECT * FROM bronze.iot_carrier_events;
 
 // =============================================================================
 // CALENDAR (Master Calendar for time intelligence)
@@ -172,7 +152,7 @@ MinMaxDates:
 LOAD
     MIN(Date(Floor([Snapshot Time]))) AS MinDate,
     MAX(Date(Floor([Snapshot Time]))) AS MaxDate
-RESIDENT SupplyChainHealth;
+RESIDENT InventoryDetail;
 
 LET vMinDate = Peek('MinDate', 0, 'MinMaxDates');
 LET vMaxDate = Peek('MaxDate', 0, 'MinMaxDates');
@@ -193,7 +173,6 @@ LOAD
     Date('$(vMinDate)' + IterNo() - 1) AS Date
 AUTOGENERATE 1
 WHILE Date('$(vMinDate)' + IterNo() - 1) <= '$(vMaxDate)';
-
 
 // =============================================================================
 // NIGHTMARE REFERENCE (Static mapping)

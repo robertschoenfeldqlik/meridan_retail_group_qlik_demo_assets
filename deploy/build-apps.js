@@ -103,6 +103,9 @@ function parseArgs(argv) {
       case '--skip-publish':
         args.skipPublish = true;
         break;
+      case '--build-sheets':
+        args.buildSheets = true;
+        break;
       case '--skip-reload':
         args.skipReload = true;
         break;
@@ -130,6 +133,10 @@ Options:
   --app <name>        Build only the app matching this substring
   --skip-publish      Build apps but do not publish to managed space
   --skip-reload       Build apps but do not trigger data reload
+  --build-sheets      Legacy: build master items + sheets via Engine API.
+                      Default builds EMPTY apps (load script mapped to the
+                      data products); sheets are authored via Qlik MCP
+                      prompting — see apps/mcp-sheet-prompts.json
   --help              Show this message
 
 Examples:
@@ -645,7 +652,7 @@ class QlikAppBuilder {
   /**
    * @param {object} cfg     Full configuration object from config.json
    * @param {Logger} log     Logger instance
-   * @param {object} options { dryRun, skipPublish, skipReload }
+   * @param {object} options { dryRun, skipPublish, skipReload, sheetsViaMcp }
    */
   constructor(cfg, log, options = {}) {
     this.cfg     = cfg;
@@ -653,6 +660,9 @@ class QlikAppBuilder {
     this.dryRun  = options.dryRun || false;
     this.skipPublish = options.skipPublish || false;
     this.skipReload  = options.skipReload  || false;
+    // Default: create the empty app + load script only; sheets and master
+    // items are authored via Qlik MCP prompting (deploy/apps/mcp-sheet-prompts.json).
+    this.sheetsViaMcp = options.sheetsViaMcp !== false;
 
     this.baseUrl = `https://${cfg.tenant.hostname}.${cfg.tenant.region}`;
     this._token  = null;
@@ -1332,48 +1342,59 @@ class QlikAppBuilder {
         const docHandle = openResult && openResult.qReturn ? openResult.qReturn.qHandle : 1;
         this.log.debug(`Doc handle: ${docHandle}`);
 
-        // --- Create master dimensions ---
-        stepNum++;
-        this.log.step(stepNum, totalSteps, `Creating ${appDef.dimensions.length} master dimensions`);
-        let dimOk = 0, dimFail = 0;
-        for (const dim of appDef.dimensions) {
-          try {
-            await this.engineCreateDimension(engineSession.send, docHandle, dim);
-            dimOk++;
-          } catch (err) {
-            this.log.debug(`  Dimension "${dim.name}" may already exist: ${err.message}`);
-            dimFail++;
+        if (this.sheetsViaMcp) {
+          // Empty-app mode (default): the app carries only the load script
+          // mapped to the data products. Sheets and master items are authored
+          // conversationally via the Qlik MCP server — copy the prompts from
+          // the deploy UI's Build Apps page or deploy/apps/mcp-sheet-prompts.json.
+          stepNum += 2;
+          this.log.info('Skipping master items and sheets — create them via Qlik MCP prompting');
+          this.log.info('  (prompts: deploy/apps/mcp-sheet-prompts.json, or the Build Apps page in the deploy UI)');
+          this._record('Sheets', 'SKIP', 'authored via Qlik MCP prompting');
+        } else {
+          // --- Create master dimensions (legacy builder path) ---
+          stepNum++;
+          this.log.step(stepNum, totalSteps, `Creating ${appDef.dimensions.length} master dimensions`);
+          let dimOk = 0, dimFail = 0;
+          for (const dim of appDef.dimensions) {
+            try {
+              await this.engineCreateDimension(engineSession.send, docHandle, dim);
+              dimOk++;
+            } catch (err) {
+              this.log.debug(`  Dimension "${dim.name}" may already exist: ${err.message}`);
+              dimFail++;
+            }
           }
-        }
-        this.log.info(`Dimensions: ${dimOk} created, ${dimFail} skipped/failed`);
-        this._record('Master dimensions', dimFail === 0 ? 'OK' : 'OK', `${dimOk} created, ${dimFail} skipped`);
+          this.log.info(`Dimensions: ${dimOk} created, ${dimFail} skipped/failed`);
+          this._record('Master dimensions', dimFail === 0 ? 'OK' : 'OK', `${dimOk} created, ${dimFail} skipped`);
 
-        // --- Create master measures ---
-        this.log.step(stepNum, totalSteps, `Creating ${appDef.measures.length} master measures`);
-        let measOk = 0, measFail = 0;
-        for (const measure of appDef.measures) {
-          try {
-            await this.engineCreateMeasure(engineSession.send, docHandle, measure);
-            measOk++;
-          } catch (err) {
-            this.log.debug(`  Measure "${measure.name}" may already exist: ${err.message}`);
-            measFail++;
+          // --- Create master measures ---
+          this.log.step(stepNum, totalSteps, `Creating ${appDef.measures.length} master measures`);
+          let measOk = 0, measFail = 0;
+          for (const measure of appDef.measures) {
+            try {
+              await this.engineCreateMeasure(engineSession.send, docHandle, measure);
+              measOk++;
+            } catch (err) {
+              this.log.debug(`  Measure "${measure.name}" may already exist: ${err.message}`);
+              measFail++;
+            }
           }
-        }
-        this.log.info(`Measures: ${measOk} created, ${measFail} skipped/failed`);
-        this._record('Master measures', measFail === 0 ? 'OK' : 'OK', `${measOk} created, ${measFail} skipped`);
+          this.log.info(`Measures: ${measOk} created, ${measFail} skipped/failed`);
+          this._record('Master measures', measFail === 0 ? 'OK' : 'OK', `${measOk} created, ${measFail} skipped`);
 
-        // --- Create sheets ---
-        stepNum++;
-        this.log.step(stepNum, totalSteps, `Creating ${appDef.sheets.length} sheets with visualizations`);
-        for (const sheet of appDef.sheets) {
-          try {
-            await this.engineCreateSheet(engineSession.send, docHandle, sheet);
-            this.log.success(`  Sheet "${sheet.title}" created with ${sheet.objects.length} objects`);
-            this._record(`Sheet "${sheet.title}"`, 'OK', `${sheet.objects.length} objects`);
-          } catch (err) {
-            this.log.error(`  Sheet "${sheet.title}" failed: ${err.message}`);
-            this._record(`Sheet "${sheet.title}"`, 'FAIL', err.message);
+          // --- Create sheets ---
+          stepNum++;
+          this.log.step(stepNum, totalSteps, `Creating ${appDef.sheets.length} sheets with visualizations`);
+          for (const sheet of appDef.sheets) {
+            try {
+              await this.engineCreateSheet(engineSession.send, docHandle, sheet);
+              this.log.success(`  Sheet "${sheet.title}" created with ${sheet.objects.length} objects`);
+              this._record(`Sheet "${sheet.title}"`, 'OK', `${sheet.objects.length} objects`);
+            } catch (err) {
+              this.log.error(`  Sheet "${sheet.title}" failed: ${err.message}`);
+              this._record(`Sheet "${sheet.title}"`, 'FAIL', err.message);
+            }
           }
         }
 
@@ -1550,6 +1571,7 @@ async function main() {
     dryRun:      args.dryRun,
     skipPublish: args.skipPublish,
     skipReload:  args.skipReload,
+    sheetsViaMcp: args.buildSheets ? false : ((cfg.apps && cfg.apps.sheetsViaMcp) !== false),
   });
 
   log.info(`Target: ${builder.baseUrl}`);

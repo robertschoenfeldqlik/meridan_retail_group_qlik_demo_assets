@@ -673,6 +673,16 @@ function module06() {
       ]
     ),
 
+    heading("Build the Sheets via Qlik MCP (Agentic Authoring)", 2),
+    para("The deploy creates both apps empty — each carries only its load script, which reads directly from the pipeline's gold data products and silver datasets. The sheets are then authored conversationally through the Qlik MCP server:"),
+    numberedItem(1, "Run the deploy (or the Build Apps page) — apps are created with their QVS load scripts and reloaded against the data products"),
+    numberedItem(2, "Open the deploy UI > Build Apps page > Sheet Prompts (Qlik MCP) — one ready-made prompt per sheet, with copy buttons"),
+    numberedItem(3, "In Claude (Desktop or Code) with the Qlik MCP server connected (Module 13 covers the setup), paste a prompt:"),
+    promptBox("In the Qlik app 'MCG Supply Chain Operations', create a sheet named 'Inventory Health Overview'. Add four KPI objects: 'Inventory Record Accuracy' = Avg([IRA %]) ...", "Ask Claude (Qlik MCP connected)"),
+    expectedBox("Claude uses the MCP visualization tools to create the sheet and its objects in the live app, then confirms each object it created. Repeat per sheet — 5 prompts per app, all field names matching the load script."),
+    numberedItem(4, "Refine conversationally: 'make the reference line 97%', 'sort the bar chart descending', 'add a filter pane for Storage Zone'"),
+    calloutBox("Talking point: this is agentic analytics authoring — the app definition (load script) is code mapped to governed data products, and the presentation layer is built by an AI agent through MCP. Rebuild the sheets any time from the same prompt library: deploy/apps/mcp-sheet-prompts.json.", "info"),
+
     heading("Demo Methodology: Tell → Show → Tell", 2),
     limbicOpening("Picture this: it's the quarterly business review. The CFO asks, 'What's our real exposure from data quality issues?' Three VPs give three different numbers — $48M, $85M, $127M — because each one pulled from a different dataset. The analytics apps you're about to see give everyone the same number, from the same governed source, in real-time.", "Problem/Consequence"),
     interactionPrompt("How many different dashboards or reports does your leadership team currently look at for operational decisions?"),

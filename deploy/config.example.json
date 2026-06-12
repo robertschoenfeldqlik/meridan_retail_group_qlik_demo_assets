@@ -136,6 +136,11 @@
     "comment_sourceFile": "JSON file with 25 business glossary terms. Loaded automatically by deploy script."
   },
 
+  "apps": {
+    "sheetsViaMcp": true,
+    "comment_apps": "sheetsViaMcp=true (default): build-apps creates each app EMPTY — load script only, mapped to the gold data products — and sheets are authored via Qlik MCP prompting (deploy/apps/mcp-sheet-prompts.json, surfaced with copy buttons on the deploy UI Build Apps page). Set false (or run build-apps --build-sheets) for the legacy Engine-API sheet builder."
+  },
+
   "pipelines": {
     "projects": [
       { "projectName": "MCG Batch Pipeline", "sourceDir": "./pipelines/mcg-batch-pipeline" },
