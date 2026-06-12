@@ -1503,6 +1503,14 @@ function buildS3Properties(/* cfg */) {
   return { connectionProperties: {}, _configureInUI: true };
 }
 
+function buildAthenaProperties(/* cfg */) {
+  // Analytics apps read the Open Lakehouse through Amazon Athena (Glue catalog
+  // databases bronze/silver/gold over the lakehouse's Iceberg tables on S3).
+  // IAM credentials are entered in the Qlik UI; the deploy creates the named
+  // connection so the apps' LIB CONNECT statement resolves.
+  return { connectionProperties: {}, _configureInUI: true };
+}
+
 // ---------------------------------------------------------------------------
 //  Declarative pipeline binding resolution
 // ---------------------------------------------------------------------------
@@ -2007,6 +2015,7 @@ async function main() {
       { key: 'salesforce', keyword: 'sfdc',        buildProps: buildSalesforceProperties, label: 'Salesforce (MCG CRM)',   required: ['username', 'password'] },
       { key: 'kafka',      keyword: 'kafka',      buildProps: buildKafkaProperties,      label: 'Kafka (IoT Telemetry)',  required: ['bootstrapServers'] },
       { key: 's3',         keyword: 's3',          buildProps: buildS3Properties,          label: 'S3 (Flat File Outputs)', required: ['bucketName', 'region'] },
+      { key: 'athena',     keyword: 'athena',      buildProps: buildAthenaProperties,      label: 'Amazon Athena (Open Lakehouse reads)', required: ['region'] },
     ];
 
     for (const def of connectionDefs) {

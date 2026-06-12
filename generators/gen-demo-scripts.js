@@ -366,7 +366,14 @@ function module02() {
     numberedItem(2, "Authenticate via OAuth or username/password + security token"),
     numberedItem(3, "Test connection — should show Contact, MCG_Order__c, MCG_Product__c"),
 
-    tellAnnotation("close", "What you just saw is the foundation: governed spaces with clear dev/prod separation, and three very different data sources — database CDC, real-time streaming, and API — all connected from one console. No custom ETL code, no middleware, no integration tax."),
+    heading("Step 5: Amazon Athena Connection (Analytics Reads)", 3),
+    numberedItem(1, "Select Amazon Athena connector — this is how the analytics apps read the Open Lakehouse"),
+    numberedItem(2, 'Name it "MCG Lakehouse (Athena)" — the app load scripts LIB CONNECT TO this exact name'),
+    numberedItem(3, "Configure region, workgroup, and S3 output location; authenticate with IAM keys"),
+    numberedItem(4, "Test connection — the Glue catalog should expose the bronze, silver, and gold databases"),
+    calloutBox("Talking point: data flows one way into the Open Lakehouse (CDC, streaming, API), and analytics reads flow back out through Athena — open formats, open engines. The lakehouse is Iceberg on S3, so anything that speaks Athena can query the same governed tables the Qlik apps use.", "info"),
+
+    tellAnnotation("close", "What you just saw is the foundation: governed spaces with clear dev/prod separation, three very different data sources — database CDC, real-time streaming, and API — connected from one console, plus the Athena read path that lets analytics query the Open Lakehouse in place. No custom ETL code, no middleware, no integration tax."),
     interactionPrompt("Which of these connector types would be most relevant for your environment?"),
     valueChain(["Connect all three data source types from one platform", "eliminate the middleware and custom integration layer", "give your data team back the 40% of time they currently spend on plumbing"]),
 
@@ -674,7 +681,7 @@ function module06() {
     ),
 
     heading("Build the Sheets via Qlik MCP (Agentic Authoring)", 2),
-    para("The deploy creates both apps empty — each carries only its load script, which reads directly from the pipeline's gold data products and silver datasets. The sheets are then authored conversationally through the Qlik MCP server:"),
+    para("The deploy creates both apps empty — each carries only its load script, which reads the pipeline's gold data products and silver datasets from the Open Lakehouse through the Amazon Athena connection. The sheets are then authored conversationally through the Qlik MCP server:"),
     numberedItem(1, "Run the deploy (or the Build Apps page) — apps are created with their QVS load scripts and reloaded against the data products"),
     numberedItem(2, "Open the deploy UI > Build Apps page > Sheet Prompts (Qlik MCP) — one ready-made prompt per sheet, with copy buttons"),
     numberedItem(3, "In Claude (Desktop or Code) with the Qlik MCP server connected (Module 13 covers the setup), paste a prompt:"),

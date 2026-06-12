@@ -15,7 +15,8 @@
 // Bronze (live feed):
 //   - bronze.iot_carrier_events
 //
-// The connection name matches the deploy config (dataConnections / bindings).
+// The connection name matches the deploy config (dataConnections.athena) —
+// an Amazon Athena connection reading the Open Lakehouse on AWS.
 // =============================================================================
 
 SET ThousandSep=',';
@@ -31,7 +32,9 @@ SET BrokenWeeks=1;
 SET ReferenceDay=0;
 SET FirstMonthOfYear=1;
 
-LIB CONNECT TO 'MCG Open Lakehouse';
+// Analytics reads go through Amazon Athena: the lakehouse's Iceberg tables
+// are queried via the Glue catalog (databases: bronze / silver / gold).
+LIB CONNECT TO 'MCG Lakehouse (Athena)';
 
 // =============================================================================
 // 1. SUPPLY CHAIN HEALTH — Data Product (gold, per-DC grain)

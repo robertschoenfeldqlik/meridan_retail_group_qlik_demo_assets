@@ -373,6 +373,25 @@ function sectionDataConnections() {
     para("MCG_Product__c (custom object)", { bullet: true, indent: true }),
     screenshot("Salesforce connector configuration in Qlik Cloud showing the object selection screen with Contact, MCG_Order__c, and MCG_Product__c selected"),
     calloutBox("The MCG_Order__c and MCG_Product__c custom objects must exist in your Salesforce org. If you are using a fresh Developer Edition, run the Salesforce setup script first: npm run sf:setup", "info"),
+
+    heading("7.4 Amazon Athena Connection (Analytics Reads — Open Lakehouse)", 2),
+    para("The Open Lakehouse is the destination for all pipeline data; the analytics apps read it back through Amazon Athena. Athena queries the lakehouse's Iceberg tables via the AWS Glue catalog, exposed as databases bronze, silver, and gold. Both app load scripts LIB CONNECT TO this connection by name."),
+    numberedItem(1, "Click Add new → Data connection"),
+    numberedItem(2, "Select Amazon Athena as the connection type"),
+    numberedItem(3, "Configure the connection:"),
+    dataTable(
+      ["Setting", "Value"],
+      [
+        ["Connection name", "MCG Lakehouse (Athena) — must match the QVS LIB CONNECT name"],
+        ["AWS Region", "us-east-1 (the lakehouse region)"],
+        ["Catalog", "AwsDataCatalog"],
+        ["Workgroup", "primary"],
+        ["S3 output location", "s3://your-athena-results-bucket/"],
+        ["Authentication", "IAM access key + secret (entered here in the UI)"],
+      ]
+    ),
+    numberedItem(4, "Test the connection — the bronze, silver, and gold databases should be visible"),
+    calloutBox("npm run deploy creates this connection by name (Step 4) so the apps' load scripts resolve; complete the IAM credentials here afterwards. The IAM principal needs athena:* on the workgroup, glue:Get* on the catalog, and s3:GetObject/PutObject on the lakehouse and results buckets.", "info"),
   ];
 }
 

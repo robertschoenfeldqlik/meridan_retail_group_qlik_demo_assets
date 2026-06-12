@@ -1976,6 +1976,27 @@ function getHTML() {
           </div>
         </div>
 
+        <div class="section-divider">Amazon Athena (Analytics reads — Open Lakehouse)</div>
+        <div class="hint">The analytics apps read the Open Lakehouse through Athena: the lakehouse's Iceberg tables are queried via the Glue catalog (databases bronze / silver / gold). The QVS load scripts <code>LIB CONNECT TO</code> this connection by name. IAM credentials are completed in the Qlik Cloud UI after deploy.</div>
+        <div class="field">
+          <label>Connection Name</label>
+          <input type="text" id="f-athena-name" placeholder="MCG Lakehouse (Athena)">
+        </div>
+        <div class="field-row-3">
+          <div class="field">
+            <label>Region</label>
+            <input type="text" id="f-athena-region" placeholder="us-east-1">
+          </div>
+          <div class="field">
+            <label>Workgroup</label>
+            <input type="text" id="f-athena-workgroup" placeholder="primary">
+          </div>
+          <div class="field">
+            <label>S3 Output Location</label>
+            <input type="text" id="f-athena-output" placeholder="s3://mcg-athena-results/">
+          </div>
+        </div>
+
         <div class="section-divider">S3 (Flat File Outputs)</div>
         <div class="field">
           <label>Connection Name</label>
@@ -2350,6 +2371,7 @@ function getHTML() {
       ['MCG WMS CDC Landing (PostgreSQL)', getVal('f-pg-name') || 'MCG WMS Database'],
       ['MCG CRM Landing (Salesforce)', getVal('f-sf-name') || 'MCG Salesforce CRM'],
       ['MCG IoT Streaming Landing (Kafka)', getVal('f-kafka-name') || 'MCG IoT Telemetry'],
+      ['Analytics Apps (Athena over Open Lakehouse)', getVal('f-athena-name') || 'MCG Lakehouse (Athena)'],
     ];
     el.innerHTML = rows.map(r =>
       '<div class="dp-card">' +
@@ -2477,6 +2499,12 @@ function getHTML() {
       setSelVal('f-kafka-protocol', kf.securityProtocol);
       setVal('f-kafka-sasl-user', kf.saslUsername);
       setVal('f-kafka-sasl-pass', kf.saslPassword);
+
+      const ath = cfg.dataConnections.athena || {};
+      setVal('f-athena-name', ath.name);
+      setVal('f-athena-region', ath.region);
+      setVal('f-athena-workgroup', ath.workgroup);
+      setVal('f-athena-output', ath.s3OutputLocation);
 
       const s3 = cfg.dataConnections.s3 || {};
       setVal('f-s3-name', s3.name);
@@ -3257,6 +3285,12 @@ function getHTML() {
           saslMechanism: 'PLAIN',
           saslUsername: getVal('f-kafka-sasl-user'),
           saslPassword: getVal('f-kafka-sasl-pass'),
+        },
+        athena: {
+          name: getVal('f-athena-name') || 'MCG Lakehouse (Athena)',
+          region: getVal('f-athena-region') || 'us-east-1',
+          workgroup: getVal('f-athena-workgroup') || 'primary',
+          s3OutputLocation: getVal('f-athena-output'),
         },
         s3: {
           name: getVal('f-s3-name') || 'MCG Flat File Outputs',

@@ -75,6 +75,13 @@
       "saslUsername": "YOUR_KAFKA_USER",
       "saslPassword": "YOUR_KAFKA_PASSWORD"
     },
+    "athena": {
+      "name": "MCG Lakehouse (Athena)",
+      "region": "us-east-1",
+      "workgroup": "primary",
+      "s3OutputLocation": "s3://your-athena-results-bucket/",
+      "comment_athena": "Analytics apps read the Open Lakehouse through this Amazon Athena connection (Glue catalog databases bronze/silver/gold over the lakehouse Iceberg tables). The QVS load scripts LIB CONNECT TO this name. IAM credentials are completed in the Qlik Cloud UI after deploy."
+    },
     "s3": {
       "name": "MCG Flat File Outputs",
       "bucketName": "mcg-demo-outputs",
