@@ -675,6 +675,7 @@ function buildCreationGuide() {
     ),
 
     calloutBox("This automation demonstrates the closed-loop data quality cycle: Stewardship → Talend Validation → Silver Update → Gold Refresh → Predict Model Retrain. It's the most impactful demo for showing how human-in-the-loop governance connects to automated correction.", "info"),
+    calloutBox("Full Talend job design: deploy/talend/README.md — two Studio jobs scheduled every 15 minutes in TMC. Job 1 (mcg_sf_address_validate) pulls Salesforce, validates address format with the routines.AddressValidator tMap function, geocodes bad addresses via the public Nominatim API (1 req/s throttle), and routes unresolved rows to the Address Cleanup stewardship campaign. Job 2 (mcg_sf_address_to_qvd) lands the validated + geocoded set as MCG_SF_Addresses_Validated.qvd in Qlik Cloud DataFiles, which the Delivery & Customer Experience app loads (CustomerGeo table) on its 15-minute reload task.", "success"),
     screenshot("Address Correction Loop automation showing all 8 blocks from stewardship trigger through Gold refresh"),
 
     // ─── Teams Webhook Setup ────────────────────────────────────────────

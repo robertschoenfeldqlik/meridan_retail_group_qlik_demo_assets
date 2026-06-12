@@ -3323,6 +3323,16 @@ function getHTML() {
       },
       dataProducts: { sourceFile: './data_products.json' },
       glossary: { sourceFile: './glossary_terms.json' },
+      // Preserve reload-task definitions across UI saves; default to the
+      // appName-resolved pair (deploy Step 12 looks the IDs up by name).
+      // The Delivery app reloads at :05/:20/:35/:50 — 5 min after each
+      // Talend Salesforce QVD drop (deploy/talend).
+      reloadtasks: (loadedConfig && loadedConfig.reloadtasks) || {
+        definitions: [
+          { name: 'MCG Supply Chain Operations — Reload', appName: 'MCG Supply Chain Operations', cronExpression: '0 0 * * * *', timeZone: 'UTC' },
+          { name: 'MCG Delivery Experience — Reload', appName: 'MCG Delivery & Customer Experience', cronExpression: '0 5/15 * * * *', timeZone: 'UTC' },
+        ],
+      },
       automations: {
         templateDir: './automations',
         teamsWebhookUrl: getVal('f-teams-webhook'),

@@ -15,6 +15,9 @@
 // Bronze (live feed):
 //   - bronze.iot_carrier_events
 //
+// Talend QVD (DataFiles, refreshed every 15 min by deploy/talend jobs):
+//   - MCG_SF_Addresses_Validated.qvd   (validated + geocoded addresses)
+//
 // The connection name matches the deploy config (dataConnections.athena) —
 // an Amazon Athena connection reading the Open Lakehouse on AWS.
 // =============================================================================
@@ -144,7 +147,36 @@ SELECT contact_id, first_name, last_name, email, city, state_region,
 FROM silver.addresses_standardized;
 
 // =============================================================================
-// 5. LIVE CARRIER EVENTS — bronze.iot_carrier_events (raw stream)
+// 5. VALIDATED ADDRESSES + GEO — Talend QVD (refreshed every 15 minutes)
+// =============================================================================
+// Produced by the Talend jobs in deploy/talend/ (mcg_sf_address_validate →
+// mcg_sf_address_to_qvd): Salesforce pull every 15 min, AddressValidator tMap
+// format check, Nominatim geocoding for bad addresses, unresolved rows routed
+// to the Address Cleanup stewardship campaign. Linked via [Contact ID].
+// FileSize() guard: the app reloads cleanly before the first Talend run.
+// =============================================================================
+
+IF NOT IsNull(FileSize('lib://DataFiles/MCG_SF_Addresses_Validated.qvd')) THEN
+
+CustomerGeo:
+LOAD
+    contact_id              AS [Contact ID],
+    street_validated        AS [Street (Validated)],
+    city_validated          AS [City (Validated)],
+    postal_code_validated   AS [Postal Code (Validated)],
+    country_validated       AS [Country (Validated)],
+    latitude                AS [Latitude],
+    longitude               AS [Longitude],
+    geo_confidence          AS [Geo Confidence],
+    validation_status       AS [Address Validation Status],
+    validated_at_utc        AS [Validated At]
+FROM [lib://DataFiles/MCG_SF_Addresses_Validated.qvd]
+(qvd);
+
+END IF
+
+// =============================================================================
+// 6. LIVE CARRIER EVENTS — bronze.iot_carrier_events (raw stream)
 // =============================================================================
 
 CarrierEventsLive:

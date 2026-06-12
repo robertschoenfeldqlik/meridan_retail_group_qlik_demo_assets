@@ -164,6 +164,26 @@
     "comment_pipelines": "Declarative QTCP pipeline project (YAML) imported via the DI Projects API (preview). Bindings for connections/schemas/clusters are resolved automatically from this config; 'bindings' holds exact-key overrides. databaseName defaults to the lakehouse name. Set prepare=true to validate+prepare tasks right after import; run=true additionally starts tasks in dependency order (landing>transform>datamart). attachDatasets resolves gold catalog datasets and attaches them to the matching data products (JSON-Patch /datasetIds); publishDataProducts activates them in the marketplace. Daily schedules live in the YAML (qtcp_tasks/*/schedule.yaml). Round-trip UI edits back to the repo with: npm run deploy:export-pipeline"
   },
 
+  "reloadtasks": {
+    "definitions": [
+      {
+        "name": "MCG Supply Chain Operations — Reload",
+        "appName": "MCG Supply Chain Operations",
+        "cronExpression": "0 0 * * * *",
+        "timeZone": "UTC",
+        "description": "Hourly refresh of the supply chain app (gold data product via Athena)"
+      },
+      {
+        "name": "MCG Delivery Experience — Reload",
+        "appName": "MCG Delivery & Customer Experience",
+        "cronExpression": "0 5/15 * * * *",
+        "timeZone": "UTC",
+        "description": "Every 15 min at :05/:20/:35/:50 — 5 minutes after each Talend Salesforce QVD drop (deploy/talend), so the validated-address dataset is always fresh"
+      }
+    ],
+    "comment_reloadtasks": "appName resolves to the appId automatically at deploy time (apps must exist — run Build Apps first). Set appId explicitly to skip the lookup."
+  },
+
   "automations": {
     "templateDir": "./automations",
     "comment_templateDir": "Directory containing automation JSON templates (Teams alerts, pipeline health). Loaded automatically.",

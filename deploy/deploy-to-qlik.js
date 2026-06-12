@@ -2421,8 +2421,23 @@ async function main() {
       report.record('Reload Tasks', 'SKIP', 'No definitions configured — add app IDs to config.reloadtasks.definitions');
     } else {
       for (const task of reloadTaskDefs) {
+        // Resolve appName → appId so definitions work without manual IDs
+        // (apps are created by build-apps earlier in the flow).
+        if (!task.appId && task.appName && !dryRun) {
+          try {
+            const res = await client._get(`/api/v1/items?${new URLSearchParams({ resourceType: 'app', name: task.appName, limit: '10' })}`);
+            const items = (res.body && res.body.data) || [];
+            const match = items.find((it) => it.name === task.appName) || items[0];
+            if (match) {
+              task.appId = match.resourceId || match.id;
+              log.info(`Resolved app "${task.appName}" → ${task.appId}`);
+            }
+          } catch (err) {
+            log.debug(`App lookup failed for "${task.appName}": ${err.message}`);
+          }
+        }
         if (!task.appId) {
-          log.warn(`Reload task "${task.name}" missing appId — skipping.`);
+          log.warn(`Reload task "${task.name}" has no appId${task.appName ? ` (app "${task.appName}" not found — run Build Apps first)` : ''} — skipping.`);
           report.record('Reload Task', 'SKIP', `${task.name}: no appId`);
           continue;
         }
