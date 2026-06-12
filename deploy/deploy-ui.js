@@ -125,6 +125,56 @@ function discoverFiles() {
     } catch (_) {}
   }
 
+  // Declarative pipeline project — parse task YAML for the Pipelines page
+  const pipeDir = path.join(SCRIPT_DIR, 'pipelines', 'mcg-pipeline');
+  result.pipeline = { exists: false, tasks: [] };
+  if (fs.existsSync(path.join(pipeDir, 'qtcp_project.yaml'))) {
+    result.pipeline.exists = true;
+    const tasksDir = path.join(pipeDir, 'qtcp_tasks');
+    if (fs.existsSync(tasksDir)) {
+      const rank = (t) => {
+        const ty = String(t.type).toUpperCase();
+        if (ty.includes('LANDING')) return 0;
+        if (ty.includes('STORAGE')) return 1;
+        if (ty.includes('TRANSFORM')) return 2;
+        return 3; // datamart last
+      };
+      result.pipeline.tasks = fs.readdirSync(tasksDir)
+        .filter(d => { try { return fs.statSync(path.join(tasksDir, d)).isDirectory(); } catch (_) { return false; } })
+        .map(d => {
+          const t = { folder: d, name: d, type: '', schedule: '', datasets: 0 };
+          try {
+            const raw = fs.readFileSync(path.join(tasksDir, d, 'task.yaml'), 'utf-8');
+            const nm = raw.match(/^\s*name:\s*(.+?)\s*$/m);
+            const ty = raw.match(/^\s*type:\s*(.+?)\s*$/m);
+            if (nm) t.name = nm[1];
+            if (ty) t.type = ty[1];
+          } catch (_) {}
+          const schedFile = path.join(tasksDir, d, 'schedule.yaml');
+          const parts = [];
+          if (fs.existsSync(schedFile)) {
+            try {
+              const s = fs.readFileSync(schedFile, 'utf-8');
+              if (/EVENT_BASED/.test(s)) parts.push('event-triggered');
+              const daily = s.match(/FREQ=DAILY;BYHOUR=(\d+);BYMINUTE=(\d+)/);
+              if (daily) parts.push('daily ' + String(daily[1]).padStart(2, '0') + ':' + String(daily[2]).padStart(2, '0') + ' UTC');
+              else if (/FREQ=MINUTELY;INTERVAL=15/.test(s)) parts.push('every 15 min');
+              else if (/TIME_BASED/.test(s)) parts.push('scheduled');
+            } catch (_) {}
+          } else {
+            parts.push(String(t.type).toUpperCase().includes('STREAM') ? 'continuous (streaming)' : 'continuous (CDC)');
+          }
+          t.schedule = parts.join(' + ');
+          const dsDir = path.join(tasksDir, d, 'datasets');
+          if (fs.existsSync(dsDir)) {
+            try { t.datasets = fs.readdirSync(dsDir).filter(f => f.endsWith('.yaml')).length; } catch (_) {}
+          }
+          return t;
+        })
+        .sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name));
+    }
+  }
+
   const glPath = path.join(SCRIPT_DIR, 'glossary_terms.json');
   result.glossary = { exists: fs.existsSync(glPath), path: glPath, count: 0, items: [] };
   if (result.glossary.exists) {
@@ -1943,6 +1993,10 @@ function getHTML() {
           <input type="text" id="f-pipelines-name" placeholder="MCG Demo Pipeline">
         </div>
 
+        <div class="section-divider">Pipeline Tasks (from the YAML project)</div>
+        <div class="hint">All tasks below are imported as one DI project — landing &rarr; silver &rarr; gold, in dependency order.</div>
+        <div id="pipeline-task-list"><!-- populated by JS --></div>
+
         <div class="section-divider">Connection Bindings</div>
         <div class="hint">The pipeline's landing tasks bind to the connections from the Data Connections page by name. Bindings are resolved to connection IDs automatically at deploy time (Step 13).</div>
         <div id="pipeline-conn-map"><!-- populated by JS --></div>
@@ -2236,8 +2290,23 @@ function getHTML() {
     if (idx === 7) renderBuildAutomationsPage();
   }
 
-  // --- Pipelines page: live connection-binding map ---
+  // --- Pipelines page: task list + live connection-binding map ---
   function renderPipelinesPage() {
+    const tl = document.getElementById('pipeline-task-list');
+    if (tl) {
+      const p = (discoveredFiles && discoveredFiles.pipeline) || { exists: false, tasks: [] };
+      if (!p.exists || p.tasks.length === 0) {
+        tl.innerHTML = '<div style="font-size:12px;color:var(--text-dim)">No declarative project found at deploy/pipelines/mcg-pipeline</div>';
+      } else {
+        tl.innerHTML = p.tasks.map(t =>
+          '<div class="dp-card">' +
+          '<div class="dp-name">' + esc(t.name) + '</div>' +
+          '<div class="dp-meta">' + esc(t.type) + ' &mdash; ' + esc(t.schedule) +
+            (t.datasets ? ' &mdash; ' + t.datasets + ' dataset' + (t.datasets > 1 ? 's' : '') : '') + '</div>' +
+          '</div>'
+        ).join('');
+      }
+    }
     const el = document.getElementById('pipeline-conn-map');
     if (!el) return;
     const rows = [
@@ -3507,7 +3576,7 @@ const server = http.createServer((req, res) => {
   const parsed = new URL(req.url, `http://localhost:${port}`);
 
   if (req.method === 'GET' && parsed.pathname === '/') {
-    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
     res.end(getHTML());
     return;
   }
