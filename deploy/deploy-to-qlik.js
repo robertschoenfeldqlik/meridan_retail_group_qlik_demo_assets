@@ -1805,26 +1805,33 @@ async function main() {
   // into the repo, so a project refined in the QTCP UI can be committed and
   // redeployed to any tenant.
   if (args.exportPipeline) {
-    log.section('Export: Declarative Pipeline Project');
-    try {
-      const pCfg = cfg.pipelines || {};
-      const projectName = pCfg.projectName || 'MCG Demo Pipeline';
-      const destDir = path.resolve(SCRIPT_DIR, pCfg.sourceDir || './pipelines/mcg-pipeline');
-
-      const project = await client.findDiProjectByName(projectName);
-      if (!project) throw new Error(`DI project "${projectName}" not found on tenant.`);
-      log.info(`Exporting "${projectName}" (${project.id}) → ${destDir}`);
-
-      const zipBuf = await client.exportDiProject(project.id);
-      const files = unzipToDirectory(zipBuf, destDir);
-      log.success(`Exported ${files.length} file(s):`);
-      for (const f of files) log.info(`  ${f}`);
-      log.info('Review the changes with git diff, then commit to version the pipeline.');
-      process.exit(EXIT_SUCCESS);
-    } catch (err) {
-      log.error(`Pipeline export failed: ${err.message}`);
-      process.exit(EXIT_FAILURE);
+    log.section('Export: Declarative Pipeline Projects');
+    const pCfg = cfg.pipelines || {};
+    const projectDefs = (Array.isArray(pCfg.projects) && pCfg.projects.length > 0)
+      ? pCfg.projects
+      : (pCfg.projectName || pCfg.sourceDir)
+        ? [{ projectName: pCfg.projectName || 'MCG Batch Pipeline', sourceDir: pCfg.sourceDir }]
+        : [
+            { projectName: 'MCG Batch Pipeline',     sourceDir: './pipelines/mcg-batch-pipeline' },
+            { projectName: 'MCG Streaming Pipeline', sourceDir: './pipelines/mcg-streaming-pipeline' },
+          ];
+    let failures = 0;
+    for (const def of projectDefs) {
+      try {
+        const destDir = path.resolve(SCRIPT_DIR, def.sourceDir || '.');
+        const project = await client.findDiProjectByName(def.projectName);
+        if (!project) throw new Error(`DI project "${def.projectName}" not found on tenant.`);
+        log.info(`Exporting "${def.projectName}" (${project.id}) → ${destDir}`);
+        const zipBuf = await client.exportDiProject(project.id);
+        const files = unzipToDirectory(zipBuf, destDir);
+        log.success(`Exported ${files.length} file(s) for "${def.projectName}".`);
+      } catch (err) {
+        log.error(`Export failed for "${def.projectName}": ${err.message}`);
+        failures++;
+      }
     }
+    log.info('Review the changes with git diff, then commit to version the pipelines.');
+    process.exit(failures === 0 ? EXIT_SUCCESS : EXIT_FAILURE);
   }
 
   // ---- Docker Containers ---------------------------------------------------
@@ -2427,151 +2434,185 @@ async function main() {
 
   // ---- Step 13: Declarative Data Pipeline -----------------------------------
   if (enabled.pipelines !== false) {
-    log.section('Step 13: Import Declarative Data Pipeline');
-    try {
-      const pCfg = cfg.pipelines || {};
-      const projectName = pCfg.projectName || 'MCG Demo Pipeline';
-      const srcDir = path.resolve(SCRIPT_DIR, pCfg.sourceDir || './pipelines/mcg-pipeline');
+    log.section('Step 13: Import Declarative Data Pipelines');
+    const pCfg = cfg.pipelines || {};
 
-      if (!fs.existsSync(path.join(srcDir, 'qtcp_project.yaml'))) {
-        log.warn(`No declarative project found at ${srcDir} — skipping.`);
-        report.record('Declarative Pipeline', 'SKIP', 'qtcp_project.yaml not found');
-      } else {
+    // Project list: pipelines.projects[] (preferred), legacy single-project
+    // fields, or the two repo defaults (batch + streaming).
+    const projectDefs = (Array.isArray(pCfg.projects) && pCfg.projects.length > 0)
+      ? pCfg.projects
+      : (pCfg.projectName || pCfg.sourceDir)
+        ? [{ projectName: pCfg.projectName || 'MCG Batch Pipeline', sourceDir: pCfg.sourceDir }]
+        : [
+            { projectName: 'MCG Batch Pipeline',     sourceDir: './pipelines/mcg-batch-pipeline' },
+            { projectName: 'MCG Streaming Pipeline', sourceDir: './pipelines/mcg-streaming-pipeline' },
+          ];
+
+    // Resolve the target space once for all projects + dataset attachment.
+    let spaceId = sharedSpace ? sharedSpace.id : undefined;
+    if (!spaceId && !dryRun && cfg.spaces && cfg.spaces.shared) {
+      try {
+        const found = await client.findSpaceByName(cfg.spaces.shared);
+        if (found) spaceId = found.id;
+      } catch (err) {
+        log.debug(`Space lookup failed: ${err.message}`);
+      }
+    }
+
+    const rank = (t) => {
+      const ty = String(t.type || '').toUpperCase();
+      const nm = String(t.name || '').toLowerCase();
+      if (ty.includes('LANDING') || /landing/.test(nm)) return 0;
+      if (ty.includes('STORAGE') || /storage/.test(nm)) return 1;
+      if (ty.includes('TRANSFORM') || /transform/.test(nm)) return 2;
+      return 3; // datamart and everything downstream
+    };
+
+    for (const def of projectDefs) {
+      const projectName = def.projectName || path.basename(def.sourceDir || 'pipeline');
+      const reportKey = `Pipeline: ${projectName}`;
+      try {
+        const srcDir = path.resolve(SCRIPT_DIR, def.sourceDir || '.');
+        if (!fs.existsSync(path.join(srcDir, 'qtcp_project.yaml'))) {
+          log.warn(`No declarative project found at ${srcDir} — skipping "${projectName}".`);
+          report.record(reportKey, 'SKIP', 'qtcp_project.yaml not found');
+          continue;
+        }
         const zipBuf = zipDirectory(srcDir, {
           exclude: ['README.md', 'schema', '.vscode', '.github', '.gitignore', 'CLAUDE.md'],
         });
-        log.info(`Packaged declarative project (${(zipBuf.length / 1024).toFixed(1)} KB) from ${path.relative(PROJECT_DIR, srcDir)}`);
+        log.info(`Packaged "${projectName}" (${(zipBuf.length / 1024).toFixed(1)} KB) from ${path.relative(PROJECT_DIR, srcDir)}`);
 
         if (dryRun) {
-          log.info(`DRY RUN: Would validate definitions, create/find DI project "${projectName}", import, and resolve bindings.`);
-          report.record('Declarative Pipeline', 'OK', 'dry run — packaged only');
+          log.info(`DRY RUN: Would validate, create/find DI project "${projectName}", import, resolve bindings${pCfg.prepare ? ', prepare' : ''}${pCfg.run ? ', start tasks' : ''}.`);
+          report.record(reportKey, 'OK', 'dry run — packaged only');
+          continue;
+        }
+
+        // 1. Pre-validate the definitions ZIP (preview utility endpoint)
+        const validation = await client.validateProjectDefinitions(zipBuf);
+        if (validation.available === false) {
+          log.warn('Validate-definitions API not available on this tenant — continuing without pre-validation.');
+        } else if (validation.ok === false) {
+          throw new Error(`Project definitions failed validation: ${validation.detail}`);
         } else {
-          // 1. Pre-validate the definitions ZIP (preview utility endpoint)
-          const validation = await client.validateProjectDefinitions(zipBuf);
-          if (validation.available === false) {
-            log.warn('Validate-definitions API not available on this tenant — continuing without pre-validation.');
-          } else if (validation.ok === false) {
-            throw new Error(`Project definitions failed validation: ${validation.detail}`);
-          } else {
-            log.success('Project definitions validated.');
-          }
+          log.success(`"${projectName}" definitions validated.`);
+        }
 
-          // 2. Create (or reuse) the DI project in the shared space
-          let spaceId = sharedSpace ? sharedSpace.id : undefined;
-          if (!spaceId && cfg.spaces && cfg.spaces.shared) {
-            const found = await client.findSpaceByName(cfg.spaces.shared);
-            if (found) spaceId = found.id;
-          }
-          const project = await client.createDiProject({
-            name: projectName,
-            description: 'MCG bronze/silver/gold pipeline — imported from declarative YAML definitions.',
-            spaceId,
-            platformType: pCfg.platformType || 'QLIK_OPEN_LAKEHOUSE',
-          });
+        // 2. Create (or reuse) the DI project in the shared space
+        const project = await client.createDiProject({
+          name: projectName,
+          description: def.description || `MCG declarative pipeline — imported from ${path.basename(srcDir)} YAML definitions.`,
+          spaceId,
+          platformType: def.platformType || pCfg.platformType || 'QLIK_OPEN_LAKEHOUSE',
+        });
 
-          // 3. Import the YAML definitions
-          await client.importDiProject(project.id, zipBuf);
-          log.success(`Imported definitions into "${projectName}" (${project.id}).`);
+        // 3. Import the YAML definitions
+        await client.importDiProject(project.id, zipBuf);
+        log.success(`Imported definitions into "${projectName}" (${project.id}).`);
 
-          // 4. Resolve binding variables against this tenant and push them
-          const variables = await resolvePipelineBindings(client, cfg, log, srcDir);
-          if (Object.keys(variables).length > 0) {
-            await client.updateDiProjectBindings(project.id, variables);
-            log.success(`Set ${Object.keys(variables).length} binding variable(s) (connections, schemas, clusters).`);
-          } else {
-            log.warn('No binding variables resolved — set them in the QTCP UI or cfg.pipelines.bindings.');
-          }
+        // 4. Resolve binding variables against this tenant and push them
+        const variables = await resolvePipelineBindings(client, cfg, log, srcDir);
+        if (Object.keys(variables).length > 0) {
+          await client.updateDiProjectBindings(project.id, variables);
+          log.success(`Set ${Object.keys(variables).length} binding variable(s) (connections, schemas, clusters).`);
+        } else {
+          log.warn('No binding variables resolved — set them in the QTCP UI or cfg.pipelines.bindings.');
+        }
 
-          // 5. Optionally prepare (creates physical artifacts on the platform)
-          if (pCfg.prepare === true) {
-            await client.prepareDiProject(project.id);
-            log.success('Project prepared — tasks are ready to run.');
-          } else {
-            log.info('Skipping prepare (set pipelines.prepare=true to prepare tasks automatically).');
-          }
+        // 5. Optionally prepare (creates physical artifacts on the platform)
+        if (pCfg.prepare === true) {
+          await client.prepareDiProject(project.id);
+          log.success(`"${projectName}" prepared — tasks are ready to run.`);
+        } else {
+          log.info('Skipping prepare (set pipelines.prepare=true to prepare tasks automatically).');
+        }
 
-          // 6. Optionally start tasks in dependency order (landing → transform → datamart).
-          //    Time-based / event-based schedules are declared in the YAML itself
-          //    (qtcp_tasks/*/schedule.yaml) and become active once tasks are running.
-          if (pCfg.run === true && pCfg.prepare === true) {
-            const tasks = await client.listDiTasks(project.id);
-            const rank = (t) => {
-              const ty = String(t.type || '').toUpperCase();
-              const nm = String(t.name || '').toLowerCase();
-              if (ty.includes('LANDING') || /landing/.test(nm)) return 0;
-              if (ty.includes('STORAGE') || /storage/.test(nm)) return 1;
-              if (ty.includes('TRANSFORM') || /transform/.test(nm)) return 2;
-              return 3; // datamart and everything downstream
-            };
-            const ordered = [...tasks].sort((a, b) => rank(a) - rank(b));
-            log.info(`Starting ${ordered.length} task(s) in dependency order…`);
-            for (const t of ordered) {
-              try {
-                await client.startDiTask(project.id, t.id, t.name);
-              } catch (err) {
-                log.warn(`  Could not start "${t.name}": ${err.message}`);
-              }
-            }
-          } else if (pCfg.run === true) {
-            log.warn('pipelines.run=true requires pipelines.prepare=true — skipping task start.');
-          }
-
-          // 7. Attach gold datasets to their data products (and optionally publish).
-          //    Dataset items exist in the catalog after prepare/run, so failures
-          //    here are soft — re-run the deploy after the first pipeline run.
-          let attachDetail = '';
-          if (pCfg.attachDatasets !== false) {
-            const dpFile = path.join(SCRIPT_DIR, 'data_products.json');
-            if (fs.existsSync(dpFile)) {
-              const dpDefs = JSON.parse(fs.readFileSync(dpFile, 'utf-8'));
-              const products = dpDefs.dataProducts || dpDefs;
-              let attached = 0, missing = 0;
-              for (const product of products) {
-                const tables = product.sourceTables || (product.sourceTable ? [product.sourceTable] : []);
-                if (tables.length === 0) continue;
-                const datasetIds = [];
-                for (const table of tables) {
-                  const bare = String(table).replace(/^(gold|silver|bronze)\./, '');
-                  const ds = await client.findDatasetByName(bare, spaceId);
-                  if (ds) datasetIds.push(ds.id);
-                  else { missing++; log.warn(`  Dataset "${bare}" not in catalog yet (pipeline not run?) — skipping for "${product.name}".`); }
-                }
-                if (datasetIds.length === 0) continue;
-                const dp = await client.findDataProductByName(product.name, spaceId);
-                if (!dp || !dp.id) {
-                  log.warn(`  Data product "${product.name}" not found — run the Data Products step first.`);
-                  continue;
-                }
-                await client.setDataProductDatasets(dp.id, datasetIds, { apiConsumable: !!product.apiSharing });
-                log.success(`  Attached ${datasetIds.length} dataset(s) to "${product.name}".`);
-                attached++;
-                if (pCfg.publishDataProducts === true) {
-                  await client.activateDataProduct(dp.id, {
-                    name: product.name,
-                    description: product.description,
-                    spaceId,
-                  });
-                }
-              }
-              attachDetail = `, datasets attached to ${attached} product(s)${missing ? ` (${missing} table(s) not in catalog yet)` : ''}`;
-            } else {
-              log.info('No data_products.json — skipping dataset attachment.');
+        // 6. Optionally start tasks in dependency order (landing → transform → datamart).
+        //    Schedules are declared in the YAML (qtcp_tasks/*/schedule.yaml) and
+        //    become active once tasks are running.
+        if (pCfg.run === true && pCfg.prepare === true) {
+          const tasks = await client.listDiTasks(project.id);
+          const ordered = [...tasks].sort((a, b) => rank(a) - rank(b));
+          log.info(`Starting ${ordered.length} task(s) in dependency order…`);
+          for (const t of ordered) {
+            try {
+              await client.startDiTask(project.id, t.id, t.name);
+            } catch (err) {
+              log.warn(`  Could not start "${t.name}": ${err.message}`);
             }
           }
+        } else if (pCfg.run === true) {
+          log.warn('pipelines.run=true requires pipelines.prepare=true — skipping task start.');
+        }
 
-          report.record('Declarative Pipeline', 'OK',
-            `"${projectName}" imported${pCfg.prepare ? ' + prepared' : ''}${pCfg.run && pCfg.prepare ? ' + started' : ''}${attachDetail}`);
+        report.record(reportKey, 'OK',
+          `imported${pCfg.prepare ? ' + prepared' : ''}${pCfg.run && pCfg.prepare ? ' + started' : ''}`);
+      } catch (err) {
+        log.error(`Pipeline "${projectName}" deployment failed: ${err.message}`);
+        report.record(reportKey, 'FAIL', err.message);
+        if (!continueOnError) { report.print(log); process.exit(EXIT_FAILURE); }
+      }
+    }
+
+    // Attach gold datasets to their data products (and optionally publish).
+    // Runs once after all projects; dataset items exist in the catalog after
+    // prepare/run, so misses are soft — re-deploy after the first pipeline run.
+    if (pCfg.attachDatasets !== false) {
+      if (dryRun) {
+        log.info('DRY RUN: Would attach gold catalog datasets to their data products.');
+        report.record('Dataset Attachment', 'OK', 'dry run');
+      } else {
+        try {
+          const dpFile = path.join(SCRIPT_DIR, 'data_products.json');
+          if (fs.existsSync(dpFile)) {
+            const dpDefs = JSON.parse(fs.readFileSync(dpFile, 'utf-8'));
+            const products = dpDefs.dataProducts || dpDefs;
+            let attached = 0, missing = 0;
+            for (const product of products) {
+              const tables = product.sourceTables || (product.sourceTable ? [product.sourceTable] : []);
+              if (tables.length === 0) continue;
+              const datasetIds = [];
+              for (const table of tables) {
+                const bare = String(table).replace(/^(gold|silver|bronze)\./, '');
+                const ds = await client.findDatasetByName(bare, spaceId);
+                if (ds) datasetIds.push(ds.id);
+                else { missing++; log.warn(`  Dataset "${bare}" not in catalog yet (pipeline not run?) — skipping for "${product.name}".`); }
+              }
+              if (datasetIds.length === 0) continue;
+              const dp = await client.findDataProductByName(product.name, spaceId);
+              if (!dp || !dp.id) {
+                log.warn(`  Data product "${product.name}" not found — run the Data Products step first.`);
+                continue;
+              }
+              await client.setDataProductDatasets(dp.id, datasetIds, { apiConsumable: !!product.apiSharing });
+              log.success(`  Attached ${datasetIds.length} dataset(s) to "${product.name}".`);
+              attached++;
+              if (pCfg.publishDataProducts === true) {
+                await client.activateDataProduct(dp.id, {
+                  name: product.name,
+                  description: product.description,
+                  spaceId,
+                });
+              }
+            }
+            report.record('Dataset Attachment', 'OK',
+              `${attached} product(s)${missing ? `, ${missing} table(s) not in catalog yet` : ''}`);
+          } else {
+            log.info('No data_products.json — skipping dataset attachment.');
+            report.record('Dataset Attachment', 'SKIP', 'no data_products.json');
+          }
+        } catch (err) {
+          log.error(`Dataset attachment failed: ${err.message}`);
+          report.record('Dataset Attachment', 'FAIL', err.message);
+          if (!continueOnError) { report.print(log); process.exit(EXIT_FAILURE); }
         }
       }
-    } catch (err) {
-      log.error(`Declarative pipeline deployment failed: ${err.message}`);
-      report.record('Declarative Pipeline', 'FAIL', err.message);
-      if (!continueOnError) { report.print(log); process.exit(EXIT_FAILURE); }
     }
   } else {
-    log.section('Step 13: Import Declarative Data Pipeline');
+    log.section('Step 13: Import Declarative Data Pipelines');
     log.info('Skipped (disabled).');
-    report.record('Declarative Pipeline', 'SKIP', 'disabled');
+    report.record('Declarative Pipelines', 'SKIP', 'disabled');
   }
 
   // ---- Final Report -------------------------------------------------------

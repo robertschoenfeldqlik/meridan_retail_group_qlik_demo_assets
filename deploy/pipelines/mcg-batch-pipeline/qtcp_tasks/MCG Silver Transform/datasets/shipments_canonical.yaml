@@ -3,8 +3,8 @@ properties:
   id: shipments_canonical
   type: CUSTOM
   inputDatasets:
-    - taskId: wms-cdc-landing-4101
-      name: shipments
+    - datasetId: shipments
+      taskId: wms-cdc-landing-4101
   customDatasetSettings:
     incremental: false
     customSql:

@@ -3,10 +3,10 @@ properties:
   id: order_delivery_timeline
   type: CUSTOM
   inputDatasets:
-    - taskId: crm-landing-4102
-      name: sf_orders
-    - taskId: wms-cdc-landing-4101
-      name: shipments
+    - datasetId: sf_orders
+      taskId: crm-landing-4102
+    - datasetId: shipments
+      taskId: wms-cdc-landing-4101
   customDatasetSettings:
     incremental: false
     customSql:

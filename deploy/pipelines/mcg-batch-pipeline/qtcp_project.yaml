@@ -1,0 +1,5 @@
+properties:
+  type: DATA_PIPELINE
+  platformType: QLIK_OPEN_LAKEHOUSE
+  name: MCG Batch Pipeline
+  description: Meridian Commerce Group batch pipeline — PostgreSQL WMS CDC and Salesforce CRM landed to bronze, cleansed to silver, and served as the two gold data products.

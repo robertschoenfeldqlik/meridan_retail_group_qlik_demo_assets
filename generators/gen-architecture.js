@@ -512,8 +512,8 @@ function layerBadge(slide, y, label, color) {
   const slide = contentSlide("Gold-Layer Data Products", C.qlikBlue);
 
   const products = [
-    { name: "Supply Chain Health",   owner: "Henrik Jansen", refresh: "Daily 06:00 UTC + event", kpi: "IRA: 97% target", color: C.qlikTeal },
-    { name: "Last Mile Performance", owner: "Sophie Müller", refresh: "Daily 06:00 UTC + event", kpi: "On-time: 92%",    color: C.qlikGreen },
+    { name: "Supply Chain Health",   owner: "Henrik Jansen", refresh: "Daily 06:00 UTC", kpi: "IRA: 97% target", color: C.qlikTeal },
+    { name: "Last Mile Performance", owner: "Sophie Müller", refresh: "Daily 06:00 UTC", kpi: "On-time: 92%",    color: C.qlikGreen },
   ];
 
   slide.addText("One governed mart per analytics domain app — created by the pipeline's gold datamart task, attached via the Data Products API", {

@@ -273,9 +273,9 @@ function buildCreationGuide() {
     calloutBox("Pipeline Summary: You should now have 8 active pipelines — 3 CDC (real-time), 2 streaming (real-time), and 3 API (15-min polling). All pipelines feed into the bronze schema of the Open Lakehouse.", "success"),
 
     heading("1.9 Primary Deployment Method: Declarative Pipeline Import (Pipelines as Code)", 2),
-    para("This is how the MCG pipeline is actually deployed. Everything in Parts 1–3 of this guide ships as version-controlled YAML in deploy/pipelines/mcg-pipeline/ (QTCP declarative pipelines preview) — landing tasks, all 8 transformation routes with custom SQL, daily schedules, and connection bindings — and deploys without any manual UI work."),
+    para("This is how the MCG pipelines are actually deployed. Everything in Parts 1–3 of this guide ships as version-controlled YAML under deploy/pipelines/ in two Open Lakehouse projects — mcg-batch-pipeline (WMS CDC + CRM → silver → gold) and mcg-streaming-pipeline (Kafka IoT → silver) — covering landing tasks, all 8 transformation routes with custom SQL, schedules, and connection bindings, deployed without any manual UI work (QTCP declarative pipelines preview)."),
     para("Step 13 of npm run deploy drives the full chain over REST APIs: create connections → validate definitions → create the DI project → import the YAML → resolve bindings → prepare → start every task in dependency order (landing → transform → datamart) → attach the gold datasets to their Data Products. Four config.json flags control it (pipelines.prepare, pipelines.run, pipelines.attachDatasets, pipelines.publishDataProducts), all exposed as toggles on the deploy UI's Data Products page."),
-    para("Daily refresh schedules are declared in the YAML itself (silver 05:30 UTC, gold 06:00 UTC, alongside event-based cascades) — there is no REST endpoint for DI schedules, so the YAML is the source of truth. For a credential-free manual import, npm run pipeline:zip packages mcg-pipeline.zip for Data Integration → Import; after refining transformations in the UI, npm run deploy:export-pipeline round-trips them back into the repo."),
+    para("Schedules are declared in each project's YAML, one per task: the CRM landing syncs every 15 minutes, the silver transform is event-triggered, and the gold datamart runs daily at 06:00 UTC — there is no REST endpoint for DI schedules, so the YAML is the source of truth. For a credential-free manual import, npm run pipeline:zip packages one ZIP per project for Data Integration → Import; after refining transformations in the UI, npm run deploy:export-pipeline round-trips them back into the repo."),
     calloutBox("Use the declarative import to stand up a fresh tenant in minutes or reset a demo environment to a known-good state. The manual walkthroughs in Parts 1–3 teach the same build interactively — ideal for learning the Pipeline Designer or customizing beyond the YAML.", "success"),
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -493,8 +493,8 @@ function buildCreationGuide() {
     dataTable(
       ["Gold Table", "Source Silver Tables", "Refresh", "Owner", "Key Metrics"],
       [
-        ["supply_chain_health",      "inventory_reconciled, warehouse_events_clean",                            "Daily 06:00 UTC + event", "Henrik Jansen",  "IRA %, phantom_units, pipeline_status, trust_score by DC"],
-        ["last_mile_performance",    "order_delivery_timeline, shipments_canonical, addresses_standardized",   "Daily 06:00 UTC + event", "Sophie Müller",  "on_time_pct, sla_met, address_quality_score, wismo_flag by carrier/region"],
+        ["supply_chain_health",      "inventory_reconciled, warehouse_events_clean",                            "Daily 06:00 UTC", "Henrik Jansen",  "IRA %, phantom_units, pipeline_status, trust_score by DC"],
+        ["last_mile_performance",    "order_delivery_timeline, shipments_canonical, addresses_standardized",   "Daily 06:00 UTC", "Sophie Müller",  "on_time_pct, sla_met, address_quality_score, wismo_flag by carrier/region"],
       ]
     ),
 

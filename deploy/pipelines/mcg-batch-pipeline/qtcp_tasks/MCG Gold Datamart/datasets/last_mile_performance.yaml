@@ -5,13 +5,10 @@ properties:
   inputDatasets:
     - taskId: silver-transform-4201
       datasetId: order_delivery_timeline
-      name: order_delivery_timeline
     - taskId: silver-transform-4201
       datasetId: shipments_canonical
-      name: shipments_canonical
     - taskId: silver-transform-4201
       datasetId: addresses_standardized
-      name: addresses_standardized
   customDatasetSettings:
     incremental: false
     customSql:

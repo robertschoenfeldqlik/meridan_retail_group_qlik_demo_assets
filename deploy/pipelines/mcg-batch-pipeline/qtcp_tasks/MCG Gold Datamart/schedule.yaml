@@ -1,0 +1,9 @@
+scheduling:
+  - schedulingType: TIME_BASED
+    enabled: true
+    description: Daily full refresh at 06:00 UTC
+    timeBasedScheduling:
+      schedule:
+        - 'RRULE:FREQ=DAILY;BYHOUR=6;BYMINUTE=0;BYSECOND=0'
+      startDateTime: '2026-01-01T06:00:00.000Z'
+      timezone: 'Etc/UTC'

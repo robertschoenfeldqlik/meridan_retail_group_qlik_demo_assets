@@ -5,10 +5,8 @@ properties:
   inputDatasets:
     - taskId: silver-transform-4201
       datasetId: inventory_reconciled
-      name: inventory_reconciled
     - taskId: silver-transform-4201
       datasetId: warehouse_events_clean
-      name: warehouse_events_clean
   customDatasetSettings:
     incremental: false
     customSql:

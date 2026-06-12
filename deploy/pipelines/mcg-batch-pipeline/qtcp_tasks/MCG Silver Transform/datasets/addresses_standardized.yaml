@@ -3,8 +3,8 @@ properties:
   id: addresses_standardized
   type: CUSTOM
   inputDatasets:
-    - taskId: crm-landing-4102
-      name: sf_contacts
+    - datasetId: sf_contacts
+      taskId: crm-landing-4102
   customDatasetSettings:
     incremental: false
     customSql:

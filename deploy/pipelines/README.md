@@ -1,19 +1,34 @@
 # Declarative Data Pipelines (QTCP Preview)
 
-The MCG bronze → silver → gold pipeline, defined as **declarative YAML** (Qlik Talend Cloud Pipelines internal preview) and deployed automatically as **Step 13** of `npm run deploy`.
+The MCG bronze → silver → gold flow, defined as **declarative YAML** (Qlik Talend Cloud Pipelines internal preview) in **two Open Lakehouse projects**, deployed automatically as **Step 13** of `npm run deploy`.
 
 ## What gets deployed
 
-`mcg-pipeline/` is a complete QTCP project (`DATA_PIPELINE`, platform `QLIK_OPEN_LAKEHOUSE`) with six tasks:
+Both projects are `DATA_PIPELINE` / platform `QLIK_OPEN_LAKEHOUSE`. They are independent — no cross-project references.
 
-| Task | Type | Source → Target | Schedule |
+### `mcg-batch-pipeline/` — MCG Batch Pipeline (4 tasks)
+
+| Task | Type | Source → Target | Schedule (one per task) |
 |---|---|---|---|
-| MCG WMS CDC Landing | `LAKE_LANDING` | PostgreSQL CDC (3 tables) → `bronze` | Continuous CDC |
+| MCG WMS CDC Landing | `LAKE_LANDING` | PostgreSQL CDC (3 tables) → `bronze` | Continuous CDC (started, not scheduled) |
 | MCG CRM Landing | `LAKE_LANDING` | Salesforce (Contact, MCG_Order__c, MCG_Product__c) → `bronze` | Every 15 min |
-| MCG IoT Streaming Landing | `STREAMING_LAKE_LANDING` | Kafka `mcg.iot.*` topics → `bronze` | Streaming |
-| MCG Silver Transform | `TRANSFORM` | bronze WMS + CRM → `silver` | Event: any input task **+ daily 05:30 UTC** |
-| MCG IoT Streaming Transform | `STREAMING_TRANSFORM` | bronze IoT → `silver` | Event: any input task |
-| MCG Gold Datamart | `DATAMART` | silver → `gold` | Event: any input task **+ daily 06:00 UTC** |
+| MCG Silver Transform | `TRANSFORM` | bronze WMS + CRM → `silver` (7 datasets) | Event: any input task |
+| MCG Gold Datamart | `DATAMART` | silver → `gold` (2 datasets) | Daily 06:00 UTC |
+
+### `mcg-streaming-pipeline/` — MCG Streaming Pipeline (2 tasks)
+
+| Task | Type | Source → Target | Schedule (one per task) |
+|---|---|---|---|
+| MCG IoT Streaming Landing | `STREAMING_LAKE_LANDING` | Kafka `mcg.iot.*` topics → `bronze` | Streaming (started, not scheduled) |
+| MCG IoT Streaming Transform | `STREAMING_TRANSFORM` | bronze IoT → `silver` (1 dataset) | Event: any input task |
+
+### Conformance (validated against the preview schema kit)
+
+- Task **folder names equal task names** exactly (e.g. `qtcp_tasks/MCG Silver Transform/`)
+- **One schedule per task** (preview rule) — the gold daily run covers the daily-refresh requirement; silver cascades on landing events
+- Each project ships the **rule-of-three bindings pair**: `qtcp_bindings_definition.json` (registry) + `bindings.json` (environment values, `{{id(connection, Space.Name)}}` lookups — the deployer overrides these via the bindings API at deploy time)
+- `inputDatasets` reference upstream data by **`datasetId` + `taskId`**; IDs are stable contracts and never change
+- Delta-only YAML, no comments, `<slug>-<suffix>` task IDs
 
 ## End-to-end deployment API map
 
@@ -56,7 +71,7 @@ SQL is written as portable ANSI (CASE/COALESCE/window functions); the lakehouse 
 
 Environment-specific values (connection IDs, schemas, lakehouse clusters, warehouse) are **never hardcoded** — they are `{{binding}}` variables declared in `qtcp_bindings_definition.json`. At deploy time, Step 13:
 
-1. Zips `mcg-pipeline/` (pure-Node, no dependencies — see `../zip-utils.js`)
+1. Zips each project under `pipelines/` (pure-Node, no dependencies — see `../zip-utils.js`)
 2. Pre-validates via `POST /api/v1/di-projects/utils/actions/validate-project-definitions` (skipped gracefully if the tenant doesn't expose the preview endpoint)
 3. Creates or reuses the DI project (`POST /api/v1/di-projects`)
 4. Imports the ZIP (`POST /api/v1/di-projects/{id}/actions/import`)
@@ -70,7 +85,7 @@ Override any computed binding with an exact key in `config.json → pipelines.bi
 Build or refine the pipeline in the QTCP UI (transformation SQL, dataset rules, table recipes), then pull it back into the repo:
 
 ```bash
-npm run deploy:export-pipeline   # exports the tenant project into mcg-pipeline/
+npm run deploy:export-pipeline   # exports both tenant projects into their source dirs
 git diff                          # review what the UI changed
 ```
 

@@ -3,8 +3,8 @@ properties:
   id: warehouse_events_clean
   type: CUSTOM
   inputDatasets:
-    - taskId: wms-cdc-landing-4101
-      name: warehouse_events
+    - datasetId: warehouse_events
+      taskId: wms-cdc-landing-4101
   customDatasetSettings:
     incremental: false
     customSql:

@@ -443,8 +443,8 @@ function module03() {
     dataTable(
       ["Gold Table", "Owner", "Refresh", "Key Metric"],
       [
-        ["gold.supply_chain_health",     "Henrik Jansen (VP Warehouse Ops)",    "Daily 06:00 UTC + event", "IRA target: 97%"],
-        ["gold.last_mile_performance",   "Sophie Müller (EU Logistics Mgr)",    "Daily 06:00 UTC + event", "On-time target: 92%"],
+        ["gold.supply_chain_health",     "Henrik Jansen (VP Warehouse Ops)",    "Daily 06:00 UTC", "IRA target: 97%"],
+        ["gold.last_mile_performance",   "Sophie Müller (EU Logistics Mgr)",    "Daily 06:00 UTC", "On-time target: 92%"],
       ]
     ),
 
@@ -461,11 +461,11 @@ function module03() {
     numberedItem(3, 'Navigate to a Silver transformation route — show the Pipeline Designer visual flow'),
     numberedItem(4, 'Show before/after: bronze.sf_contacts (messy addresses) vs silver.addresses_standardized (standardized)'),
     numberedItem(5, 'Open a Gold table recipe — show how Silver tables combine into business-ready products'),
-    numberedItem(6, 'Highlight refresh schedules: real-time CDC, 5-min streaming, 15-min batch, plus daily silver/gold full refresh (05:30 / 06:00 UTC)'),
+    numberedItem(6, 'Highlight refresh schedules: real-time CDC, continuous streaming, 15-min CRM sync, event-triggered silver, plus the daily gold full refresh (06:00 UTC)'),
 
     heading("Pipelines as Code (Declarative Pipelines — Preview)", 3),
-    para("The pipeline you just saw was not built by hand — it is defined as version-controlled YAML in deploy/pipelines/mcg-pipeline/ and deployed from the repo. This is the declarative pipelines capability (QTCP preview), and it is the primary deployment method for the entire medallion architecture: landing tasks, transformations, daily schedules, and bindings."),
-    numberedItem(1, "Show the YAML project in VS Code: qtcp_project.yaml, one folder per task, datasets with custom SQL, and schedule.yaml files carrying daily RRULEs (silver 05:30 UTC, gold 06:00 UTC) alongside event-based cascade triggers"),
+    para("The pipeline you just saw was not built by hand — it is defined as version-controlled YAML in deploy/pipelines/ as two Open Lakehouse projects (mcg-batch-pipeline and mcg-streaming-pipeline) and deployed from the repo. This is the declarative pipelines capability (QTCP preview), and it is the primary deployment method for the entire medallion architecture: landing tasks, transformations, schedules, and bindings."),
+    numberedItem(1, "Show the YAML projects in VS Code: qtcp_project.yaml, one folder per task (folder name = task name), datasets with custom SQL, and one schedule per task — event-triggered silver, daily 06:00 UTC gold"),
     numberedItem(2, "Show the deployment — one command drives the whole chain over REST APIs: create connections, import definitions, resolve bindings, prepare, then start every task in dependency order (landing > transform > datamart):"),
     promptBox("npm run deploy", "Terminal Command (with pipelines.prepare + pipelines.run enabled)"),
     numberedItem(3, "Show the deploy web UI toggles on the pipeline page: Prepare, Start tasks, Attach gold datasets to Data Products, Publish to marketplace"),

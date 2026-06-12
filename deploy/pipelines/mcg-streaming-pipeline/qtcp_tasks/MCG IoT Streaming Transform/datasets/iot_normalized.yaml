@@ -2,8 +2,8 @@ properties:
   name: iot_normalized
   id: iot_normalized
   inputDatasets:
-    - taskId: iot-streaming-landing-4103
-      name: iot_cold_chain
+    - datasetId: iot_cold_chain
+      taskId: iot-streaming-landing-4103
 transformations:
   columnTransformations:
     - action: ADD

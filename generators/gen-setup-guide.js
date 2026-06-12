@@ -117,7 +117,7 @@ function sectionQuickStart() {
   return [
     pageBreak(),
     heading("2. Quick Start (Automated Deployment)"),
-    para("The fastest way to deploy the MCG demo environment is through the automated deployment UI, which walks you through a 10-page wizard covering all configuration steps."),
+    para("The fastest way to deploy the MCG demo environment is through the automated deployment UI, which walks you through an 11-step wizard covering all configuration steps."),
 
     heading("2.1 Clone and Install", 2),
     numberedItem(1, "Clone the repository:"),
@@ -128,7 +128,7 @@ function sectionQuickStart() {
     numberedItem(3, "Launch the deployment UI:"),
     cmd("npm run ui"),
     para("This opens a browser at http://localhost:3939 with the MCG Deployment Wizard."),
-    screenshot("Deploy UI landing page at localhost:3939 showing the MCG Deployment Wizard with 10 setup steps listed on the left navigation panel"),
+    screenshot("Deploy UI landing page at localhost:3939 showing the MCG Deployment Wizard with 11 setup steps listed on the left navigation panel"),
 
     heading("2.2 Deployment Wizard Pages", 2),
     dataTable(
@@ -138,12 +138,13 @@ function sectionQuickStart() {
         ["2", "Docker Containers", "Start the local Kafka/PostgreSQL/simulator stack (optional DMG)"],
         ["3", "Spaces & Infrastructure", "Create shared and managed spaces"],
         ["4", "Data Connections", "Configure PostgreSQL, Kafka, and Salesforce connections"],
-        ["5", "Build Apps & Theme", "Build analytics apps and apply the MCG theme"],
-        ["6", "Knowledge Base & Documents", "Create the Qlik Answers knowledge base and upload documents"],
-        ["7", "Automations", "Deploy Teams alerting automation templates"],
-        ["8", "Data Products", "Data products plus the Declarative Pipeline: import, prepare, start tasks, attach datasets, publish"],
-        ["9", "Business Glossary", "Import business glossary terms"],
-        ["10", "Deploy", "Review the plan and run the deployment with live logs"],
+        ["5", "Pipelines", "Both declarative pipeline projects (batch + streaming): tasks, connection bindings, prepare, start"],
+        ["6", "Build Apps & Theme", "Build analytics apps and apply the MCG theme"],
+        ["7", "Knowledge Base & Documents", "Create the Qlik Answers knowledge base and upload documents"],
+        ["8", "Automations", "Deploy Teams alerting automation templates"],
+        ["9", "Data Products", "The two data products with their gold dataset attachment and marketplace publish toggles"],
+        ["10", "Business Glossary", "Import business glossary terms"],
+        ["11", "Deploy", "Review the plan and run the deployment with live logs"],
       ]
     ),
 
@@ -395,8 +396,8 @@ function sectionLakehouse() {
       ]
     ),
 
-    heading("8.2 Deploy the Pipeline (Declarative Import — Primary Method)", 2),
-    para("This is the primary way to deploy the MCG pipeline. The complete pipeline — landing tasks, all transformations with custom SQL, daily schedules, and connection bindings — is defined as version-controlled YAML in deploy/pipelines/mcg-pipeline/ (QTCP declarative pipelines preview) and deployed as Step 13 of npm run deploy."),
+    heading("8.2 Deploy the Pipelines (Declarative Import — Primary Method)", 2),
+    para("This is the primary way to deploy the MCG pipelines. Two Open Lakehouse projects are defined as version-controlled YAML under deploy/pipelines/ (QTCP declarative pipelines preview): mcg-batch-pipeline (WMS CDC + Salesforce CRM → silver → gold) and mcg-streaming-pipeline (Kafka IoT → silver). Both import as Step 13 of npm run deploy."),
     para("The deploy drives the full chain over REST APIs: create connections → validate definitions → create the DI project → import the YAML → resolve bindings → prepare → start every task in dependency order (landing → transform → datamart) → attach the gold datasets to their Data Products. Control it with four config.json flags (also exposed as toggles on the wizard's Data Products page):"),
     dataTable(
       ["Flag (config.json pipelines.*)", "Default", "Effect"],
@@ -407,9 +408,9 @@ function sectionLakehouse() {
         ["publishDataProducts", "false", "Activate the Data Products in the marketplace"],
       ]
     ),
-    para("Daily refresh schedules are declared in the YAML itself (qtcp_tasks/*/schedule.yaml): silver transform daily at 05:30 UTC and gold datamart daily at 06:00 UTC, both alongside event-based cascade triggers. There is no REST endpoint for DI schedules — the YAML is the source of truth, and the schedules activate once tasks are started."),
+    para("Schedules are declared in each project's YAML (qtcp_tasks/*/schedule.yaml, one schedule per task): the CRM landing syncs every 15 minutes, the silver transform is event-triggered by its landings, and the gold datamart runs daily at 06:00 UTC. CDC and streaming landings run continuously once started. There is no REST endpoint for DI schedules — the YAML is the source of truth, and the schedules activate once tasks are started."),
     cmd("npm run pipeline:zip"),
-    para("For a manual import without any tenant credentials, the command above packages mcg-pipeline.zip for Data Integration → your project → Import. After refining transformations in the QTCP UI, round-trip them back into the repo:"),
+    para("For a manual import without any tenant credentials, the command above packages one import ZIP per project for Data Integration → your project → Import. After refining transformations in the QTCP UI, round-trip them back into the repo:"),
     cmd("npm run deploy:export-pipeline"),
     calloutBox("Recommended flow: deploy with prepare=true and run=true on a fresh tenant, let the first pipeline run land data in the catalog, then re-run the deploy (or just Step 13) so attachDatasets links the gold datasets to their Data Products.", "success"),
 
@@ -472,8 +473,8 @@ function sectionLakehouse() {
     dataTable(
       ["Gold Table", "Source (Silver)", "Owner", "Refresh", "Business Purpose"],
       [
-        ["gold.supply_chain_health",      "inventory_reconciled + warehouse_events_clean",                           "Henrik Jansen",     "Daily 06:00 UTC + event", "Inventory accuracy, phantom inventory detection, and pipeline health KPIs per DC"],
-        ["gold.last_mile_performance",    "order_delivery_timeline + shipments_canonical + addresses_standardized",  "Sophie Müller",     "Daily 06:00 UTC + event", "Carrier SLA metrics, address quality scoring, and WISMO correlation by region"],
+        ["gold.supply_chain_health",      "inventory_reconciled + warehouse_events_clean",                           "Henrik Jansen",     "Daily 06:00 UTC", "Inventory accuracy, phantom inventory detection, and pipeline health KPIs per DC"],
+        ["gold.last_mile_performance",    "order_delivery_timeline + shipments_canonical + addresses_standardized",  "Sophie Müller",     "Daily 06:00 UTC", "Carrier SLA metrics, address quality scoring, and WISMO correlation by region"],
       ]
     ),
 

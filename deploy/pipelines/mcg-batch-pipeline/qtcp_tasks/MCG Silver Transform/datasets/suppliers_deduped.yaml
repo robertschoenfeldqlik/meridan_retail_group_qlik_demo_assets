@@ -3,8 +3,8 @@ properties:
   id: suppliers_deduped
   type: CUSTOM
   inputDatasets:
-    - taskId: crm-landing-4102
-      name: sf_products
+    - datasetId: sf_products
+      taskId: crm-landing-4102
   customDatasetSettings:
     incremental: false
     customSql:

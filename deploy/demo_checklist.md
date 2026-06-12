@@ -391,7 +391,7 @@ Master checklist of everything required to stand up the full Meridian Commerce G
 - [ ] All 3 source simulators running (PostgreSQL, Kafka producer, Salesforce)
 - [ ] All 8 Bronze tables receiving data
 - [ ] All 8 Silver transformation routes executing successfully
-- [ ] Both Gold marts refreshing on schedule (daily 06:00 UTC + event triggers)
+- [ ] Both Gold marts refreshing on schedule (daily 06:00 UTC)
 - [ ] No FAILED pipelines in the pipeline health view
 
 ### Component Verification

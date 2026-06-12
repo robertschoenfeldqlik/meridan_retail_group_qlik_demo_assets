@@ -125,11 +125,22 @@ function discoverFiles() {
     } catch (_) {}
   }
 
-  // Declarative pipeline project — parse task YAML for the Pipelines page
-  const pipeDir = path.join(SCRIPT_DIR, 'pipelines', 'mcg-pipeline');
-  result.pipeline = { exists: false, tasks: [] };
-  if (fs.existsSync(path.join(pipeDir, 'qtcp_project.yaml'))) {
-    result.pipeline.exists = true;
+  // Declarative pipeline projects — parse task YAML for the Pipelines page
+  const pipelinesRoot = path.join(SCRIPT_DIR, 'pipelines');
+  result.pipeline = { exists: false, projects: [] };
+  const projectDirs = fs.existsSync(pipelinesRoot)
+    ? fs.readdirSync(pipelinesRoot, { withFileTypes: true })
+        .filter(e => e.isDirectory() && fs.existsSync(path.join(pipelinesRoot, e.name, 'qtcp_project.yaml')))
+        .map(e => e.name)
+    : [];
+  for (const projDir of projectDirs) {
+    const pipeDir = path.join(pipelinesRoot, projDir);
+    const proj = { dir: projDir, name: projDir, tasks: [] };
+    try {
+      const projRaw = fs.readFileSync(path.join(pipeDir, 'qtcp_project.yaml'), 'utf-8');
+      const nm = projRaw.match(/^\s*name:\s*(.+?)\s*$/m);
+      if (nm) proj.name = nm[1];
+    } catch (_) {}
     const tasksDir = path.join(pipeDir, 'qtcp_tasks');
     if (fs.existsSync(tasksDir)) {
       const rank = (t) => {
@@ -139,7 +150,7 @@ function discoverFiles() {
         if (ty.includes('TRANSFORM')) return 2;
         return 3; // datamart last
       };
-      result.pipeline.tasks = fs.readdirSync(tasksDir)
+      proj.tasks = fs.readdirSync(tasksDir)
         .filter(d => { try { return fs.statSync(path.join(tasksDir, d)).isDirectory(); } catch (_) { return false; } })
         .map(d => {
           const t = { folder: d, name: d, type: '', schedule: '', datasets: 0 };
@@ -173,7 +184,9 @@ function discoverFiles() {
         })
         .sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name));
     }
+    result.pipeline.projects.push(proj);
   }
+  result.pipeline.exists = result.pipeline.projects.length > 0;
 
   const glPath = path.join(SCRIPT_DIR, 'glossary_terms.json');
   result.glossary = { exists: fs.existsSync(glPath), path: glPath, count: 0, items: [] };
@@ -1982,19 +1995,15 @@ function getHTML() {
       <!-- Page: Pipelines (declarative import — primary deployment method) -->
       <div class="wizard-page" id="page-pipelines">
         <div class="page-title">Pipelines</div>
-        <div class="page-desc">Deploy the bronze/silver/gold pipeline from version-controlled YAML (deploy/pipelines/mcg-pipeline) via the DI Projects API — the primary deployment method.</div>
+        <div class="page-desc">Deploy both Open Lakehouse pipelines from version-controlled YAML (deploy/pipelines/) via the DI Projects API — the primary deployment method.</div>
 
         <div class="toggle-row">
-          <label>Import Declarative Pipeline Project</label>
+          <label>Import Declarative Pipeline Projects</label>
           <label class="switch"><input type="checkbox" id="f-en-pipelines" checked><span class="slider"></span></label>
         </div>
-        <div class="field">
-          <label>Project Name</label>
-          <input type="text" id="f-pipelines-name" placeholder="MCG Demo Pipeline">
-        </div>
 
-        <div class="section-divider">Pipeline Tasks (from the YAML project)</div>
-        <div class="hint">All tasks below are imported as one DI project — landing &rarr; silver &rarr; gold, in dependency order.</div>
+        <div class="section-divider">Pipeline Projects (from YAML)</div>
+        <div class="hint">Each project below imports as its own DI project; tasks start in dependency order (landing &rarr; transform &rarr; datamart).</div>
         <div id="pipeline-task-list"><!-- populated by JS --></div>
 
         <div class="section-divider">Connection Bindings</div>
@@ -2010,7 +2019,7 @@ function getHTML() {
           <label>Start tasks after prepare (landing &rarr; transform &rarr; datamart)</label>
           <label class="switch"><input type="checkbox" id="f-pipelines-run"><span class="slider"></span></label>
         </div>
-        <div class="hint">Daily refresh schedules (silver 05:30 UTC, gold 06:00 UTC) plus event-based cascades are declared in the project YAML (qtcp_tasks/*/schedule.yaml) and activate once tasks are started. Dataset attachment to Data Products is configured on the Data Products page. Round-trip UI edits back into the repo with <code>npm run deploy:export-pipeline</code>; build a credential-free import package with <code>npm run pipeline:zip</code>.</div>
+        <div class="hint">Schedules are declared in each project's YAML (one per task): the silver transform is event-triggered by its landings, the gold datamart runs daily at 06:00 UTC, and CDC/streaming landings run continuously once started. Dataset attachment to Data Products is configured on the Data Products page. Round-trip UI edits back into the repo with <code>npm run deploy:export-pipeline</code>; build credential-free import packages with <code>npm run pipeline:zip</code>.</div>
       </div>
 
       <!-- Page: Build Apps & Theme -->
@@ -2290,20 +2299,24 @@ function getHTML() {
     if (idx === 7) renderBuildAutomationsPage();
   }
 
-  // --- Pipelines page: task list + live connection-binding map ---
+  // --- Pipelines page: per-project task lists + live connection-binding map ---
   function renderPipelinesPage() {
     const tl = document.getElementById('pipeline-task-list');
     if (tl) {
-      const p = (discoveredFiles && discoveredFiles.pipeline) || { exists: false, tasks: [] };
-      if (!p.exists || p.tasks.length === 0) {
-        tl.innerHTML = '<div style="font-size:12px;color:var(--text-dim)">No declarative project found at deploy/pipelines/mcg-pipeline</div>';
+      const p = (discoveredFiles && discoveredFiles.pipeline) || { exists: false, projects: [] };
+      if (!p.exists || (p.projects || []).length === 0) {
+        tl.innerHTML = '<div style="font-size:12px;color:var(--text-dim)">No declarative projects found under deploy/pipelines/</div>';
       } else {
-        tl.innerHTML = p.tasks.map(t =>
-          '<div class="dp-card">' +
-          '<div class="dp-name">' + esc(t.name) + '</div>' +
-          '<div class="dp-meta">' + esc(t.type) + ' &mdash; ' + esc(t.schedule) +
-            (t.datasets ? ' &mdash; ' + t.datasets + ' dataset' + (t.datasets > 1 ? 's' : '') : '') + '</div>' +
-          '</div>'
+        tl.innerHTML = p.projects.map(proj =>
+          '<div style="font-size:13px;font-weight:700;color:var(--text);margin:10px 0 6px">' + esc(proj.name) +
+          ' <span style="font-weight:400;color:var(--text-dim);font-size:11px">(deploy/pipelines/' + esc(proj.dir) + ' &mdash; ' + proj.tasks.length + ' tasks)</span></div>' +
+          proj.tasks.map(t =>
+            '<div class="dp-card">' +
+            '<div class="dp-name">' + esc(t.name) + '</div>' +
+            '<div class="dp-meta">' + esc(t.type) + ' &mdash; ' + esc(t.schedule) +
+              (t.datasets ? ' &mdash; ' + t.datasets + ' dataset' + (t.datasets > 1 ? 's' : '') : '') + '</div>' +
+            '</div>'
+          ).join('')
         ).join('');
       }
     }
@@ -2406,7 +2419,6 @@ function getHTML() {
 
     // Pipelines
     if (cfg.pipelines) {
-      setVal('f-pipelines-name', cfg.pipelines.projectName);
       setCheck('f-pipelines-prepare', cfg.pipelines.prepare === true);
       setCheck('f-pipelines-run', cfg.pipelines.run === true);
       setCheck('f-pipelines-attach', cfg.pipelines.attachDatasets !== false);
@@ -3131,8 +3143,8 @@ function getHTML() {
         pipelines: isChecked('f-en-pipelines'),
       },
       pipelines: {
-        projectName: getVal('f-pipelines-name') || 'MCG Demo Pipeline',
-        sourceDir: './pipelines/mcg-pipeline',
+        projects: ((discoveredFiles && discoveredFiles.pipeline && discoveredFiles.pipeline.projects) || [])
+          .map(p => ({ projectName: p.name, sourceDir: './pipelines/' + p.dir })),
         platformType: 'QLIK_OPEN_LAKEHOUSE',
         prepare: isChecked('f-pipelines-prepare'),
         run: isChecked('f-pipelines-run'),

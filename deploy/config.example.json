@@ -137,8 +137,10 @@
   },
 
   "pipelines": {
-    "projectName": "MCG Demo Pipeline",
-    "sourceDir": "./pipelines/mcg-pipeline",
+    "projects": [
+      { "projectName": "MCG Batch Pipeline", "sourceDir": "./pipelines/mcg-batch-pipeline" },
+      { "projectName": "MCG Streaming Pipeline", "sourceDir": "./pipelines/mcg-streaming-pipeline" }
+    ],
     "platformType": "QLIK_OPEN_LAKEHOUSE",
     "databaseName": "",
     "warehouseName": "",

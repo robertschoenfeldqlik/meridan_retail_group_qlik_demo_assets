@@ -3,8 +3,8 @@ properties:
   id: inventory_reconciled
   type: CUSTOM
   inputDatasets:
-    - taskId: wms-cdc-landing-4101
-      name: inventory_positions
+    - datasetId: inventory_positions
+      taskId: wms-cdc-landing-4101
   customDatasetSettings:
     incremental: false
     customSql:

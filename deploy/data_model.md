@@ -252,8 +252,8 @@ Aggregated, enriched, ready for analytics and API sharing.
 
 | Table | Description | Refresh |
 |-------|-------------|---------|
-| `gold.supply_chain_health` | Inventory accuracy + pipeline health KPIs per DC/SKU | Daily 06:00 UTC + event |
-| `gold.last_mile_performance` | Carrier SLA metrics + address quality by region | Daily 06:00 UTC + event |
+| `gold.supply_chain_health` | Inventory accuracy + pipeline health KPIs per DC/SKU | Daily 06:00 UTC |
+| `gold.last_mile_performance` | Carrier SLA metrics + address quality by region | Daily 06:00 UTC |
 
 ---
 
