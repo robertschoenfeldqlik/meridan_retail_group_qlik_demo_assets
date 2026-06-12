@@ -477,7 +477,7 @@ function buildCreationGuide() {
     // ═══════════════════════════════════════════════════════════════════════
     pageBreak(),
     heading("Part 3: Gold Layer Table Recipes"),
-    para("The Gold layer contains 7 governed data products created from Silver sources using Qlik Table Recipes. Each product is registered with an owner, AI-generated description, and API sharing enabled."),
+    para("The Gold layer contains 2 governed data products created from Silver sources using Qlik Table Recipes. Each product is registered with an owner, AI-generated description, and API sharing enabled."),
 
     heading("3.1 Creating Table Recipes", 2),
     numberedItem("1", "Navigate to Data Integration → Transformations → Create transformation"),
@@ -488,17 +488,13 @@ function buildCreationGuide() {
     numberedItem("6", "Configure refresh schedule"),
     screenshot("Table Recipe builder showing Silver inputs, transformation logic, and Gold output"),
 
-    heading("3.2 Seven Gold Data Products", 2),
+    heading("3.2 Two Gold Data Products", 2),
+    para("The pipeline creates one gold mart per analytics domain app — these are the demo's two data products, matching the gold-datamart datasets in the declarative project:"),
     dataTable(
       ["Gold Table", "Source Silver Tables", "Refresh", "Owner", "Key Metrics"],
       [
-        ["supply_chain_health",      "inventory_reconciled, warehouse_events_clean",                            "15 min", "Henrik Jansen",     "IRA %, phantom_units, pipeline_status, trust_score by DC"],
-        ["last_mile_performance",    "order_delivery_timeline, shipments_canonical, addresses_standardized",   "30 min", "Sophie Müller",     "on_time_pct, sla_met, address_quality_score, wismo_flag by carrier/region"],
-        ["cold_chain_compliance",    "iot_normalized, shipments_canonical",                                     "5 min",  "Lars Eriksson",     "exceedance_minutes, spoilage_risk_score, pre_cool_compliant by route/carrier"],
-        ["product_master_health",    "products_harmonized, suppliers_deduped",                                  "1 hour", "Thomas Berger",     "completeness_score, weight_complete, supplier_duplicate_flag by SKU"],
-        ["compliance_traceability",  "inventory_reconciled, products_harmonized",                               "30 min", "Dr. Elena Vasquez", "lot_capture_rate, trace_complete, recall_risk_flag, nvwa_applicable by lot"],
-        ["pipeline_timestamp_audit", "warehouse_events_clean",                                                  "5 min",  "Priya Ramanathan",  "pipeline status, lag_minutes, timezone_anomalies, trust_score per pipeline"],
-        ["customer_quality_index",   "addresses_standardized, order_delivery_timeline, shipments_canonical",   "1 hour", "Sophie Müller",     "address_quality_score, delivery_failure_rate, wismo_rate, is_duplicate by customer"],
+        ["supply_chain_health",      "inventory_reconciled, warehouse_events_clean",                            "Daily 06:00 UTC + event", "Henrik Jansen",  "IRA %, phantom_units, pipeline_status, trust_score by DC"],
+        ["last_mile_performance",    "order_delivery_timeline, shipments_canonical, addresses_standardized",   "Daily 06:00 UTC + event", "Sophie Müller",  "on_time_pct, sla_met, address_quality_score, wismo_flag by carrier/region"],
       ]
     ),
 

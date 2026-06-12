@@ -6,29 +6,89 @@
       "sourceTable": "gold.supply_chain_health",
       "owner": "Henrik Jansen",
       "ownerTitle": "VP Warehouse Operations",
-      "tags": ["inventory", "phantom-inventory", "pipeline-health", "kpi"],
+      "tags": [
+        "inventory",
+        "phantom-inventory",
+        "pipeline-health",
+        "kpi"
+      ],
       "sla": {
         "refreshFrequency": "15 minutes",
         "availability": "99.5%",
         "trustScoreTarget": 0.85
       },
       "schema": [
-        {"name": "dc_id", "type": "VARCHAR(20)", "description": "Distribution center identifier (e.g., DC-RTD-01)"},
-        {"name": "sku", "type": "VARCHAR(30)", "description": "Canonical MCG product SKU"},
-        {"name": "qty_wms", "type": "INTEGER", "description": "Quantity per WMS (physical system of record)"},
-        {"name": "qty_erp", "type": "INTEGER", "description": "Quantity per ERP (SAP S/4HANA)"},
-        {"name": "variance", "type": "INTEGER", "description": "WMS - ERP quantity difference"},
-        {"name": "variance_pct", "type": "DECIMAL(5,2)", "description": "Variance as percentage of ERP qty"},
-        {"name": "phantom_flag", "type": "BOOLEAN", "description": "TRUE if ERP > WMS by >10%"},
-        {"name": "pipeline_status", "type": "VARCHAR(20)", "description": "CDC pipeline: HEALTHY / DEGRADED / FAILED"},
-        {"name": "last_sync_utc", "type": "TIMESTAMPTZ", "description": "Last successful CDC sync timestamp"},
-        {"name": "sync_lag_minutes", "type": "INTEGER", "description": "Minutes since last sync"},
-        {"name": "trust_score", "type": "DECIMAL(3,2)", "description": "Qlik Trust Score (0.0-1.0)"},
-        {"name": "snapshot_utc", "type": "TIMESTAMPTZ", "description": "When this record was calculated"}
+        {
+          "name": "dc_id",
+          "type": "VARCHAR(20)",
+          "description": "Distribution center identifier (e.g., DC-RTD-01)"
+        },
+        {
+          "name": "sku",
+          "type": "VARCHAR(30)",
+          "description": "Canonical MCG product SKU"
+        },
+        {
+          "name": "qty_wms",
+          "type": "INTEGER",
+          "description": "Quantity per WMS (physical system of record)"
+        },
+        {
+          "name": "qty_erp",
+          "type": "INTEGER",
+          "description": "Quantity per ERP (SAP S/4HANA)"
+        },
+        {
+          "name": "variance",
+          "type": "INTEGER",
+          "description": "WMS - ERP quantity difference"
+        },
+        {
+          "name": "variance_pct",
+          "type": "DECIMAL(5,2)",
+          "description": "Variance as percentage of ERP qty"
+        },
+        {
+          "name": "phantom_flag",
+          "type": "BOOLEAN",
+          "description": "TRUE if ERP > WMS by >10%"
+        },
+        {
+          "name": "pipeline_status",
+          "type": "VARCHAR(20)",
+          "description": "CDC pipeline: HEALTHY / DEGRADED / FAILED"
+        },
+        {
+          "name": "last_sync_utc",
+          "type": "TIMESTAMPTZ",
+          "description": "Last successful CDC sync timestamp"
+        },
+        {
+          "name": "sync_lag_minutes",
+          "type": "INTEGER",
+          "description": "Minutes since last sync"
+        },
+        {
+          "name": "trust_score",
+          "type": "DECIMAL(3,2)",
+          "description": "Qlik Trust Score (0.0-1.0)"
+        },
+        {
+          "name": "snapshot_utc",
+          "type": "TIMESTAMPTZ",
+          "description": "When this record was calculated"
+        }
       ],
-      "nightmares": ["#1 Phantom Inventory", "#4 Silent Pipeline Failures"],
+      "nightmares": [
+        "#1 Phantom Inventory",
+        "#4 Silent Pipeline Failures"
+      ],
       "apiSharing": true,
-      "consumers": ["Qlik Analytics (Supply Chain Dashboard)", "Discovery Agent", "MCP Server"],
+      "consumers": [
+        "Qlik Analytics (Supply Chain Dashboard)",
+        "Discovery Agent",
+        "MCP Server"
+      ],
       "app": "MCG Supply Chain Operations"
     },
     {
@@ -37,189 +97,95 @@
       "sourceTable": "gold.last_mile_performance",
       "owner": "Sophie Müller",
       "ownerTitle": "EU Logistics Manager",
-      "tags": ["carrier", "sla", "delivery", "wismo", "address-quality"],
+      "tags": [
+        "carrier",
+        "sla",
+        "delivery",
+        "wismo",
+        "address-quality"
+      ],
       "sla": {
         "refreshFrequency": "30 minutes",
         "availability": "99.5%",
-        "trustScoreTarget": 0.80
+        "trustScoreTarget": 0.8
       },
       "schema": [
-        {"name": "carrier", "type": "VARCHAR(20)", "description": "Canonical carrier code (FEDEX, DPD, NINJAVAN, etc.)"},
-        {"name": "destination_country", "type": "VARCHAR(2)", "description": "ISO 3166-1 alpha-2 country code"},
-        {"name": "destination_region", "type": "VARCHAR(20)", "description": "MCG region: EU, AMERICAS, APAC, LATAM, AFRICA"},
-        {"name": "sla_target_hours", "type": "INTEGER", "description": "Contracted delivery SLA in hours"},
-        {"name": "sla_actual_hours", "type": "DECIMAL(6,1)", "description": "Actual order-to-delivery hours"},
-        {"name": "sla_met", "type": "BOOLEAN", "description": "TRUE if actual <= target"},
-        {"name": "on_time_pct", "type": "DECIMAL(5,2)", "description": "On-time delivery percentage for this carrier/region"},
-        {"name": "address_quality_score", "type": "DECIMAL(3,2)", "description": "Destination address quality (0.0-1.0)"},
-        {"name": "wismo_flag", "type": "BOOLEAN", "description": "Customer contacted about this delivery"},
-        {"name": "delivery_attempts", "type": "INTEGER", "description": "Number of delivery attempts"},
-        {"name": "exception_code_canonical", "type": "VARCHAR(30)", "description": "Standardized exception code"},
-        {"name": "weight_kg", "type": "DECIMAL(8,2)", "description": "Shipment weight in kg"},
-        {"name": "trust_score", "type": "DECIMAL(3,2)", "description": "Qlik Trust Score (0.0-1.0)"}
+        {
+          "name": "carrier",
+          "type": "VARCHAR(20)",
+          "description": "Canonical carrier code (FEDEX, DPD, NINJAVAN, etc.)"
+        },
+        {
+          "name": "destination_country",
+          "type": "VARCHAR(2)",
+          "description": "ISO 3166-1 alpha-2 country code"
+        },
+        {
+          "name": "destination_region",
+          "type": "VARCHAR(20)",
+          "description": "MCG region: EU, AMERICAS, APAC, LATAM, AFRICA"
+        },
+        {
+          "name": "sla_target_hours",
+          "type": "INTEGER",
+          "description": "Contracted delivery SLA in hours"
+        },
+        {
+          "name": "sla_actual_hours",
+          "type": "DECIMAL(6,1)",
+          "description": "Actual order-to-delivery hours"
+        },
+        {
+          "name": "sla_met",
+          "type": "BOOLEAN",
+          "description": "TRUE if actual <= target"
+        },
+        {
+          "name": "on_time_pct",
+          "type": "DECIMAL(5,2)",
+          "description": "On-time delivery percentage for this carrier/region"
+        },
+        {
+          "name": "address_quality_score",
+          "type": "DECIMAL(3,2)",
+          "description": "Destination address quality (0.0-1.0)"
+        },
+        {
+          "name": "wismo_flag",
+          "type": "BOOLEAN",
+          "description": "Customer contacted about this delivery"
+        },
+        {
+          "name": "delivery_attempts",
+          "type": "INTEGER",
+          "description": "Number of delivery attempts"
+        },
+        {
+          "name": "exception_code_canonical",
+          "type": "VARCHAR(30)",
+          "description": "Standardized exception code"
+        },
+        {
+          "name": "weight_kg",
+          "type": "DECIMAL(8,2)",
+          "description": "Shipment weight in kg"
+        },
+        {
+          "name": "trust_score",
+          "type": "DECIMAL(3,2)",
+          "description": "Qlik Trust Score (0.0-1.0)"
+        }
       ],
-      "nightmares": ["#2 Address Catastrophe", "#6 Carrier Data Black Hole"],
+      "nightmares": [
+        "#2 Address Catastrophe",
+        "#6 Carrier Data Black Hole"
+      ],
       "apiSharing": true,
-      "consumers": ["Qlik Analytics (Last Mile Dashboard)", "Predict (SLA Model)", "Discovery Agent"],
-      "app": "MCG Delivery Experience"
-    },
-    {
-      "name": "Cold Chain Compliance",
-      "description": "Real-time cold chain temperature exceedance monitoring, spoilage risk scoring, and carrier compliance tracking across all 6 active refrigerated routes. Updated every 5 minutes from Kafka IoT streaming.",
-      "sourceTable": "gold.cold_chain_compliance",
-      "owner": "Lars Eriksson",
-      "ownerTitle": "Cold Chain & Quality Manager",
-      "tags": ["cold-chain", "temperature", "spoilage", "iot", "compliance"],
-      "sla": {
-        "refreshFrequency": "5 minutes",
-        "availability": "99.9%",
-        "trustScoreTarget": 0.90
-      },
-      "schema": [
-        {"name": "shipment_id", "type": "VARCHAR(30)", "description": "Unique shipment identifier"},
-        {"name": "route_id", "type": "VARCHAR(20)", "description": "Active cold chain route (e.g., GRU-BA, RTD-MUN)"},
-        {"name": "carrier", "type": "VARCHAR(20)", "description": "Canonical carrier code"},
-        {"name": "avg_temp_celsius", "type": "DECIMAL(5,2)", "description": "Average temperature over shipment window"},
-        {"name": "max_temp_celsius", "type": "DECIMAL(5,2)", "description": "Peak temperature reading"},
-        {"name": "exceedance_minutes", "type": "INTEGER", "description": "Minutes above 8°C threshold"},
-        {"name": "exceedance_flag", "type": "BOOLEAN", "description": "TRUE if any reading exceeded 8°C for >15 min"},
-        {"name": "spoilage_risk_score", "type": "DECIMAL(3,2)", "description": "ML-predicted spoilage probability (0.0-1.0)"},
-        {"name": "pre_cool_compliant", "type": "BOOLEAN", "description": "Pre-cooling SOP completed before loading"},
-        {"name": "alert_sent", "type": "BOOLEAN", "description": "Whether cold chain alert was dispatched"},
-        {"name": "window_start_utc", "type": "TIMESTAMPTZ", "description": "Start of monitoring window"},
-        {"name": "window_end_utc", "type": "TIMESTAMPTZ", "description": "End of monitoring window"},
-        {"name": "trust_score", "type": "DECIMAL(3,2)", "description": "Qlik Trust Score (0.0-1.0)"}
+      "consumers": [
+        "Qlik Analytics (Last Mile Dashboard)",
+        "Predict (SLA Model)",
+        "Discovery Agent"
       ],
-      "nightmares": ["#6 Carrier Data Black Hole"],
-      "apiSharing": true,
-      "consumers": ["Qlik Analytics (Cold Chain Monitoring sheet)", "Automations (Cold Chain Alert)", "Predict (Spoilage Risk model)"],
-      "app": "MCG Supply Chain Operations"
-    },
-    {
-      "name": "Product Master Health",
-      "description": "Harmonized product catalog across AM and EU legacy SKU systems. Tracks completeness of critical fields (weight, UoM, category) and supplier deduplication status. Updated hourly.",
-      "sourceTable": "gold.product_master_health",
-      "owner": "Thomas Berger",
-      "ownerTitle": "Procurement & Supplier Relations Manager",
-      "tags": ["product-master", "sku", "supplier", "data-quality", "completeness"],
-      "sla": {
-        "refreshFrequency": "1 hour",
-        "availability": "99.0%",
-        "trustScoreTarget": 0.82
-      },
-      "schema": [
-        {"name": "sku_canonical", "type": "VARCHAR(30)", "description": "MCG canonical SKU (e.g., MCG-4420)"},
-        {"name": "sku_legacy_am", "type": "VARCHAR(30)", "description": "Americas legacy system SKU"},
-        {"name": "sku_legacy_eu", "type": "VARCHAR(30)", "description": "Europe legacy system SKU"},
-        {"name": "product_name", "type": "VARCHAR(100)", "description": "Harmonized product name"},
-        {"name": "category", "type": "VARCHAR(30)", "description": "Product category"},
-        {"name": "weight_kg", "type": "DECIMAL(8,3)", "description": "Weight in kilograms (NULL = missing)"},
-        {"name": "weight_complete", "type": "BOOLEAN", "description": "TRUE if weight_kg is populated and > 0"},
-        {"name": "uom", "type": "VARCHAR(10)", "description": "Unit of measure (EA, KG, L)"},
-        {"name": "perishable", "type": "BOOLEAN", "description": "Requires cold chain or lot tracking"},
-        {"name": "supplier_canonical_id", "type": "VARCHAR(20)", "description": "Deduped canonical supplier ID"},
-        {"name": "supplier_name", "type": "VARCHAR(100)", "description": "Canonical supplier name"},
-        {"name": "supplier_duplicate_flag", "type": "BOOLEAN", "description": "TRUE if original record was a fuzzy-matched duplicate"},
-        {"name": "completeness_score", "type": "DECIMAL(3,2)", "description": "Field completeness (0.0-1.0)"},
-        {"name": "trust_score", "type": "DECIMAL(3,2)", "description": "Qlik Trust Score (0.0-1.0)"}
-      ],
-      "nightmares": ["#3 Product Master Mess"],
-      "apiSharing": false,
-      "consumers": ["Qlik Analytics (Product Data Quality sheet)", "Stewardship (Missing Weights campaign)", "Predict (Spoilage Risk model)"],
-      "app": "MCG Supply Chain Operations"
-    },
-    {
-      "name": "Compliance Traceability",
-      "description": "Farm-to-shelf lot traceability for all perishable products. Tracks lot number capture rate, recall readiness, and NVWA regulatory compliance status. Updated every 30 minutes.",
-      "sourceTable": "gold.compliance_traceability",
-      "owner": "Dr. Elena Vasquez",
-      "ownerTitle": "Chief Compliance Officer",
-      "tags": ["compliance", "traceability", "lot-number", "nvwa", "food-safety", "recall"],
-      "sla": {
-        "refreshFrequency": "30 minutes",
-        "availability": "99.5%",
-        "trustScoreTarget": 0.88
-      },
-      "schema": [
-        {"name": "lot_number", "type": "VARCHAR(30)", "description": "Lot number assigned at goods receipt"},
-        {"name": "sku", "type": "VARCHAR(30)", "description": "Canonical MCG product SKU"},
-        {"name": "product_name", "type": "VARCHAR(100)", "description": "Product name"},
-        {"name": "supplier_id", "type": "VARCHAR(20)", "description": "Canonical supplier identifier"},
-        {"name": "farm_id", "type": "VARCHAR(20)", "description": "Source farm identifier (e.g., FARM-NL-0042)"},
-        {"name": "received_utc", "type": "TIMESTAMPTZ", "description": "Goods receipt timestamp"},
-        {"name": "dc_id", "type": "VARCHAR(20)", "description": "Receiving distribution center"},
-        {"name": "lot_captured", "type": "BOOLEAN", "description": "TRUE if lot_number is populated"},
-        {"name": "trace_complete", "type": "BOOLEAN", "description": "Full farm-to-shelf chain resolved"},
-        {"name": "nvwa_applicable", "type": "BOOLEAN", "description": "Subject to NVWA EC 178/2002 regulation"},
-        {"name": "recall_risk_flag", "type": "BOOLEAN", "description": "TRUE if this lot has open quality flags"},
-        {"name": "lot_capture_rate", "type": "DECIMAL(5,2)", "description": "% of perishable shipments with lot number captured"},
-        {"name": "trust_score", "type": "DECIMAL(3,2)", "description": "Qlik Trust Score (0.0-1.0)"}
-      ],
-      "nightmares": ["#7 Compliance Traceability Gap"],
-      "apiSharing": false,
-      "consumers": ["Qlik Analytics (Compliance & Recall sheet)", "Stewardship (Lot Number Compliance campaign)", "Automations (Recall Notification)"],
-      "app": "MCG Supply Chain Operations"
-    },
-    {
-      "name": "Pipeline & Timestamp Audit",
-      "description": "Monitors CDC pipeline health, data freshness, and timestamp normalization status across all 8 Bronze ingestion pipelines. The early-warning system for silent data failures.",
-      "sourceTable": "gold.pipeline_timestamp_audit",
-      "owner": "Priya Ramanathan",
-      "ownerTitle": "Chief Data Officer",
-      "tags": ["pipeline-health", "timestamp", "cdc", "freshness", "monitoring"],
-      "sla": {
-        "refreshFrequency": "5 minutes",
-        "availability": "99.9%",
-        "trustScoreTarget": 0.95
-      },
-      "schema": [
-        {"name": "pipeline_id", "type": "VARCHAR(30)", "description": "Pipeline identifier (e.g., CDC-PG-INV-01)"},
-        {"name": "source_system", "type": "VARCHAR(20)", "description": "Source: POSTGRES, KAFKA, SALESFORCE"},
-        {"name": "bronze_table", "type": "VARCHAR(50)", "description": "Target Bronze table name"},
-        {"name": "status", "type": "VARCHAR(20)", "description": "HEALTHY / DEGRADED / FAILED / RECOVERING"},
-        {"name": "last_record_utc", "type": "TIMESTAMPTZ", "description": "Timestamp of last successfully ingested record"},
-        {"name": "lag_minutes", "type": "INTEGER", "description": "Minutes since last successful ingest"},
-        {"name": "records_last_hour", "type": "INTEGER", "description": "Record count ingested in past 60 minutes"},
-        {"name": "timestamp_format_ok", "type": "BOOLEAN", "description": "All timestamps normalized to UTC"},
-        {"name": "timezone_anomalies", "type": "INTEGER", "description": "Count of records with missing or non-UTC timezone"},
-        {"name": "alert_threshold_minutes", "type": "INTEGER", "description": "Configured lag threshold for alerting"},
-        {"name": "trust_score", "type": "DECIMAL(3,2)", "description": "Qlik Trust Score (0.0-1.0)"}
-      ],
-      "nightmares": ["#4 Silent Pipeline Failures", "#5 Timestamp Tower of Babel"],
-      "apiSharing": false,
-      "consumers": ["Qlik Analytics (Supply Chain Operations - pipeline health)", "Automations (Pipeline Health Summary)", "Discovery Agent"],
-      "app": "MCG Supply Chain Operations"
-    },
-    {
-      "name": "Customer Quality Index",
-      "description": "Address quality scoring and customer deduplication status across all 18.4M contact records. Tracks quality improvement from Stewardship campaigns and correlates address quality with delivery outcomes.",
-      "sourceTable": "gold.customer_quality_index",
-      "owner": "Sophie Müller",
-      "ownerTitle": "EU Logistics Manager",
-      "tags": ["address-quality", "customer", "deduplication", "stewardship"],
-      "sla": {
-        "refreshFrequency": "1 hour",
-        "availability": "99.0%",
-        "trustScoreTarget": 0.78
-      },
-      "schema": [
-        {"name": "customer_id", "type": "VARCHAR(30)", "description": "Canonical customer identifier (post-dedup)"},
-        {"name": "address_line1", "type": "VARCHAR(100)", "description": "Standardized address line 1"},
-        {"name": "address_line2", "type": "VARCHAR(100)", "description": "Standardized address line 2"},
-        {"name": "city", "type": "VARCHAR(50)", "description": "City name"},
-        {"name": "postal_code", "type": "VARCHAR(20)", "description": "Postal/ZIP code"},
-        {"name": "country_iso2", "type": "VARCHAR(2)", "description": "ISO 3166-1 alpha-2 country code"},
-        {"name": "address_quality_score", "type": "DECIMAL(3,2)", "description": "Address quality 0.0-1.0 (format + completeness + geocodable)"},
-        {"name": "is_duplicate", "type": "BOOLEAN", "description": "TRUE if this record was merged from a fuzzy match"},
-        {"name": "stewardship_reviewed", "type": "BOOLEAN", "description": "Human-reviewed in Address Cleanup campaign"},
-        {"name": "delivery_failure_rate", "type": "DECIMAL(5,2)", "description": "Historical delivery failure rate for this customer"},
-        {"name": "wismo_rate", "type": "DECIMAL(5,2)", "description": "WISMO contact rate for this customer"},
-        {"name": "region", "type": "VARCHAR(20)", "description": "MCG region: EU, AMERICAS, APAC, LATAM, AFRICA"},
-        {"name": "trust_score", "type": "DECIMAL(3,2)", "description": "Qlik Trust Score (0.0-1.0)"}
-      ],
-      "nightmares": ["#2 Address Catastrophe"],
-      "apiSharing": false,
-      "consumers": ["Qlik Analytics (Address Quality Impact sheet)", "Stewardship (Address Cleanup campaign)", "Predict (Delivery SLA model)"],
       "app": "MCG Delivery Experience"
     }
   ]

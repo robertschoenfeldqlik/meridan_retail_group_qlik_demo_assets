@@ -438,18 +438,13 @@ function module03() {
       ]
     ),
 
-    heading("Gold Layer: Data Products (7 Tables)", 2),
-    para("Gold tables are governed, business-ready data products with Trust Scores, SLAs, and API sharing."),
+    heading("Gold Layer: Data Products (2 Tables)", 2),
+    para("The pipeline's gold datamart task creates two governed, business-ready data products with Trust Scores, SLAs, and API sharing — one per analytics domain app."),
     dataTable(
       ["Gold Table", "Owner", "Refresh", "Key Metric"],
       [
-        ["gold.supply_chain_health",     "Henrik Jansen (VP Warehouse Ops)",    "15 min", "IRA target: 97%"],
-        ["gold.last_mile_performance",   "Sophie Müller (EU Logistics Mgr)",    "30 min", "On-time target: 92%"],
-        ["gold.cold_chain_compliance",   "Lars Eriksson (Cold Chain & Quality)", "5 min",  "Exceedance rate: < 2%"],
-        ["gold.product_master_health",   "Thomas Berger (Procurement Mgr)",     "1 hour", "Completeness: > 95%"],
-        ["gold.compliance_traceability", "Dr. Elena Vasquez (Chief Compliance Officer)", "30 min", "Lot capture rate: 100%"],
-        ["gold.pipeline_timestamp_audit","Priya Ramanathan (Chief Data Officer)",        "5 min",  "Trust Score target: 0.95"],
-        ["gold.customer_quality_index",  "Sophie Müller (EU Logistics Mgr)",    "1 hour", "Address quality: > 0.85"],
+        ["gold.supply_chain_health",     "Henrik Jansen (VP Warehouse Ops)",    "Daily 06:00 UTC + event", "IRA target: 97%"],
+        ["gold.last_mile_performance",   "Sophie Müller (EU Logistics Mgr)",    "Daily 06:00 UTC + event", "On-time target: 92%"],
       ]
     ),
 
@@ -479,7 +474,7 @@ function module03() {
     numberedItem(5, "Show the round-trip: refine a transformation in the UI, then export it back to the repo for git versioning"),
     calloutBox("Talking point: Pipelines as code means the medallion architecture is reproducible, reviewable, and versioned. A new tenant goes from empty to a full, running, daily-scheduled bronze/silver/gold pipeline in minutes — and every transformation change has a git history. After the first run, the deploy attaches the gold catalog datasets to their Data Products automatically (Module 5 shows the result). AI assistants can author and validate the YAML directly against the published schemas.", "info"),
 
-    tellAnnotation("close", "What you just saw is raw data arriving from three systems, getting cleansed through 8 transformation routes that directly address MCG's 7 data nightmares, and emerging as 7 governed Gold data products — each with an owner, an SLA, and a Trust Score. Full lineage at every step."),
+    tellAnnotation("close", "What you just saw is raw data arriving from three systems, getting cleansed through 8 transformation routes that directly address MCG's 7 data nightmares, and emerging as two governed Gold data products — each with an owner, an SLA, and a Trust Score. Full lineage at every step."),
     interactionPrompt("Which of these transformation routes — inventory reconciliation, address standardization, carrier canonicalization — resonates most with your current challenges?"),
     valueChain(["Transform raw data through automated quality pipelines", "resolve all 7 data quality nightmares systematically", "deliver trusted Gold data products that the business actually uses for decisions"]),
 
@@ -596,7 +591,7 @@ function module05() {
     numberedItem(4, "Review AI-generated product description and column-level descriptions"),
     numberedItem(5, "Publish descriptions for Data Marketplace discoverability"),
     calloutBox("Talking point: AI-driven descriptions save hours of manual documentation. The AI reads the actual data, understands the schema, and writes descriptions that are grounded in reality — not aspirational."),
-    calloutBox("Deployment note: the primary path is npm run deploy — it provisions all 7 data products via the Data Products API, attaches each product's gold dataset from the catalog once the pipeline has run, and (optionally) activates the product in the marketplace. Walk the manual steps above to show the workflow interactively; the API path is what actually deploys the environment.", "info"),
+    calloutBox("Deployment note: the primary path is npm run deploy — it provisions both data products via the Data Products API, attaches each product's gold dataset from the catalog once the pipeline has run, and (optionally) activates the product in the marketplace. Walk the manual steps above to show the workflow interactively; the API path is what actually deploys the environment.", "info"),
 
     heading("Step 2: Semantic Types & Validation Rules", 3),
     numberedItem(1, "Navigate to a data product > Schema > Review AI-detected semantic types"),
@@ -1178,7 +1173,7 @@ function module13() {
       ["MCP Tool Category", "Key Tools", "MCG Demo Use Case"],
       [
         ["App Discovery",           "qlik_search, qlik_describe_app, qlik_list_apps",               "Find supply chain and delivery apps"],
-        ["Data Products",           "qlik_list_data_products, qlik_get_data_product",               "Browse all 7 Gold data products"],
+        ["Data Products",           "qlik_list_data_products, qlik_get_data_product",               "Browse the two Gold data products"],
         ["Business Glossary",       "qlik_list_terms, qlik_get_term",                               "Look up 'phantom inventory', 'WISMO'"],
         ["Data Exploration",        "qlik_get_fields, qlik_evaluate_expression",                    "Query gold.supply_chain_health"],
         ["Lineage",                 "qlik_get_lineage",                                             "Trace phantom inventory to source CDC pipeline"],

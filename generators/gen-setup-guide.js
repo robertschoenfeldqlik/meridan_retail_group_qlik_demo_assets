@@ -467,18 +467,13 @@ function sectionLakehouse() {
     ),
     calloutBox("Use AI-Assisted SQL in the Qlik transformation editor to generate transformation logic. For example, describe the transformation in plain English: 'Standardize all dates to UTC, remove records with null order_id, and normalize status values to uppercase'. The AI will generate the SQL.", "success"),
 
-    heading("8.5 Gold Layer Reference (7 Data Products)", 2),
-    para("The gold layer contains business-ready, governed data products created from silver layer sources. The two core marts ship in the declarative project; Table Recipes define the rest:"),
+    heading("8.5 Gold Layer Reference (2 Data Products)", 2),
+    para("The gold layer contains the two business-ready, governed data products the pipeline creates — one per analytics domain app. Both ship in the declarative project as custom-SQL datamart datasets:"),
     dataTable(
       ["Gold Table", "Source (Silver)", "Owner", "Refresh", "Business Purpose"],
       [
-        ["gold.supply_chain_health",      "inventory_reconciled + warehouse_events_clean",                       "Henrik Jansen",        "15 min", "Inventory accuracy, phantom inventory detection, and pipeline health KPIs per DC"],
-        ["gold.last_mile_performance",    "order_delivery_timeline + shipments_canonical + addresses_standardized", "Sophie Müller",    "30 min", "Carrier SLA metrics, address quality scoring, and WISMO correlation by region"],
-        ["gold.cold_chain_compliance",    "iot_normalized + shipments_canonical",                                "Lars Eriksson",        "5 min",  "Temperature exceedance monitoring, spoilage risk scoring, carrier cold chain compliance"],
-        ["gold.product_master_health",    "products_harmonized + suppliers_deduped",                             "Thomas Berger",        "1 hour", "SKU completeness, weight/UoM coverage, supplier deduplication status"],
-        ["gold.compliance_traceability",  "inventory_reconciled + products_harmonized",                          "Dr. Elena Vasquez",    "30 min", "Farm-to-shelf lot traceability, recall readiness, NVWA regulatory compliance status"],
-        ["gold.pipeline_timestamp_audit", "warehouse_events_clean",                                              "Priya Ramanathan",     "5 min",  "CDC pipeline health, data freshness, timestamp normalization status — early-warning for silent failures"],
-        ["gold.customer_quality_index",   "addresses_standardized + order_delivery_timeline + shipments_canonical", "Sophie Müller",    "1 hour", "Address quality scoring, deduplication status, delivery failure rate, WISMO rate by customer"],
+        ["gold.supply_chain_health",      "inventory_reconciled + warehouse_events_clean",                           "Henrik Jansen",     "Daily 06:00 UTC + event", "Inventory accuracy, phantom inventory detection, and pipeline health KPIs per DC"],
+        ["gold.last_mile_performance",    "order_delivery_timeline + shipments_canonical + addresses_standardized",  "Sophie Müller",     "Daily 06:00 UTC + event", "Carrier SLA metrics, address quality scoring, and WISMO correlation by region"],
       ]
     ),
 
@@ -501,7 +496,7 @@ function sectionDataProducts() {
     numberedItem(6, "Set classification level (Internal for demo purposes)"),
     numberedItem(7, "Enable API Sharing to make the data product accessible via REST API"),
     screenshot("Data Product registration screen showing a gold table being registered with owner, description, and API sharing enabled"),
-    calloutBox("Primary path: npm run deploy provisions all 7 data products from data_products.json via the Data Products API, attaches each product's gold dataset from the catalog once the pipeline has run (pipelines.attachDatasets), and can activate products in the marketplace (pipelines.publishDataProducts). The manual steps above show the same workflow interactively.", "info"),
+    calloutBox("Primary path: npm run deploy provisions both data products from data_products.json via the Data Products API, attaches each product's gold dataset from the catalog once the pipeline has run (pipelines.attachDatasets), and can activate products in the marketplace (pipelines.publishDataProducts). The manual steps above show the same workflow interactively.", "info"),
 
     heading("9.2 Configure Trust Score", 2),
     para("Each data product has a Trust Score composed of multiple dimensions:"),

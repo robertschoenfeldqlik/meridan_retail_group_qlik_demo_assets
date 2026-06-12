@@ -363,7 +363,7 @@ stories.forEach((s, i) => {
   colItems(3.7, 3.0, [
     "8 Transformation Routes",
     "Silver Layer (cleansed)",
-    "7 Gold Data Products",
+    "2 Gold Data Products",
     "Trust Score & Lineage",
     "Business Glossary (25 terms)",
     "4 Stewardship Campaigns",
@@ -399,7 +399,7 @@ stories.forEach((s, i) => {
     fill: { color: C.lightBg }, rectRadius: 0.08,
     line: { color: C.qlikGray, width: 0.75 },
   });
-  s.addText("Total:  3 Sources  →  23 Tables  →  9 Flows  →  7 Products  →  10 Sheets  →  2 Models  →  25 Docs  →  5 Automations", {
+  s.addText("Total:  3 Sources  →  18 Tables  →  9 Flows  →  2 Products  →  10 Sheets  →  2 Models  →  25 Docs  →  5 Automations", {
     x: 0.7, y: 5.9, w: 11.9, h: 0.6,
     fontSize: 11, color: C.qlikBlue, fontFace: FONT, bold: true, align: "center", valign: "middle",
   });
@@ -950,7 +950,7 @@ slide = contentSlide("Governance Story — What to Show in the Demo", C.qlikGree
 
 yPos = 1.1;
 yPos = recommendBox(slide, "Data Products Walk-Through", [
-  "Open Data Products catalog → show 7 products with owners, Trust Scores, SLAs, API sharing status",
+  "Open Data Products catalog → show both products with owners, Trust Scores, SLAs, API sharing status",
   "Click 'API Sharing' on Supply Chain Health → copy the endpoint → run a curl command to fetch live data",
   "Show Data Marketplace → demonstrate self-service data discovery for business users",
 ], yPos, C.lightGreen);

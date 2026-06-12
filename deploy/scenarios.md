@@ -294,7 +294,7 @@ MCG's data quality crisis costs $127M annually. Project CLARITY is a $12.4M Qlik
 **Step 5 — Governance: "Manage at Scale" (2 min)**
 - Business Glossary: look up "Phantom Inventory" — definition, owner, related datasets
 - Stewardship: show active campaigns — 640 addresses, 80 suppliers, 8,200 products in progress
-- Data Products: show the 7 governed products with API sharing enabled
+- Data Products: show the 2 governed products with API sharing enabled
 
 **Step 6 — Analytics: "See What Matters" (2 min)**
 - Qlik Analytics: Supply Chain Command Center

@@ -391,7 +391,7 @@ Master checklist of everything required to stand up the full Meridian Commerce G
 - [ ] All 3 source simulators running (PostgreSQL, Kafka producer, Salesforce)
 - [ ] All 8 Bronze tables receiving data
 - [ ] All 8 Silver transformation routes executing successfully
-- [ ] All 7 Gold table recipes refreshing on schedule
+- [ ] Both Gold marts refreshing on schedule (daily 06:00 UTC + event triggers)
 - [ ] No FAILED pipelines in the pipeline health view
 
 ### Component Verification
@@ -441,7 +441,7 @@ Files generated for this demo:
 | | `deploy/data_model.md` | Full data model reference |
 | | `deploy/automation_guide.md` | Automation UI config instructions |
 | | `deploy/demo_checklist.md` | This checklist |
-| | `deploy/data_products.json` | 7 Gold-layer data product definitions |
+| | `deploy/data_products.json` | 2 Gold-layer data product definitions |
 | | `deploy/glossary_terms.json` | 25 business glossary terms |
 | | `deploy/automations/teams_cold_chain_alert.json` | Teams alert template |
 | | `deploy/automations/teams_pipeline_health.json` | Teams health summary template |

@@ -1583,12 +1583,13 @@ function getHTML() {
       <button onclick="showPage(1)"><span class="step-num">2</span>Docker Containers<span class="step-check" id="check-1"></span></button>
       <button onclick="showPage(2)"><span class="step-num">3</span>Spaces & Infrastructure<span class="step-check" id="check-2"></span></button>
       <button onclick="showPage(3)"><span class="step-num">4</span>Data Connections<span class="step-check" id="check-3"></span></button>
-      <button onclick="showPage(4)"><span class="step-num">5</span>Build Apps & Theme<span class="step-check" id="check-4"></span></button>
-      <button onclick="showPage(5)"><span class="step-num">6</span>Knowledge Base & Docs<span class="step-check" id="check-5"></span></button>
-      <button onclick="showPage(6)"><span class="step-num">7</span>Automations<span class="step-check" id="check-6"></span></button>
-      <button onclick="showPage(7)"><span class="step-num">8</span>Data Products<span class="step-check" id="check-7"></span></button>
-      <button onclick="showPage(8)"><span class="step-num">9</span>Glossary<span class="step-check" id="check-8"></span></button>
-      <button onclick="showPage(9)"><span class="step-num">&#9654;</span>Deploy<span class="step-check" id="check-9"></span></button>
+      <button onclick="showPage(4)"><span class="step-num">5</span>Pipelines<span class="step-check" id="check-4"></span></button>
+      <button onclick="showPage(5)"><span class="step-num">6</span>Build Apps & Theme<span class="step-check" id="check-5"></span></button>
+      <button onclick="showPage(6)"><span class="step-num">7</span>Knowledge Base & Docs<span class="step-check" id="check-6"></span></button>
+      <button onclick="showPage(7)"><span class="step-num">8</span>Automations<span class="step-check" id="check-7"></span></button>
+      <button onclick="showPage(8)"><span class="step-num">9</span>Data Products<span class="step-check" id="check-8"></span></button>
+      <button onclick="showPage(9)"><span class="step-num">10</span>Glossary<span class="step-check" id="check-9"></span></button>
+      <button onclick="showPage(10)"><span class="step-num">&#9654;</span>Deploy<span class="step-check" id="check-10"></span></button>
     </div>
 
     <div class="wizard-content">
@@ -1928,7 +1929,37 @@ function getHTML() {
         </div>
       </div>
 
-      <!-- Page 4: Build Apps & Theme -->
+      <!-- Page: Pipelines (declarative import — primary deployment method) -->
+      <div class="wizard-page" id="page-pipelines">
+        <div class="page-title">Pipelines</div>
+        <div class="page-desc">Deploy the bronze/silver/gold pipeline from version-controlled YAML (deploy/pipelines/mcg-pipeline) via the DI Projects API — the primary deployment method.</div>
+
+        <div class="toggle-row">
+          <label>Import Declarative Pipeline Project</label>
+          <label class="switch"><input type="checkbox" id="f-en-pipelines" checked><span class="slider"></span></label>
+        </div>
+        <div class="field">
+          <label>Project Name</label>
+          <input type="text" id="f-pipelines-name" placeholder="MCG Demo Pipeline">
+        </div>
+
+        <div class="section-divider">Connection Bindings</div>
+        <div class="hint">The pipeline's landing tasks bind to the connections from the Data Connections page by name. Bindings are resolved to connection IDs automatically at deploy time (Step 13).</div>
+        <div id="pipeline-conn-map"><!-- populated by JS --></div>
+
+        <div class="section-divider">Deployment Options</div>
+        <div class="toggle-row">
+          <label>Prepare project after import</label>
+          <label class="switch"><input type="checkbox" id="f-pipelines-prepare"><span class="slider"></span></label>
+        </div>
+        <div class="toggle-row">
+          <label>Start tasks after prepare (landing &rarr; transform &rarr; datamart)</label>
+          <label class="switch"><input type="checkbox" id="f-pipelines-run"><span class="slider"></span></label>
+        </div>
+        <div class="hint">Daily refresh schedules (silver 05:30 UTC, gold 06:00 UTC) plus event-based cascades are declared in the project YAML (qtcp_tasks/*/schedule.yaml) and activate once tasks are started. Dataset attachment to Data Products is configured on the Data Products page. Round-trip UI edits back into the repo with <code>npm run deploy:export-pipeline</code>; build a credential-free import package with <code>npm run pipeline:zip</code>.</div>
+      </div>
+
+      <!-- Page: Build Apps & Theme -->
       <div class="wizard-page" id="page-4">
         <div class="page-title">Build Apps & Theme</div>
         <div class="page-desc">Build Qlik Analytics apps via Engine API and upload the MCG custom theme.</div>
@@ -2074,24 +2105,7 @@ function getHTML() {
         <div class="section-divider">Products from data_products.json</div>
         <div id="dp-list"><!-- populated by JS --></div>
 
-        <div class="section-divider">Declarative Pipeline (Preview)</div>
-        <div class="toggle-row">
-          <label>Import Declarative Pipeline Project</label>
-          <label class="switch"><input type="checkbox" id="f-en-pipelines" checked><span class="slider"></span></label>
-        </div>
-        <div class="field">
-          <label>Project Name</label>
-          <input type="text" id="f-pipelines-name" placeholder="MCG Demo Pipeline">
-          <div class="hint">Imports the YAML project from deploy/pipelines/mcg-pipeline via the DI Projects API and resolves connection/cluster bindings automatically. Round-trip UI edits back into the repo with <code>npm run deploy:export-pipeline</code>.</div>
-        </div>
-        <div class="toggle-row">
-          <label>Prepare project after import</label>
-          <label class="switch"><input type="checkbox" id="f-pipelines-prepare"><span class="slider"></span></label>
-        </div>
-        <div class="toggle-row">
-          <label>Start tasks after prepare (landing &rarr; transform &rarr; datamart)</label>
-          <label class="switch"><input type="checkbox" id="f-pipelines-run"><span class="slider"></span></label>
-        </div>
+        <div class="section-divider">Dataset Attachment (from the pipeline)</div>
         <div class="toggle-row">
           <label>Attach gold datasets to Data Products</label>
           <label class="switch"><input type="checkbox" id="f-pipelines-attach" checked><span class="slider"></span></label>
@@ -2100,7 +2114,7 @@ function getHTML() {
           <label>Publish (activate) Data Products to the marketplace</label>
           <label class="switch"><input type="checkbox" id="f-pipelines-publish"><span class="slider"></span></label>
         </div>
-        <div class="hint">Daily refresh schedules (silver 05:30 UTC, gold 06:00 UTC) plus event-based cascades are declared in the project YAML itself (qtcp_tasks/*/schedule.yaml) and activate once tasks are started. Dataset attachment is soft: tables that are not in the catalog yet (pipeline never run) are skipped with a warning — re-deploy after the first run to attach them.</div>
+        <div class="hint">Each product above shows the gold dataset the pipeline creates for it. Attachment happens via the Data Products API (JSON-Patch datasetIds) after the pipeline has run; tables not in the catalog yet are skipped with a warning — re-deploy after the first run to attach them.</div>
       </div>
 
       <!-- Page 8: Glossary -->
@@ -2215,10 +2229,28 @@ function getHTML() {
     document.querySelectorAll('.wizard-nav button').forEach((b, i) => {
       b.classList.toggle('active', i === idx);
     });
-    if (idx === 9) renderSummary();
+    if (idx === 10) renderSummary();
     if (idx === 3) prefillFromDocker();
-    if (idx === 4) renderBuildAppsPage();
-    if (idx === 6) renderBuildAutomationsPage();
+    if (idx === 4) renderPipelinesPage();
+    if (idx === 5) renderBuildAppsPage();
+    if (idx === 7) renderBuildAutomationsPage();
+  }
+
+  // --- Pipelines page: live connection-binding map ---
+  function renderPipelinesPage() {
+    const el = document.getElementById('pipeline-conn-map');
+    if (!el) return;
+    const rows = [
+      ['MCG WMS CDC Landing (PostgreSQL)', getVal('f-pg-name') || 'MCG WMS Database'],
+      ['MCG CRM Landing (Salesforce)', getVal('f-sf-name') || 'MCG Salesforce CRM'],
+      ['MCG IoT Streaming Landing (Kafka)', getVal('f-kafka-name') || 'MCG IoT Telemetry'],
+    ];
+    el.innerHTML = rows.map(r =>
+      '<div class="dp-card">' +
+      '<div class="dp-name">' + esc(r[0]) + '</div>' +
+      '<div class="dp-meta">binds to connection: <b>' + esc(r[1]) + '</b></div>' +
+      '</div>'
+    ).join('');
   }
 
   // --- Init ---
@@ -2446,6 +2478,7 @@ function getHTML() {
         '<div class="dp-card">' +
         '<div class="dp-name">' + esc(p.name) + '</div>' +
         '<div class="dp-meta">' + esc(p.sourceTable) + ' &mdash; Owner: ' + esc(p.owner) + '</div>' +
+        '<div class="dp-meta">attaches dataset: <b>' + esc(String(p.sourceTable || '').replace(/^gold\./, '')) + '</b> (created by the pipeline’s gold datamart task)</div>' +
         '<div class="dp-tags">' + (p.tags || []).slice(0, 5).map(t => '<span>' + esc(t) + '</span>').join('') + '</div>' +
         '</div>'
       ).join('');

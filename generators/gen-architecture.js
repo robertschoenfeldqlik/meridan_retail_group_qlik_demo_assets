@@ -165,7 +165,7 @@ function layerBadge(slide, y, label, color) {
     fontSize: 16, color: C.qlikGreen, fontFace: FONT, bold: true,
   });
   slide.addText(
-    "3 Sources  •  Open Lakehouse  •  8 Transformation Routes  •  7 Data Products\n" +
+    "3 Sources  •  Open Lakehouse  •  8 Transformation Routes  •  2 Data Products\n" +
     "2 Analytics Apps  •  2 AutoML Models  •  25 Knowledge Documents  •  MCP + AI Agents", {
     x: 0.6, y: 4.7, w: 6.5, h: 1.0,
     fontSize: 12, color: C.darkText, fontFace: FONT, lineSpacingMultiple: 1.5,
@@ -235,7 +235,7 @@ function layerBadge(slide, y, label, color) {
   // Bronze / Silver / Gold inside
   box(slide, LX + 0.2, R2 + 0.32, 2.2, 0.58, "Bronze (8 tables)", "Raw ingestion", C.qlikTeal);
   box(slide, LX + 2.6, R2 + 0.32, 2.2, 0.58, "Silver (8 routes)", "Cleansed + joined", C.qlikGreen);
-  box(slide, LX + 5.0, R2 + 0.32, 2.5, 0.58, "Gold (7 products)", "Governed + API-shared", C.qlikBlue);
+  box(slide, LX + 5.0, R2 + 0.32, 2.5, 0.58, "Gold (2 products)", "Governed + API-shared", C.qlikBlue);
   // Horizontal arrows between medal tiers
   arrow(slide, LX + 2.4, R2 + 0.61, LX + 2.6, R2 + 0.61, C.qlikGreen);
   arrow(slide, LX + 4.8, R2 + 0.61, LX + 5.0, R2 + 0.61, C.qlikBlue);
@@ -509,24 +509,22 @@ function layerBadge(slide, y, label, color) {
 // SLIDE 6 — DATA PRODUCTS
 // =============================================================================
 (function slide_products() {
-  const slide = contentSlide("7 Gold-Layer Data Products", C.qlikBlue);
+  const slide = contentSlide("Gold-Layer Data Products", C.qlikBlue);
 
   const products = [
-    { name: "Supply Chain Health",      owner: "Henrik Jansen",  refresh: "15 min", kpi: "IRA: 97% target",          color: C.qlikTeal },
-    { name: "Last Mile Performance",    owner: "Sophie Müller",  refresh: "30 min", kpi: "On-time: 92%",             color: C.qlikGreen },
-    { name: "Cold Chain Compliance",    owner: "Lars Eriksson",  refresh: "5 min",  kpi: "Exceedance: < 2%",         color: C.qlikBlue },
-    { name: "Product Master Health",    owner: "Thomas Berger",  refresh: "1 hour", kpi: "Completeness: > 95%",      color: C.qlikLightGreen },
-    { name: "Compliance Traceability",  owner: "Dr. E. Vasquez", refresh: "30 min", kpi: "Lot capture: 100%",        color: C.qlikTeal },
-    { name: "Pipeline & Timestamp Audit", owner: "P. Ramanathan", refresh: "5 min",  kpi: "Trust Score: 0.95 target", color: C.qlikGreen },
-    { name: "Customer Quality Index",   owner: "Sophie Müller",  refresh: "1 hour", kpi: "Address quality: > 0.85",  color: C.qlikBlue },
+    { name: "Supply Chain Health",   owner: "Henrik Jansen", refresh: "Daily 06:00 UTC + event", kpi: "IRA: 97% target", color: C.qlikTeal },
+    { name: "Last Mile Performance", owner: "Sophie Müller", refresh: "Daily 06:00 UTC + event", kpi: "On-time: 92%",    color: C.qlikGreen },
   ];
 
+  slide.addText("One governed mart per analytics domain app — created by the pipeline's gold datamart task, attached via the Data Products API", {
+    x: 0.5, y: 0.95, w: 12.33, h: 0.4,
+    fontSize: 12, color: C.medGray, fontFace: FONT, align: "center", valign: "middle",
+  });
+
   products.forEach((p, i) => {
-    const col = i < 4 ? i : (i - 4);
-    const row = i < 4 ? 0 : 1;
-    const x = 0.5 + col * 3.15;
-    const y = 1.1 + row * 2.8;
-    const w = 2.95;
+    const x = 0.9 + i * 6.1;
+    const y = 1.7;
+    const w = 5.5;
     const h = 2.55;
 
     // Card
@@ -780,7 +778,7 @@ dividerSlide("The 7 Nightmares", "$127M in annual data quality costs");
 
   const components = [
     { category: "Data Sources (3)", items: "PostgreSQL WMS (CDC)  •  Apache Kafka 2 topics (streaming)  •  Salesforce CRM (API)", color: C.qlikTeal },
-    { category: "Open Lakehouse", items: "8 Bronze tables  •  8 Silver transformations + 1 Talend job  •  7 Gold data products", color: C.qlikGreen },
+    { category: "Open Lakehouse", items: "8 Bronze tables  •  8 Silver transformations + 1 Talend job  •  2 Gold data products", color: C.qlikGreen },
     { category: "Governance", items: "Trust Score  •  Data Lineage  •  Impact Analysis  •  Profiling  •  25-term Glossary  •  4 Stewardship campaigns", color: C.qlikTeal },
     { category: "Analytics", items: "2 Qlik Analytics apps (10 sheets)  •  MCG Dark Theme  •  Streaming IoT  •  Alerts  •  Reports", color: C.qlikBlue },
     { category: "AI / ML", items: "2 Predict models (Spoilage + SLA)  •  Qlik Answers (25 docs)  •  Discovery Agent  •  MCP Server", color: C.qlikLightGreen },
@@ -810,7 +808,7 @@ dividerSlide("The 7 Nightmares", "$127M in annual data quality costs");
     x: 0.5, y: 6.9, w: 12.33, h: 0.45,
     fill: { color: C.qlikBlue }, rectRadius: 0.06,
   });
-  slide.addText("3 Sources  •  23 Tables  •  9 Flows  •  7 Products  •  10 Sheets  •  2 Models  •  25 Docs  •  5 Automations  •  1 MCP Server", {
+  slide.addText("3 Sources  •  18 Tables  •  9 Flows  •  2 Products  •  10 Sheets  •  2 Models  •  25 Docs  •  5 Automations  •  1 MCP Server", {
     x: 0.5, y: 6.9, w: 12.33, h: 0.45,
     fontSize: 11, color: C.white, fontFace: FONT, bold: true, align: "center", valign: "middle",
   });
