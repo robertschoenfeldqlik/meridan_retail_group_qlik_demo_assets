@@ -20,7 +20,7 @@ const PROJECT_DIR = path.resolve(SCRIPT_DIR, '..');
 
 const DEFAULT_PORT = 3939;
 
-let port = DEFAULT_PORT;
+let port = parseInt(process.env.PORT, 10) || DEFAULT_PORT;
 for (let i = 2; i < process.argv.length; i++) {
   if (process.argv[i] === '--port' && process.argv[i + 1]) {
     port = parseInt(process.argv[i + 1], 10) || DEFAULT_PORT;
