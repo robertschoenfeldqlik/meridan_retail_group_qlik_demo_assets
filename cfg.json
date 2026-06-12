@@ -34,14 +34,14 @@
   },
 
   "integration": {
-    "sectionSubtitle": "Two declarative pipeline projects land three feeds as code",
+    "sectionSubtitle": "Two declarative projects land three feeds as code",
     "step1Title": "1 · Ingest as Code",
-    "step1Body1": "Declarative YAML pipelines — batch + streaming",
-    "step1Body2": "— imported via API, git-versioned",
+    "step1Body1": "Pipelines as code",
+    "step1Body2": "— YAML, via API",
     "step2Title": "2 · Cleanse + Conform",
-    "step2Lines": ["8 silver transformation routes", "Carrier + UoM canonicalization", "Talend address validation + geo", " ", "Stewardship for the rest"],
+    "step2Lines": ["8 silver routes", "Carrier + UoM fixes", "Talend geo checks", " ", "Stewardship the rest"],
     "step3Title": "3 · Serve Gold Products",
-    "step3Lines": ["Two governed data products", "Datasets attached via API", "Daily 06:00 UTC + event runs", " ", "Same tables, any engine"]
+    "step3Lines": ["2 data products", "API-attached", "Daily 06:00 UTC", " ", "Open to any engine"]
   },
 
   "analytics": {
