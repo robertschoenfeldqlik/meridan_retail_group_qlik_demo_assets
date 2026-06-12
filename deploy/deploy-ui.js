@@ -2061,7 +2061,7 @@ function getHTML() {
       <!-- Page: Build Apps & Theme -->
       <div class="wizard-page" id="page-4">
         <div class="page-title">Build Apps & Theme</div>
-        <div class="page-desc">Build Qlik Analytics apps via Engine API and upload the MCG custom theme.</div>
+        <div class="page-desc">Create the analytics apps with load scripts that read the Open Lakehouse — gold data products and silver datasets — through the Amazon Athena connection, then author the sheets via Qlik MCP. Includes the MCG theme upload.</div>
 
         <div class="section-divider">App Definitions</div>
         <div id="build-app-defs">
@@ -2077,7 +2077,7 @@ function getHTML() {
           <label>Create sheets via Qlik MCP (build empty apps only)</label>
           <label class="switch"><input type="checkbox" id="f-apps-sheets-mcp" checked><span class="slider"></span></label>
         </div>
-        <div class="hint">ON (recommended): the build creates each app empty — just the load script, mapped to the gold data products and silver datasets — and you author the sheets conversationally with the Qlik MCP prompts below. OFF: the legacy builder creates master items and sheets from app-definitions via the Engine API.</div>
+        <div class="hint">ON (recommended): the build creates each app empty — just the load script, mapped to the gold data products and silver datasets in the Open Lakehouse and read through the <b>Amazon Athena</b> connection (Data Connections page) — and you author the sheets conversationally with the Qlik MCP prompts below. OFF: the legacy builder creates master items and sheets from app-definitions via the Engine API.</div>
 
         <div class="section-divider">Sheet Prompts (Qlik MCP)</div>
         <div class="hint">Connect Claude Desktop/Code to your tenant's MCP endpoint (<code>https://&lt;tenant&gt;/api/ai/mcp</code> with an API key), then copy one prompt per sheet. Field names match the QVS load scripts exactly, which load from the pipeline's data products.</div>
@@ -2616,7 +2616,7 @@ function getHTML() {
         '<div class="dp-card">' +
         '<div class="dp-name">' + esc(p.name) + '</div>' +
         '<div class="dp-meta">' + esc(p.sourceTable) + ' &mdash; Owner: ' + esc(p.owner) + '</div>' +
-        '<div class="dp-meta">attaches dataset: <b>' + esc(String(p.sourceTable || '').replace(/^gold\./, '')) + '</b> (created by the pipeline’s gold datamart task)</div>' +
+        '<div class="dp-meta">attaches dataset: <b>' + esc(String(p.sourceTable || '').replace(/^gold\./, '')) + '</b> (created by the pipeline’s gold datamart task in the Open Lakehouse; apps read it via Athena)</div>' +
         '<div class="dp-tags">' + (p.tags || []).slice(0, 5).map(t => '<span>' + esc(t) + '</span>').join('') + '</div>' +
         '</div>'
       ).join('');
@@ -2936,6 +2936,7 @@ function getHTML() {
       if (app.loadScript) {
         html += '<div style="font-size:11px;color:var(--text-dim);margin-top:4px;font-family:monospace">Load: ' + esc(app.loadScript) + '</div>';
       }
+      html += '<div style="font-size:11px;color:var(--text-dim);margin-top:2px">reads Open Lakehouse (gold/silver) via <b>' + esc(getVal('f-athena-name') || 'MCG Lakehouse (Athena)') + '</b></div>';
       html += '</div>';
     }
 
