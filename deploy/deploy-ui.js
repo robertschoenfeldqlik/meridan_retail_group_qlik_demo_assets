@@ -2084,6 +2084,23 @@ function getHTML() {
           <input type="text" id="f-pipelines-name" placeholder="MCG Demo Pipeline">
           <div class="hint">Imports the YAML project from deploy/pipelines/mcg-pipeline via the DI Projects API and resolves connection/cluster bindings automatically. Round-trip UI edits back into the repo with <code>npm run deploy:export-pipeline</code>.</div>
         </div>
+        <div class="toggle-row">
+          <label>Prepare project after import</label>
+          <label class="switch"><input type="checkbox" id="f-pipelines-prepare"><span class="slider"></span></label>
+        </div>
+        <div class="toggle-row">
+          <label>Start tasks after prepare (landing &rarr; transform &rarr; datamart)</label>
+          <label class="switch"><input type="checkbox" id="f-pipelines-run"><span class="slider"></span></label>
+        </div>
+        <div class="toggle-row">
+          <label>Attach gold datasets to Data Products</label>
+          <label class="switch"><input type="checkbox" id="f-pipelines-attach" checked><span class="slider"></span></label>
+        </div>
+        <div class="toggle-row">
+          <label>Publish (activate) Data Products to the marketplace</label>
+          <label class="switch"><input type="checkbox" id="f-pipelines-publish"><span class="slider"></span></label>
+        </div>
+        <div class="hint">Daily refresh schedules (silver 05:30 UTC, gold 06:00 UTC) plus event-based cascades are declared in the project YAML itself (qtcp_tasks/*/schedule.yaml) and activate once tasks are started. Dataset attachment is soft: tables that are not in the catalog yet (pipeline never run) are skipped with a warning — re-deploy after the first run to attach them.</div>
       </div>
 
       <!-- Page 8: Glossary -->
@@ -2289,6 +2306,10 @@ function getHTML() {
     // Pipelines
     if (cfg.pipelines) {
       setVal('f-pipelines-name', cfg.pipelines.projectName);
+      setCheck('f-pipelines-prepare', cfg.pipelines.prepare === true);
+      setCheck('f-pipelines-run', cfg.pipelines.run === true);
+      setCheck('f-pipelines-attach', cfg.pipelines.attachDatasets !== false);
+      setCheck('f-pipelines-publish', cfg.pipelines.publishDataProducts === true);
     }
 
     // Data Connections
@@ -3011,7 +3032,10 @@ function getHTML() {
         projectName: getVal('f-pipelines-name') || 'MCG Demo Pipeline',
         sourceDir: './pipelines/mcg-pipeline',
         platformType: 'QLIK_OPEN_LAKEHOUSE',
-        prepare: false,
+        prepare: isChecked('f-pipelines-prepare'),
+        run: isChecked('f-pipelines-run'),
+        attachDatasets: isChecked('f-pipelines-attach'),
+        publishDataProducts: isChecked('f-pipelines-publish'),
         bindings: {},
       },
       infrastructure: {

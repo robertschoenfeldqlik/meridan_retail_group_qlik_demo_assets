@@ -385,6 +385,12 @@ class QlikClient {
     return request('PUT', fullUrl, { headers: this._authHeaders(extraHeaders), body });
   }
 
+  async _patch(apiPath, body, extraHeaders = {}) {
+    const fullUrl = `${this.baseUrl}${apiPath}`;
+    this.log.debug(`PATCH ${fullUrl}`);
+    return request('PATCH', fullUrl, { headers: this._authHeaders(extraHeaders), body });
+  }
+
   async _delete(apiPath) {
     const fullUrl = `${this.baseUrl}${apiPath}`;
     this.log.debug(`DELETE ${fullUrl}`);
@@ -1319,6 +1325,115 @@ class QlikClient {
       return res.body;
     }
     throw new Error(`DI project prepare failed (${res.statusCode}): ${JSON.stringify(res.body).slice(0, 800)}`);
+  }
+
+  async listDiTasks(projectId) {
+    const res = await this._get(`/api/v1/di-projects/${projectId}/di-tasks`);
+    if (res.statusCode !== 200) {
+      throw new Error(`DI task list failed (${res.statusCode}): ${JSON.stringify(res.body).slice(0, 400)}`);
+    }
+    const body = res.body || {};
+    return body.data || body.tasks || (Array.isArray(body) ? body : []);
+  }
+
+  async getDiTaskState(projectId, taskId) {
+    const res = await this._get(`/api/v1/di-projects/${projectId}/di-tasks/${taskId}/runtime/state`);
+    if (res.statusCode === 200) return res.body || {};
+    return { unavailable: true, statusCode: res.statusCode };
+  }
+
+  async startDiTask(projectId, taskId, label) {
+    if (this.dryRun) {
+      this.log.info(`DRY RUN: Would start DI task "${label || taskId}"`);
+      return { status: 'dry-run' };
+    }
+    const res = await this._post(`/api/v1/di-projects/${projectId}/di-tasks/${taskId}/runtime/actions/start`, {});
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      this.log.success(`Started DI task "${label || taskId}"`);
+      return res.body || { status: 'started' };
+    }
+    // 409 = already running — treat as success for idempotent re-deploys
+    if (res.statusCode === 409) {
+      this.log.info(`DI task "${label || taskId}" already running (409).`);
+      return { status: 'already-running' };
+    }
+    throw new Error(`DI task start failed for "${label || taskId}" (${res.statusCode}): ${JSON.stringify(res.body).slice(0, 400)}`);
+  }
+
+  async stopDiTask(projectId, taskId, label) {
+    if (this.dryRun) {
+      this.log.info(`DRY RUN: Would stop DI task "${label || taskId}"`);
+      return { status: 'dry-run' };
+    }
+    const res = await this._post(`/api/v1/di-projects/${projectId}/di-tasks/${taskId}/runtime/actions/stop`, {});
+    if (res.statusCode >= 200 && res.statusCode < 300) return res.body || { status: 'stopped' };
+    throw new Error(`DI task stop failed for "${label || taskId}" (${res.statusCode}): ${JSON.stringify(res.body).slice(0, 400)}`);
+  }
+
+  // ========================================================================
+  //  CATALOG DATASETS  (for data product attachment)
+  // ========================================================================
+
+  async findDatasetByName(name, spaceId) {
+    // Primary: Items API with resourceType filter (consistent with other lookups)
+    try {
+      const params = { resourceType: 'dataset', name, limit: '100' };
+      if (spaceId) params.spaceId = spaceId;
+      const res = await this._get(`/api/v1/items?${new URLSearchParams(params)}`);
+      const items = (res.body && res.body.data) || [];
+      // Exact match first, then case-insensitive, then suffix match (schema-qualified names)
+      const exact = items.find((it) => it.name === name)
+        || items.find((it) => (it.name || '').toLowerCase() === name.toLowerCase())
+        || items.find((it) => (it.name || '').toLowerCase().endsWith(`.${name.toLowerCase()}`));
+      if (exact) return { id: exact.resourceId || exact.id, name: exact.name, itemId: exact.id };
+    } catch (err) {
+      this.log.debug(`Items dataset lookup failed for "${name}": ${err.message}`);
+    }
+    // Fallback: data-sets API
+    try {
+      const res = await this._get(`/api/v1/data-sets?${new URLSearchParams({ filter: `name eq "${name}"`, limit: '50' })}`);
+      const sets = (res.body && res.body.data) || [];
+      if (sets.length > 0) return { id: sets[0].id, name: sets[0].name };
+    } catch (err2) {
+      this.log.debug(`data-sets lookup failed for "${name}": ${err2.message}`);
+    }
+    return null;
+  }
+
+  async setDataProductDatasets(dataProductId, datasetIds, { apiConsumable = false } = {}) {
+    if (this.dryRun) {
+      this.log.info(`DRY RUN: Would attach ${datasetIds.length} dataset(s) to data product ${dataProductId}`);
+      return { status: 'dry-run' };
+    }
+    const ops = [{ op: 'replace', path: '/datasetIds', value: datasetIds }];
+    if (apiConsumable) {
+      ops.push({ op: 'replace', path: '/apiConsumableDatasetIds', value: datasetIds });
+    }
+    const res = await this._patch(`/api/data-governance/data-products/${dataProductId}`, ops, {
+      'Content-Type': 'application/json-patch+json',
+    });
+    if (res.statusCode >= 200 && res.statusCode < 300) return res.body || { status: 'updated' };
+    throw new Error(`Data product dataset attach failed (${res.statusCode}): ${JSON.stringify(res.body).slice(0, 400)}`);
+  }
+
+  async activateDataProduct(dataProductId, { name, description, spaceId }) {
+    if (this.dryRun) {
+      this.log.info(`DRY RUN: Would activate (publish) data product "${name}"`);
+      return { status: 'dry-run' };
+    }
+    const payload = { name };
+    if (description) payload.description = description;
+    if (spaceId) payload.spaceId = spaceId;
+    const res = await this._post(`/api/data-governance/data-products/${dataProductId}/actions/activate`, payload);
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      this.log.success(`Activated data product "${name}" — visible in the marketplace.`);
+      return res.body || { status: 'activated' };
+    }
+    if (res.statusCode === 409) {
+      this.log.info(`Data product "${name}" already active (409).`);
+      return { status: 'already-active' };
+    }
+    throw new Error(`Data product activate failed (${res.statusCode}): ${JSON.stringify(res.body).slice(0, 400)}`);
   }
 }
 
@@ -2375,7 +2490,77 @@ async function main() {
             log.info('Skipping prepare (set pipelines.prepare=true to prepare tasks automatically).');
           }
 
-          report.record('Declarative Pipeline', 'OK', `"${projectName}" imported${pCfg.prepare ? ' + prepared' : ''}`);
+          // 6. Optionally start tasks in dependency order (landing → transform → datamart).
+          //    Time-based / event-based schedules are declared in the YAML itself
+          //    (qtcp_tasks/*/schedule.yaml) and become active once tasks are running.
+          if (pCfg.run === true && pCfg.prepare === true) {
+            const tasks = await client.listDiTasks(project.id);
+            const rank = (t) => {
+              const ty = String(t.type || '').toUpperCase();
+              const nm = String(t.name || '').toLowerCase();
+              if (ty.includes('LANDING') || /landing/.test(nm)) return 0;
+              if (ty.includes('STORAGE') || /storage/.test(nm)) return 1;
+              if (ty.includes('TRANSFORM') || /transform/.test(nm)) return 2;
+              return 3; // datamart and everything downstream
+            };
+            const ordered = [...tasks].sort((a, b) => rank(a) - rank(b));
+            log.info(`Starting ${ordered.length} task(s) in dependency order…`);
+            for (const t of ordered) {
+              try {
+                await client.startDiTask(project.id, t.id, t.name);
+              } catch (err) {
+                log.warn(`  Could not start "${t.name}": ${err.message}`);
+              }
+            }
+          } else if (pCfg.run === true) {
+            log.warn('pipelines.run=true requires pipelines.prepare=true — skipping task start.');
+          }
+
+          // 7. Attach gold datasets to their data products (and optionally publish).
+          //    Dataset items exist in the catalog after prepare/run, so failures
+          //    here are soft — re-run the deploy after the first pipeline run.
+          let attachDetail = '';
+          if (pCfg.attachDatasets !== false) {
+            const dpFile = path.join(SCRIPT_DIR, 'data_products.json');
+            if (fs.existsSync(dpFile)) {
+              const dpDefs = JSON.parse(fs.readFileSync(dpFile, 'utf-8'));
+              const products = dpDefs.dataProducts || dpDefs;
+              let attached = 0, missing = 0;
+              for (const product of products) {
+                const tables = product.sourceTables || (product.sourceTable ? [product.sourceTable] : []);
+                if (tables.length === 0) continue;
+                const datasetIds = [];
+                for (const table of tables) {
+                  const bare = String(table).replace(/^(gold|silver|bronze)\./, '');
+                  const ds = await client.findDatasetByName(bare, spaceId);
+                  if (ds) datasetIds.push(ds.id);
+                  else { missing++; log.warn(`  Dataset "${bare}" not in catalog yet (pipeline not run?) — skipping for "${product.name}".`); }
+                }
+                if (datasetIds.length === 0) continue;
+                const dp = await client.findDataProductByName(product.name, spaceId);
+                if (!dp || !dp.id) {
+                  log.warn(`  Data product "${product.name}" not found — run the Data Products step first.`);
+                  continue;
+                }
+                await client.setDataProductDatasets(dp.id, datasetIds, { apiConsumable: !!product.apiSharing });
+                log.success(`  Attached ${datasetIds.length} dataset(s) to "${product.name}".`);
+                attached++;
+                if (pCfg.publishDataProducts === true) {
+                  await client.activateDataProduct(dp.id, {
+                    name: product.name,
+                    description: product.description,
+                    spaceId,
+                  });
+                }
+              }
+              attachDetail = `, datasets attached to ${attached} product(s)${missing ? ` (${missing} table(s) not in catalog yet)` : ''}`;
+            } else {
+              log.info('No data_products.json — skipping dataset attachment.');
+            }
+          }
+
+          report.record('Declarative Pipeline', 'OK',
+            `"${projectName}" imported${pCfg.prepare ? ' + prepared' : ''}${pCfg.run && pCfg.prepare ? ' + started' : ''}${attachDetail}`);
         }
       }
     } catch (err) {

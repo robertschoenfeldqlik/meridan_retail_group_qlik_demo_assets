@@ -143,8 +143,11 @@
     "databaseName": "",
     "warehouseName": "",
     "prepare": false,
+    "run": false,
+    "attachDatasets": true,
+    "publishDataProducts": false,
     "bindings": {},
-    "comment_pipelines": "Declarative QTCP pipeline project (YAML) imported via the DI Projects API (preview). Bindings for connections/schemas/clusters are resolved automatically from this config; 'bindings' holds exact-key overrides. databaseName defaults to the lakehouse name. Set prepare=true to validate+prepare tasks right after import. Round-trip UI edits back to the repo with: npm run deploy:export-pipeline"
+    "comment_pipelines": "Declarative QTCP pipeline project (YAML) imported via the DI Projects API (preview). Bindings for connections/schemas/clusters are resolved automatically from this config; 'bindings' holds exact-key overrides. databaseName defaults to the lakehouse name. Set prepare=true to validate+prepare tasks right after import; run=true additionally starts tasks in dependency order (landing>transform>datamart). attachDatasets resolves gold catalog datasets and attaches them to the matching data products (JSON-Patch /datasetIds); publishDataProducts activates them in the marketplace. Daily schedules live in the YAML (qtcp_tasks/*/schedule.yaml). Round-trip UI edits back to the repo with: npm run deploy:export-pipeline"
   },
 
   "automations": {

@@ -11,9 +11,27 @@ The MCG bronze → silver → gold pipeline, defined as **declarative YAML** (Ql
 | MCG WMS CDC Landing | `LAKE_LANDING` | PostgreSQL CDC (3 tables) → `bronze` | Continuous CDC |
 | MCG CRM Landing | `LAKE_LANDING` | Salesforce (Contact, MCG_Order__c, MCG_Product__c) → `bronze` | Every 15 min |
 | MCG IoT Streaming Landing | `STREAMING_LAKE_LANDING` | Kafka `mcg.iot.*` topics → `bronze` | Streaming |
-| MCG Silver Transform | `TRANSFORM` | bronze WMS + CRM → `silver` | Event: any input task |
+| MCG Silver Transform | `TRANSFORM` | bronze WMS + CRM → `silver` | Event: any input task **+ daily 05:30 UTC** |
 | MCG IoT Streaming Transform | `STREAMING_TRANSFORM` | bronze IoT → `silver` | Event: any input task |
-| MCG Gold Datamart | `DATAMART` | silver → `gold` | Event: any input task |
+| MCG Gold Datamart | `DATAMART` | silver → `gold` | Event: any input task **+ daily 06:00 UTC** |
+
+## End-to-end deployment API map
+
+Everything Step 13 (and the deploy UI) does on the integration side, with the verified Qlik Cloud REST endpoints:
+
+| Stage | Endpoint | Notes |
+|---|---|---|
+| Create connections | `POST /api/v1/data-connections` (after `GET /api/v1/data-sources` discovery) | PostgreSQL / Salesforce / Kafka source connections; idempotent by name |
+| Validate definitions | `POST /api/v1/di-projects/utils/actions/validate-project-definitions` | Preview utility — multipart ZIP; soft-skips if the tenant lacks it |
+| Create project | `POST /api/v1/di-projects` | `type: DATA_PIPELINE`, `platformType: QLIK_OPEN_LAKEHOUSE` |
+| Upload pipeline | `POST /api/v1/di-projects/{id}/actions/import` | Multipart ZIP of this YAML project; 202 actions polled via `GET /api/v1/di-projects/actions/{actionId}` |
+| Resolve bindings | `GET` / `PUT /api/v1/di-projects/{id}/bindings` | Connection IDs, schemas, clusters, warehouse — resolved from `config.json` |
+| Prepare | `POST /api/v1/di-projects/{id}/actions/prepare` | Creates physical lakehouse artifacts (`pipelines.prepare: true`) |
+| Run | `POST /api/v1/di-projects/{id}/di-tasks/{taskId}/runtime/actions/start` | Started in dependency order: landing → transform → datamart (`pipelines.run: true`); 409 = already running |
+| Schedule daily | — (no REST endpoint) | Schedules are **declared in YAML** (`qtcp_tasks/*/schedule.yaml`, RFC-5545 RRULE) and activate when tasks start |
+| Attach datasets | `PATCH /api/data-governance/data-products/{id}` (JSON-Patch `replace /datasetIds`) | Gold catalog datasets resolved via `GET /api/v1/items?resourceType=dataset` (fallback `GET /api/v1/data-sets`); `pipelines.attachDatasets` |
+| Publish products | `POST /api/data-governance/data-products/{id}/actions/activate` | Makes products discoverable in the marketplace (`pipelines.publishDataProducts: true`) |
+| Export (round-trip) | `POST /api/v1/di-projects/{id}/actions/export` | `npm run deploy:export-pipeline` syncs UI edits back to this repo |
 
 ## Transformation content (datasets)
 
