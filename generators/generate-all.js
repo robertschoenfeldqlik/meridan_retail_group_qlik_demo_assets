@@ -116,6 +116,12 @@ const GENERATORS = [
     label: 'Demo Overview Presentation',
     group: 'presentations',
   },
+  {
+    name: 'company-profile',
+    script: 'gen-pptx.js',
+    label: 'Company Profile & Data Quality Deck',
+    group: 'presentations',
+  },
 ];
 
 // ---------------------------------------------------------------------------

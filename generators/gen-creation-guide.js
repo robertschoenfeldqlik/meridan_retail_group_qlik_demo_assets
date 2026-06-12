@@ -270,6 +270,12 @@ function buildCreationGuide() {
 
     calloutBox("Pipeline Summary: You should now have 8 active pipelines — 3 CDC (real-time), 2 streaming (real-time), and 3 API (15-min polling). All pipelines feed into the bronze schema of the Open Lakehouse.", "success"),
 
+    heading("1.9 Automated Alternative: Declarative Pipeline Import (Pipelines as Code)", 2),
+    para("Everything in Parts 1–3 of this guide can also be deployed without any manual UI work. The complete pipeline — landing tasks, all 8 transformation routes with custom SQL, daily schedules, and connection bindings — is defined as version-controlled YAML in deploy/pipelines/mcg-pipeline/ (QTCP declarative pipelines preview)."),
+    para("Step 13 of npm run deploy drives the full chain over REST APIs: create connections → validate definitions → create the DI project → import the YAML → resolve bindings → prepare → start every task in dependency order (landing → transform → datamart) → attach the gold datasets to their Data Products. Four config.json flags control it (pipelines.prepare, pipelines.run, pipelines.attachDatasets, pipelines.publishDataProducts), all exposed as toggles on the deploy UI's Data Products page."),
+    para("Daily refresh schedules are declared in the YAML itself (silver 05:30 UTC, gold 06:00 UTC, alongside event-based cascades) — there is no REST endpoint for DI schedules, so the YAML is the source of truth. For a credential-free manual import, npm run pipeline:zip packages mcg-pipeline.zip for Data Integration → Import; after refining transformations in the UI, npm run deploy:export-pipeline round-trips them back into the repo."),
+    calloutBox("Use this guide's manual Parts 1–3 to learn and demonstrate the workflow interactively; use the declarative import to stand up a fresh tenant in minutes or to reset a demo environment to a known-good state.", "info"),
+
     // ═══════════════════════════════════════════════════════════════════════
     // PART 2: TRANSFORMATION ROUTES (SILVER LAYER)
     // ═══════════════════════════════════════════════════════════════════════
@@ -281,14 +287,14 @@ function buildCreationGuide() {
     dataTable(
       ["Route", "Name", "Input (Bronze)", "Output (Silver)", "Nightmare"],
       [
-        ["1", "Timestamp Normalization", "inventory_positions, warehouse_events, shipments, iot_cold_chain", "timestamps_audit", "#5"],
+        ["1", "Timestamp Normalization", "warehouse_events", "warehouse_events_clean", "#5"],
         ["2", "Inventory Reconciliation", "inventory_positions", "inventory_reconciled", "#1, #3, #7"],
-        ["3", "Address Standardization", "sf_contacts, sf_orders", "customers_deduped", "#2"],
+        ["3", "Address Standardization", "sf_contacts", "addresses_standardized", "#2"],
         ["4", "Product Harmonization", "sf_products", "products_harmonized", "#3"],
         ["5", "Carrier Canonicalization", "shipments, iot_carrier_events", "shipments_canonical", "#6"],
         ["6", "IoT Normalization", "iot_cold_chain", "iot_normalized", "#4, #5"],
         ["7", "Supplier Deduplication", "sf_products", "suppliers_deduped", "#3"],
-        ["8", "Order-to-Delivery Timeline", "orders_enriched, shipments_canonical, iot_normalized, inventory_reconciled", "orders_enriched (enriched)", "#5, #6"],
+        ["8", "Order-to-Delivery Timeline", "sf_orders, shipments", "order_delivery_timeline", "#5, #6"],
       ]
     ),
 
@@ -299,9 +305,9 @@ function buildCreationGuide() {
     heading("Create the Data Flow", 3),
     numberedItem("1", "Navigate to Data Integration → Transformations → Create transformation"),
     numberedItem("2", "Name: \"Route 1 — Timestamp Normalization\""),
-    numberedItem("3", "Source tables: Select bronze.inventory_positions, bronze.warehouse_events, bronze.shipments, bronze.iot_cold_chain"),
+    numberedItem("3", "Source table: Select bronze.warehouse_events (the event stream carrying all 9 DCs' local-time stamps)"),
     numberedItem("4", "Use AI-Assisted SQL or visual designer to apply transformations"),
-    numberedItem("5", "Target: silver.timestamps_audit"),
+    numberedItem("5", "Target: silver.warehouse_events_clean"),
 
     heading("Transformation Logic", 3),
     para("The following transformations are applied:"),
@@ -311,19 +317,19 @@ function buildCreationGuide() {
     para("Epoch milliseconds → Convert to ISO 8601 UTC", { bullet: true }),
     para("IoT timestamps → Preserve millisecond precision during conversion", { bullet: true }),
 
-    heading("Output Columns", 3),
+    heading("Key Output Columns", 3),
     dataTable(
       ["Column", "Type", "Description"],
       [
-        ["original_value", "VARCHAR", "Raw timestamp from source system"],
-        ["source_system", "VARCHAR", "Source identifier (PostgreSQL/Kafka/Salesforce)"],
-        ["detected_tz", "VARCHAR", "Detected or applied timezone"],
-        ["normalized_utc", "TIMESTAMP WITH TZ", "Final UTC timestamp"],
-        ["table_name", "VARCHAR", "Source table name"],
-        ["record_id", "VARCHAR", "Primary key from source"],
+        ["event_id", "VARCHAR", "Event identifier from the WMS"],
+        ["event_type", "VARCHAR", "Canonicalized event type (RECEIVE/PICK/ADJUST/CYCLE_COUNT/SHIP)"],
+        ["event_timestamp", "TIMESTAMP", "Original local-time stamp as recorded by the DC"],
+        ["tz_offset_hours", "INTEGER", "Timezone offset applied per warehouse (audit trail)"],
+        ["event_timestamp_utc", "TIMESTAMP", "Final normalized UTC timestamp"],
+        ["location_bin", "VARCHAR", "Bin reference normalized to dash-separated format"],
       ]
     ),
-    screenshot("Timestamp normalization data flow showing 4 Bronze inputs merging into silver.timestamps_audit"),
+    screenshot("Timestamp normalization data flow showing bronze.warehouse_events transformed into silver.warehouse_events_clean with UTC audit columns"),
 
     // ─── Route 2 ────────────────────────────────────────────────────────
     heading("2.3 Route 2: Inventory Reconciliation", 2),
@@ -484,13 +490,13 @@ function buildCreationGuide() {
     dataTable(
       ["Gold Table", "Source Silver Tables", "Refresh", "Owner", "Key Metrics"],
       [
-        ["supply_chain_health",      "inventory_reconciled, timestamps_audit",                          "15 min", "Henrik Jansen",     "IRA %, phantom_units, pipeline_status, trust_score by DC"],
-        ["last_mile_performance",    "shipments_canonical, orders_enriched, customers_deduped",         "30 min", "Sophie Müller",     "on_time_pct, sla_met, address_quality_score, wismo_flag by carrier/region"],
-        ["cold_chain_compliance",    "iot_normalized, shipments_canonical",                             "5 min",  "Lars Eriksson",     "exceedance_minutes, spoilage_risk_score, pre_cool_compliant by route/carrier"],
-        ["product_master_health",    "product_master_harmonized, supplier_canonical",                   "1 hour", "Thomas Berger",     "completeness_score, weight_complete, supplier_duplicate_flag by SKU"],
-        ["compliance_traceability",  "lot_trace_unified, inventory_reconciled",                         "30 min", "Dr. Elena Vasquez", "lot_capture_rate, trace_complete, recall_risk_flag, nvwa_applicable by lot"],
-        ["pipeline_timestamp_audit", "timestamps_audit",                                                "5 min",  "Priya Ramanathan",  "pipeline status, lag_minutes, timezone_anomalies, trust_score per pipeline"],
-        ["customer_quality_index",   "customers_deduped, orders_enriched, shipments_canonical",         "1 hour", "Sophie Müller",     "address_quality_score, delivery_failure_rate, wismo_rate, is_duplicate by customer"],
+        ["supply_chain_health",      "inventory_reconciled, warehouse_events_clean",                            "15 min", "Henrik Jansen",     "IRA %, phantom_units, pipeline_status, trust_score by DC"],
+        ["last_mile_performance",    "order_delivery_timeline, shipments_canonical, addresses_standardized",   "30 min", "Sophie Müller",     "on_time_pct, sla_met, address_quality_score, wismo_flag by carrier/region"],
+        ["cold_chain_compliance",    "iot_normalized, shipments_canonical",                                     "5 min",  "Lars Eriksson",     "exceedance_minutes, spoilage_risk_score, pre_cool_compliant by route/carrier"],
+        ["product_master_health",    "products_harmonized, suppliers_deduped",                                  "1 hour", "Thomas Berger",     "completeness_score, weight_complete, supplier_duplicate_flag by SKU"],
+        ["compliance_traceability",  "inventory_reconciled, products_harmonized",                               "30 min", "Dr. Elena Vasquez", "lot_capture_rate, trace_complete, recall_risk_flag, nvwa_applicable by lot"],
+        ["pipeline_timestamp_audit", "warehouse_events_clean",                                                  "5 min",  "Priya Ramanathan",  "pipeline status, lag_minutes, timezone_anomalies, trust_score per pipeline"],
+        ["customer_quality_index",   "addresses_standardized, order_delivery_timeline, shipments_canonical",   "1 hour", "Sophie Müller",     "address_quality_score, delivery_failure_rate, wismo_rate, is_duplicate by customer"],
       ]
     ),
 
@@ -649,12 +655,12 @@ function buildCreationGuide() {
       [
         ["1", "Event Trigger", "Stewardship Task Completed (webhook or 15-min polling)"],
         ["2", "Qlik Cloud → REST API", "Collect approved record IDs from stewardship batch"],
-        ["3", "Talend → Run Job", "POST /api/v1/talend/jobs/<address-validation-job-id>/run with parameters: input_source=stewardship_batch, record_ids, source_table=silver.customers_deduped"],
+        ["3", "Talend → Run Job", "POST /api/v1/talend/jobs/<address-validation-job-id>/run with parameters: input_source=stewardship_batch, record_ids, source_table=silver.addresses_standardized"],
         ["4", "Control → Wait + Poll", "Every 30 seconds, timeout 10 minutes, check job status"],
         ["5", "Control → Verify", "Check records_processed, records_corrected, avg_confidence_score"],
         ["6", "Qlik Cloud → Update", "Mark stewardship tasks as \"Resolved\" or \"Needs Manual Review\""],
         ["7", "Microsoft Teams → Post Card", "Post results to #mcg-data-engineering with correction count and confidence"],
-        ["8", "Qlik Cloud → Trigger Refresh", "Refresh downstream tables: silver.orders_enriched, gold.last_mile_performance"],
+        ["8", "Qlik Cloud → Trigger Refresh", "Refresh downstream tables: silver.order_delivery_timeline, gold.last_mile_performance"],
       ]
     ),
 
@@ -664,7 +670,7 @@ function buildCreationGuide() {
       [
         ["input_source", "stewardship_batch"],
         ["record_ids", "{{approvedRecords.ids}} (from Block 2)"],
-        ["source_table", "silver.customers_deduped"],
+        ["source_table", "silver.addresses_standardized"],
         ["write_back", "true"],
         ["validation_services", "PostNL, USPS, Correios"],
       ]

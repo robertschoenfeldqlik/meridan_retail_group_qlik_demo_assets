@@ -498,9 +498,9 @@ function layerBadge(slide, y, label, color) {
     fill: { color: C.lightGreen }, rectRadius: 0.06,
     line: { color: C.qlikGreen, width: 1 },
   });
-  slide.addText("+ Talend Address Validation Job — tAddressRowStandardize → tAddressRowValidate → tGeocode (callable service)", {
+  slide.addText("+ Talend Address Validation Job (callable service)   •   All 8 routes defined as declarative YAML — version-controlled, API-imported, daily-scheduled (QTCP preview)", {
     x: 0.7, y: 6.3, w: 12, h: 0.5,
-    fontSize: 11, color: C.qlikGreen, fontFace: FONT, bold: true, valign: "middle",
+    fontSize: 10, color: C.qlikGreen, fontFace: FONT, bold: true, valign: "middle",
   });
 })();
 
@@ -818,17 +818,13 @@ dividerSlide("The 7 Nightmares", "$127M in annual data quality costs");
 
 
 // =============================================================================
-// SAVE — generate both filenames
+// SAVE
 // =============================================================================
 const outPath = path.join(__dirname, "..", "MCG_Technology_Architecture.pptx");
-const outPathV2 = path.join(__dirname, "..", "MCG_Technology_Architecture_v2.pptx");
 
 pptx.writeFile({ fileName: outPath }).then(() => {
   console.log(`\n  ✓ Generated: ${path.basename(outPath)}`);
-  console.log(`    ${slideNum} slides`);
-  // Copy to v2
-  fs.copyFileSync(outPath, outPathV2);
-  console.log(`  ✓ Copied to: ${path.basename(outPathV2)}\n`);
+  console.log(`    ${slideNum} slides\n`);
 }).catch(err => {
   console.error("ERROR:", err);
   process.exit(1);

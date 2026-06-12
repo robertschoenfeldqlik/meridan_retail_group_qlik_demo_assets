@@ -648,6 +648,7 @@ yPos = recommendBox(slide, "Lakehouse Walk-Through", [
   "Navigate Open Lakehouse → show the Bronze/Silver/Gold tier structure",
   "Open a Table Recipe (e.g., gold.supply_chain_health) → show how Gold tables are defined from Silver inputs",
   "Show Data Flow Route 2 (Inventory Reconciliation) in Pipeline Designer — the 'phantom inventory' detection logic",
+  "Pipelines as code: the whole project is declarative YAML — API import, daily schedules, git round-trip (QTCP preview)",
 ], yPos, C.lightCyan);
 
 
