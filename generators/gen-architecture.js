@@ -165,7 +165,7 @@ function layerBadge(slide, y, label, color) {
     fontSize: 16, color: C.qlikGreen, fontFace: FONT, bold: true,
   });
   slide.addText(
-    "3 Sources  •  Open Lakehouse  •  8 Transformation Routes  •  2 Data Products\n" +
+    "3 Sources  •  2 Declarative Pipelines  •  Open Lakehouse  •  2 Data Products\n" +
     "2 Analytics Apps  •  2 AutoML Models  •  25 Knowledge Documents  •  MCP + AI Agents", {
     x: 0.6, y: 4.7, w: 6.5, h: 1.0,
     fontSize: 12, color: C.darkText, fontFace: FONT, lineSpacingMultiple: 1.5,
@@ -241,6 +241,17 @@ function layerBadge(slide, y, label, color) {
   arrow(slide, LX + 4.8, R2 + 0.61, LX + 5.0, R2 + 0.61, C.qlikBlue);
   // Talend box
   box(slide, LX + 7.9, R2, 1.85, RH, "Talend Cloud", "Address Validation\n+ Stewardship", C.qlikGreen);
+
+  // Qlik Cloud Pipelines band — sits on the source→lakehouse flow
+  slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
+    x: LX, y: R2 - 0.42, w: 7.7, h: 0.33,
+    fill: { color: C.qlikGreen }, rectRadius: 0.08,
+    shadow: { type: "outer", blur: 3, offset: 1, color: "000000", opacity: 0.12 },
+  });
+  slide.addText("Qlik Cloud Pipelines  •  MCG Batch + MCG Streaming  •  declarative YAML, API-imported", {
+    x: LX, y: R2 - 0.42, w: 7.7, h: 0.33,
+    fontSize: 10, color: C.white, fontFace: FONT, bold: true, align: "center", valign: "middle",
+  });
 
   // Arrows → row 3
   [LX + 2.0, LX + 6.5].forEach(ax => arrow(slide, ax, R2 + RH, ax, R3, C.qlikGreen));
@@ -778,7 +789,7 @@ dividerSlide("The 7 Nightmares", "$127M in annual data quality costs");
 
   const components = [
     { category: "Data Sources (3)", items: "PostgreSQL WMS (CDC)  •  Apache Kafka 2 topics (streaming)  •  Salesforce CRM (API)", color: C.qlikTeal },
-    { category: "Open Lakehouse", items: "8 Bronze tables  •  8 Silver transformations + 1 Talend job  •  2 Gold data products", color: C.qlikGreen },
+    { category: "Open Lakehouse", items: "2 declarative pipeline projects (batch + streaming)  •  8 Bronze tables  •  8 Silver transforms  •  2 Gold products", color: C.qlikGreen },
     { category: "Governance", items: "Trust Score  •  Data Lineage  •  Impact Analysis  •  Profiling  •  25-term Glossary  •  4 Stewardship campaigns", color: C.qlikTeal },
     { category: "Analytics", items: "2 Qlik Analytics apps (10 sheets)  •  MCG Dark Theme  •  Streaming IoT  •  Alerts  •  Reports", color: C.qlikBlue },
     { category: "AI / ML", items: "2 Predict models (Spoilage + SLA)  •  Qlik Answers (25 docs)  •  Discovery Agent  •  MCP Server", color: C.qlikLightGreen },
@@ -808,7 +819,7 @@ dividerSlide("The 7 Nightmares", "$127M in annual data quality costs");
     x: 0.5, y: 6.9, w: 12.33, h: 0.45,
     fill: { color: C.qlikBlue }, rectRadius: 0.06,
   });
-  slide.addText("3 Sources  •  18 Tables  •  9 Flows  •  2 Products  •  10 Sheets  •  2 Models  •  25 Docs  •  5 Automations  •  1 MCP Server", {
+  slide.addText("3 Sources  •  2 Pipelines  •  18 Tables  •  2 Products  •  10 Sheets  •  2 Models  •  25 Docs  •  5 Automations  •  1 MCP Server", {
     x: 0.5, y: 6.9, w: 12.33, h: 0.45,
     fontSize: 11, color: C.white, fontFace: FONT, bold: true, align: "center", valign: "middle",
   });
