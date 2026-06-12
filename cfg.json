@@ -17,8 +17,8 @@
     { "t": "Cold-chain IoT",      "s1": "Tive/Sensitech feeds", "s2": "Temp · GPS · Battery",       "tag": "Kafka streaming",   "icon": "cell-tower" },
     { "t": "Carrier events",      "s1": "6 carrier webhooks",   "s2": "5 languages, 1 stream",      "tag": "Kafka streaming",   "icon": "data-pipeline" },
     { "t": "Salesforce CRM",      "s1": "Contacts + orders",    "s2": "Product master",             "tag": "Every 15 min",      "icon": "office" },
-    { "t": "Operational docs",    "s1": "SOPs + contracts",     "s2": "25 DOCX knowledge base",     "tag": "Qlik Answers",      "icon": "doc" },
-    { "t": "Validated addresses", "s1": "Talend + Nominatim",   "s2": "Geocoded QVD, 15 min",       "tag": "Stewardship loop",  "icon": "compass" }
+    { "t": "Product master",      "s1": "Salesforce objects",   "s2": "Weights · suppliers",        "tag": "Every 15 min",      "icon": "spec" },
+    { "t": "Operational docs",    "s1": "SOPs + contracts",     "s2": "25 DOCX knowledge base",     "tag": "Qlik Answers",      "icon": "doc" }
   ],
 
   "sor": {
@@ -39,7 +39,7 @@
     "step1Body1": "Pipelines as code",
     "step1Body2": "— YAML, via API",
     "step2Title": "2 · Cleanse + Conform",
-    "step2Lines": ["8 silver routes", "Carrier + UoM fixes", "Talend geo checks", " ", "Stewardship the rest"],
+    "step2Lines": ["8 silver routes", "Carrier + UoM fixes", "Talend + Nominatim", "address validation", " ", "Stewardship the rest"],
     "step3Title": "3 · Serve Gold Products",
     "step3Lines": ["2 data products", "API-attached", "Daily 06:00 UTC", " ", "Open to any engine"]
   },
