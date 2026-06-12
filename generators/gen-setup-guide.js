@@ -395,8 +395,28 @@ function sectionLakehouse() {
       ]
     ),
 
-    heading("8.2 Bronze Layer (8 Pipelines)", 2),
-    para("The bronze layer captures raw data from all three source systems. Create the following pipelines:"),
+    heading("8.2 Deploy the Pipeline (Declarative Import — Primary Method)", 2),
+    para("This is the primary way to deploy the MCG pipeline. The complete pipeline — landing tasks, all transformations with custom SQL, daily schedules, and connection bindings — is defined as version-controlled YAML in deploy/pipelines/mcg-pipeline/ (QTCP declarative pipelines preview) and deployed as Step 13 of npm run deploy."),
+    para("The deploy drives the full chain over REST APIs: create connections → validate definitions → create the DI project → import the YAML → resolve bindings → prepare → start every task in dependency order (landing → transform → datamart) → attach the gold datasets to their Data Products. Control it with four config.json flags (also exposed as toggles on the wizard's Data Products page):"),
+    dataTable(
+      ["Flag (config.json pipelines.*)", "Default", "Effect"],
+      [
+        ["prepare", "false", "Validate + prepare the project after import (creates lakehouse artifacts)"],
+        ["run", "false", "Start all tasks in dependency order after prepare"],
+        ["attachDatasets", "true", "Attach gold catalog datasets to the matching Data Products (soft-skips tables not yet in the catalog)"],
+        ["publishDataProducts", "false", "Activate the Data Products in the marketplace"],
+      ]
+    ),
+    para("Daily refresh schedules are declared in the YAML itself (qtcp_tasks/*/schedule.yaml): silver transform daily at 05:30 UTC and gold datamart daily at 06:00 UTC, both alongside event-based cascade triggers. There is no REST endpoint for DI schedules — the YAML is the source of truth, and the schedules activate once tasks are started."),
+    cmd("npm run pipeline:zip"),
+    para("For a manual import without any tenant credentials, the command above packages mcg-pipeline.zip for Data Integration → your project → Import. After refining transformations in the QTCP UI, round-trip them back into the repo:"),
+    cmd("npm run deploy:export-pipeline"),
+    calloutBox("Recommended flow: deploy with prepare=true and run=true on a fresh tenant, let the first pipeline run land data in the catalog, then re-run the deploy (or just Step 13) so attachDatasets links the gold datasets to their Data Products.", "success"),
+
+    para("Sections 8.3–8.5 document what the declarative import creates — layer by layer. Use them as a reference, to demonstrate the build interactively, or to customize beyond what the YAML defines."),
+
+    heading("8.3 Bronze Layer Reference (8 Pipelines)", 2),
+    para("The bronze layer captures raw data from all three source systems. The declarative import creates the following pipelines:"),
 
     heading("CDC Pipelines (PostgreSQL \u2192 Bronze)", 3),
     para("These pipelines use Change Data Capture to replicate PostgreSQL tables in near real-time:"),
@@ -430,8 +450,8 @@ function sectionLakehouse() {
       ]
     ),
 
-    heading("8.3 Silver Layer (8 Transformation Routes)", 2),
-    para("The silver layer applies cleansing, standardization, and business rules to bronze data. Create transformation routes for each:"),
+    heading("8.4 Silver Layer Reference (8 Transformation Routes)", 2),
+    para("The silver layer applies cleansing, standardization, and business rules to bronze data. The declarative import creates these transformation routes:"),
     dataTable(
       ["Silver Table", "Source (Bronze)", "Key Transformations"],
       [
@@ -447,8 +467,8 @@ function sectionLakehouse() {
     ),
     calloutBox("Use AI-Assisted SQL in the Qlik transformation editor to generate transformation logic. For example, describe the transformation in plain English: 'Standardize all dates to UTC, remove records with null order_id, and normalize status values to uppercase'. The AI will generate the SQL.", "success"),
 
-    heading("8.4 Gold Layer (7 Data Products)", 2),
-    para("The gold layer contains business-ready, governed data products created from silver layer sources. Use Table Recipes to define the gold tables:"),
+    heading("8.5 Gold Layer Reference (7 Data Products)", 2),
+    para("The gold layer contains business-ready, governed data products created from silver layer sources. The two core marts ship in the declarative project; Table Recipes define the rest:"),
     dataTable(
       ["Gold Table", "Source (Silver)", "Owner", "Refresh", "Business Purpose"],
       [
@@ -462,23 +482,6 @@ function sectionLakehouse() {
       ]
     ),
 
-    heading("8.5 Automated Alternative: Declarative Pipeline (Pipelines as Code)", 2),
-    para("Everything in sections 8.2–8.4 can be deployed automatically instead of built by hand. The complete pipeline — landing tasks, transformations with custom SQL, daily schedules, and connection bindings — is defined as version-controlled YAML in deploy/pipelines/mcg-pipeline/ (QTCP declarative pipelines preview) and deployed as Step 13 of npm run deploy."),
-    para("The deploy drives the full chain over REST APIs: create connections → validate definitions → create the DI project → import the YAML → resolve bindings → prepare → start every task in dependency order (landing → transform → datamart) → attach the gold datasets to their Data Products. Control it with four config.json flags (also exposed as toggles on the wizard's Data Products page):"),
-    dataTable(
-      ["Flag (config.json pipelines.*)", "Default", "Effect"],
-      [
-        ["prepare", "false", "Validate + prepare the project after import (creates lakehouse artifacts)"],
-        ["run", "false", "Start all tasks in dependency order after prepare"],
-        ["attachDatasets", "true", "Attach gold catalog datasets to the matching Data Products (soft-skips tables not yet in the catalog)"],
-        ["publishDataProducts", "false", "Activate the Data Products in the marketplace"],
-      ]
-    ),
-    para("Daily refresh schedules are declared in the YAML itself (qtcp_tasks/*/schedule.yaml): silver transform daily at 05:30 UTC and gold datamart daily at 06:00 UTC, both alongside event-based cascade triggers. There is no REST endpoint for DI schedules — the YAML is the source of truth, and the schedules activate once tasks are started."),
-    cmd("npm run pipeline:zip"),
-    para("For a manual import without any tenant credentials, the command above packages mcg-pipeline.zip for Data Integration → your project → Import. After refining transformations in the QTCP UI, round-trip them back into the repo:"),
-    cmd("npm run deploy:export-pipeline"),
-    calloutBox("Recommended flow: deploy with prepare=true and run=true on a fresh tenant, let the first pipeline run land data in the catalog, then re-run the deploy (or just Step 13) so attachDatasets links the gold datasets to their Data Products.", "success"),
   ];
 }
 
@@ -498,7 +501,7 @@ function sectionDataProducts() {
     numberedItem(6, "Set classification level (Internal for demo purposes)"),
     numberedItem(7, "Enable API Sharing to make the data product accessible via REST API"),
     screenshot("Data Product registration screen showing a gold table being registered with owner, description, and API sharing enabled"),
-    calloutBox("Automated alternative: npm run deploy provisions all 7 data products from data_products.json via the Data Products API, attaches each product's gold dataset from the catalog once the pipeline has run (pipelines.attachDatasets), and can activate products in the marketplace (pipelines.publishDataProducts). The manual steps above show the same workflow interactively.", "info"),
+    calloutBox("Primary path: npm run deploy provisions all 7 data products from data_products.json via the Data Products API, attaches each product's gold dataset from the catalog once the pipeline has run (pipelines.attachDatasets), and can activate products in the marketplace (pipelines.publishDataProducts). The manual steps above show the same workflow interactively.", "info"),
 
     heading("9.2 Configure Trust Score", 2),
     para("Each data product has a Trust Score composed of multiple dimensions:"),

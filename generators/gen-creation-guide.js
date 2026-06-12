@@ -61,6 +61,8 @@ function buildCreationGuide() {
 
     para("This guide provides step-by-step instructions for creating all data pipelines, transformation routes, table recipes, and automations in Qlik Cloud for the Meridian Commerce Group demo environment."),
 
+    calloutBox("The primary deployment method for the MCG pipeline is the declarative import (section 1.9): the entire pipeline is version-controlled YAML, deployed over REST APIs by npm run deploy. The manual steps in this guide document the same build interactively — use them to learn the workflow, demo it, or customize beyond what the YAML defines.", "info"),
+
     calloutBox("Prerequisites: Ensure you have completed the initial setup (tenant configuration, Docker infrastructure, spaces, and data connections) as described in the MCG Setup Guide before following this document.", "warning"),
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -270,11 +272,11 @@ function buildCreationGuide() {
 
     calloutBox("Pipeline Summary: You should now have 8 active pipelines — 3 CDC (real-time), 2 streaming (real-time), and 3 API (15-min polling). All pipelines feed into the bronze schema of the Open Lakehouse.", "success"),
 
-    heading("1.9 Automated Alternative: Declarative Pipeline Import (Pipelines as Code)", 2),
-    para("Everything in Parts 1–3 of this guide can also be deployed without any manual UI work. The complete pipeline — landing tasks, all 8 transformation routes with custom SQL, daily schedules, and connection bindings — is defined as version-controlled YAML in deploy/pipelines/mcg-pipeline/ (QTCP declarative pipelines preview)."),
+    heading("1.9 Primary Deployment Method: Declarative Pipeline Import (Pipelines as Code)", 2),
+    para("This is how the MCG pipeline is actually deployed. Everything in Parts 1–3 of this guide ships as version-controlled YAML in deploy/pipelines/mcg-pipeline/ (QTCP declarative pipelines preview) — landing tasks, all 8 transformation routes with custom SQL, daily schedules, and connection bindings — and deploys without any manual UI work."),
     para("Step 13 of npm run deploy drives the full chain over REST APIs: create connections → validate definitions → create the DI project → import the YAML → resolve bindings → prepare → start every task in dependency order (landing → transform → datamart) → attach the gold datasets to their Data Products. Four config.json flags control it (pipelines.prepare, pipelines.run, pipelines.attachDatasets, pipelines.publishDataProducts), all exposed as toggles on the deploy UI's Data Products page."),
     para("Daily refresh schedules are declared in the YAML itself (silver 05:30 UTC, gold 06:00 UTC, alongside event-based cascades) — there is no REST endpoint for DI schedules, so the YAML is the source of truth. For a credential-free manual import, npm run pipeline:zip packages mcg-pipeline.zip for Data Integration → Import; after refining transformations in the UI, npm run deploy:export-pipeline round-trips them back into the repo."),
-    calloutBox("Use this guide's manual Parts 1–3 to learn and demonstrate the workflow interactively; use the declarative import to stand up a fresh tenant in minutes or to reset a demo environment to a known-good state.", "info"),
+    calloutBox("Use the declarative import to stand up a fresh tenant in minutes or reset a demo environment to a known-good state. The manual walkthroughs in Parts 1–3 teach the same build interactively — ideal for learning the Pipeline Designer or customizing beyond the YAML.", "success"),
 
     // ═══════════════════════════════════════════════════════════════════════
     // PART 2: TRANSFORMATION ROUTES (SILVER LAYER)
