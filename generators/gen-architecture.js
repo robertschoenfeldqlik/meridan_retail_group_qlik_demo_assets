@@ -258,7 +258,7 @@ function layerBadge(slide, y, label, color) {
 
   // ── ROW 3: ANALYTICS ──
   box(slide, LX, R3, 3.0, RH, "Qlik Analytics", "2 apps • 10 sheets", C.qlikBlue);
-  box(slide, LX + 3.2, R3, 3.0, RH, "Qlik Predict", "Spoilage Risk • SLA Model", C.qlikBlue);
+  box(slide, LX + 3.2, R3, 3.0, RH, "Qlik Predict", "Exceedance • Late Delivery", C.qlikBlue);
   box(slide, LX + 6.4, R3, 3.35, RH, "Governance & Trust", "Trust Score • Stewardship\nGlossary • Lineage", C.qlikBlue);
 
   // Arrows → row 4
@@ -609,8 +609,8 @@ dividerSlide("Analytics &\nAI Layer", "Qlik Analytics  •  Predict  •  Answer
     x: 6.85, y: 1.12, w: 5.95, h: 0.42,
     fontSize: 14, color: C.qlikTeal, fontFace: FONT, bold: true, align: "center",
   });
-  box(slide, 7.1, 1.65, 2.7, 0.9, "Spoilage Risk Predictor", "Target: spoilage_risk_score\nTop feature: route_id", C.qlikTeal);
-  box(slide, 9.95, 1.65, 2.6, 0.9, "Delivery SLA Predictor", "Target: sla_met (Y/N)\nTop: address_quality", C.qlikTeal);
+  box(slide, 7.1, 1.65, 2.7, 0.9, "Cold Chain Exceedance", "Target: alert_flag\nTop: temperature_c, route_id", C.qlikTeal);
+  box(slide, 9.95, 1.65, 2.6, 0.9, "Late Delivery Predictor", "Target: delivered_late\nTop: tracking_missing", C.qlikTeal);
   slide.addText("AutoML  •  Feature Importance  •  API Sharing  •  Deployed to Production", {
     x: 6.85, y: 2.75, w: 5.95, h: 0.35,
     fontSize: 9, color: C.medGray, fontFace: FONT, align: "center",
@@ -792,7 +792,7 @@ dividerSlide("The 7 Nightmares", "$127M in annual data quality costs");
     { category: "Open Lakehouse", items: "2 declarative pipeline projects (batch + streaming)  •  8 Bronze tables  •  8 Silver transforms  •  2 Gold products", color: C.qlikGreen },
     { category: "Governance", items: "Trust Score  •  Data Lineage  •  Impact Analysis  •  Profiling  •  25-term Glossary  •  4 Stewardship campaigns", color: C.qlikTeal },
     { category: "Analytics", items: "2 Qlik Analytics apps (10 sheets)  •  MCG Dark Theme  •  Streaming IoT  •  Alerts  •  Reports", color: C.qlikBlue },
-    { category: "AI / ML", items: "2 Predict models (Spoilage + SLA)  •  Qlik Answers (25 docs)  •  Discovery Agent  •  MCP Server", color: C.qlikLightGreen },
+    { category: "AI / ML", items: "2 Predict models (Exceedance + Late Delivery)  •  Qlik Answers (25 docs)  •  Discovery Agent  •  MCP Server", color: C.qlikLightGreen },
     { category: "Automation", items: "5 automations: App Reload, Cold Chain Alert, Pipeline Health, WISMO, Address Correction", color: C.qlikGreen },
     { category: "Infrastructure", items: "Docker Compose (Confluent)  •  3 simulators (PG, Kafka, SF)  •  Deploy script  •  Setup guide", color: C.qlikGray },
   ];

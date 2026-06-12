@@ -263,7 +263,7 @@ stories.forEach((s, i) => {
     shadow: { type: "outer", blur: 4, offset: 1, color: "D0D0D0", opacity: 0.25 },
   });
   compBox(2.05, 2.65, 3.1, 0.85, "Open Lakehouse", "Bronze → Silver → Gold", C.white);
-  compBox(5.35, 2.65, 3.1, 0.85, "Data Integration", "CDC, Streaming, API Pipelines", C.white);
+  compBox(5.35, 2.65, 3.1, 0.85, "Qlik Cloud Pipelines", "2 declarative projects (YAML)", C.white);
   compBox(8.65, 2.65, 3.0, 0.85, "Talend Cloud", "Address Validation & Cleansing", C.white);
 
   // ── Flow arrow 2→3 ──
@@ -350,7 +350,7 @@ stories.forEach((s, i) => {
   colHeader(0.5, 3.0, "1", "Integrations", C.qlikTeal);
   colItems(0.5, 3.0, [
     "3 Data Sources",
-    "8 CDC / API / Streaming Pipelines",
+    "2 Declarative Pipeline Projects (8 feeds)",
     "Bronze Layer (8 tables)",
     "Real-time & Batch",
     "Data Movement Gateway",
@@ -542,7 +542,7 @@ const layers = [
   },
   {
     name: "SILVER", label: "Cleaned & Transformed", count: "8 tables", color: C.qlikTeal, bg: C.lightCyan,
-    tables: "warehouse_events_clean • inventory_reconciled • addresses_standardized • products_harmonized • shipments_canonical • iot_telemetry_normalized • suppliers_deduped • order_delivery_timeline",
+    tables: "warehouse_events_clean • inventory_reconciled • addresses_standardized • products_harmonized • shipments_canonical • iot_normalized • suppliers_deduped • order_delivery_timeline",
   },
   {
     name: "GOLD", label: "Business-Ready Data Products", count: "2 tables", color: C.qlikBlue, bg: C.lightBlue,
@@ -666,8 +666,8 @@ slide.addText("Governed, curated datasets with ownership, quality signals, and A
 });
 
 const products = [
-  { name: "Supply Chain Health", owner: "Henrik Jansen", refresh: "15 min", trust: "4.5", api: true },
-  { name: "Last Mile Performance", owner: "Sophie Muller", refresh: "30 min", trust: "4.2", api: true },
+  { name: "Supply Chain Health", owner: "Henrik Jansen", refresh: "Daily 06:00 UTC", trust: "4.5", api: true },
+  { name: "Last Mile Performance", owner: "Sophie Muller", refresh: "Daily 06:00 UTC", trust: "4.2", api: true },
 ];
 
 const dpHeaders = [
@@ -1288,20 +1288,20 @@ slide.addText("Train, deploy, and share ML models without code — predictions s
 // Two model cards
 const models = [
   {
-    name: "Spoilage Risk Predictor", type: "Regression", color: C.qlikTeal,
-    source: "silver.iot_normalized",
-    target: "spoilage_risk_score",
-    features: "max_temp_celsius, exceedance_minutes, humidity_avg, product_category, route_id, season",
-    scenario: "Predict which São Paulo→Buenos Aires shipments will spoil before arrival",
+    name: "Cold Chain Exceedance", type: "Classification", color: C.qlikTeal,
+    source: "silver.iot_normalized (Open Lakehouse)",
+    target: "alert_flag (Y/N)",
+    features: "temperature_c, humidity_pct, battery_level_pct, battery_low, gps_gap, shock_detected, route_id, warehouse_id",
+    scenario: "Predict which São Paulo→Buenos Aires readings will breach the cold chain before product spoils",
     nightmare: "#6 (Carrier Black Hole)",
   },
   {
-    name: "Delivery SLA Predictor", type: "Classification", color: C.qlikGreen,
-    source: "gold.last_mile_performance",
-    target: "sla_met (Y/N)",
-    features: "carrier, destination_region, address_quality_score, weight_kg, promised_sla_hours, day_of_week",
-    scenario: "Predict which APAC shipments will miss SLA — enable proactive customer notification",
-    nightmare: "#2 (Address Catastrophe)",
+    name: "Late Delivery Predictor", type: "Classification", color: C.qlikGreen,
+    source: "silver.order_delivery_timeline (Open Lakehouse)",
+    target: "delivered_late (Y/N)",
+    features: "carrier_code, fulfillment_method, tracking_missing, delivery_attempts, exception_code, order_date",
+    scenario: "Predict at ship time which orders will deliver late — enable proactive customer notification",
+    nightmare: "#2 / #6 (tracking gaps + carrier reclassification)",
   },
 ];
 
@@ -1495,8 +1495,8 @@ yPos = recommendBox(slide, "Agentic Analytics Experience", [
 ], yPos, C.lightGreen);
 
 yPos = recommendBox(slide, "Qlik Predict Live Demo", [
-  "Open Spoilage Risk experiment → show training report, feature importance (temperature is #1 driver)",
-  "Run a prediction on a live shipment: São Paulo→Buenos Aires, 32°C outside temp, Correios carrier → 87% spoilage risk",
+  "Open the Cold Chain Exceedance experiment → show training report, feature importance (temperature_c #1, battery_low #2)",
+  "Run a prediction on a live GRU-BA reading: 11.2°C, battery 9% → 78% exceedance probability — the TransFrio story in one number",
   "Show prediction API endpoint → demonstrate external system consuming predictions",
 ], yPos, C.lightGreen);
 
@@ -1579,8 +1579,8 @@ slide.addText("One Platform.\nFour Stories.\nComplete Data Intelligence.", {
 
 const closingMetrics = [
   { val: "3", label: "Live Data Sources", color: C.qlikTeal },
-  { val: "23", label: "Lakehouse Tables", color: C.qlikTeal },
-  { val: "7", label: "Data Products", color: C.qlikGreen },
+  { val: "18", label: "Lakehouse Tables", color: C.qlikTeal },
+  { val: "2", label: "Data Products", color: C.qlikGreen },
   { val: "10", label: "Sheets (2 Apps)", color: C.qlikGreen },
   { val: "2", label: "ML Models", color: C.qlikLightGreen },
   { val: "25", label: "KB Documents", color: C.qlikLightGreen },

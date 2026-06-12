@@ -239,7 +239,7 @@ function module01() {
     numberedItem(5, "Network access to your Qlik Cloud tenant"),
 
     heading("Demo Methodology: Tell → Show → Tell", 2),
-    limbicOpening("It's Monday morning. Henrik Jansen gets a call: 200 orders shipped over the weekend are wrong. The WMS said the inventory was there — it wasn't. Phantom inventory. $48 million a year in write-offs, and nobody knew until customers started calling. What if he could have seen the discrepancy before those orders shipped?", "Problem/Consequence"),
+    limbicOpening("It's Monday morning. Henrik Jansen gets a call: 200 orders shipped over the weekend are wrong. The WMS said the inventory was there — it wasn't. Phantom inventory. $41 million a year in write-offs, and nobody knew until customers started calling. What if he could have seen the discrepancy before those orders shipped?", "Problem/Consequence"),
     interactionPrompt("How does your team currently know when inventory data doesn't match reality?"),
 
     heading("Demo Walk-Through", 2),
@@ -278,7 +278,7 @@ function module01() {
 
     tellAnnotation("close", "So what you just saw are three real data sources — a warehouse database, IoT cold-chain sensors, and a CRM — all generating data with real-world quality problems baked in. This is not sanitized demo data. This is how supply chain data actually looks."),
     interactionPrompt("Does this feel familiar? How many disconnected data sources does your team deal with today?"),
-    valueChain(["Ingest data from three independent systems in real-time", "see the complete supply chain picture in one place", "catch problems like phantom inventory before they cost $48M"]),
+    valueChain(["Ingest data from three independent systems in real-time", "see the complete supply chain picture in one place", "catch problems like phantom inventory before they cost $41M"]),
 
     heading("Talking Points", 2),
     talkingPoint("Three completely independent data systems — this is reality for every enterprise, not a contrived demo"),
