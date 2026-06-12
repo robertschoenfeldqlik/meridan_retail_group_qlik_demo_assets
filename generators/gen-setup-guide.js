@@ -134,16 +134,16 @@ function sectionQuickStart() {
     dataTable(
       ["Page", "Step", "Description"],
       [
-        ["1", "Welcome", "Overview of what will be deployed"],
-        ["2", "Configuration", "Tenant URL, API key, region settings"],
-        ["3", "Spaces", "Create shared and managed spaces"],
-        ["4", "Apps", "Upload .qvf files and apply themes"],
-        ["5", "Connections", "Configure data connections (PostgreSQL, Kafka, Salesforce)"],
-        ["6", "Lakehouse", "Set up Open Lakehouse with bronze/silver/gold layers"],
-        ["7", "Automations", "Deploy automation templates"],
-        ["8", "Qlik Answers", "Create knowledge base and upload documents"],
-        ["9", "Glossary", "Import business glossary terms"],
-        ["10", "Verify", "Run verification checks on all components"],
+        ["1", "Connection & Authentication", "Tenant URL, API key, connection test"],
+        ["2", "Docker Containers", "Start the local Kafka/PostgreSQL/simulator stack (optional DMG)"],
+        ["3", "Spaces & Infrastructure", "Create shared and managed spaces"],
+        ["4", "Data Connections", "Configure PostgreSQL, Kafka, and Salesforce connections"],
+        ["5", "Build Apps & Theme", "Build analytics apps and apply the MCG theme"],
+        ["6", "Knowledge Base & Documents", "Create the Qlik Answers knowledge base and upload documents"],
+        ["7", "Automations", "Deploy Teams alerting automation templates"],
+        ["8", "Data Products", "Data products plus the Declarative Pipeline: import, prepare, start tasks, attach datasets, publish"],
+        ["9", "Business Glossary", "Import business glossary terms"],
+        ["10", "Deploy", "Review the plan and run the deployment with live logs"],
       ]
     ),
 
@@ -403,20 +403,20 @@ function sectionLakehouse() {
     dataTable(
       ["Pipeline Name", "Source Table", "Target Table", "Sync Method"],
       [
-        ["WMS-Orders", "mcg_wms.orders", "bronze.wms_orders", "CDC (real-time)"],
-        ["WMS-Inventory", "mcg_wms.inventory", "bronze.wms_inventory", "CDC (real-time)"],
-        ["WMS-Shipments", "mcg_wms.shipments", "bronze.wms_shipments", "CDC (real-time)"],
+        ["WMS-Inventory", "mcg_wms.inventory_positions", "bronze.inventory_positions", "CDC (real-time)"],
+        ["WMS-Events", "mcg_wms.warehouse_events", "bronze.warehouse_events", "CDC (real-time)"],
+        ["WMS-Shipments", "mcg_wms.shipments", "bronze.shipments", "CDC (real-time)"],
       ]
     ),
 
     heading("API Pipelines (Salesforce \u2192 Bronze)", 3),
-    para("These pipelines use REST API extraction to pull Salesforce data on a schedule:"),
+    para("These pipelines use REST API extraction to pull Salesforce data on a schedule. A rename rule maps the Salesforce objects to the bronze table names:"),
     dataTable(
       ["Pipeline Name", "Source Object", "Target Table", "Sync Method"],
       [
-        ["SF-Contacts", "Contact", "bronze.sf_contacts", "API (hourly)"],
-        ["SF-Orders", "MCG_Order__c", "bronze.sf_orders", "API (hourly)"],
-        ["SF-Products", "MCG_Product__c", "bronze.sf_products", "API (daily)"],
+        ["SF-Contacts", "Contact", "bronze.sf_contacts", "API (every 15 min)"],
+        ["SF-Orders", "MCG_Order__c", "bronze.sf_orders", "API (every 15 min)"],
+        ["SF-Products", "MCG_Product__c", "bronze.sf_products", "API (every 15 min)"],
       ]
     ),
 
@@ -435,14 +435,14 @@ function sectionLakehouse() {
     dataTable(
       ["Silver Table", "Source (Bronze)", "Key Transformations"],
       [
-        ["silver.orders_cleansed", "bronze.wms_orders", "Null handling, date standardization, status normalization"],
-        ["silver.inventory_current", "bronze.wms_inventory", "Deduplication, timestamp alignment, zone mapping"],
-        ["silver.shipments_enriched", "bronze.wms_shipments", "Carrier name lookup, SLA calculation, geo-enrichment"],
-        ["silver.contacts_unified", "bronze.sf_contacts", "Email validation, phone normalization, duplicate merge"],
-        ["silver.orders_crm", "bronze.sf_orders", "Currency conversion, status mapping, date parsing"],
-        ["silver.products_master", "bronze.sf_products", "Weight unit standardization, category hierarchy"],
-        ["silver.cold_chain_readings", "bronze.iot_cold_chain", "Outlier removal, sensor calibration offset, unit conversion"],
-        ["silver.carrier_events_parsed", "bronze.iot_carrier_events", "Event type classification, timestamp normalization"],
+        ["silver.inventory_reconciled", "bronze.inventory_positions", "UoM + storage-zone standardization, phantom/negative-qty flags, lot compliance, trust score"],
+        ["silver.warehouse_events_clean", "bronze.warehouse_events", "Event-type canonicalization, bin normalization, per-DC timezone to UTC"],
+        ["silver.shipments_canonical", "bronze.shipments", "6-carrier multilingual status mapping, ISO countries, lbs-to-kg"],
+        ["silver.addresses_standardized", "bronze.sf_contacts", "City/state/postal/country normalization, address quality score"],
+        ["silver.products_harmonized", "bronze.sf_products", "Legacy SKU resolution, weight imputation, supplier canonicalization"],
+        ["silver.suppliers_deduped", "bronze.sf_products", "Canonical supplier rollup with variant counts"],
+        ["silver.order_delivery_timeline", "bronze.sf_orders + bronze.shipments", "Order lifecycle join, late-delivery/days-late/WISMO metrics"],
+        ["silver.iot_normalized", "bronze.iot_cold_chain", "Fahrenheit-to-Celsius, GPS-gap / unregistered-sensor / low-battery flags"],
       ]
     ),
     calloutBox("Use AI-Assisted SQL in the Qlik transformation editor to generate transformation logic. For example, describe the transformation in plain English: 'Standardize all dates to UTC, remove records with null order_id, and normalize status values to uppercase'. The AI will generate the SQL.", "success"),
@@ -452,15 +452,33 @@ function sectionLakehouse() {
     dataTable(
       ["Gold Table", "Source (Silver)", "Owner", "Refresh", "Business Purpose"],
       [
-        ["gold.supply_chain_health",      "inventory_reconciled + timestamps_audit",                        "Henrik Jansen",        "15 min", "Inventory accuracy, phantom inventory detection, and pipeline health KPIs per DC"],
-        ["gold.last_mile_performance",    "shipments_canonical + orders_enriched + customers_deduped",      "Sophie Müller",        "30 min", "Carrier SLA metrics, address quality scoring, and WISMO correlation by region"],
-        ["gold.cold_chain_compliance",    "iot_normalized + shipments_canonical",                           "Lars Eriksson",        "5 min",  "Temperature exceedance monitoring, spoilage risk scoring, carrier cold chain compliance"],
-        ["gold.product_master_health",    "product_master_harmonized + supplier_canonical",                 "Thomas Berger",        "1 hour", "SKU completeness, weight/UoM coverage, supplier deduplication status"],
-        ["gold.compliance_traceability",  "lot_trace_unified + inventory_reconciled",                       "Dr. Elena Vasquez",    "30 min", "Farm-to-shelf lot traceability, recall readiness, NVWA regulatory compliance status"],
-        ["gold.pipeline_timestamp_audit", "timestamps_audit",                                               "Priya Ramanathan",     "5 min",  "CDC pipeline health, data freshness, timestamp normalization status — early-warning for silent failures"],
-        ["gold.customer_quality_index",   "customers_deduped + orders_enriched + shipments_canonical",      "Sophie Müller",        "1 hour", "Address quality scoring, deduplication status, delivery failure rate, WISMO rate by customer"],
+        ["gold.supply_chain_health",      "inventory_reconciled + warehouse_events_clean",                       "Henrik Jansen",        "15 min", "Inventory accuracy, phantom inventory detection, and pipeline health KPIs per DC"],
+        ["gold.last_mile_performance",    "order_delivery_timeline + shipments_canonical + addresses_standardized", "Sophie Müller",    "30 min", "Carrier SLA metrics, address quality scoring, and WISMO correlation by region"],
+        ["gold.cold_chain_compliance",    "iot_normalized + shipments_canonical",                                "Lars Eriksson",        "5 min",  "Temperature exceedance monitoring, spoilage risk scoring, carrier cold chain compliance"],
+        ["gold.product_master_health",    "products_harmonized + suppliers_deduped",                             "Thomas Berger",        "1 hour", "SKU completeness, weight/UoM coverage, supplier deduplication status"],
+        ["gold.compliance_traceability",  "inventory_reconciled + products_harmonized",                          "Dr. Elena Vasquez",    "30 min", "Farm-to-shelf lot traceability, recall readiness, NVWA regulatory compliance status"],
+        ["gold.pipeline_timestamp_audit", "warehouse_events_clean",                                              "Priya Ramanathan",     "5 min",  "CDC pipeline health, data freshness, timestamp normalization status — early-warning for silent failures"],
+        ["gold.customer_quality_index",   "addresses_standardized + order_delivery_timeline + shipments_canonical", "Sophie Müller",    "1 hour", "Address quality scoring, deduplication status, delivery failure rate, WISMO rate by customer"],
       ]
     ),
+
+    heading("8.5 Automated Alternative: Declarative Pipeline (Pipelines as Code)", 2),
+    para("Everything in sections 8.2–8.4 can be deployed automatically instead of built by hand. The complete pipeline — landing tasks, transformations with custom SQL, daily schedules, and connection bindings — is defined as version-controlled YAML in deploy/pipelines/mcg-pipeline/ (QTCP declarative pipelines preview) and deployed as Step 13 of npm run deploy."),
+    para("The deploy drives the full chain over REST APIs: create connections → validate definitions → create the DI project → import the YAML → resolve bindings → prepare → start every task in dependency order (landing → transform → datamart) → attach the gold datasets to their Data Products. Control it with four config.json flags (also exposed as toggles on the wizard's Data Products page):"),
+    dataTable(
+      ["Flag (config.json pipelines.*)", "Default", "Effect"],
+      [
+        ["prepare", "false", "Validate + prepare the project after import (creates lakehouse artifacts)"],
+        ["run", "false", "Start all tasks in dependency order after prepare"],
+        ["attachDatasets", "true", "Attach gold catalog datasets to the matching Data Products (soft-skips tables not yet in the catalog)"],
+        ["publishDataProducts", "false", "Activate the Data Products in the marketplace"],
+      ]
+    ),
+    para("Daily refresh schedules are declared in the YAML itself (qtcp_tasks/*/schedule.yaml): silver transform daily at 05:30 UTC and gold datamart daily at 06:00 UTC, both alongside event-based cascade triggers. There is no REST endpoint for DI schedules — the YAML is the source of truth, and the schedules activate once tasks are started."),
+    cmd("npm run pipeline:zip"),
+    para("For a manual import without any tenant credentials, the command above packages mcg-pipeline.zip for Data Integration → your project → Import. After refining transformations in the QTCP UI, round-trip them back into the repo:"),
+    cmd("npm run deploy:export-pipeline"),
+    calloutBox("Recommended flow: deploy with prepare=true and run=true on a fresh tenant, let the first pipeline run land data in the catalog, then re-run the deploy (or just Step 13) so attachDatasets links the gold datasets to their Data Products.", "success"),
   ];
 }
 
@@ -480,6 +498,7 @@ function sectionDataProducts() {
     numberedItem(6, "Set classification level (Internal for demo purposes)"),
     numberedItem(7, "Enable API Sharing to make the data product accessible via REST API"),
     screenshot("Data Product registration screen showing a gold table being registered with owner, description, and API sharing enabled"),
+    calloutBox("Automated alternative: npm run deploy provisions all 7 data products from data_products.json via the Data Products API, attaches each product's gold dataset from the catalog once the pipeline has run (pipelines.attachDatasets), and can activate products in the marketplace (pipelines.publishDataProducts). The manual steps above show the same workflow interactively.", "info"),
 
     heading("9.2 Configure Trust Score", 2),
     para("Each data product has a Trust Score composed of multiple dimensions:"),
@@ -666,10 +685,10 @@ function sectionStewardship() {
     dataTable(
       ["#", "Campaign Name", "Source", "Candidates", "Assigned To"],
       [
-        ["1", "Address Cleanup", "silver.contacts_unified", "~640 records", "Customer Service Team"],
-        ["2", "Supplier Deduplication", "silver.products_master", "~80 suppliers", "Procurement Team"],
-        ["3", "Missing Product Weights", "silver.products_master", "~8,200 products", "Product Management Team"],
-        ["4", "Lot Number Compliance", "silver.orders_cleansed", "~2,400 items", "Quality Assurance Team"],
+        ["1", "Address Cleanup", "silver.addresses_standardized", "~640 records", "Customer Service Team"],
+        ["2", "Supplier Deduplication", "silver.suppliers_deduped", "~80 suppliers", "Procurement Team"],
+        ["3", "Missing Product Weights", "silver.products_harmonized", "~8,200 products", "Product Management Team"],
+        ["4", "Lot Number Compliance", "silver.inventory_reconciled", "~2,400 items", "Quality Assurance Team"],
       ]
     ),
 
