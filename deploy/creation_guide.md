@@ -25,8 +25,8 @@ Step-by-step creation instructions for building Lakehouse tables, Data Products,
    - [3.5 Business Logic & Qlik Answers](#35-business-logic--qlik-answers)
    - [3.6 Theme, Section Access & Publishing](#36-theme-section-access--publishing)
 4. [Qlik Predict Deployments](#4-qlik-predict-deployments)
-   - [4.1 Model 1: Spoilage Risk Predictor](#41-model-1-spoilage-risk-predictor)
-   - [4.2 Model 2: Delivery SLA Predictor](#42-model-2-delivery-sla-predictor)
+   - [4.1 Model 1: Cold Chain Exceedance](#41-model-1-cold-chain-exceedance)
+   - [4.2 Model 2: Late Delivery Predictor](#42-model-2-late-delivery-predictor)
    - [4.3 Model API Sharing](#43-model-api-sharing)
 
 ---
@@ -608,7 +608,7 @@ Qlik automatically detects **semantic types** for data product columns. Review a
 | `carrier` | Categorical | Must be one of: FEDEX, DHL-EXPRESS, DPD, NINJAVAN, CORREIOS, LOCAL-LOS |
 | `destination_country` | Country Code (ISO 3166) | 2-letter ISO code, not null |
 | `weight_kg` | Weight (metric) | Positive numeric, > 0 |
-| `spoilage_risk_score` | Score | Range 0.0 – 1.0 |
+| `exceedance_probability` | Score | Range 0.0 – 1.0 (Predict model output) |
 | `tracking_number` | Tracking ID | Pattern varies by carrier |
 | `lot_number` | Batch ID | Required for perishable products |
 | `email` | Email Address | Valid email format |
@@ -904,7 +904,7 @@ Configure Business Logic in each app to enable Qlik Answers conversational analy
 | `Avg(ira_pct)` | Inventory Record Accuracy | Percentage |
 | `Sum(phantom_count)` | Phantom Inventory Count | Number |
 | `Avg(trust_score)` | Trust Score | 0.00 |
-| `Avg(spoilage_risk_score)` | Spoilage Risk | 0.00 |
+| `Avg(exceedance_probability)` | Cold Chain Exceedance Risk | 0.00 |
 | `Sum(exceedance_minutes)` | Exceedance Duration (min) | Number |
 | `Sum(annual_projected)` | Annual Cost Impact | Currency |
 | `Avg(recall_readiness_score)` | Recall Readiness | 0.00 |
@@ -914,7 +914,7 @@ Configure Business Logic in each app to enable Qlik Answers conversational analy
 |---|---|
 | "phantom" | phantom_count, phantom_inventory |
 | "accuracy" or "IRA" | ira_pct |
-| "spoilage" | spoilage_risk_score, spoilage_flag |
+| "spoilage" or "exceedance" | exceedance_probability, alert_flag |
 | "cold chain" | cold_chain_compliance fields |
 | "compliance" | compliance_readiness fields |
 | "cost" or "impact" | operational_cost_impact fields |
@@ -1008,9 +1008,9 @@ SECTION APPLICATION;
 
 ## 4. Qlik Predict Deployments
 
-### 4.1 Model 1: Spoilage Risk Predictor
+### 4.1 Model 1: Cold Chain Exceedance
 
-**Business scenario:** Predict which cold chain shipments on the São Paulo→Buenos Aires corridor will experience spoilage, before it happens.
+**Business scenario:** Predict which cold chain sensor readings — especially on the São Paulo→Buenos Aires corridor — will breach the temperature threshold, before product spoils.
 
 **Navigate to:** Qlik Cloud → AutoML → Create Experiment
 
@@ -1018,40 +1018,40 @@ SECTION APPLICATION;
 
 | Setting | Value |
 |---|---|
-| **Name** | `MCG Spoilage Risk Predictor` |
-| **Description** | Predicts spoilage probability for cold chain shipments based on temperature, carrier, route, and environmental factors |
+| **Name** | `MCG Cold Chain Exceedance` |
+| **Description** | Predicts temperature-exceedance probability for cold chain shipments from live IoT telemetry — temperature, battery, GPS, route, and environmental factors |
 | **Space** | `MCG Demo - Development` |
 
 #### Step 2: Select Training Data
 
 | Setting | Value |
 |---|---|
-| **Dataset** | `silver.iot_normalized` (from Lakehouse) |
-| **Filter** | Historical shipments with known outcomes (`spoilage_flag IS NOT NULL`) |
+| **Dataset** | `silver.iot_normalized` (Open Lakehouse catalog dataset, streaming pipeline) |
+| **Filter** | Historical readings with known outcomes (`alert_flag IS NOT NULL`) |
 | **Min rows** | 5,000+ for reliable model |
 
 #### Step 3: Configure Target & Features
 
 | Setting | Value |
 |---|---|
-| **Target variable** | `spoilage_flag` (binary: TRUE/FALSE) |
+| **Target variable** | `alert_flag` (binary: TRUE/FALSE — temperature exceedance) |
 | **Problem type** | Binary Classification |
 
 **Feature columns (select these):**
 
 | Feature | Type | Why It Matters |
 |---|---|---|
-| `carrier` | Categorical | Carrier fleet quality varies significantly |
-| `route_id` | Categorical | GRU-BA route has known spoilage issues |
-| `avg_temp_celsius` | Numeric | Average temperature during transit |
-| `max_temp_celsius` | Numeric | Peak temperature — strongest predictor |
-| `exceedance_minutes` | Numeric | Duration of temperature violations |
-| `pre_cool_compliant` | Boolean | Whether truck reached 0°C before loading |
-| `product_category` | Categorical | Fresh produce vs dairy vs frozen sensitivity |
-| `gap_count` | Numeric | Sensor data gaps (reliability indicator) |
+| `route_id` | Categorical | GRU-BA route has known exceedance issues |
+| `warehouse_id` | Categorical | Origin DC fleet quality varies |
+| `temperature_c` | Numeric | Normalized temperature — strongest predictor |
+| `humidity_pct` | Numeric | Humidity correlates with cold-chain risk |
+| `battery_level_pct` | Numeric | Low battery → unreliable cooling |
+| `battery_low` | Boolean | Flags the failing-sensor population |
+| `gps_gap` | Boolean | Telemetry gaps (reliability indicator) |
+| `shock_detected` | Boolean | Handling events that break the cold chain |
 
 **Exclude these columns** (IDs, timestamps, leakage):
-- `shipment_id`, `snapshot_timestamp`, `spoilage_risk_score` (derived from target)
+- `sensor_id`, `shipment_id`, `timestamp`, `temperature_value` (raw pre-normalization)
 
 #### Step 4: Train Model
 
@@ -1067,9 +1067,9 @@ SECTION APPLICATION;
 | What to Look For | Where | Expected |
 |---|---|---|
 | Model comparison | Leaderboard tab | Top model = gradient boosting |
-| Feature importance | Feature Importance tab | `max_temp_celsius` #1, `pre_cool_compliant` #2 |
-| Confusion matrix | Model Details | Low false negatives (missed spoilage) |
-| SHAP values | Explainability tab | Temperature-driven predictions |
+| Feature importance | Feature Importance tab | `temperature_c` #1, `battery_low` #2 |
+| Confusion matrix | Model Details | Low false negatives (missed exceedances) |
+| SHAP values | Explainability tab | Temperature- and battery-driven predictions |
 
 #### Step 6: Deploy Model
 
@@ -1079,17 +1079,17 @@ SECTION APPLICATION;
 4. Enable **API Sharing** in the space settings
 
 **Demo scenario walkthrough:**
-1. Show feature importance chart — `max_temp_celsius` and `pre_cool_compliant` are top predictors
-2. Run a live prediction on an active GRU-BA shipment:
-   - Input: `carrier=TransFrio, route=GRU-BA, max_temp=12.3, exceedance_min=45, pre_cool=FALSE`
-   - Output: `spoilage_probability=0.78` → "78% chance of spoilage"
+1. Show feature importance chart — `temperature_c` and `battery_low` are top predictors, with `route_id = GRU-BA` surfacing the TransFrio fleet issue
+2. Run a live prediction on an active GRU-BA reading:
+   - Input: `route_id=GRU-BA, temperature_c=11.2, battery_level_pct=9, battery_low=TRUE, gps_gap=FALSE`
+   - Output: `exceedance_probability=0.78` → "78% chance of a cold-chain breach"
 3. Show how this connects to Discovery Agent alert and cold chain automation
 
 ---
 
-### 4.2 Model 2: Delivery SLA Predictor
+### 4.2 Model 2: Late Delivery Predictor
 
-**Business scenario:** Predict which orders will miss their delivery SLA, enabling proactive customer communication.
+**Business scenario:** Predict at ship time which orders will deliver late, enabling proactive customer communication.
 
 **Navigate to:** Qlik Cloud → AutoML → Create Experiment
 
@@ -1097,45 +1097,44 @@ SECTION APPLICATION;
 
 | Setting | Value |
 |---|---|
-| **Name** | `MCG Delivery SLA Predictor` |
-| **Description** | Predicts on-time delivery probability to enable proactive SLA management |
+| **Name** | `MCG Late Delivery Predictor` |
+| **Description** | Predicts late-delivery probability at ship time to enable proactive SLA management |
 | **Space** | `MCG Demo - Development` |
 
 #### Step 2: Select Training Data
 
 | Setting | Value |
 |---|---|
-| **Dataset** | `gold.last_mile_performance` (from Lakehouse) |
-| **Filter** | Historical deliveries with known outcomes (`sla_met IS NOT NULL`) |
+| **Dataset** | `silver.order_delivery_timeline` (Open Lakehouse catalog dataset, batch pipeline) |
+| **Filter** | Historical orders with known outcomes (`delivered_late IS NOT NULL`) |
 
 #### Step 3: Configure Target & Features
 
 | Setting | Value |
 |---|---|
-| **Target variable** | `sla_met` (binary: TRUE/FALSE) |
+| **Target variable** | `delivered_late` (binary: TRUE/FALSE) |
 | **Problem type** | Binary Classification |
 
 **Feature columns:**
 
 | Feature | Type | Why It Matters |
 |---|---|---|
-| `carrier` | Categorical | Carrier reliability varies by 30%+ |
-| `destination_country` | Categorical | Infrastructure and customs delays |
-| `destination_region` | Categorical | APAC has 22% SLA breach rate |
-| `weight_kg` | Numeric | Heavy items have different logistics |
-| `avg_address_quality` | Numeric | Low quality → delivery failure |
-| `fulfillment_method` | Categorical | SHIP_TO_HOME vs BOPIS vs CURBSIDE |
-| `day_of_week` | Categorical | Weekend delivery patterns differ |
+| `carrier_code` | Categorical | Carrier reliability varies by 30%+ |
+| `fulfillment_method` | Categorical | Home delivery vs BOPIS vs curbside |
+| `tracking_missing` | Boolean | No tracking number strongly predicts lateness |
+| `delivery_attempts` | Numeric | Repeat attempts signal address/access problems |
+| `exception_code` | Categorical | Carrier exception reason |
+| `order_date` | Date | AutoML derives month/weekday seasonality |
 
-**Exclude:** `total_shipments`, `on_time_count`, `on_time_pct` (derived from target)
+**Exclude:** `order_id`, `tracking_number`, `actual_delivery`, `days_late` (derived from target)
 
 #### Step 4: Train & Review
 
 1. Click **Run Experiment**
 2. Expected results:
    - **Accuracy:** ~80% on demo data
-   - **Key insight:** `avg_address_quality` is the #2 predictor after `carrier`
-   - This validates the address standardization investment (Nightmare #2)
+   - **Key insight:** `tracking_missing` is the #2 predictor after `carrier_code` — the data gap itself predicts the failure
+   - For a richer model, add average address quality per contact via an Athena view over the lakehouse (joins `silver.addresses_standardized`) — address quality then surfaces as a top-3 predictor, linking Nightmare #2 to outcomes
 
 #### Step 5: Deploy Model
 
@@ -1156,19 +1155,19 @@ Both deployed models get REST API endpoints for real-time predictions.
 POST https://<tenant>.qlikcloud.com/api/v1/ml/predictions
 ```
 
-**Request body (Spoilage model example):**
+**Request body (Cold Chain Exceedance model example):**
 ```json
 {
-  "model_id": "<spoilage-model-deployment-id>",
+  "model_id": "<exceedance-model-deployment-id>",
   "features": {
-    "carrier": "TransFrio",
     "route_id": "GRU-BA-001",
-    "avg_temp_celsius": 6.2,
-    "max_temp_celsius": 12.3,
-    "exceedance_minutes": 45,
-    "pre_cool_compliant": false,
-    "product_category": "Grocery",
-    "gap_count": 2
+    "warehouse_id": "DC-GRU-01",
+    "temperature_c": 11.2,
+    "humidity_pct": 71,
+    "battery_level_pct": 9,
+    "battery_low": true,
+    "gps_gap": false,
+    "shock_detected": false
   }
 }
 ```
@@ -1180,18 +1179,18 @@ POST https://<tenant>.qlikcloud.com/api/v1/ml/predictions
   "probability": 0.78,
   "explanation": {
     "top_features": [
-      {"feature": "max_temp_celsius", "contribution": 0.34},
-      {"feature": "pre_cool_compliant", "contribution": 0.22},
-      {"feature": "exceedance_minutes", "contribution": 0.18}
+      {"feature": "temperature_c", "contribution": 0.34},
+      {"feature": "battery_low", "contribution": 0.22},
+      {"feature": "route_id", "contribution": 0.18}
     ]
   }
 }
 ```
 
 **Integration points:**
-- **Discovery Agent** queries the Predict API to enrich anomaly alerts with spoilage probability
-- **Automations** call the Predict API to trigger proactive alerts (e.g., "SHP-GRU-BA-20251015 has 78% spoilage risk")
-- **MCP Server** allows Claude to query predictions via natural language ("What's the spoilage risk for active São Paulo shipments?")
+- **Discovery Agent** queries the Predict API to enrich anomaly alerts with exceedance probability
+- **Automations** call the Predict API to trigger proactive alerts (e.g., "SHP-GRU-BA-20251015 has 78% cold-chain exceedance risk")
+- **MCP Server** allows Claude to query predictions via natural language ("What's the cold-chain exceedance risk for active São Paulo shipments?")
 - **Qlik Analytics** embeds prediction results as calculated fields in the analytics apps
 
 ---

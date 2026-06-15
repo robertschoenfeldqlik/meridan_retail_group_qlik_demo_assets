@@ -645,13 +645,13 @@ dividerSlide("The 7 Nightmares", "$127M in annual data quality costs");
   const slide = contentSlide("The 7 Data Quality Nightmares — $127M Annual Impact", C.qlikBlue);
 
   const nightmares = [
-    { num: "1", name: "Phantom Inventory", cost: "$41M", desc: "ERP says 50, WMS says 42. Stockouts from ghost inventory." },
-    { num: "2", name: "Address Catastrophe", cost: "$31M", desc: "11% format issues, 6% truncated. 4.7% carrier rejection." },
-    { num: "3", name: "Product Master Mess", cost: "$14M", desc: "8,200 missing weights, duplicated suppliers, SKU chaos." },
-    { num: "4", name: "Silent Pipeline Failures", cost: "$4M", desc: "Rotterdam CDC sync: 72h undetected. 847 phantom units." },
-    { num: "5", name: "Timestamp Tower of Babel", cost: "$6M", desc: "Mixed UTC/local/bare timestamps across 3 sources." },
-    { num: "6", name: "Carrier Data Black Hole", cost: "$22M", desc: "6 carriers, 5 languages, no canonical status mapping." },
-    { num: "7", name: "Compliance Traceability Gap", cost: "$9M", desc: "Lettuce recall: 11 days vs 24h requirement. NVWA citation." },
+    { num: "1", name: "Phantom Inventory", cost: "$48M", desc: "ERP says 50, WMS says 42. Stockouts from ghost inventory." },
+    { num: "2", name: "Address Catastrophe", cost: "$3.1M", desc: "11% format issues, 6% truncated. 4.7% carrier rejection." },
+    { num: "3", name: "Product Master Mess", cost: "$8.2M", desc: "8,200 missing weights, duplicated suppliers, SKU chaos." },
+    { num: "4", name: "Silent Pipeline Failures", cost: "$12M", desc: "Rotterdam CDC sync: 72h undetected. 847 phantom units." },
+    { num: "5", name: "Timestamp Tower of Babel", cost: "$6.5M", desc: "Mixed UTC/local/bare timestamps across 3 sources." },
+    { num: "6", name: "Carrier Data Black Hole", cost: "$14.8M", desc: "6 carriers, 5 languages, no canonical status mapping." },
+    { num: "7", name: "Compliance Traceability Gap", cost: "$4.2M", desc: "Lettuce recall: 11 days vs 24h requirement. NVWA citation." },
   ];
 
   nightmares.forEach((n, i) => {

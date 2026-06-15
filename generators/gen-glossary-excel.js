@@ -85,7 +85,7 @@ const terms = [
     relatedTables: "silver.inventory_reconciled (lot_number field)",
     owner: "Dr. Elena Vasquez (Chief Compliance Officer)",
     source: "MCG-POL-007, COMP-2025-NVWA",
-    businessImpact: "$9M/year compliance risk; recall response time 72h → target 4h",
+    businessImpact: "$4.2M/year compliance risk; recall response time 72h → target 4h",
   },
 
   // ═══ Supply Chain & Logistics ═══

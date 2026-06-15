@@ -229,13 +229,13 @@ slide.addText("Seven Data Quality Nightmares — $127M Annual Impact", {
 });
 
 const nightmares = [
-  { num: "1", name: "Phantom Inventory", cost: "$41.0M", metric: "IRA: 74% vs 97% target", color: MCG.red },
-  { num: "2", name: "Address Catastrophe", cost: "$31.0M", metric: "4.7% first-delivery rejection", color: MCG.gold },
-  { num: "3", name: "Product Master Mess", cost: "$14.0M", metric: "8,200 SKUs missing weight", color: MCG.gold },
-  { num: "4", name: "Silent Pipelines", cost: "$4.0M", metric: "4.3-day detection time", color: MCG.red },
-  { num: "5", name: "Timestamp Babel", cost: "$6.0M", metric: "14 TZs, no standards", color: MCG.gold },
-  { num: "6", name: "Carrier Black Hole", cost: "$22.0M", metric: "42% missing tracking", color: MCG.red },
-  { num: "7", name: "Compliance Gap", cost: "$9.0M", metric: "11-day recall vs 24h", color: MCG.red },
+  { num: "1", name: "Phantom Inventory", cost: "$48.0M", metric: "IRA: 74% vs 97% target", color: MCG.red },
+  { num: "2", name: "Address Catastrophe", cost: "$3.1M", metric: "4.7% first-delivery rejection", color: MCG.gold },
+  { num: "3", name: "Product Master Mess", cost: "$8.2M", metric: "8,200 SKUs missing weight", color: MCG.gold },
+  { num: "4", name: "Silent Pipelines", cost: "$12.0M", metric: "4.3-day detection time", color: MCG.red },
+  { num: "5", name: "Timestamp Babel", cost: "$6.5M", metric: "14 TZs, no standards", color: MCG.gold },
+  { num: "6", name: "Carrier Black Hole", cost: "$14.8M", metric: "42% missing tracking", color: MCG.red },
+  { num: "7", name: "Compliance Gap", cost: "$4.2M", metric: "11-day recall vs 24h", color: MCG.red },
 ];
 
 nightmares.forEach((n, i) => {
@@ -283,7 +283,7 @@ slide = pptx.addSlide();
 slide.background = { fill: MCG.white };
 addFooter(slide, 6);
 slide.addShape(pptx.shapes.RECTANGLE, { x: 0, y: 0, w: 13.33, h: 0.06, fill: { color: MCG.red } });
-slide.addText("Nightmare #1: Phantom Inventory — $41M Annual Impact", {
+slide.addText("Nightmare #1: Phantom Inventory — $48M Annual Impact", {
   x: 0.5, y: 0.2, w: 12, h: 0.6,
   fontSize: 26, color: MCG.navy, fontFace: "Calibri", bold: true,
 });
@@ -351,7 +351,7 @@ slide = pptx.addSlide();
 slide.background = { fill: MCG.white };
 addFooter(slide, 7);
 slide.addShape(pptx.shapes.RECTANGLE, { x: 0, y: 0, w: 13.33, h: 0.06, fill: { color: MCG.red } });
-slide.addText("Nightmare #6: Carrier Data Black Hole — $22M Annual Impact", {
+slide.addText("Nightmare #6: Carrier Data Black Hole — $14.8M Annual Impact", {
   x: 0.5, y: 0.2, w: 12, h: 0.6,
   fontSize: 26, color: MCG.navy, fontFace: "Calibri", bold: true,
 });
@@ -434,7 +434,7 @@ slide = pptx.addSlide();
 slide.background = { fill: MCG.white };
 addFooter(slide, 8);
 slide.addShape(pptx.shapes.RECTANGLE, { x: 0, y: 0, w: 13.33, h: 0.06, fill: { color: MCG.red } });
-slide.addText("Nightmare #7: Compliance Traceability Gap — $9M", {
+slide.addText("Nightmare #7: Compliance Traceability Gap — $4.2M", {
   x: 0.5, y: 0.2, w: 12, h: 0.6,
   fontSize: 26, color: MCG.navy, fontFace: "Calibri", bold: true,
 });

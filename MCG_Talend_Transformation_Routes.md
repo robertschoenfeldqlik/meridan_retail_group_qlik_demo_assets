@@ -3,6 +3,24 @@
 
 ---
 
+> **⚠️ SUPERSEDED — historical design document.** This describes an earlier
+> approach in which Talend performed *all* bronze→silver→gold transformations
+> and produced an 8-product gold layer (`gold.spoilage_risk`, `gold.customer_360`,
+> `gold.compliance_traceability`, …). The demo's current architecture is:
+> - **Transformations** are declarative **Qlik Cloud Pipelines** (two QTCP
+>   projects, YAML) → see `deploy/pipelines/` and `deploy/pipelines/README.md`.
+> - **Gold** is **two** governed data products (`gold.supply_chain_health`,
+>   `gold.last_mile_performance`) → see `deploy/data_products.json`.
+> - **Talend's** role is narrowed to the **Salesforce address validation +
+>   geocoding + stewardship** leg → see `deploy/talend/README.md`.
+> - **Predict** models are Cold Chain Exceedance (`alert_flag` on
+>   `silver.iot_normalized`) and Late Delivery (`delivered_late` on
+>   `silver.order_delivery_timeline`).
+>
+> Kept for design history; do not treat the table/model names below as current.
+
+---
+
 ## Architecture Overview
 
 **Key Design Decision**: Data lands RAW in the Open Lakehouse Bronze layer first (Extract-Load). Qlik Talend Cloud then reads FROM Bronze, applies transformations, and writes cleansed data back to Silver and Gold layers within the Lakehouse (Transform). Gold-tier data products are then exported downstream as flat files for B2B consumers.

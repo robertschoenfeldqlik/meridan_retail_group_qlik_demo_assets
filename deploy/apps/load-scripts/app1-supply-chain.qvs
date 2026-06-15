@@ -184,11 +184,11 @@ WHILE Date('$(vMinDate)' + IterNo() - 1) <= '$(vMaxDate)';
 NightmareRef:
 LOAD * INLINE [
     NightmareID, NightmareName, AnnualCost, Description
-    1, Phantom Inventory, 41000000, ERP vs WMS mismatch causing stockouts
-    2, Address Catastrophe, 31000000, 11% format issues causing 4.7% carrier rejection
-    3, Product Master Mess, 14000000, 8200 missing weights and duplicate suppliers
-    4, Silent Pipeline Failures, 4000000, Rotterdam CDC: 72h undetected outage
-    5, Timestamp Tower of Babel, 6000000, Mixed UTC/local/bare timestamps across sources
-    6, Carrier Data Black Hole, 22000000, 6 carriers 5 languages no canonical mapping
-    7, Compliance Traceability Gap, 9000000, Lettuce recall: 11 days vs 24h requirement
+    1, Phantom Inventory, 48000000, ERP vs WMS mismatch causing stockouts
+    2, Address Catastrophe, 3100000, 11% format issues causing 4.7% carrier rejection
+    3, Product Master Mess, 8200000, 8200 missing weights and duplicate suppliers
+    4, Silent Pipeline Failures, 12000000, Rotterdam CDC: 72h undetected outage
+    5, Timestamp Tower of Babel, 6500000, Mixed UTC/local/bare timestamps across sources
+    6, Carrier Data Black Hole, 14800000, 6 carriers 5 languages no canonical mapping
+    7, Compliance Traceability Gap, 4200000, Lettuce recall: 11 days vs 24h requirement
 ];
