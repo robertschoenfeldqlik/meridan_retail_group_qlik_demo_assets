@@ -230,7 +230,7 @@ NinjaVan contract amendment AMD3 reclassified 5-10 kg parcels from 2-day to 3-da
 ### Demo Walk-Through
 
 **Step 1 — Show the order data (Bronze → Silver)**
-- `silver.orders_enriched`: filter `carrier = 'NinjaVan'`, `destination_country = 'SG'`
+- `silver.order_delivery_timeline`: filter `carrier = 'NinjaVan'`, `destination_country = 'SG'`
 - Show `promised_delivery` vs `actual_delivery` — gap widening after Oct 1
 - WISMO flag: 52% of Singapore orders have `wismo_flag = TRUE`
 

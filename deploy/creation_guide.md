@@ -194,7 +194,7 @@ Create 8 data flows (plus 1 Talend job) in the Pipeline Designer that transform 
 |---|---|
 | **Name** | `MCG - Timestamp Normalization` |
 | **Input tables** | `bronze.inventory_positions`, `bronze.warehouse_events`, `bronze.shipments`, `bronze.iot_cold_chain` |
-| **Output table** | `silver.timestamps_audit` |
+| **Output table** | `silver.warehouse_events_clean` |
 | **Schedule** | Triggered after every Bronze refresh |
 
 **Pipeline Designer Steps:**
@@ -221,7 +221,7 @@ Create 8 data flows (plus 1 Talend job) in the Pipeline Designer that transform 
    - If Correios `DD/MM/YYYY HH:MM` → parse with BRT timezone
    - If LOCAL-LOS informal `Oct 15 2025` → parse with WAT timezone
    - Preserve original value in `_original` column
-5. **Add Output** — Write to `silver.timestamps_audit`:
+5. **Add Output** — Write to `silver.warehouse_events_clean`:
    - Columns: `source_table`, `source_column`, `original_value`, `detected_timezone`, `normalized_utc`, `conversion_method`
 6. **Save & Run**
 
@@ -265,7 +265,7 @@ Create 8 data flows (plus 1 Talend job) in the Pipeline Designer that transform 
 |---|---|
 | **Name** | `MCG - Address Standardization` |
 | **Input** | `bronze.sf_contacts`, `bronze.sf_orders` |
-| **Output** | `silver.customers_deduped` |
+| **Output** | `silver.addresses_standardized` |
 | **Nightmare** | #2 (Address Catastrophe) |
 
 **Pipeline Designer Steps:**
@@ -293,7 +293,7 @@ Create 8 data flows (plus 1 Talend job) in the Pipeline Designer that transform 
    - 0.7 = minor format correction applied
    - 0.4 = truncated but correctable
    - 0.2 = incomplete / unvalidatable
-9. **Output** → `silver.customers_deduped`
+9. **Output** → `silver.addresses_standardized`
 
 #### Talend Job: Address Validation Service
 
@@ -336,7 +336,7 @@ Create 8 data flows (plus 1 Talend job) in the Pipeline Designer that transform 
 This Talend job is also triggered automatically by the **MCG Address Correction automation** (see `automation_guide.md` Automation 5). When a steward approves address records in the Address Cleanup stewardship campaign, the automation:
 1. Collects approved record IDs from the stewardship task
 2. Invokes this Talend job with those records as input
-3. Writes corrected addresses back to `silver.customers_deduped`
+3. Writes corrected addresses back to `silver.addresses_standardized`
 4. Resolves the stewardship task and notifies Teams
 
 This creates a complete data quality remediation loop:
@@ -465,7 +465,7 @@ Source (dirty) → Data Flow 3 (standardize) → Stewardship (human review)
 |---|---|
 | **Name** | `MCG - Order to Delivery Timeline` |
 | **Input** | `bronze.sf_orders`, `silver.shipments_canonical`, `silver.iot_normalized`, `silver.inventory_reconciled` |
-| **Output** | `silver.orders_enriched` |
+| **Output** | `silver.order_delivery_timeline` |
 | **Nightmares** | #5 (Timestamps), #6 (Carrier Black Hole) |
 
 **Pipeline Designer Steps:**
@@ -484,20 +484,20 @@ Source (dirty) → Data Flow 3 (standardize) → Stewardship (human review)
    - `sla_met = TRUE` if delivered on or before promise
    - `sla_met = FALSE` if delivered late or undelivered
 5. **IoT Enrich** — If cold chain shipment, attach `max_temperature`, `exceedance_flag` from `silver.iot_normalized`
-6. **Output** → `silver.orders_enriched`
+6. **Output** → `silver.order_delivery_timeline`
 
 #### Silver Verification Checklist
 
 | Table | Created By | Expected Result |
 |---|---|---|
-| `silver.timestamps_audit` | Data Flow 1 | Cross-reference of all timestamp conversions |
+| `silver.warehouse_events_clean` | Data Flow 1 | Cross-reference of all timestamp conversions |
 | `silver.inventory_reconciled` | Data Flow 2 | Inventory with phantom flags, trust scores |
-| `silver.customers_deduped` | Data Flow 3 | Deduplicated customers with address quality scores |
+| `silver.addresses_standardized` | Data Flow 3 | Deduplicated customers with address quality scores |
 | `silver.products_harmonized` | Data Flow 4 | Unified product catalog with canonical SKUs |
 | `silver.shipments_canonical` | Data Flow 5 | Shipments with standardized lifecycle stages |
 | `silver.iot_normalized` | Data Flow 6 | IoT readings in Celsius/UTC with exceedance flags |
 | `silver.suppliers_deduped` | Data Flow 7 | Deduplicated supplier master |
-| `silver.orders_enriched` | Data Flow 8 | Unified order timelines with SLA calculations |
+| `silver.order_delivery_timeline` | Data Flow 8 | Unified order timelines with SLA calculations |
 
 **Total: 8 Silver tables**
 
@@ -514,7 +514,7 @@ Gold tables aggregate Silver data into business-ready data products. Each is bui
 | Setting | Value |
 |---|---|
 | **Description** | Inventory accuracy + pipeline health KPIs per DC and SKU |
-| **Input** | `silver.inventory_reconciled`, `silver.timestamps_audit` |
+| **Input** | `silver.inventory_reconciled`, `silver.warehouse_events_clean` |
 | **Refresh** | Every 15 minutes |
 | **Consumers** | Supply Chain Operations App, Discovery Agent |
 
@@ -526,7 +526,7 @@ Gold tables aggregate Silver data into business-ready data products. Each is bui
    - `ira_pct = 1 - (phantom_count / total_skus)`
    - `negative_qty_count = SUM(logic_error)`
    - `avg_trust_score = AVG(trust_score)`
-2. **Join** pipeline health status from `silver.timestamps_audit`:
+2. **Join** pipeline health status from `silver.warehouse_events_clean`:
    - `last_sync_utc` = MAX(normalized_utc) per source
    - `pipeline_status` = `HEALTHY` if last sync < 30 min ago, `DEGRADED` if 30-60 min, `FAILED` if > 60 min
 3. **Output columns:** `dc_id`, `dc_name`, `region`, `total_skus`, `phantom_count`, `ira_pct`, `negative_qty_count`, `lot_missing_count`, `avg_trust_score`, `pipeline_status`, `last_sync_utc`, `snapshot_timestamp`
@@ -536,7 +536,7 @@ Gold tables aggregate Silver data into business-ready data products. Each is bui
 | Setting | Value |
 |---|---|
 | **Description** | Carrier SLA metrics + address quality by region |
-| **Input** | `silver.shipments_canonical`, `silver.orders_enriched`, `silver.customers_deduped` |
+| **Input** | `silver.shipments_canonical`, `silver.order_delivery_timeline`, `silver.addresses_standardized` |
 | **Refresh** | Every 30 minutes |
 | **Consumers** | Delivery & Customer Experience App, Predict Model 2 |
 

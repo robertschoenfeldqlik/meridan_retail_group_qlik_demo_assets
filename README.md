@@ -57,7 +57,7 @@ End-To-End Demo/
 │   ├── themes/                 # MCG dark theme (.zip + source)
 │   ├── pipelines/              # Declarative QTCP pipeline project (YAML)
 │   ├── zip-utils.js            # Zero-dependency ZIP create/extract
-│   ├── data_products.json      # 8 Gold-layer data product definitions
+│   ├── data_products.json      # 2 Gold-layer data product definitions
 │   └── glossary_terms.json     # 25 business glossary terms
 │
 ├── documents/                  # 25 operational .docx + 13 demo scripts

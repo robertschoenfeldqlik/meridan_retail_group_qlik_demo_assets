@@ -310,13 +310,13 @@ Created by the 8 transformation routes (Section 4). Each Silver table is the out
 | Table | Created By (Route) | Key Transformations |
 |---|---|---|
 | `silver.inventory_reconciled` | Route 2 | WMS-ERP reconciliation, phantom inventory flagged, UoM standardized |
-| `silver.customers_deduped` | Route 3 | Address standardized per country postal rules, fuzzy dedup |
+| `silver.addresses_standardized` | Route 3 | Address standardized per country postal rules, fuzzy dedup |
 | `silver.products_harmonized` | Route 4 | 3 SKU schemes merged to canonical MCG-* ID, weights filled |
 | `silver.shipments_canonical` | Route 5 | All 6 carrier status vocabularies → MCG standard lifecycle |
 | `silver.iot_normalized` | Route 6 | All temps in °C, timestamps in UTC, enriched with shipment context |
-| `silver.orders_enriched` | Route 8 | Unified timeline from order → pick → ship → deliver |
+| `silver.order_delivery_timeline` | Route 8 | Unified timeline from order → pick → ship → deliver |
 | `silver.suppliers_deduped` | Route 7 | "Samsung" × 4 → 1 canonical record |
-| `silver.timestamps_audit` | Route 1 | Cross-reference table mapping original → normalized timestamps |
+| `silver.warehouse_events_clean` | Route 1 | Cross-reference table mapping original → normalized timestamps |
 
 **Total: 8 Silver tables**
 
@@ -326,8 +326,8 @@ Aggregated, governed, SLA-backed data products for business consumption.
 
 | Table | Input (Silver) | Consumers | Key Fields |
 |---|---|---|---|
-| `gold.supply_chain_health` | inventory_reconciled, timestamps_audit | Qlik Analytics, Discovery Agent | DC, SKU, qty_wms, qty_erp, variance, trust_score, pipeline_status |
-| `gold.last_mile_performance` | shipments_canonical, orders_enriched, customers_deduped | Qlik Analytics, Predict | carrier, region, sla_target, sla_actual, on_time_pct, address_quality_score |
+| `gold.supply_chain_health` | inventory_reconciled, warehouse_events_clean | Qlik Analytics, Discovery Agent | DC, SKU, qty_wms, qty_erp, variance, trust_score, pipeline_status |
+| `gold.last_mile_performance` | shipments_canonical, order_delivery_timeline, addresses_standardized | Qlik Analytics, Predict | carrier, region, sla_target, sla_actual, on_time_pct, address_quality_score |
 
 **Total: 2 Gold tables**
 
@@ -350,7 +350,7 @@ Each transformation route is built as a **Qlik Talend Cloud Data Flow** (Pipelin
 | Property | Value |
 |---|---|
 | Input | `bronze.inventory_positions`, `bronze.warehouse_events`, `bronze.shipments`, `bronze.iot_cold_chain` |
-| Output | `silver.timestamps_audit` + timestamps updated in-place on Silver tables |
+| Output | `silver.warehouse_events_clean` + timestamps updated in-place on Silver tables |
 | Nightmare | #5 (Timestamp Tower of Babel) |
 | Schedule | Triggered after every Bronze refresh |
 
@@ -363,7 +363,7 @@ Each transformation route is built as a **Qlik Talend Cloud Data Flow** (Pipelin
    - If Correios DD/MM/YYYY format → parse and convert
    - Preserve original value in `_original` column
 4. **Truncated Millis** — IoT timestamps: preserve full `.382Z` precision in Silver
-5. **Write** — Output to `silver.timestamps_audit` (original_value, source_system, detected_tz, normalized_utc)
+5. **Write** — Output to `silver.warehouse_events_clean` (original_value, source_system, detected_tz, normalized_utc)
 
 **Demo talking point:** "Watch how 14 different timezone conventions collapse into one clean UTC standard."
 
@@ -401,7 +401,7 @@ Each transformation route is built as a **Qlik Talend Cloud Data Flow** (Pipelin
 | Property | Value |
 |---|---|
 | Input | `bronze.sf_contacts`, `bronze.sf_orders` |
-| Output | `silver.customers_deduped` |
+| Output | `silver.addresses_standardized` |
 | Nightmare | #2 (Address Catastrophe) |
 
 **Table Recipe:**
@@ -422,7 +422,7 @@ Each transformation route is built as a **Qlik Talend Cloud Data Flow** (Pipelin
    - 0.7 = minor format correction applied
    - 0.4 = truncated but correctable
    - 0.2 = incomplete / unvalidatable
-8. **Write** → `silver.customers_deduped`
+8. **Write** → `silver.addresses_standardized`
 
 ### Route 3a: Talend Job — Address Validation Service
 
@@ -540,8 +540,8 @@ A dedicated **Talend Job** deployed as a reusable address validation service, ca
 
 | Property | Value |
 |---|---|
-| Input | `silver.orders_enriched` (from Salesforce), `silver.shipments_canonical`, `silver.iot_normalized`, `silver.inventory_reconciled` |
-| Output | `silver.orders_enriched` |
+| Input | `silver.order_delivery_timeline` (from Salesforce), `silver.shipments_canonical`, `silver.iot_normalized`, `silver.inventory_reconciled` |
+| Output | `silver.order_delivery_timeline` |
 | Nightmare | #5 (Timestamps), #6 (Carrier Black Hole) |
 
 **Table Recipe:**
@@ -554,7 +554,7 @@ A dedicated **Talend Job** deployed as a reusable address validation service, ca
 3. **Duration Calc** — Order-to-delivery hours, pick-to-ship hours, ship-to-deliver hours
 4. **SLA Check** — Compare actual delivery to promised delivery → `sla_met = TRUE/FALSE`
 5. **IoT Enrich** — If cold chain shipment, attach max_temperature, exceedance_flag
-6. **Write** → `silver.orders_enriched`
+6. **Write** → `silver.order_delivery_timeline`
 
 ---
 
@@ -1152,7 +1152,7 @@ claude mcp add --transport sse qlik https://your-tenant.us.qlikcloud.com/api/ai/
 **Claude's process (via MCP):**
 1. Uses Qlik MCP tool to query `gold.supply_chain_health` filtered by `dc = 'DC-RTD-01'`
 2. Gets: IRA = 74%, phantom_units = 847, pipeline_status = "RECOVERED"
-3. Uses Qlik MCP to query `silver.orders_enriched` for affected orders
+3. Uses Qlik MCP to query `silver.order_delivery_timeline` for affected orders
 4. Uses Qlik Answers to pull context from INC-2025-04872 (Rotterdam Pipeline Failure)
 
 **Claude's response:**

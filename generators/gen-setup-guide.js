@@ -654,37 +654,40 @@ function sectionPredict() {
     heading("13. Qlik Predict (AutoML)"),
     para("Qlik Predict enables no-code machine learning model training and deployment. Create two predictive models for the MCG demo."),
 
-    heading("13.1 Model 1: Spoilage Risk Predictor", 2),
+    heading("13.1 Model 1: Cold Chain Exceedance (Spoilage Risk)", 2),
+    para("Both models train on the silver datasets the declarative pipelines land in the Open Lakehouse \u2014 picked from the catalog (read via the Athena/lakehouse layer), so training data carries the same lineage and Trust Score as the data products."),
     numberedItem(1, "Navigate to Qlik Predict \u2192 Create Experiment"),
     numberedItem(2, "Configure the experiment:"),
     dataTable(
       ["Setting", "Value"],
       [
-        ["Experiment name", "MCG Spoilage Risk Predictor"],
-        ["Source", "silver.iot_normalized"],
-        ["Target column", "spoilage_risk_score"],
-        ["Problem type", "Regression"],
+        ["Experiment name", "MCG Cold Chain Exceedance"],
+        ["Source", "silver.iot_normalized (Open Lakehouse catalog dataset)"],
+        ["Target column", "alert_flag"],
+        ["Problem type", "Classification (binary)"],
+        ["Key features", "temperature_c, battery_low, gps_gap, route_id, warehouse_id"],
         ["Training split", "80/20"],
       ]
     ),
     numberedItem(3, "Click Train Model and wait for training to complete (typically 5-15 minutes)"),
-    numberedItem(4, "Review the model performance metrics (R\u00B2, RMSE, feature importance)"),
+    numberedItem(4, "Review performance metrics (accuracy, precision, recall, AUC) and feature importance \u2014 temperature_c and battery_low lead, with route_id = GRU-BA surfacing the TransFrio fleet issue"),
     numberedItem(5, "Deploy the model and enable API sharing"),
 
-    heading("13.2 Model 2: Delivery SLA Predictor", 2),
+    heading("13.2 Model 2: Late Delivery (SLA) Predictor", 2),
     numberedItem(1, "Create a new experiment:"),
     dataTable(
       ["Setting", "Value"],
       [
-        ["Experiment name", "MCG Delivery SLA Predictor"],
-        ["Source", "gold.last_mile_performance"],
-        ["Target column", "sla_met"],
+        ["Experiment name", "MCG Late Delivery Predictor"],
+        ["Source", "silver.order_delivery_timeline (Open Lakehouse catalog dataset)"],
+        ["Target column", "delivered_late"],
         ["Problem type", "Classification (binary)"],
+        ["Key features", "carrier_code, fulfillment_method, tracking_missing, delivery_attempts, exception_code"],
         ["Training split", "80/20"],
       ]
     ),
     numberedItem(2, "Click Train Model"),
-    numberedItem(3, "Review metrics (accuracy, precision, recall, AUC)"),
+    numberedItem(3, "Review metrics (accuracy, precision, recall, AUC) \u2014 tracking_missing is the #2 predictor after carrier_code"),
     numberedItem(4, "Deploy and enable API sharing"),
     screenshot("Qlik Predict model training results showing feature importance chart and performance metrics"),
 

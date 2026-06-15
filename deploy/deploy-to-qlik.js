@@ -2200,7 +2200,7 @@ async function main() {
       ['MCG Address Correction — Talend Job Trigger',
        'Triggered by new Stewardship tasks in the Address Cleanup campaign. '
        + 'Runs the Talend Address Validation Service job on flagged records, writes corrected '
-       + 'addresses back to silver.customers_deduped, and resolves the stewardship task.'],
+       + 'addresses back to silver.addresses_standardized, and resolves the stewardship task.'],
     ];
 
     // Load additional automations from JSON templates

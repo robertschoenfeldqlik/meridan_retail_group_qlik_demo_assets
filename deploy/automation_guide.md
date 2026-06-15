@@ -196,7 +196,7 @@ Pipeline Health Summary:
 - **Every 30 minutes**
 
 #### Block 2: Query WISMO Data
-- Query `silver.orders_enriched`
+- Query `silver.order_delivery_timeline`
 - Filter: `wismo_rate > 0.50` (50% threshold)
 - Group by: `carrier`, `destination_region`
 
@@ -250,7 +250,7 @@ Bronze (dirty addresses) → Data Flow 3 (standardization) → Silver (quality-s
   "parameters": {
     "input_source": "stewardship_batch",
     "record_ids": "{{approvedRecords.ids}}",
-    "source_table": "silver.customers_deduped",
+    "source_table": "silver.addresses_standardized",
     "write_back": true
   }
 }
@@ -322,7 +322,7 @@ Bronze (dirty addresses) → Data Flow 3 (standardization) → Silver (quality-s
 
 #### Block 8: Trigger Downstream Refresh (Optional)
 - If corrected addresses changed significantly, trigger a data flow refresh:
-  - Reload `silver.orders_enriched` table recipe
+  - Reload `silver.order_delivery_timeline` table recipe
   - Reload `gold.last_mile_performance` (address quality affects delivery SLAs)
 - This ensures the Predict SLA model picks up improved address quality scores
 

@@ -93,15 +93,15 @@ Master checklist of everything required to stand up the full Meridian Commerce G
 
 > **Integration Capabilities:** Transformation Flows (visual Pipeline Designer), AI-Assisted SQL, Datamart Automation, Talend Job (address validation)
 
-- [ ] Data flow: **Timestamp Normalization** → `silver.timestamps_audit`
+- [ ] Data flow: **Timestamp Normalization** → `silver.warehouse_events_clean`
 - [ ] Data flow: **Inventory Reconciliation** → `silver.inventory_reconciled`
-- [ ] Data flow: **Address Standardization** → `silver.customers_deduped`
+- [ ] Data flow: **Address Standardization** → `silver.addresses_standardized`
 - [ ] **Talend Job: Address Validation Service** — deployed as callable service (tAddressRowStandardize, tAddressRowValidate, tGeocode)
 - [ ] Data flow: **Product Master Harmonization** → `silver.products_harmonized`
 - [ ] Data flow: **Carrier Status Canonicalization** → `silver.shipments_canonical`
 - [ ] Data flow: **IoT Telemetry Normalization** → `silver.iot_normalized`
 - [ ] Data flow: **Supplier Master Dedup** → `silver.suppliers_deduped`
-- [ ] Data flow: **Order-to-Delivery Timeline** → `silver.orders_enriched`
+- [ ] Data flow: **Order-to-Delivery Timeline** → `silver.order_delivery_timeline`
 - [ ] Verify all 8 Silver tables have transformed data
 
 ### Gold Layer — Data Products
@@ -233,20 +233,20 @@ Master checklist of everything required to stand up the full Meridian Commerce G
 
 ## Phase 6: Qlik Predict (AutoML)
 
-### Model 1: Spoilage Risk Predictor
+### Model 1: Cold Chain Exceedance (Spoilage Risk)
 - [ ] Create ML experiment in Qlik Cloud
-- [ ] Data source: `silver.iot_normalized`
-- [ ] Target: `spoilage_risk_score` (regression)
-- [ ] Features: max_temp_celsius, exceedance_minutes, humidity_avg, product_category, route_id, season
+- [ ] Data source: `silver.iot_normalized` (Open Lakehouse catalog dataset)
+- [ ] Target: `alert_flag` (binary classification)
+- [ ] Features: temperature_c, battery_low, gps_gap, route_id, warehouse_id
 - [ ] Train model and select best performer
 - [ ] Deploy model to production
 - [ ] Enable API sharing for predictions
 
-### Model 2: Delivery SLA Predictor
+### Model 2: Late Delivery (SLA) Predictor
 - [ ] Create ML experiment
-- [ ] Data source: `gold.last_mile_performance`
-- [ ] Target: `sla_met` (classification)
-- [ ] Features: carrier, destination_region, address_quality_score, weight_kg, promised_sla_hours, day_of_week
+- [ ] Data source: `silver.order_delivery_timeline` (Open Lakehouse catalog dataset)
+- [ ] Target: `delivered_late` (binary classification)
+- [ ] Features: carrier_code, fulfillment_method, tracking_missing, delivery_attempts, exception_code
 - [ ] Train model and select best performer
 - [ ] Deploy model to production
 - [ ] Enable API sharing for predictions
@@ -288,7 +288,7 @@ Master checklist of everything required to stand up the full Meridian Commerce G
 
 ### Campaigns
 - [ ] **Address Cleanup** campaign created
-  - Data source: `silver.customers_deduped`
+  - Data source: `silver.addresses_standardized`
   - Filter: `quality_score < 0.7`
   - Owner: Sophie Muller
 - [ ] **Supplier Dedup** campaign created
@@ -343,7 +343,7 @@ Master checklist of everything required to stand up the full Meridian Commerce G
 - [ ] **MCG Address Correction — Talend Job Trigger** — configured and enabled
   - Trigger: Stewardship task approved in Address Cleanup campaign (event or 15-min poll)
   - Runs Talend Address Validation Service (tAddressRowStandardize → tAddressRowValidate → tGeocode)
-  - Writes corrected addresses back to `silver.customers_deduped`
+  - Writes corrected addresses back to `silver.addresses_standardized`
   - Resolves stewardship tasks and posts results to Teams
   - Closes the data quality loop: Stewardship → Talend Job → Silver → Gold → Predict
 - [ ] Test each automation with "Run Now" and verify Teams messages
