@@ -358,45 +358,60 @@ def generate_carrier_event(shipment):
     if random.random() > tracking_avail:
         return None  # Data missing
 
-    # Choose a status based on carrier-specific vocabulary
-    status_raw = random.choices(
+    # Choose a status based on carrier-specific vocabulary (multi-language: Nightmare #6)
+    event_type = random.choices(
         carrier_cfg["statuses"],
         weights=carrier_cfg["weights"],
         k=1
     )[0]
 
     # Format timestamp per carrier convention
-    status_timestamp = format_carrier_event_timestamp(carrier_name, now)
+    event_timestamp = format_carrier_event_timestamp(carrier_name, now)
 
     # ~10% of events: timestamp in non-standard format (e.g., DD/MM/YYYY from Correios)
     if random.random() < 0.10:
-        status_timestamp = fmt_timestamp_brazilian(now)
+        event_timestamp = fmt_timestamp_brazilian(now)
 
-    # Weight -- with intentional unit chaos
-    weight_kg = round(random.uniform(50.0, 800.0), 1)
-    # ~5% of events: weight in pounds instead of kg (no unit indicator)
-    weight_is_lbs = False
-    if random.random() < 0.05:
-        weight_kg = round(weight_kg * 2.20462, 1)  # Convert to pounds silently
-        weight_is_lbs = True
+    # Tracking number -- nullable; some carriers omit it (Nightmare #6)
+    tracking_number = None
+    if random.random() >= 0.15:
+        tracking_number = f"{carrier_name[:3].upper()}-{shipment.shipment_id.split('-')[-1]}-{random.randint(100000, 999999)}"
 
-    pieces = random.randint(4, 48)
+    # Exception code -- multi-language, only on failed-delivery statuses (Nightmare #6)
+    FAILED_EXCEPTIONS = {
+        "tentativa_falha": "ENDERECO_INVALIDO",      # TransFrio (pt)
+        "Failed Attempt": "ZUSTELLUNG_FEHLGESCHLAGEN",  # DPD (de)
+        "DE": "DELIVERY_EXCEPTION",                  # FedEx (en)
+    }
+    exception_code = FAILED_EXCEPTIONS.get(event_type)
 
-    tracking_url = carrier_cfg["tracking_url_tpl"].format(shipment_id=shipment.shipment_id)
+    # Recipient name -- nullable (privacy redaction varies by carrier)
+    recipient_name = None
+    if random.random() >= 0.20:
+        recipient_name = random.choice(
+            ["J. de Vries", "M. Schmidt", "A. Tanaka", "L. Silva", "C. Okafor", "S. Mueller"]
+        )
+
+    # Some carriers forward the original webhook JSON; others don't
+    raw_carrier_payload = None
+    if carrier_name in ("FedEx", "DPD"):
+        raw_carrier_payload = json.dumps({"status": event_type, "ts": event_timestamp})
 
     event_id = f"EVT-{now.strftime('%Y%m%d-%H%M%S')}-{random.randint(100, 999)}"
 
+    # Field names match data_model.md section 2.2 (mcg.iot.carrier-events).
+    # event_id + shipment_id kept as benign join keys (shipment_id is the Kafka key).
     event = {
+        "carrier_code": carrier_name,
+        "tracking_number": tracking_number,
+        "event_type": event_type,
+        "event_timestamp": event_timestamp,
+        "location_description": route["dest"],
+        "recipient_name": recipient_name,
+        "exception_code": exception_code,
+        "raw_carrier_payload": raw_carrier_payload,
         "event_id": event_id,
         "shipment_id": shipment.shipment_id,
-        "carrier": carrier_name,
-        "status_raw": status_raw,
-        "status_timestamp": status_timestamp,
-        "origin": route["origin"],
-        "destination": route["dest"],
-        "weight_kg": weight_kg,
-        "pieces": pieces,
-        "tracking_url": tracking_url,
     }
 
     return event
