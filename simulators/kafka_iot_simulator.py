@@ -257,33 +257,53 @@ def generate_cold_chain_reading(shipment, sensor_id):
     humidity = round(random.uniform(65.0, 95.0), 1)
     gps_lat, gps_lon = shipment.get_gps()
 
-    # Build the reading
+    # Temperature-exceedance flag — computed on the Celsius value, before any
+    # unit chaos below. Per-route threshold (FRESH/FRESH 8C, DAIRY 4C, FROZEN -18C).
+    alert_flag = temperature > route["threshold_c"]
+
+    # Build the reading. Field names match the contract in deploy/data_model.md
+    # section 2.1 (mcg.iot.cold-chain) that the streaming pipeline + QVS consume.
     reading = {
         "sensor_id": sensor_id,
         "shipment_id": shipment.shipment_id,
-        "route": route["id"],
+        "route_id": route["id"],
+        "warehouse_id": route["origin"],
         "carrier": route["carrier"],
         "product_type": route["product"],
-        "temperature_celsius": temperature,
+        "temperature_value": temperature,
+        "temperature_unit": "C",
         "humidity_pct": humidity,
+        "light_exposure": bool(shipment.door_open),
+        "shock_detected": random.random() < 0.02,
         "timestamp": fmt_timestamp_iso_utc(now),
-        "gps_lat": gps_lat,
-        "gps_lon": gps_lon,
-        "battery_pct": int(shipment.battery_pcts.get(sensor_id, 50)),
-        "door_open": shipment.door_open,
+        "gps_latitude": gps_lat,
+        "gps_longitude": gps_lon,
+        "battery_level_pct": int(shipment.battery_pcts.get(sensor_id, 50)),
+        "alert_flag": alert_flag,
     }
 
     # --- INTENTIONAL DATA QUALITY ISSUES ---
 
-    # ~5% of readings: temperature_unit "F" instead of Celsius (Nightmare #5)
-    if random.random() < 0.05:
+    # ~8% of readings: temperature in Fahrenheit, flagged by temperature_unit (Nightmare #5)
+    if random.random() < 0.08:
         reading["temperature_unit"] = "F"
-        # Actually convert to Fahrenheit so the number looks plausible
-        reading["temperature_celsius"] = round(temperature * 9.0 / 5.0 + 32.0, 1)
+        # Convert to Fahrenheit so the number looks plausible
+        reading["temperature_value"] = round(temperature * 9.0 / 5.0 + 32.0, 1)
 
     # ~3% of readings: bare timestamp without timezone
     if random.random() < 0.03:
         reading["timestamp"] = fmt_timestamp_bare(now)
+
+    # ~3% of readings: GPS dropout — null coordinates (tunnel/blackout).
+    # Emitted (not dropped) so the silver transform's gps_gap flag has signal.
+    if random.random() < 0.03:
+        reading["gps_latitude"] = None
+        reading["gps_longitude"] = None
+
+    # ~12% of readings: shipment_id null — sensor reused without re-registration.
+    # Feeds the silver transform's sensor_unregistered flag.
+    if random.random() < 0.12:
+        reading["shipment_id"] = None
 
     # ~2% of readings: Lagos sensors have 6-hour connectivity blackout
     if route["id"] == "LOS-ABJ-001" and random.random() < 0.02:
