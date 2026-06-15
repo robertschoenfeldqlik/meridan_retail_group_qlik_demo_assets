@@ -664,50 +664,49 @@ Or manually in Qlik Cloud: **Administration → Spaces → Create Space**
 
 ## 7. Qlik Predict (AutoML)
 
-### 7.1 Model 1: Cold Chain Compliance Predictor
+### 7.1 Model 1: Cold Chain Exceedance
 
-**Business scenario:** Predict which cold chain shipments on the São Paulo→Buenos Aires corridor will experience spoilage, before it happens.
+**Business scenario:** Predict which cold chain readings — especially on the São Paulo→Buenos Aires corridor — will breach the temperature threshold, before product spoils.
 
 | Property | Value |
 |---|---|
-| **Name** | MCG Cold Chain Compliance Predictor |
-| **Training data** | `silver.iot_normalized` (historical shipments with known outcomes) |
-| **Target variable** | `spoilage_flag` (binary: TRUE/FALSE) |
-| **Feature columns** | `carrier`, `route`, `avg_temp_celsius`, `max_temp_celsius`, `exceedance_minutes`, `pre_cool_compliant`, `month`, `day_of_week`, `weight_kg` |
+| **Name** | MCG Cold Chain Exceedance |
+| **Training data** | `silver.iot_normalized` (Open Lakehouse catalog dataset, streaming pipeline) |
+| **Target variable** | `alert_flag` (binary: TRUE/FALSE — temperature exceedance) |
+| **Feature columns** | `temperature_c`, `humidity_pct`, `battery_low`, `gps_gap`, `route_id`, `warehouse_id` |
 | **Algorithm** | Auto (Qlik selects best: typically gradient boosting for binary classification) |
 | **Nightmare tie-in** | #6 (Carrier Data Black Hole) + INC-2025-05102 (TransFrio Spoilage) |
 
 **Setup in Qlik Cloud:**
 1. **AutoML** → **Create Experiment** → Select `silver.iot_normalized` dataset
-2. Set target: `spoilage_flag`
-3. Select features (exclude IDs, timestamps)
+2. Set target: `alert_flag`
+3. Select features (exclude IDs, timestamps, raw temperature)
 4. Train → Review model performance (expect ~85% accuracy on demo data)
 5. Deploy best model → Enable API sharing in the shared space
 
 **Demo scenario:**
-- Show the model's feature importance: `max_temp_celsius` and `pre_cool_compliant` are top predictors
-- Run a live prediction on an active São Paulo→Buenos Aires shipment
-- Show how the model flags at-risk shipments 6-12 hours before spoilage occurs
-- Connect to Discovery Agent alert: "Model predicts 78% spoilage probability for SHP-GRU-BA-20251015"
+- Show the model's feature importance: `temperature_c` and `battery_low` are top predictors, with `route_id` = GRU-BA surfacing the TransFrio fleet issue
+- Run a live prediction on an active GRU-BA reading (11.2°C, battery 9%) → ~78% exceedance probability
+- Connect to Discovery Agent alert: "Model predicts 78% cold-chain exceedance for SHP-GRU-BA-20251015"
 
-### 7.2 Model 2: Delivery SLA Predictor
+### 7.2 Model 2: Late Delivery Predictor
 
-**Business scenario:** Predict which orders will miss their delivery SLA, enabling proactive customer communication.
+**Business scenario:** Predict at ship time which orders will deliver late, enabling proactive customer communication.
 
 | Property | Value |
 |---|---|
-| **Name** | MCG Delivery SLA Predictor |
-| **Training data** | `gold.last_mile_performance` (historical deliveries with known SLA outcomes) |
-| **Target variable** | `sla_met` (binary: TRUE/FALSE) |
-| **Feature columns** | `carrier`, `destination_country`, `destination_region`, `weight_kg`, `address_quality_score`, `fulfillment_method`, `day_of_week`, `distance_km` |
+| **Name** | MCG Late Delivery Predictor |
+| **Training data** | `silver.order_delivery_timeline` (Open Lakehouse catalog dataset, batch pipeline) |
+| **Target variable** | `delivered_late` (binary: TRUE/FALSE) |
+| **Feature columns** | `carrier_code`, `fulfillment_method`, `tracking_missing`, `delivery_attempts`, `exception_code`, `order_date` |
 | **Nightmare tie-in** | #2 (Address Catastrophe) + CARRIER-NV-2025 (NinjaVan SLA change) |
 
 **Setup:**
-1. Same process as Model 1 but with `gold.last_mile_performance`
-2. Key insight: `address_quality_score` is a strong predictor — low-quality addresses predict delivery failure
+1. Same process as Model 1 but with `silver.order_delivery_timeline`
+2. Key insight: `tracking_missing` is the #2 predictor after `carrier_code` — the data gap itself predicts the failure
 3. Deploy and enable API sharing
 
-**Demo talking point:** "The model shows that address quality is the #2 predictor of delivery failure, right after carrier selection. Fixing Nightmare #2 directly improves delivery SLAs."
+**Demo talking point:** "A missing tracking number is the #2 predictor of a late delivery, right after carrier. Add average address quality per contact via an Athena view to surface Nightmare #2 as a top driver."
 
 ---
 

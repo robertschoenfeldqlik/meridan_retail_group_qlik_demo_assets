@@ -1069,7 +1069,7 @@
                     "numberFormat": "text"
                   }
                 ],
-                "expectedValue": "#1 Phantom Inventory $41M",
+                "expectedValue": "#1 Phantom Inventory $48M",
                 "color": "#C4922E",
                 "icon": "fire"
               }
@@ -1124,13 +1124,13 @@
                 "showLabels": true,
                 "labelExpression": "nightmare_name & Chr(10) & '$' & Text(Sum(cost_usd)/1000000, '#,##0') & 'M'",
                 "expectedValues": [
-                  { "label": "#1 Phantom Inventory", "cost": 41000000 },
-                  { "label": "#2 Address Catastrophe", "cost": 23000000 },
-                  { "label": "#3 Product Master Mess", "cost": 18000000 },
-                  { "label": "#4 Silent Pipeline Failures", "cost": 15000000 },
-                  { "label": "#5 Timestamp Tower of Babel", "cost": 12000000 },
-                  { "label": "#6 Carrier Data Black Hole", "cost": 11000000 },
-                  { "label": "#7 Compliance Gap", "cost": 7000000 }
+                  { "label": "#1 Phantom Inventory", "cost": 48000000 },
+                  { "label": "#2 Address Catastrophe", "cost": 3100000 },
+                  { "label": "#3 Product Master Mess", "cost": 8200000 },
+                  { "label": "#4 Silent Pipeline Failures", "cost": 12000000 },
+                  { "label": "#5 Timestamp Tower of Babel", "cost": 6500000 },
+                  { "label": "#6 Carrier Data Black Hole", "cost": 14800000 },
+                  { "label": "#7 Compliance Gap", "cost": 4200000 }
                 ]
               }
             },

@@ -56,17 +56,23 @@ jobs:
             node -e "JSON.parse(require('fs').readFileSync('$f','utf-8'))"
           done
           echo "Checking pipeline bindings..."
-          node -e "JSON.parse(require('fs').readFileSync('deploy/pipelines/mcg-pipeline/qtcp_bindings_definition.json','utf-8'))"
+          for p in mcg-batch-pipeline mcg-streaming-pipeline; do
+            echo "  $p"
+            node -e "JSON.parse(require('fs').readFileSync('deploy/pipelines/$p/qtcp_bindings_definition.json','utf-8'))"
+          done
 
       - name: Pipeline project ZIP round-trip
         run: |
-          node -e "
-            const { zipDirectory, unzipBuffer } = require('./deploy/zip-utils');
-            const zip = zipDirectory('deploy/pipelines/mcg-pipeline', { exclude: ['README.md','schema','.vscode','.github','.gitignore','CLAUDE.md'] });
-            const files = unzipBuffer(zip);
-            if (files.length < 10) { console.error('Expected >=10 entries, got ' + files.length); process.exit(1); }
-            console.log('ZIP round-trip OK: ' + files.length + ' entries, ' + zip.length + ' bytes');
-          "
+          for p in mcg-batch-pipeline mcg-streaming-pipeline; do
+            echo "  $p"
+            node -e "
+              const { zipDirectory, unzipBuffer } = require('./deploy/zip-utils');
+              const zip = zipDirectory('deploy/pipelines/$p', { exclude: ['README.md','schema','.vscode','.github','.gitignore','CLAUDE.md'] });
+              const files = unzipBuffer(zip);
+              if (files.length < 5) { console.error('Expected >=5 entries, got ' + files.length); process.exit(1); }
+              console.log('$p ZIP round-trip OK: ' + files.length + ' entries, ' + zip.length + ' bytes');
+            "
+          done
 
       - name: Validate Docker Compose files
         run: |
