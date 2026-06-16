@@ -1290,12 +1290,33 @@ function getHTML() {
   .mode-switch button:not(.active):hover { color: var(--text); }
   /* Show only the active mode's nav items, console pane and status text */
   body.mode-tenant .wizard-nav button.nav-local { display: none; }
-  body.mode-local  .wizard-nav button:not(.nav-local) { display: none; }
+  /* Local Stack & Gateway hides the left step rail entirely (like Help) and uses the
+     freed space for the form + console. */
+  body.mode-local  .wizard-nav { display: none; }
+  body.mode-local  .layout { grid-template-columns: minmax(440px, 1.1fr) minmax(380px, 1fr); }
   .console-pane { display: none; }
   body.mode-tenant #console-tenant { display: block; }
   body.mode-local  #console-local  { display: block; }
   body.mode-tenant #status-text-local  { display: none; }
   body.mode-local  #status-text-tenant { display: none; }
+
+  /* Help view (third mode) — full-width scrollable reference; hides the 3-col layout */
+  #help-view { display: none; overflow-y: auto; height: calc(100vh - 56px); }
+  body.mode-help .layout { display: none; }
+  body.mode-help #help-view { display: block; }
+  .help-wrap { max-width: 880px; margin: 0 auto; padding: 30px 28px 64px; color: var(--text); }
+  .help-wrap h1 { font-size: 24px; font-weight: 700; color: var(--text-bright); margin: 0 0 6px; }
+  .help-lead { color: var(--text-dim); font-size: 14px; margin: 0 0 22px; line-height: 1.55; }
+  .help-wrap h2 { font-size: 16px; font-weight: 700; color: var(--qlik-green); margin: 30px 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+  .help-wrap h3 { font-size: 13px; font-weight: 700; margin: 16px 0 5px; color: var(--text-bright); }
+  .help-wrap p, .help-wrap li { font-size: 13px; line-height: 1.6; }
+  .help-wrap ul, .help-wrap ol { margin: 6px 0 10px 20px; }
+  .help-wrap code { background: var(--surface2); padding: 1px 5px; border-radius: 4px; font-family: monospace; font-size: 12px; }
+  .help-wrap table { width: 100%; border-collapse: collapse; margin: 10px 0 14px; font-size: 12.5px; }
+  .help-wrap th, .help-wrap td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  .help-wrap th { color: var(--text-dim); font-weight: 600; text-transform: uppercase; font-size: 11px; letter-spacing: 0.4px; }
+  .help-wrap a { color: var(--qlik-green); }
+  .help-callout { background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--qlik-green); border-radius: 6px; padding: 10px 14px; margin: 12px 0; font-size: 12.5px; line-height: 1.55; }
 
   /* Layout — three columns: step rail · form · console */
   .layout {
@@ -1890,6 +1911,7 @@ function getHTML() {
   <div class="mode-switch" id="mode-switch">
     <button id="mode-btn-tenant" class="active" onclick="setMode('tenant')">Tenant Deployment</button>
     <button id="mode-btn-local" onclick="setMode('local')">Local Stack &amp; Gateway</button>
+    <button id="mode-btn-help" onclick="setMode('help')">Help</button>
   </div>
   <span id="run-badge" class="badge badge-gold" style="display:none">RUNNING</span>
   <div class="header-right">
@@ -2125,7 +2147,7 @@ function getHTML() {
           <label>Enable Spaces</label>
           <label class="switch"><input type="checkbox" id="f-en-spaces" checked><span class="slider"></span></label>
         </div>
-        <div class="field-row">
+        <div class="field-row-3">
           <div class="field">
             <label>Shared Space Name</label>
             <input type="text" id="f-space-shared" placeholder="MCG Demo - Development">
@@ -2134,6 +2156,13 @@ function getHTML() {
             <label>Managed Space Name</label>
             <input type="text" id="f-space-managed" placeholder="MCG Demo - Published">
           </div>
+          <div class="field">
+            <label>Data Space Name</label>
+            <input type="text" id="f-space-data" placeholder="MCG Demo - DI">
+          </div>
+        </div>
+        <div class="hint" style="margin-top:4px;padding-left:2px">
+          <strong>Shared</strong> = where you build (analytics dev). <strong>Managed</strong> = governed / published content. <strong>Data</strong> = Data Integration source connections (gateway-bound DB sources, Kafka, Salesforce).
         </div>
 
         <div class="hint" style="margin-top:12px">
@@ -2562,8 +2591,6 @@ function getHTML() {
     <div class="console-toolbar">
       <div class="console-tabs">
         <button class="ctab active">Output</button>
-        <button class="ctab" disabled title="Live output is shown in this pane">Logs</button>
-        <button class="ctab" disabled title="Configuration diff — coming soon">Diff</button>
       </div>
       <div class="console-actions">
         <button onclick="clearConsole()">Clear</button>
@@ -2586,6 +2613,172 @@ function getHTML() {
         <p>Pick a compose profile and click <strong>Deploy Local Stack</strong> to stream live logs here.</p>
       </div>
     </div>
+  </div>
+</div>
+
+<div id="help-view">
+  <div class="help-wrap">
+    <h1>MCG Deploy — Help &amp; Reference</h1>
+    <p class="help-lead">How to stand up and run the Meridian Commerce Group (MCG) Qlik Cloud demo — what each asset is for, how the pieces connect, the setup order, and where things commonly trip up.</p>
+
+    <h2>1 · What this demo is</h2>
+    <p>MCG is an end-to-end Qlik Cloud demo. Intentionally messy operational data from three sources flows through <strong>Qlik Talend Data Integration</strong> into an <strong>Open Lakehouse</strong>, is governed and published as <strong>data products</strong>, and is consumed by <strong>analytics apps</strong> and <strong>AI</strong>. It is organized around four stories:</p>
+    <ul>
+      <li><strong>Integrations</strong> — three very different sources (database CDC, IoT streaming, SaaS API) unified into one lakehouse.</li>
+      <li><strong>Governance</strong> — lineage, trust scores, stewardship, glossary, and data products.</li>
+      <li><strong>Analytics</strong> — two domain apps reading governed gold tables via Athena.</li>
+      <li><strong>AI &amp; Outcomes</strong> — Qlik Predict, Qlik Answers, and the agentic experience.</li>
+    </ul>
+
+    <h2>2 · Demo assets &amp; their intent</h2>
+    <table>
+      <tr><th>Asset</th><th>What it is</th><th>Why it is in the demo</th></tr>
+      <tr><td>Local stack (Docker)</td><td>Kafka + simulators + the DMG container, started from <em>Local Stack &amp; Gateway</em></td><td>Generates realistic, intentionally-flawed source data on your machine</td></tr>
+      <tr><td>Data Movement gateway</td><td>The <code>mcg-qlik-dmg</code> container (PostgreSQL/MySQL/SQL Server + the gateway agent)</td><td>Lets Qlik Cloud reach the local databases for log-based CDC</td></tr>
+      <tr><td>Spaces</td><td>Development (shared), Published (managed), MCG Demo - DI (data)</td><td>Separate where you build, where governed content is published, and where DI source connections live</td></tr>
+      <tr><td>Data connections</td><td>PostgreSQL, Kafka, Salesforce sources + Amazon Athena read-back</td><td>The inputs to the pipeline and the read path analytics uses</td></tr>
+      <tr><td>Pipelines (QTCP)</td><td>Landing &rarr; transform &rarr; datamart tasks</td><td>Bronze &rarr; Silver &rarr; Gold medallion transforms with data-quality fixes</td></tr>
+      <tr><td>Data products</td><td>Gold-layer tables registered as products</td><td>Governed, shareable, analytics-ready datasets with trust scores</td></tr>
+      <tr><td>Apps</td><td>Supply Chain Operations + Delivery &amp; Customer Experience</td><td>Demonstrate analytics over the governed gold products</td></tr>
+      <tr><td>Knowledge base + Assistant</td><td>Operational docs + a Qlik Answers assistant</td><td>Document intelligence and conversational AI over MCG content</td></tr>
+      <tr><td>Automations</td><td>Teams alerts, pipeline-health automation</td><td>Operational alerting / closed-loop actions</td></tr>
+      <tr><td>Glossary</td><td>Business glossary terms</td><td>Shared vocabulary tied to the governed data</td></tr>
+      <tr><td>Theme</td><td>MCG dark theme</td><td>Branded look for the demo apps</td></tr>
+    </table>
+
+    <h2>3 · Architecture at a glance</h2>
+    <p><strong>Sources</strong> (PostgreSQL WMS · Kafka IoT · Salesforce CRM) &rarr; <strong>gateway / connectivity</strong> &rarr; <strong>Data Integration project</strong> (landing &rarr; transform &rarr; datamart) &rarr; <strong>Open Lakehouse</strong> (Apache Iceberg on S3 — bronze/silver/gold) &rarr; <strong>Amazon Athena</strong> &rarr; <strong>analytics apps + AI</strong>.</p>
+    <p>Each source uses the right gateway type:</p>
+    <table>
+      <tr><th>Gateway</th><th>Used for</th><th>In this demo</th></tr>
+      <tr><td>Data Movement gateway</td><td>Database CDC sources (Postgres/MySQL/SQL Server)</td><td>The on-prem <code>mcg-qlik-dmg</code> container — PostgreSQL source</td></tr>
+      <tr><td>Streaming (network integration)</td><td>Kafka / streaming sources</td><td>The Kafka IoT source (<code>external_data_provider</code>)</td></tr>
+      <tr><td>Qlik managed gateway</td><td>SaaS sources reachable from Qlik Cloud</td><td>Salesforce (<code>$$qlikManagedGateway$$</code>)</td></tr>
+      <tr><td>Direct Access gateway</td><td>Analytics data loads via a gateway</td><td>Not used here</td></tr>
+    </table>
+
+    <h2>4 · Setup order</h2>
+    <ol>
+      <li><strong>Deploy the local stack</strong> — <em>Local Stack &amp; Gateway</em> &rarr; pick a profile (Full Stack + DMG) &rarr; <strong>Deploy Local Stack</strong>.</li>
+      <li><strong>Register the Data Movement gateway</strong> — <strong>Register Gateway / Get Token</strong> prints the token &rarr; Qlik Cloud &rarr; <strong>Administration &rarr; Data Gateways &rarr; Register</strong> &rarr; wait for <strong>Connected</strong>.</li>
+      <li><strong>Copy the Data gateway ID</strong> into <em>Tenant Deployment &rarr; Data Connections &rarr; Data Gateway ID</em> (see §5).</li>
+      <li><strong>Create the source connections</strong> in the <strong>MCG Demo - DI</strong> data space — PostgreSQL is auto-created by the deploy; Kafka &amp; Salesforce are created in the Data Integration UI.</li>
+      <li><strong>Run the tenant deploy</strong> — spaces, pipelines, data products, apps, knowledge base, automations, glossary.</li>
+    </ol>
+
+    <h2>5 · Gateway &amp; connections</h2>
+    <h3>Register the gateway</h3>
+    <p>On <em>Local Stack &amp; Gateway</em>, click <strong>Register Gateway / Get Token</strong> (or run <code>agentctl qcs get_registration</code> inside the <code>mcg-qlik-dmg</code> container). Paste the token in Qlik Cloud &rarr; <strong>Administration &rarr; Data Gateways &rarr; Register</strong> and wait for <strong>Connected</strong>.</p>
+    <h3>Find the Data gateway ID</h3>
+    <p>Qlik Cloud &rarr; <strong>Administration &rarr; Data Gateways</strong> &rarr; your Data Movement gateway &rarr; click the <strong>Data gateway ID</strong> value to copy it, then paste it into the <strong>Data Gateway ID</strong> field on the Data Connections page.</p>
+    <h3>Per-source notes</h3>
+    <ul>
+      <li><strong>PostgreSQL</strong> — created by the deploy as a gateway-bound replication source (<code>repsrc_postgresql</code>) in MCG Demo - DI. Needs the Data Gateway ID.</li>
+      <li><strong>Kafka (IoT)</strong> — a streaming source (<code>external_data_provider</code>) over a network integration, <em>not</em> the Data Movement gateway. Created in the DI UI.</li>
+      <li><strong>Salesforce</strong> — a Connected App (OAuth) over Qlik's managed gateway; created in the DI UI with an interactive Salesforce login. Needs Salesforce Instance, Login Domain, Client Id &amp; Secret.</li>
+      <li><strong>Amazon S3 / Athena</strong> — credentialed connectors created in the UI (IAM keys).</li>
+    </ul>
+
+    <h2>6 · Analytics apps &amp; sheets (Qlik MCP)</h2>
+    <p>The two domain apps — <strong>MCG Supply Chain Operations</strong> and <strong>MCG Delivery &amp; Customer Experience</strong> — read the gold data products <strong>through Amazon Athena</strong> over the Open Lakehouse. The Build Apps step creates each app <em>empty</em> (load script only, mapped to its gold product); the <strong>sheets are authored conversationally with the Qlik MCP server</strong>.</p>
+    <p>All sheet-authoring prompts (5 per app) live in <code>deploy/apps/MCP_Sheet_Prompts.md</code> (generated from <code>deploy/apps/mcp-sheet-prompts.json</code> — the Build Apps page also surfaces them with copy buttons). Connect Claude Desktop / Code to your tenant's MCP endpoint (<code>/api/ai/mcp</code>) with a Bearer API key, then paste each prompt.</p>
+    <table>
+      <tr><th>App</th><th>Sheets (authored via MCP)</th></tr>
+      <tr><td>Supply Chain Operations</td><td>Inventory Health Overview · Cold Chain Monitoring · Product Data Quality · Compliance &amp; Recall · Executive Cost Impact</td></tr>
+      <tr><td>Delivery &amp; Customer Experience</td><td>Last Mile Performance · Live Shipment Tracking · WISMO &amp; Customer Impact · Order Timeline · Address Quality Impact</td></tr>
+    </table>
+    <p>Docs: <a href="https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/QlikMCP/Qlik-MCP-server.htm" target="_blank" rel="noopener">Qlik MCP server &#8599;</a> · <a href="https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/QlikMCP/Qlik-MCP-server-tools.htm" target="_blank" rel="noopener">MCP server tools &#8599;</a></p>
+
+    <h2>7 · Credentials &amp; ports (local)</h2>
+    <table>
+      <tr><th>Service</th><th>Host : Port</th><th>Database</th><th>User / Password</th></tr>
+      <tr><td>PostgreSQL (WMS)</td><td>localhost : 5432</td><td>mcg_wms</td><td>mcg_admin / mcg_demo_2025 (also postgres / Qlik1234)</td></tr>
+      <tr><td>MySQL (DMG)</td><td>localhost : 3306</td><td>—</td><td>root / Qlik1234</td></tr>
+      <tr><td>SQL Server (DMG)</td><td>localhost : 1433</td><td>—</td><td>sa / Qlik1234!</td></tr>
+      <tr><td>Kafka broker</td><td>localhost : 9092</td><td>—</td><td>PLAINTEXT (no auth)</td></tr>
+      <tr><td>Confluent Control Center</td><td>localhost : 9021</td><td>—</td><td>—</td></tr>
+    </table>
+    <div class="help-callout">WMS tables live in the <code>public</code> schema (<code>inventory_positions</code>, <code>warehouse_events</code>, <code>shipments</code>). The WMS Postgres is the DMG container's bundled instance.</div>
+
+    <h2>8 · Troubleshooting</h2>
+    <ul>
+      <li><strong>Can't see <code>mcg_wms</code> in DBeaver</strong> — set the connection's Database to <code>mcg_wms</code> (or tick "Show all databases"), and use <code>mcg_admin</code> / <code>mcg_demo_2025</code>. The default <code>postgres</code> database won't list it.</li>
+      <li><strong>CDC isn't capturing changes</strong> — PostgreSQL needs <code>wal_level = logical</code>. The gateway container sets this on a fresh build; if it still shows <code>replica</code>, rebuild the gateway.</li>
+      <li><strong>Gateway shows Disconnected</strong> — use <strong>Start Gateway</strong> on Local Stack &amp; Gateway, or check the <code>mcg-qlik-dmg</code> container.</li>
+      <li><strong>"Gateway not found" when creating a connection</strong> — use the connect-string path with <code>agentId=&lt;Data gateway ID&gt;</code> + <code>allowManagedGateway=true</code> (the deploy does this automatically).</li>
+      <li><strong>Kafka source won't consume</strong> — the local broker is open PLAINTEXT; match the streaming source's auth instead of using SASL with a placeholder user.</li>
+    </ul>
+
+    <h2>9 · Documentation &amp; demo collateral</h2>
+    <p>All materials live in the repo (<code>documents/</code> and the project root). Regenerate the generated ones with <code>node generators/generate-all.js</code>.</p>
+
+    <h3>Setup &amp; build guides (Word)</h3>
+    <ul>
+      <li><strong>MCG Setup Guide</strong> — <code>documents/MCG_Setup_Guide.docx</code> — full environment setup, incl. gateway registration &amp; the source connections (§3.7–3.8).</li>
+      <li><strong>Creation Guide — Automations &amp; Pipelines</strong> — <code>documents/MCG_Creation_Guide_Automations_Pipelines.docx</code> — building the CDC pipelines, automations, and data products.</li>
+      <li><strong>MCP Sheet Prompts</strong> — <code>deploy/apps/MCP_Sheet_Prompts.md</code> — the Qlik MCP prompts that build each app's sheets (see §6).</li>
+    </ul>
+
+    <h3>Demo scripts (Word — 13)</h3>
+    <p>In <code>documents/demo-scripts/</code> — each is a Tell → Show → Tell walkthrough of one topic:</p>
+    <table>
+      <tr><th>#</th><th>Demo script</th><th>What it covers</th></tr>
+      <tr><td>01</td><td>Infrastructure &amp; Data Sources</td><td>Stand up the local stack and the three intentionally-messy sources: PostgreSQL WMS, Kafka IoT, Salesforce CRM.</td></tr>
+      <tr><td>02</td><td>Connections &amp; Spaces</td><td>Create the Qlik Cloud spaces and the gateway-bound source connections.</td></tr>
+      <tr><td>03</td><td>Open Lakehouse</td><td>Land the sources into the Open Lakehouse (bronze → silver → gold, Apache Iceberg on S3); analytics reads it back via <strong>Amazon Athena</strong>.</td></tr>
+      <tr><td>04</td><td>Lineage / Profiling / Trust</td><td>End-to-end lineage, data profiling, and trust scores across the medallion layers.</td></tr>
+      <tr><td>05</td><td>Data Products API</td><td>Register the gold tables as governed data products (via API) with trust scores.</td></tr>
+      <tr><td>06</td><td>Analytics Apps</td><td>Build the two domain apps over the gold products; sheets are authored via the Qlik MCP server (see §6).</td></tr>
+      <tr><td>07</td><td>Alerting &amp; Reporting</td><td>Data alerts, reports, and subscriptions on the governed data.</td></tr>
+      <tr><td>08</td><td>Qlik Predict</td><td>AutoML predictions (e.g. late-delivery / risk) on the supply-chain data.</td></tr>
+      <tr><td>09</td><td>Qlik Answers</td><td>Document intelligence — ask natural-language questions over the MCG knowledge base.</td></tr>
+      <tr><td>10</td><td>Stewardship</td><td>Human-in-the-loop data-quality stewardship workflows.</td></tr>
+      <tr><td>11</td><td>Business Glossary</td><td>Publish the business glossary and apply data security / classification.</td></tr>
+      <tr><td>12</td><td>Automations</td><td>Qlik Automations — Teams alerts, pipeline-health, closed-loop actions.</td></tr>
+      <tr><td>13</td><td>Discovery Agent &amp; MCP</td><td>Enable the Discovery Agent and the Qlik MCP server for conversational / agentic analytics.</td></tr>
+    </table>
+
+    <h3>Presentations (PowerPoint — 4)</h3>
+    <ul>
+      <li><strong>Demo Overview — Four Stories</strong> — <code>MCG_Demo_Overview_Four_Stories.pptx</code> (incl. the gateway &amp; source-connections slide).</li>
+      <li><strong>Technology Architecture</strong> — <code>MCG_Technology_Architecture.pptx</code> (incl. the Gateway &amp; Source Connections flow slide).</li>
+      <li><strong>Marketecture</strong> — <code>MCG_Marketecture.pptx</code>.</li>
+      <li><strong>Company Profile &amp; Data Quality</strong> — <code>MCG_Company_Profile_Data_Quality.pptx</code> (business / "7 Nightmares" deck).</li>
+    </ul>
+
+    <h3>Data reference</h3>
+    <ul>
+      <li><strong>Business Glossary</strong> — <code>documents/MCG_Business_Glossary.xlsx</code> (also loaded as a Qlik glossary).</li>
+    </ul>
+
+    <h3>Operational &amp; business documents (Word — 25)</h3>
+    <p>The MCG corpus under <code>documents/</code> — loaded into the <strong>Knowledge Base</strong> and answered by the <strong>Assistant</strong> (Qlik Answers):</p>
+    <table>
+      <tr><th>Folder</th><th>Documents</th></tr>
+      <tr><td>sops/ (5)</td><td>Goods Receiving · Cycle Count · Product Recall · Cold Chain Monitoring · WISMO Call Handling</td></tr>
+      <tr><td>policies/ (4)</td><td>Cold Chain Management · EU Food Safety Compliance · Data Quality Standards · Shipping &amp; Delivery Promise</td></tr>
+      <tr><td>carrier_contracts/ (3)</td><td>DPD Service Agreement · FedEx Rate Card · NinjaVan Contract Amendment</td></tr>
+      <tr><td>incident_reports/ (2)</td><td>Rotterdam Pipeline Failure · TransFrio Spoilage</td></tr>
+      <tr><td>supplier_comms/ (2)</td><td>FreshDirect Performance Review · TransFrio Contract Review</td></tr>
+      <tr><td>training/ (2)</td><td>WMS↔SAP Integration Guide · Cold Chain Monitoring for Drivers</td></tr>
+      <tr><td>purchase_orders/ (2)</td><td>Samsung Electronics · NinjaVan Packaging</td></tr>
+      <tr><td>compliance · recall_notices · project_briefs · meeting_minutes · shipping (1 each)</td><td>NVWA Corrective Action Plan · Lettuce Recall · Project CLARITY Business Case · Q3 Supply Chain Review · Delivery Manifest</td></tr>
+    </table>
+
+    <h3>Source repositories (GitHub)</h3>
+    <ul>
+      <li><strong><a href="https://github.com/robertschoenfeldqlik/qlik_data_movement_gateway_rdbms_container" target="_blank" rel="noopener">qlik_data_movement_gateway_rdbms_container &#8599;</a></strong> — the <code>mcg-qlik-dmg</code> container (Oracle Linux 9 + systemd) bundling the Qlik Data Movement gateway with PostgreSQL / MySQL / SQL Server. Built &amp; run by <em>Local Stack &amp; Gateway → Deploy</em>; vendored here as the <code>infrastructure/dmg/gateway</code> submodule. <strong>Use:</strong> the on-prem gateway + databases the DB CDC sources route through (§5).</li>
+      <li><strong><a href="https://github.com/robertschoenfeldqlik/OLH_Terra_Utility" target="_blank" rel="noopener">OLH_Terra_Utility &#8599;</a></strong> — a wizard-driven tool (AWS CLI + Terraform) that <strong>speeds up creating a Qlik Open Lakehouse cluster</strong> by provisioning the AWS resources it needs (S3, KMS, IAM, Kinesis, Glue Catalog, SSM Parameter Store). Run <code>run_qlik_deploy_gui.bat</code> (Windows) or <code>qlik_deploy_olh.sh</code> (Mac/Linux). <strong>Use:</strong> quickly stand up the Open Lakehouse cluster and the AWS infrastructure it lands into and that <strong>Amazon Athena</strong> reads (§3, §6) — before deploying the pipelines.</li>
+    </ul>
+
+    <h2>Links</h2>
+    <ul>
+      <li><a href="https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/Gateways/dm-gateway-setting-up.htm" target="_blank" rel="noopener">Set up the Data Movement gateway &#8599;</a></li>
+      <li><a href="https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/Gateways/setting-up-gateways.htm" target="_blank" rel="noopener">Data gateways overview (types) &#8599;</a></li>
+      <li><a href="https://qlik.dev/apis/rest/data-connections/" target="_blank" rel="noopener">Data Connections REST API &#8599;</a></li>
+      <li><a href="https://github.com/robertschoenfeldqlik/qlik_data_movement_gateway_rdbms_container" target="_blank" rel="noopener">GitHub — qlik_data_movement_gateway_rdbms_container (gateway container) &#8599;</a></li>
+      <li><a href="https://github.com/robertschoenfeldqlik/OLH_Terra_Utility" target="_blank" rel="noopener">GitHub — OLH_Terra_Utility (speeds up creating an Open Lakehouse cluster) &#8599;</a></li>
+    </ul>
   </div>
 </div>
 
@@ -2613,9 +2806,13 @@ function getHTML() {
     currentMode = mode;
     document.body.classList.toggle('mode-tenant', mode === 'tenant');
     document.body.classList.toggle('mode-local', mode === 'local');
+    document.body.classList.toggle('mode-help', mode === 'help');
     document.getElementById('mode-btn-tenant').classList.toggle('active', mode === 'tenant');
     document.getElementById('mode-btn-local').classList.toggle('active', mode === 'local');
+    var hb = document.getElementById('mode-btn-help');
+    if (hb) hb.classList.toggle('active', mode === 'help');
     if (mode === 'local') showPage(1);
+    else if (mode === 'help') { /* Help is a static view shown via CSS — no wizard page */ }
     else showPage(_lastTenantPage);
   }
 
@@ -2763,6 +2960,7 @@ function getHTML() {
     if (cfg.spaces) {
       setVal('f-space-shared', cfg.spaces.shared);
       setVal('f-space-managed', cfg.spaces.managed);
+      setVal('f-space-data', cfg.spaces.data);
     }
 
     // Docker
@@ -3716,6 +3914,7 @@ function getHTML() {
       spaces: {
         shared: getVal('f-space-shared') || 'MCG Demo - Development',
         managed: getVal('f-space-managed') || 'MCG Demo - Published',
+        data: getVal('f-space-data') || 'MCG Demo - DI',
       },
       enabledComponents: {
         docker: false,  // Local stack + DMG gateway deploy separately (Local Stack & Gateway tab), never as part of the tenant deploy
