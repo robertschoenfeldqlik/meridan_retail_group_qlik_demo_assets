@@ -589,8 +589,14 @@ async function runDockerCompose(res, options) {
     Connection: 'keep-alive',
   });
 
+  let clientOpen = true;
   const send = (type, data) => {
-    res.write(`event: ${type}\ndata: ${JSON.stringify(data)}\n\n`);
+    if (!clientOpen) return;
+    try {
+      res.write(`event: ${type}\ndata: ${JSON.stringify(data)}\n\n`);
+    } catch (_) {
+      clientOpen = false;  // socket already gone — stop writing to it
+    }
   };
 
   // Save env vars if provided (skip for prune — no need to overwrite .env)
@@ -806,7 +812,7 @@ async function runDockerCompose(res, options) {
       code,
       message: code === 0 ? `Docker ${action} completed.` : `Docker ${action} finished with exit code ${code}.`,
     });
-    res.end();
+    if (clientOpen) { try { res.end(); } catch (_) {} }
   });
 
   child.on('error', (err) => {
@@ -814,15 +820,16 @@ async function runDockerCompose(res, options) {
     activeDockerProcess = null;
     send('log', { level: 'error', text: `Process error: ${err.message}` });
     send('status', { state: 'error', message: err.message });
-    res.end();
+    if (clientOpen) { try { res.end(); } catch (_) {} }
   });
 
+  // A dropped console must NOT cancel a long-running build (e.g. the DMG
+  // gateway image). Mark the client gone and stop the heartbeat, but let the
+  // operation finish — `docker compose up -d` runs detached and the build
+  // continues in the daemon. Cancel deliberately with Stop Containers / Stop.
   res.on('close', () => {
+    clientOpen = false;
     clearInterval(heartbeat);
-    if (activeDockerProcess === child) {
-      child.kill('SIGTERM');
-      activeDockerProcess = null;
-    }
   });
 }
 
@@ -1667,7 +1674,7 @@ function getHTML() {
   <div class="sidebar">
     <div class="wizard-nav" id="wizard-nav">
       <button class="active" onclick="showPage(0)"><span class="step-num">1</span>Connection & Auth<span class="step-check" id="check-0"></span></button>
-      <button onclick="showPage(1)"><span class="step-num">2</span>Docker Containers<span class="step-check" id="check-1"></span></button>
+      <button onclick="showPage(1)"><span class="step-num">2</span>Local Stack &amp; Gateway<span class="step-check" id="check-1"></span></button>
       <button onclick="showPage(2)"><span class="step-num">3</span>Spaces & Infrastructure<span class="step-check" id="check-2"></span></button>
       <button onclick="showPage(3)"><span class="step-num">4</span>Data Connections<span class="step-check" id="check-3"></span></button>
       <button onclick="showPage(4)"><span class="step-num">5</span>Pipelines<span class="step-check" id="check-4"></span></button>
@@ -1749,12 +1756,11 @@ function getHTML() {
 
       <!-- Page 1: Docker Containers -->
       <div class="wizard-page" id="page-1">
-        <div class="page-title">Docker Containers</div>
-        <div class="page-desc">Launch simulator and Data Movement Gateway containers. Configure environment variables for Docker Compose.</div>
+        <div class="page-title">Local Stack &amp; Gateway</div>
+        <div class="page-desc">Start the local data sources (Kafka, PostgreSQL, simulators) and the optional Data Movement Gateway on this machine.</div>
 
-        <div class="toggle-row">
-          <label>Enable Docker Containers</label>
-          <label class="switch"><input type="checkbox" id="f-en-docker" checked><span class="slider"></span></label>
+        <div class="hint" style="background:rgba(13,124,143,0.12);border:1px solid var(--teal);border-radius:6px;padding:8px 12px;margin-bottom:10px">
+          <strong>Deployed separately from the tenant.</strong> These containers run locally and are <strong>not</strong> part of the tenant <em>Deploy</em> step — start/stop them here on their own timeline. The Data Movement Gateway image build can take several minutes; closing this page won't cancel it (it builds in the Docker daemon).
         </div>
 
         <div class="section-divider">Stack Selection</div>
@@ -2721,7 +2727,10 @@ function getHTML() {
 
   // --- Docker → Data Connections prefill ---
   function prefillFromDocker() {
-    const dockerEnabled = document.getElementById('f-en-docker') && document.getElementById('f-en-docker').checked;
+    // The local stack is the demo default; prefill empty connection fields with
+    // its localhost values. (Docker is deployed separately from the tenant now,
+    // so this is purely a convenience — users override for external sources.)
+    const dockerEnabled = true;
     const banner = document.getElementById('docker-prefill-banner');
     if (!dockerEnabled) {
       if (banner) banner.style.display = 'none';
@@ -3240,7 +3249,7 @@ function getHTML() {
         managed: getVal('f-space-managed') || 'MCG Demo - Published',
       },
       enabledComponents: {
-        docker: isChecked('f-en-docker'),
+        docker: false,  // Local infra + DMG gateway deploy separately (Infrastructure & Gateway tab), never as part of the tenant deploy
         infrastructure: isChecked('f-en-infra'),
         spaces: isChecked('f-en-spaces'),
         connections: isChecked('f-en-connections'),
@@ -3448,7 +3457,7 @@ function getHTML() {
     renderPreflight();
     const el = document.getElementById('deploy-summary');
     const en = {
-      docker: isChecked('f-en-docker'),
+      docker: false,
       infrastructure: isChecked('f-en-infra'),
       spaces: isChecked('f-en-spaces'),
       connections: isChecked('f-en-connections'),
@@ -3470,8 +3479,6 @@ function getHTML() {
     html += '</div>';
 
     const steps = [
-      ['docker', 'Docker Containers'],
-      ['infrastructure', 'Infrastructure (Kafka)'],
       ['spaces', 'Spaces'],
       ['connections', 'Data Connections'],
       ['theme', 'Theme Upload'],
