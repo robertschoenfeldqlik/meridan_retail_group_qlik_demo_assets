@@ -322,6 +322,16 @@ function module02() {
     numberedItem(4, "Data Movement Gateway installed (for PostgreSQL CDC)"),
     numberedItem(5, "Data Gateway - Streaming installed (for Kafka streaming)"),
 
+    heading("Gateway & Source Connections: How They Connect", 2),
+    para("MCG's databases run locally in the mcg-qlik-dmg container. Qlik Cloud reaches them through a registered Data Movement gateway — a one-time registration, then one connection per source created inside a Data Integration project."),
+    para("Register the gateway:"),
+    numberedItem(1, "MCG Deploy UI → Local Stack & Gateway → Register Gateway / Get Token (or run agentctl in the mcg-qlik-dmg container) to print the registration token."),
+    numberedItem(2, "Qlik Cloud → Administration → Data Gateways → Register; paste the token and wait for status Connected."),
+    para("Create the source connections (in a Data Integration project):"),
+    numberedItem(1, "Data Integration → your project → Create connection → PostgreSQL / MySQL / SQL Server."),
+    numberedItem(2, "Select the mcg-qlik-dmg gateway, enter host/port/database/credentials, then test and save."),
+    calloutBox("A Data Movement gateway connection is created in the Data Integration UI by selecting the gateway — the public REST API cannot create it, so the deploy script skips these sources and prints this same guidance instead of a non-functional connection. Kafka as a source needs a Data Gateway - Streaming; Salesforce/S3/Athena are credentialed UI connectors. Full guide: https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/Gateways/dm-gateway-setting-up.htm", "info"),
+
     heading("Demo Methodology: Tell → Show → Tell", 2),
     limbicOpening("MCG had a data engineer who spent 3 days debugging a broken pipeline — only to discover it was feeding the wrong Kafka topic to the wrong team's dashboard. No governance, no separation, no audit trail. That single incident delayed a product launch by two weeks.", "Case Study"),
     interactionPrompt("How do you currently separate development data from production analytics?"),
@@ -338,14 +348,15 @@ function module02() {
     calloutBox("Talking point: The shared space is where analysts build and iterate. The managed space is where governed, published content lives. This separation ensures data consumers always see approved, quality-checked analytics."),
 
     heading("Step 2: PostgreSQL Connection", 3),
-    numberedItem(1, 'Navigate to Data Integration > Connections > Add Connection'),
-    numberedItem(2, "Select PostgreSQL connector"),
-    numberedItem(3, "Configure connection:"),
+    numberedItem(1, 'In Data Integration, open your data project and click Create connection'),
+    numberedItem(2, "Select the PostgreSQL connector"),
+    numberedItem(3, "Select the Data Movement gateway (mcg-qlik-dmg) so Qlik Cloud can reach the local database, then configure:"),
     dataTable(
       ["Setting", "Value"],
       [
         ["Name", "MCG WMS Database"],
-        ["Host", "your-postgres-host (or localhost for Docker)"],
+        ["Data gateway", "mcg-qlik-dmg (Data Movement)"],
+        ["Host", "WMS Postgres as seen from the gateway (Docker service name / host IP)"],
         ["Port", "5432"],
         ["Database", "mcg_wms"],
         ["Username", "mcg_admin"],
@@ -354,6 +365,7 @@ function module02() {
     ),
     numberedItem(4, "Test connection — should succeed and show 3 tables"),
     numberedItem(5, 'Verify tables visible: inventory_positions, warehouse_events, shipments'),
+    calloutBox("This connection must be created here in the Data Integration UI with the gateway selected — the public API cannot create a Data Movement gateway connection.", "info"),
 
     heading("Step 3: Kafka Connection", 3),
     numberedItem(1, "Select Apache Kafka connector via Data Gateway - Streaming"),

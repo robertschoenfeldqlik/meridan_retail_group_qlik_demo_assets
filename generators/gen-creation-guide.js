@@ -93,9 +93,20 @@ function buildCreationGuide() {
 
     heading("Prerequisites", 3),
     para("Data Movement Gateway installed and registered with your Qlik Cloud tenant", { bullet: true }),
-    para("PostgreSQL connection created (see Setup Guide Section 7.1)", { bullet: true }),
+    para("PostgreSQL connection created and bound to the gateway (see Setup Guide Sections 3.7–3.8, or the steps below)", { bullet: true }),
     para("PostgreSQL configured with wal_level=logical (set in Docker Compose)", { bullet: true }),
     para("Publication mcg_wms_pub exists (created by schema.sql)", { bullet: true }),
+
+    heading("Setting Up the Gateway & Source Connection", 3),
+    para("The CDC pipelines below read from a PostgreSQL source connection that routes through the Data Movement gateway. Set that up first — a one-time gateway registration plus a gateway-bound connection created in the Data Integration UI."),
+    para("1. Register the Data Movement gateway:", { bold: true }),
+    numberedItem(1, "In the MCG Deploy UI → Local Stack & Gateway, click Register Gateway / Get Token to print the registration token (or run agentctl inside the mcg-qlik-dmg container):"),
+    cmd('docker exec -it mcg-qlik-dmg bash -lc "cd /opt/qlik/gateway/movement/bin && ./agentctl qcs get_registration"'),
+    numberedItem(2, "In Qlik Cloud → Administration → Data Gateways → Register, paste the token, name the gateway, and wait for status Connected."),
+    para("2. Create the gateway-bound PostgreSQL connection:", { bold: true }),
+    numberedItem(1, "Data Integration → your project → Create connection → PostgreSQL."),
+    numberedItem(2, "Select the mcg-qlik-dmg Data Movement gateway, enter the WMS database host/port/database/credentials, then test and save."),
+    calloutBox("A Data Movement gateway connection can only be created in the Data Integration UI by selecting the gateway — the public REST API cannot create it, so the MCG deploy script skips it and prints this guidance. Kafka sources need a Data Gateway - Streaming instead. Gateway setup: https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/Gateways/dm-gateway-setting-up.htm", "warning"),
 
     heading("Pipeline 1: inventory_positions", 3),
     numberedItem("1", "Navigate to Data Integration → Data pipelines → Create pipeline"),

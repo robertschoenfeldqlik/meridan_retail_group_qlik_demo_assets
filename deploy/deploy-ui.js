@@ -571,94 +571,252 @@ function saveEnvFile(vars) {
   fs.writeFileSync(path.join(INFRA_DIR, '.env'), lines.join('\n') + '\n', 'utf-8');
 }
 
-// Run a docker compose command with SSE streaming
+// Run a docker compose command as a detached, log-backed background job.
+//
+// The build's lifetime is fully independent of any browser connection. All
+// output is appended to an in-memory buffer (dockerJob.lines) that the client
+// polls via GET /api/docker/status. A dropped console, a page reload, or a
+// throttled background tab can never interrupt or "lose" the build — at worst
+// the client misses a poll and catches up on the next one. The only way to
+// cancel is the explicit Stop button (POST /api/docker/stop).
 let activeDockerProcess = null;
+let dockerJob = null; // { running, action, code, error, lines:[{level,text}], startedAt }
 
-async function runDockerCompose(res, options) {
-  if (activeDockerProcess) {
-    res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' });
-    res.write(`event: log\ndata: ${JSON.stringify({ level: 'error', text: 'A Docker operation is already running. Please wait for it to finish.' })}\n\n`);
-    res.write(`event: status\ndata: ${JSON.stringify({ state: 'error', message: 'A Docker operation is already running.' })}\n\n`);
-    res.end();
+function pushDockerLog(level, text) {
+  if (!dockerJob) return;
+  dockerJob.lines.push({ level: level, text: text });
+  dockerJob.lastOutputAt = Date.now();  // for the client keepalive / "waiting for update" indicator
+}
+
+function fmtMs(ms) {
+  const s = Math.max(0, Math.round((ms || 0) / 1000));
+  if (s < 60) return s + 's';
+  const m = Math.floor(s / 60), r = s % 60;
+  return m + 'm' + (r < 10 ? '0' : '') + r + 's';
+}
+
+// Sanity-check the stack: parse `docker compose ps` and report per-service
+// running/health state plus a one-line summary, into the job log.
+async function dockerSanityCheck(composeFile) {
+  pushDockerLog('section', '\n── Sanity check: docker compose ps ──');
+  await new Promise((resolve) => {
+    let out = '', errOut = '';
+    const child = spawn('docker', ['compose', '-f', composeFile, 'ps', '--format', 'json'], {
+      cwd: INFRA_DIR, env: { ...process.env }, stdio: ['ignore', 'pipe', 'pipe'], shell: true,
+    });
+    child.stdout.on('data', (d) => { out += d.toString(); });
+    child.stderr.on('data', (d) => { errOut += d.toString(); });
+    child.on('close', () => {
+      let rows = [];
+      const trimmed = out.trim();
+      // Newer docker emits one JSON object per line; some versions emit a JSON array.
+      if (trimmed.startsWith('[')) {
+        try { rows = JSON.parse(trimmed); } catch (_) {}
+      } else {
+        rows = trimmed.split('\n').map((l) => l.trim()).filter(Boolean)
+          .map((l) => { try { return JSON.parse(l); } catch (_) { return null; } }).filter(Boolean);
+      }
+      if (!rows.length) {
+        pushDockerLog('warn', 'No services reported — the stack does not appear to be running.' + (errOut.trim() ? ' ' + errOut.trim() : ''));
+        return resolve();
+      }
+      let up = 0, healthy = 0, unhealthy = 0;
+      for (const r of rows) {
+        const name = r.Name || r.Service || '(unknown)';
+        const state = r.State || '';
+        const status = r.Status || '';
+        const health = r.Health || '';
+        const running = /running|up/i.test(state) || /\bUp\b/.test(status);
+        const isUnhealthy = /unhealthy/i.test(health) || /unhealthy/i.test(status);
+        const isHealthy = !isUnhealthy && (/healthy/i.test(health) || /\(healthy\)/i.test(status));
+        if (running) up++;
+        if (isHealthy) healthy++;
+        if (isUnhealthy) unhealthy++;
+        const mark = running && !isUnhealthy ? '✓' : '✗';
+        pushDockerLog(running && !isUnhealthy ? 'success' : 'error',
+          `  ${mark} ${name} — ${status || state || 'unknown'}`);
+      }
+      const total = rows.length;
+      const ok = up === total && unhealthy === 0;
+      pushDockerLog(ok ? 'success' : 'warn',
+        `Sanity check: ${up}/${total} running${healthy ? `, ${healthy} healthy` : ''}${unhealthy ? `, ${unhealthy} UNHEALTHY` : ''}.`
+        + (ok ? ' Stack looks healthy.' : ' Some services may still be starting — re-run Status in a moment.'));
+      resolve();
+    });
+    child.on('error', (e) => { pushDockerLog('error', 'Sanity check could not run: ' + e.message); resolve(); });
+  });
+}
+
+// After a DMG gateway comes up, retrieve and print its registration token so the
+// user can register it in Qlik Cloud → Administration → Data Gateways (the gateway
+// needs admin onboarding before data connections can bind to it).
+async function dockerGatewayRegistrationToken(containerName) {
+  pushDockerLog('section', '\n── Data Movement Gateway: registration token ──');
+  // Pass as ONE pre-quoted command string (not a spawn args array). With shell:true,
+  // an args array doesn't re-quote, so the `bash -lc "cd … && …"` arg gets split and
+  // agentctl never runs. A single string keeps the inner quotes intact cross-platform.
+  const cmdStr = `docker exec ${containerName} bash -lc "cd /opt/qlik/gateway/movement/bin && ./agentctl qcs get_registration"`;
+  const tryGet = () => new Promise((resolve) => {
+    let out = '';
+    const child = spawn(cmdStr, { env: { ...process.env }, stdio: ['ignore', 'pipe', 'pipe'], shell: true });
+    child.stdout.on('data', (d) => { out += d.toString(); });
+    child.stderr.on('data', (d) => { out += d.toString(); });
+    child.on('close', () => resolve(out));
+    child.on('error', (e) => resolve('ERR ' + e.message));
+  });
+  let token = '', noContainer = false;
+  for (let i = 0; i < 6; i++) {
+    const out = await tryGet();
+    const m = out.match(/\{"agentType"[\s\S]*\}/);
+    if (m) { token = m[0].trim(); break; }
+    if (/no such container|is not running/i.test(out)) { noContainer = true; break; }
+    if (i === 0) pushDockerLog('info', 'Waiting for the gateway to finish initializing…');
+    await new Promise((r) => setTimeout(r, 5000));
+  }
+  if (token) {
+    pushDockerLog('success', 'Registration token — copy this and register the gateway in Qlik Cloud → Administration → Data Gateways → Register:');
+    pushDockerLog('info', token);
+    pushDockerLog('info', 'After it shows "Connected", your Postgres/Kafka data connections can bind to this gateway.');
+    pushDockerLog('info', 'Step-by-step: https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/Gateways/dm-gateway-setting-up.htm');
+  } else if (noContainer) {
+    pushDockerLog('error', `Gateway container "${containerName}" is not running. Deploy a DMG profile (Full Stack + DMG, or DMG Gateway) first, then try again.`);
+  } else {
+    pushDockerLog('warn', 'Gateway still initializing — retrieve the token shortly with:');
+    pushDockerLog('info', `docker exec ${containerName} bash -lc "cd /opt/qlik/gateway/movement/bin && ./agentctl qcs get_registration"`);
+  }
+}
+
+// Start or stop ONLY the gateway container (mcg-qlik-dmg), independent of the whole
+// compose stack. Stopping it makes the gateway go Disconnected in Qlik Cloud; starting
+// it reconnects after ~a minute. Used by the Start/Stop Gateway buttons.
+async function dockerGatewayLifecycle(action, containerName) {
+  const verb = action === 'gateway-stop' ? 'stop' : 'start';
+  pushDockerLog('section', `\n── Data Movement Gateway: ${verb} container ──`);
+  const run = (cmdStr) => new Promise((resolve) => {
+    let out = '';
+    const child = spawn(cmdStr, { env: { ...process.env }, stdio: ['ignore', 'pipe', 'pipe'], shell: true });
+    activeDockerProcess = child;
+    child.stdout.on('data', (d) => { out += d.toString(); });
+    child.stderr.on('data', (d) => { out += d.toString(); });
+    child.on('close', (c) => { activeDockerProcess = null; resolve({ code: c, out }); });
+    child.on('error', (e) => { activeDockerProcess = null; resolve({ code: 1, out: e.message }); });
+  });
+  pushDockerLog('info', `$ docker ${verb} ${containerName}`);
+  const r = await run(`docker ${verb} ${containerName}`);
+  if (r.out && r.out.trim()) pushDockerLog('info', r.out.trim());
+  if (r.code !== 0) {
+    pushDockerLog('error', `docker ${verb} ${containerName} failed (exit ${r.code}). Is the gateway deployed? Use Deploy (Full Stack + DMG, or DMG Gateway) first.`);
+    return r.code;
+  }
+  const ps = await run(`docker ps -a --filter name=${containerName} --format "{{.Status}}"`);
+  const state = (ps.out || '').trim();
+  if (verb === 'start') {
+    pushDockerLog('success', `Gateway container started${state ? ' — ' + state : ''}.`);
+    pushDockerLog('info', 'It may take ~a minute to reconnect — watch the state in Qlik Cloud → Administration → Data Gateways.');
+  } else {
+    pushDockerLog('success', `Gateway container stopped${state ? ' — ' + state : ''}.`);
+    pushDockerLog('info', 'It will show as Disconnected in Qlik Cloud → Administration → Data Gateways until you start it again.');
+  }
+  return 0;
+}
+
+function finishDockerJob(code, error) {
+  if (!dockerJob) return;
+  dockerJob.running = false;
+  dockerJob.code = (typeof code === 'number') ? code : null;
+  dockerJob.error = error || null;
+  activeDockerProcess = null;
+}
+
+// Start the job and return immediately — the work runs detached. The HTTP
+// request that triggers this gets a tiny JSON ack, not a long-lived stream.
+function startDockerJob(options) {
+  if (dockerJob && dockerJob.running) {
+    return { started: false, error: 'A Docker operation is already running. Please wait for it to finish.' };
+  }
+  dockerJob = { running: true, action: options.action, code: null, error: null, lines: [], startedAt: Date.now(), lastOutputAt: Date.now() };
+  runDockerJob(options).catch((err) => {
+    const msg = (err && err.message) ? err.message : String(err);
+    pushDockerLog('error', 'Internal error: ' + msg);
+    finishDockerJob(null, msg);
+  });
+  return { started: true };
+}
+
+async function runDockerJob(options) {
+  // Gateway registration token — a standalone action (no compose), used by the
+  // "Register Gateway" button to fetch the token on demand without redeploying.
+  if (options.action === 'gateway-token') {
+    await dockerGatewayRegistrationToken('mcg-qlik-dmg');
+    finishDockerJob(0, null);
     return;
   }
 
-  res.writeHead(200, {
-    'Content-Type': 'text/event-stream',
-    'Cache-Control': 'no-cache',
-    Connection: 'keep-alive',
-  });
-
-  let clientOpen = true;
-  const send = (type, data) => {
-    if (!clientOpen) return;
-    try {
-      res.write(`event: ${type}\ndata: ${JSON.stringify(data)}\n\n`);
-    } catch (_) {
-      clientOpen = false;  // socket already gone — stop writing to it
-    }
-  };
+  // Start/stop just the gateway container — standalone, no compose file needed.
+  if (options.action === 'gateway-start' || options.action === 'gateway-stop') {
+    const code = await dockerGatewayLifecycle(options.action, 'mcg-qlik-dmg');
+    finishDockerJob(code, code === 0 ? null : `Gateway ${options.action === 'gateway-stop' ? 'stop' : 'start'} failed`);
+    return;
+  }
 
   // Save env vars if provided (skip for prune — no need to overwrite .env)
   if (options.envVars && options.action !== 'prune') {
     saveEnvFile(options.envVars);
-    send('log', { level: 'info', text: 'Saved environment variables to infrastructure/.env' });
+    pushDockerLog('info', 'Saved environment variables to infrastructure/.env');
   }
 
   // --- RPM resolution for DMG builds ---
-  if (options.build && options.action === 'up') {
+  // Only DMG profiles ship a gateway RPM. A forced rebuild of a non-DMG profile
+  // (via the Deploy button) sets build=1 too, so gate this on the compose file
+  // being a DMG one — otherwise we'd wrongly demand a gateway RPM for Kafka/sims.
+  if (options.build && options.action === 'up' && /dmg/i.test(options.composeFile)) {
     const rpmDir = path.join(INFRA_DIR, 'dmg', 'gateway', 'rpmfiles');
     const rpmDest = path.join(rpmDir, 'gateway.rpm');
 
     if (options.rpmPath) {
       // Local file path — copy into build context
-      send('log', { level: 'info', text: `Resolving RPM from local path: ${options.rpmPath}` });
+      pushDockerLog('info', `Resolving RPM from local path: ${options.rpmPath}`);
+      if (!fs.existsSync(options.rpmPath)) {
+        pushDockerLog('error', `RPM file not found at: ${options.rpmPath}`);
+        finishDockerJob(null, 'RPM file not found at the specified path.');
+        return;
+      }
       try {
-        if (!fs.existsSync(options.rpmPath)) {
-          send('log', { level: 'error', text: `RPM file not found at: ${options.rpmPath}` });
-          send('status', { state: 'error', message: 'RPM file not found at the specified path.' });
-          res.end();
-          return;
-        }
         if (!fs.existsSync(rpmDir)) fs.mkdirSync(rpmDir, { recursive: true });
         fs.copyFileSync(options.rpmPath, rpmDest);
-        send('log', { level: 'info', text: `Copied RPM to build context: ${rpmDest}` });
+        pushDockerLog('info', `Copied RPM to build context: ${rpmDest}`);
       } catch (err) {
-        send('log', { level: 'error', text: `Failed to copy RPM: ${err.message}` });
-        send('status', { state: 'error', message: `RPM copy failed: ${err.message}` });
-        res.end();
+        pushDockerLog('error', `Failed to copy RPM: ${err.message}`);
+        finishDockerJob(null, `RPM copy failed: ${err.message}`);
         return;
       }
     } else if (options.rpmUrl) {
       // Download URL — fetch via curl
-      send('log', { level: 'info', text: `Downloading RPM from: ${options.rpmUrl}` });
+      pushDockerLog('info', `Downloading RPM from: ${options.rpmUrl}`);
       if (!fs.existsSync(rpmDir)) fs.mkdirSync(rpmDir, { recursive: true });
       try {
         await new Promise((resolve, reject) => {
           const dl = spawn('curl', ['-L', '-f', '-o', rpmDest, '--progress-bar', options.rpmUrl], {
             cwd: INFRA_DIR, stdio: ['ignore', 'pipe', 'pipe'],
           });
+          activeDockerProcess = dl;
           dl.stdout.on('data', (d) => {
-            for (const l of d.toString().split('\n').filter(Boolean)) {
-              send('log', { level: 'info', text: l });
-            }
+            for (const l of d.toString().split('\n').filter(Boolean)) pushDockerLog('info', l);
           });
           dl.stderr.on('data', (d) => {
-            for (const l of d.toString().split('\n').filter(Boolean)) {
-              send('log', { level: 'info', text: l });
-            }
+            for (const l of d.toString().split('\n').filter(Boolean)) pushDockerLog('info', l);
           });
           dl.on('close', (code) => {
+            activeDockerProcess = null;
             if (code === 0) resolve();
             else reject(new Error(`curl exited with code ${code}`));
           });
-          dl.on('error', reject);
+          dl.on('error', (e) => { activeDockerProcess = null; reject(e); });
         });
-        send('log', { level: 'info', text: `RPM downloaded to build context: ${rpmDest}` });
+        pushDockerLog('info', `RPM downloaded to build context: ${rpmDest}`);
       } catch (err) {
-        send('log', { level: 'error', text: `RPM download failed: ${err.message}` });
-        send('status', { state: 'error', message: `RPM download failed: ${err.message}` });
-        res.end();
+        pushDockerLog('error', `RPM download failed: ${err.message}`);
+        finishDockerJob(null, `RPM download failed: ${err.message}`);
         return;
       }
     } else {
@@ -666,16 +824,15 @@ async function runDockerCompose(res, options) {
       if (!fs.existsSync(rpmDest)) {
         const rpmFiles = fs.existsSync(rpmDir) ? fs.readdirSync(rpmDir).filter(f => f.endsWith('.rpm')) : [];
         if (rpmFiles.length === 0) {
-          send('log', { level: 'error', text: 'No RPM file found in build context and no path/URL provided.' });
-          send('log', { level: 'error', text: `Expected at: ${rpmDest}` });
-          send('status', { state: 'error', message: 'Gateway RPM not found. Provide a file path or download URL.' });
-          res.end();
+          pushDockerLog('error', 'No RPM file found in build context and no path/URL provided.');
+          pushDockerLog('error', `Expected at: ${rpmDest}`);
+          finishDockerJob(null, 'Gateway RPM not found. Provide a file path or download URL.');
           return;
         }
         // If there's an RPM with a different name, use it
-        send('log', { level: 'info', text: `Found RPM in build context: ${rpmFiles[0]}` });
+        pushDockerLog('info', `Found RPM in build context: ${rpmFiles[0]}`);
       } else {
-        send('log', { level: 'info', text: 'Gateway RPM found in build context' });
+        pushDockerLog('info', 'Gateway RPM found in build context');
       }
     }
   }
@@ -686,69 +843,45 @@ async function runDockerCompose(res, options) {
 
   // --- Prune: multi-step cleanup ---
   if (action === 'prune') {
-    send('status', { state: 'starting', message: 'Cleaning Docker artifacts...' });
-
     const steps = [
       { label: 'Stopping containers', cmd: 'docker', args: ['compose', '-f', composeFile, 'down', '--remove-orphans'] },
       { label: 'Removing images, volumes & build cache', cmd: 'docker', args: ['system', 'prune', '-a', '-f', '--volumes'] },
     ];
 
-    const heartbeat = setInterval(() => {
-      try { res.write(':heartbeat\n\n'); } catch (_) {}
-    }, 10000);
+    try {
+      for (const step of steps) {
+        const cmdStr = [step.cmd, ...step.args].join(' ');
+        pushDockerLog('info', `\n── ${step.label} ──`);
+        pushDockerLog('info', `> ${cmdStr}`);
 
-    (async () => {
-      try {
-        for (const step of steps) {
-          const cmdStr = [step.cmd, ...step.args].join(' ');
-          send('log', { level: 'info', text: `\n── ${step.label} ──` });
-          send('log', { level: 'info', text: `> ${cmdStr}` });
-
-          await new Promise((resolve, reject) => {
-            const child = spawn(step.cmd, step.args, {
-              cwd: INFRA_DIR, env: { ...process.env },
-              stdio: ['ignore', 'pipe', 'pipe'], shell: true,
-            });
-            activeDockerProcess = child;
-            child.stdout.on('data', (chunk) => {
-              for (const line of chunk.toString().split('\n').filter(Boolean)) {
-                send('log', { level: 'info', text: line });
-              }
-            });
-            child.stderr.on('data', (chunk) => {
-              for (const line of chunk.toString().split('\n').filter(Boolean)) {
-                send('log', { level: line.includes('Error') ? 'error' : 'info', text: line });
-              }
-            });
-            child.on('close', (code) => {
-              activeDockerProcess = null;
-              if (code === 0) resolve();
-              else reject(new Error(`${step.label} failed (exit code ${code})`));
-            });
-            child.on('error', (err) => { activeDockerProcess = null; reject(err); });
+        await new Promise((resolve, reject) => {
+          const child = spawn(step.cmd, step.args, {
+            cwd: INFRA_DIR, env: { ...process.env },
+            stdio: ['ignore', 'pipe', 'pipe'], shell: true,
           });
+          activeDockerProcess = child;
+          child.stdout.on('data', (chunk) => {
+            for (const line of chunk.toString().split('\n').filter(Boolean)) pushDockerLog('info', line);
+          });
+          child.stderr.on('data', (chunk) => {
+            for (const line of chunk.toString().split('\n').filter(Boolean)) pushDockerLog(line.includes('Error') ? 'error' : 'info', line);
+          });
+          child.on('close', (code) => {
+            activeDockerProcess = null;
+            if (code === 0) resolve();
+            else reject(new Error(`${step.label} failed (exit code ${code})`));
+          });
+          child.on('error', (err) => { activeDockerProcess = null; reject(err); });
+        });
 
-          send('log', { level: 'info', text: `✓ ${step.label} — done` });
-        }
-        clearInterval(heartbeat);
-        send('status', { state: 'done', code: 0, message: 'Docker cleanup completed. Ready for fresh rebuild.' });
-        res.end();
-      } catch (err) {
-        clearInterval(heartbeat);
-        activeDockerProcess = null;
-        send('log', { level: 'error', text: err.message });
-        send('status', { state: 'error', message: err.message });
-        res.end();
+        pushDockerLog('info', `✓ ${step.label} — done`);
       }
-    })();
-
-    res.on('close', () => {
-      clearInterval(heartbeat);
-      if (activeDockerProcess) {
-        activeDockerProcess.kill('SIGTERM');
-        activeDockerProcess = null;
-      }
-    });
+      pushDockerLog('info', 'Docker cleanup completed. Ready for fresh rebuild.');
+      finishDockerJob(0, null);
+    } catch (err) {
+      pushDockerLog('error', err.message);
+      finishDockerJob(null, err.message);
+    }
     return;
   }
 
@@ -772,65 +905,88 @@ async function runDockerCompose(res, options) {
   }
 
   const cmdStr = [cmd, ...args].join(' ');
-  send('status', { state: 'starting', message: `Running: ${cmdStr}` });
-  send('log', { level: 'info', text: `> ${cmdStr}` });
-  send('log', { level: 'info', text: `  cwd: ${INFRA_DIR}` });
+  pushDockerLog('info', `> ${cmdStr}`);
+  pushDockerLog('info', `  cwd: ${INFRA_DIR}`);
 
-  const child = spawn(cmd, args, {
-    cwd: INFRA_DIR,
-    env: { ...process.env },
-    stdio: ['ignore', 'pipe', 'pipe'],
-    shell: true,
-  });
+  // Download/build monitor: the DMG image build transfers a large RPM (~850 MB)
+  // and then installs it — Docker can go silent for minutes during those steps.
+  // Emit a clean console line every few seconds of silence so the download is
+  // visibly monitored and never looks stopped. Captures the latest transfer/pull
+  // progress line when available.
+  let lastProgress = '';
+  let lastRealAt = Date.now();  // last time Docker itself emitted a line (not our heartbeat)
+  // BuildKit emits hundreds of near-duplicate per-layer progress lines while it
+  // pulls/transfers the large DMG image. Suppress those from the console and
+  // surface only the latest in the 30s heartbeat — keeps the log readable.
+  const NOISE_RE = /(transferring context|transferring dockerfile|Downloading|Download complete|Downloaded|Pulling fs layer|Pull complete|Pulling|Extracting|Waiting|Verifying Checksum|Already exists|exporting (layers|manifest|config|attestation)|sending tarball|resolve docker\.io)/i;
+  // Heartbeat on a FIXED 30s cadence while running, so the console keeps updating
+  // during the long, quiet image pull/transfer/install — without the per-layer noise.
+  const monitor = setInterval(() => {
+    if (!dockerJob || !dockerJob.running) return;
+    const idleSec = Math.round((Date.now() - lastRealAt) / 1000);
+    pushDockerLog('info', `⏳ ${action} in progress — ${fmtMs(Date.now() - (dockerJob.startedAt || Date.now()))} elapsed`
+      + (lastProgress ? ` · ${lastProgress}` : '')
+      + (idleSec >= 20 ? ` · quiet for ${idleSec}s` : ''));
+  }, 30000);
 
-  activeDockerProcess = child;
-
-  // SSE heartbeat — keeps the connection alive during long Docker pulls
-  const heartbeat = setInterval(() => {
-    try { res.write(':heartbeat\n\n'); } catch (_) {}
-  }, 10000);
-
-  child.stdout.on('data', (chunk) => {
-    for (const line of chunk.toString().split('\n').filter(Boolean)) {
-      send('log', { level: 'info', text: line });
+  const onLine = (line, level) => {
+    lastRealAt = Date.now();
+    if (level !== 'error' && NOISE_RE.test(line)) {
+      // Keep the latest progress for the heartbeat, but don't flood the console.
+      lastProgress = line.replace(/^#\d+\s*/, '').replace(/\s+/g, ' ').trim().slice(0, 110);
+      return;
     }
-  });
+    pushDockerLog(level, line);
+  };
 
-  child.stderr.on('data', (chunk) => {
-    for (const line of chunk.toString().split('\n').filter(Boolean)) {
-      // Docker compose outputs progress to stderr
-      const level = line.includes('Error') || line.includes('error') ? 'error' : 'info';
-      send('log', { level, text: line });
-    }
-  });
-
-  child.on('close', (code) => {
-    clearInterval(heartbeat);
-    activeDockerProcess = null;
-    send('status', {
-      state: 'done',
-      code,
-      message: code === 0 ? `Docker ${action} completed.` : `Docker ${action} finished with exit code ${code}.`,
+  const exitCode = await new Promise((resolve) => {
+    const child = spawn(cmd, args, {
+      cwd: INFRA_DIR,
+      env: { ...process.env },
+      stdio: ['ignore', 'pipe', 'pipe'],
+      shell: true,
     });
-    if (clientOpen) { try { res.end(); } catch (_) {} }
+
+    activeDockerProcess = child;
+
+    child.stdout.on('data', (chunk) => {
+      for (const line of chunk.toString().split('\n').filter(Boolean)) onLine(line, 'info');
+    });
+
+    child.stderr.on('data', (chunk) => {
+      for (const line of chunk.toString().split('\n').filter(Boolean)) {
+        // Docker compose outputs progress to stderr
+        const level = line.includes('Error') || line.includes('error') ? 'error' : 'info';
+        onLine(line, level);
+      }
+    });
+
+    child.on('close', (code) => {
+      pushDockerLog(code === 0 ? 'info' : 'error',
+        code === 0 ? `Docker ${action} completed.` : `Docker ${action} finished with exit code ${code}.`);
+      activeDockerProcess = null;
+      resolve(code);
+    });
+
+    child.on('error', (err) => {
+      pushDockerLog('error', `Process error: ${err.message}`);
+      activeDockerProcess = null;
+      resolve(null);
+    });
   });
 
-  child.on('error', (err) => {
-    clearInterval(heartbeat);
-    activeDockerProcess = null;
-    send('log', { level: 'error', text: `Process error: ${err.message}` });
-    send('status', { state: 'error', message: err.message });
-    if (clientOpen) { try { res.end(); } catch (_) {} }
-  });
+  clearInterval(monitor);
 
-  // A dropped console must NOT cancel a long-running build (e.g. the DMG
-  // gateway image). Mark the client gone and stop the heartbeat, but let the
-  // operation finish — `docker compose up -d` runs detached and the build
-  // continues in the daemon. Cancel deliberately with Stop Containers / Stop.
-  res.on('close', () => {
-    clientOpen = false;
-    clearInterval(heartbeat);
-  });
+  // After bringing the stack up (or on an explicit Status check), run a sanity
+  // check so the console confirms whether the containers are actually healthy.
+  if ((action === 'up' && exitCode === 0) || action === 'status') {
+    try { await dockerSanityCheck(composeFile); } catch (_) {}
+  }
+  // DMG profiles: surface the gateway registration token so it can be registered in Qlik Cloud.
+  if (action === 'up' && exitCode === 0 && /dmg/i.test(composeFile)) {
+    try { await dockerGatewayRegistrationToken('mcg-qlik-dmg'); } catch (_) {}
+  }
+  finishDockerJob(exitCode, exitCode === null ? 'Process error' : null);
 }
 
 // ---------------------------------------------------------------------------
@@ -963,103 +1119,152 @@ function getHTML() {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>MCG Deploy — Qlik Cloud</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+  /* Fonts use the local system stack (IBM Plex / Inter if installed, else system-ui)
+     — no remote @import, so the console renders instantly and works fully offline. */
 
+  /* =========================================================================
+     Soft Enterprise — light-first design system (MCG Deploy redesign)
+     Light is the default (:root). Dark mode = body.dark-theme.
+     ========================================================================= */
   :root {
-    --navy: #1B2A4A;
-    --navy-light: #243557;
-    --teal: #0D7C8F;
+    /* Header / legacy brand aliases (kept so existing rules resolve) */
+    --navy: #ffffff;
+    --navy-light: #f7f8fa;
+    --teal: #0d7c8f;
     --teal-dark: #0a6271;
-    --gold: #C4922E;
+    --gold: #c4922e;
     --gold-dark: #a67b26;
-    --bg: #0f1923;
-    --surface: #162230;
-    --surface2: #1d2e3f;
-    --border: #2a3f55;
-    --text: #e0e6ed;
-    --text-dim: #8899aa;
-    --success: #34d399;
-    --error: #f87171;
-    --warn: #fbbf24;
 
-    /* Qlik brand */
-    --qlik-green: #009845;
-    --qlik-green-dark: #007a38;
-    --qlik-green-glow: rgba(0, 152, 69, 0.35);
+    /* Surfaces & text */
+    --bg: #f5f6f9;          /* page */
+    --surface: #ffffff;     /* panel  */
+    --surface2: #fafbfc;    /* panel2 */
+    --border: #eaecf1;      /* line   */
+    --text: #1b2330;        /* txt    */
+    --text-dim: #69727f;    /* muted  */
+    --text-faint: #9aa2af;  /* faint  */
+    --success: #10b981;
+    --error: #ef4444;
+    --warn: #f59e0b;
+
+    /* Accent (emerald) + secondary (indigo) */
+    --qlik-green: #10b981;
+    --qlik-green-dark: #0e9f6e;
+    --qlik-green-glow: rgba(16,185,129,0.28);
+    --accent2: #6366f1;
+    --accent-txt: #06231a;  /* text on the emerald primary button */
 
     /* Spacing scale */
     --sp-1: 4px;  --sp-2: 8px;  --sp-3: 12px;
     --sp-4: 16px; --sp-5: 24px; --sp-6: 32px;
     --sp-7: 48px; --sp-8: 64px;
 
-    /* Radius */
-    --radius-sm: 4px;  --radius-md: 6px;
-    --radius-lg: 10px; --radius-xl: 14px;
+    /* Radius (softer) */
+    --radius-sm: 6px;  --radius-md: 8px;
+    --radius-lg: 12px; --radius-xl: 16px;
     --radius-full: 9999px;
 
-    /* Shadows */
-    --shadow-sm: 0 1px 3px rgba(0,0,0,0.25);
-    --shadow-md: 0 4px 12px rgba(0,0,0,0.3);
-    --shadow-lg: 0 8px 24px rgba(0,0,0,0.35);
+    /* Shadows (soft enterprise) */
+    --shadow-sm: 0 1px 2px rgba(16,24,40,0.06), 0 1px 3px rgba(16,24,40,0.08);
+    --shadow-md: 0 4px 14px rgba(16,24,40,0.08);
+    --shadow-lg: 0 12px 32px rgba(16,24,40,0.12);
 
-    /* Transition */
-    --transition: 0.2s ease;
+    --transition: 0.18s ease;
 
-    /* Semantic tokens (for theme switching) */
-    --text-bright: #fff;
-    --placeholder: #4a5f75;
-    --switch-bg: #3a4f65;
-    --switch-knob: #fff;
-    --hover-overlay: rgba(255,255,255,0.06);
-    --btn-sheen: rgba(255,255,255,0.08);
-    --sidebar-gradient-end: rgba(13,124,143,0.04);
-    --console-bg: #0b1219;
-    --stop-hover: #e05555;
+    --text-bright: #0f172a;
+    --placeholder: #9aa2af;
+    --switch-bg: #d7dce3;
+    --switch-knob: #ffffff;
+    --hover-overlay: rgba(16,24,40,0.04);
+    --btn-sheen: rgba(255,255,255,0.15);
+    --sidebar-gradient-end: #f5f6f9;
+    --console-bg: #ffffff;
+    --field: #ffffff;
+    --field-line: #dfe3ea;
+    --stop-hover: #dc4444;
+    --badge-teal-bg: rgba(13,124,143,0.1);
+    --badge-teal-border: rgba(13,124,143,0.3);
+    --badge-gold-bg: rgba(196,146,46,0.1);
+    --badge-gold-border: rgba(196,146,46,0.3);
+    --badge-red-bg: rgba(239,68,68,0.1);
+    --badge-red-border: rgba(239,68,68,0.3);
+    --dp-card-hover-border: rgba(16,185,129,0.35);
+    --btn-dry-hover: rgba(99,102,241,0.08);
+    --btn-save-hover: rgba(16,185,129,0.08);
+  }
+
+  /* Dark mode */
+  body.dark-theme {
+    --navy: #1b1f27;
+    --navy-light: #21262f;
+    --bg: #13161c;
+    --surface: #1b1f27;
+    --surface2: #21262f;
+    --border: #2c323d;
+    --text: #eef1f5;
+    --text-dim: #98a1ae;
+    --text-faint: #69717e;
+    --text-bright: #ffffff;
+    --qlik-green: #10b981;
+    --qlik-green-dark: #0e9f6e;
+    --qlik-green-glow: rgba(16,185,129,0.30);
+    --accent2: #818cf8;
+    --accent-txt: #06231a;
+    --placeholder: #69717e;
+    --switch-bg: #2c323d;
+    --hover-overlay: rgba(255,255,255,0.05);
+    --sidebar-gradient-end: #13161c;
+    --console-bg: #13161c;
+    --field: #21262f;
+    --field-line: #363d49;
     --badge-teal-bg: rgba(13,124,143,0.2);
     --badge-teal-border: rgba(13,124,143,0.4);
     --badge-gold-bg: rgba(196,146,46,0.2);
     --badge-gold-border: rgba(196,146,46,0.4);
-    --badge-red-bg: rgba(248,113,113,0.2);
-    --badge-red-border: rgba(248,113,113,0.4);
-    --dp-card-hover-border: rgba(13,124,143,0.3);
-    --btn-dry-hover: rgba(196,146,46,0.1);
-    --btn-save-hover: rgba(13,124,143,0.1);
+    --badge-red-bg: rgba(239,68,68,0.2);
+    --badge-red-border: rgba(239,68,68,0.4);
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.3);
+    --shadow-md: 0 4px 14px rgba(0,0,0,0.4);
+    --shadow-lg: 0 12px 32px rgba(0,0,0,0.5);
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
-    font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+    font-family: 'IBM Plex Sans', 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
     background: var(--bg);
     color: var(--text);
     min-height: 100vh;
+    transition: background-color 0.3s ease, color 0.3s ease;
   }
 
   /* Header */
   .header {
-    background: linear-gradient(135deg, var(--navy) 0%, var(--navy-light) 100%);
-    border-bottom: 2px solid transparent;
-    border-image: linear-gradient(90deg, var(--qlik-green), var(--teal), var(--gold)) 1;
-    padding: 14px 24px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 20px;
+    height: 56px;
     display: flex;
     align-items: center;
-    gap: 16px;
-    box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+    gap: 22px;
     position: relative;
     z-index: 10;
   }
-  .header::after {
-    content: '';
-    position: absolute;
-    bottom: -3px;
-    left: 0;
-    right: 0;
-    height: 6px;
-    background: linear-gradient(90deg, var(--qlik-green), var(--teal), var(--gold));
-    opacity: 0.15;
-    filter: blur(6px);
-    pointer-events: none;
+  .brand { display: flex; align-items: center; gap: 10px; }
+  .logo-square {
+    width: 30px; height: 30px; border-radius: 9px;
+    background: var(--qlik-green); color: var(--accent-txt);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 16px;
+    box-shadow: 0 2px 8px var(--qlik-green-glow);
   }
-  .header h1 { font-size: 20px; font-weight: 700; color: var(--text-bright); letter-spacing: -0.3px; }
-  .header .subtitle { font-size: 13px; color: var(--text-dim); margin-left: auto; }
+  .header h1 { font-size: 16px; font-weight: 700; color: var(--text-bright); letter-spacing: -0.2px; }
+  .header-right { margin-left: auto; display: flex; align-items: center; gap: 14px; }
+  .org-name { font-size: 13px; color: var(--text-dim); }
+  .avatar {
+    width: 30px; height: 30px; border-radius: 50%;
+    background: var(--accent2); color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700; flex-shrink: 0;
+  }
   .badge {
     display: inline-block;
     padding: 3px 10px;
@@ -1068,64 +1273,84 @@ function getHTML() {
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    backdrop-filter: blur(4px);
   }
   .badge-teal { background: var(--badge-teal-bg); color: var(--teal); border: 1px solid var(--badge-teal-border); }
   .badge-gold { background: var(--badge-gold-bg); color: var(--gold); border: 1px solid var(--badge-gold-border); }
   .badge-red  { background: var(--badge-red-bg); color: var(--error); border: 1px solid var(--badge-red-border); }
 
-  /* Layout */
+  /* ---- Top-level mode switch: underline tabs (Tenant Deployment vs Local Stack) ---- */
+  .mode-switch { display: inline-flex; height: 100%; gap: 20px; }
+  .mode-switch button {
+    background: none; border: none; border-bottom: 2px solid transparent;
+    color: var(--text-dim); padding: 0 2px; font-size: 14px; font-weight: 600;
+    cursor: pointer; white-space: nowrap; height: 100%;
+    transition: color var(--transition), border-color var(--transition);
+  }
+  .mode-switch button.active { color: var(--text-bright); border-bottom-color: var(--qlik-green); }
+  .mode-switch button:not(.active):hover { color: var(--text); }
+  /* Show only the active mode's nav items, console pane and status text */
+  body.mode-tenant .wizard-nav button.nav-local { display: none; }
+  body.mode-local  .wizard-nav button:not(.nav-local) { display: none; }
+  .console-pane { display: none; }
+  body.mode-tenant #console-tenant { display: block; }
+  body.mode-local  #console-local  { display: block; }
+  body.mode-tenant #status-text-local  { display: none; }
+  body.mode-local  #status-text-tenant { display: none; }
+
+  /* Layout — three columns: step rail · form · console */
   .layout {
     display: grid;
-    grid-template-columns: 420px 1fr;
+    grid-template-columns: 268px minmax(440px, 1.1fr) minmax(380px, 1fr);
     height: calc(100vh - 56px);
   }
-  @media (max-width: 960px) {
-    .layout { grid-template-columns: 1fr; height: auto; }
+  @media (max-width: 1180px) {
+    .layout { grid-template-columns: 248px 1fr; height: auto; min-height: calc(100vh - 56px); }
+    .console-area { grid-column: 1 / -1; border-top: 1px solid var(--border); min-height: 340px; }
   }
-  @media (min-width: 1400px) {
-    .layout { grid-template-columns: 480px 1fr; }
+  @media (max-width: 760px) {
+    .layout { grid-template-columns: 1fr; }
   }
 
-  /* Sidebar */
-  .sidebar {
-    background: linear-gradient(180deg, var(--surface) 0%, var(--sidebar-gradient-end) 100%);
+  /* Step rail (left column) */
+  .wizard-nav {
+    background: var(--surface);
     border-right: 1px solid var(--border);
     display: flex;
     flex-direction: column;
-    overflow: hidden;
+    gap: 4px;
+    padding: 16px 14px;
+    overflow-y: auto;
   }
+  .rail-progress { padding: 2px 8px 14px; border-bottom: 1px solid var(--border); margin-bottom: 10px; }
+  .rail-progress .rp-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 9px; }
+  .rail-progress .rp-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-faint); }
+  .rail-progress .rp-step { font-size: 12px; font-weight: 700; color: var(--qlik-green); }
+  .rail-progress .rp-bar { height: 6px; border-radius: 999px; background: var(--surface2); overflow: hidden; }
+  .rail-progress .rp-fill { height: 100%; background: var(--qlik-green); border-radius: 999px; transition: width 0.3s ease; }
+  body.mode-local .rail-progress { display: none; }
 
-  /* Wizard nav */
-  .wizard-nav {
-    display: flex;
-    flex-direction: column;
-    border-bottom: 1px solid var(--border);
-    flex-shrink: 0;
-    padding: var(--sp-2);
-    gap: 2px;
-  }
   .wizard-nav button {
     text-align: left;
     background: none;
-    border: none;
-    border-left: 3px solid transparent;
+    border: 1px solid transparent;
     color: var(--text-dim);
-    padding: 8px 14px;
-    border-radius: 0 var(--radius-md) var(--radius-md) 0;
+    padding: 9px 12px;
+    border-radius: var(--radius-md);
     font-size: 13px;
+    font-weight: 500;
     cursor: pointer;
     display: flex;
     align-items: center;
     gap: 10px;
     transition: all var(--transition);
   }
-  .wizard-nav button:hover { background: var(--hover-overlay); }
+  .wizard-nav button:hover { background: var(--surface2); color: var(--text); }
   .wizard-nav button.active {
-    background: var(--surface2);
-    border-left-color: var(--qlik-green);
+    background: var(--surface);
+    border-color: var(--border);
     color: var(--text-bright);
     font-weight: 600;
+    box-shadow: var(--shadow-sm);
   }
   .wizard-nav button .step-num {
     width: 24px;
@@ -1133,6 +1358,7 @@ function getHTML() {
     border-radius: 50%;
     background: var(--surface2);
     color: var(--text-dim);
+    border: 1px solid var(--border);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1143,22 +1369,38 @@ function getHTML() {
   }
   .wizard-nav button.active .step-num {
     background: var(--qlik-green);
+    color: var(--accent-txt);
+    border-color: transparent;
+  }
+  .wizard-nav button .step-check { margin-left: auto; font-size: 14px; color: var(--qlik-green); }
+  /* Deploy step set apart as the terminal action */
+  .wizard-nav button[onclick*="showPage(10)"] {
+    margin-top: 10px;
+    background: var(--surface);
+    border-color: var(--border);
+    box-shadow: var(--shadow-sm);
     color: var(--text-bright);
-    box-shadow: 0 0 10px var(--qlik-green-glow);
+    font-weight: 600;
   }
-  .wizard-nav button .step-check {
-    margin-left: auto;
-    font-size: 14px;
-  }
+  .wizard-nav button[onclick*="showPage(10)"] .step-num { background: var(--accent2); color: #fff; border-color: transparent; }
 
-  /* Wizard content */
+  /* Form (middle column) */
   .wizard-content {
-    flex: 1;
     overflow-y: auto;
-    padding: var(--sp-4);
+    padding: 26px 30px;
+    background: var(--bg);
   }
   .wizard-page { display: none; }
-  .wizard-page.active { display: block; animation: fadeIn 0.25s ease-out; }
+  .wizard-page.active {
+    display: block;
+    animation: fadeIn 0.25s ease-out;
+    max-width: 660px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    padding: 24px 26px;
+  }
 
   @keyframes fadeIn {
     from { opacity: 0; transform: translateY(6px); }
@@ -1185,21 +1427,20 @@ function getHTML() {
   }
   .field label {
     display: block;
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 600;
-    color: var(--text-dim);
-    margin-bottom: 4px;
-    text-transform: uppercase;
-    letter-spacing: 0.6px;
+    color: var(--text);
+    margin-bottom: 6px;
+    letter-spacing: 0;
   }
   .field input, .field select, .field textarea {
     width: 100%;
-    padding: 9px 12px;
-    background: var(--bg);
-    border: 1px solid var(--border);
+    padding: 10px 13px;
+    background: var(--field);
+    border: 1px solid var(--field-line);
     border-radius: var(--radius-md);
     color: var(--text);
-    font-size: 13px;
+    font-size: 13.5px;
     font-family: inherit;
     outline: none;
     transition: border-color var(--transition), box-shadow var(--transition);
@@ -1233,21 +1474,27 @@ function getHTML() {
     grid-template-columns: 1fr 1fr 1fr;
     gap: 10px;
   }
+  /* RPM source toggle (local file vs GitHub URL) */
+  .rpm-source-toggle { display: inline-flex; border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; margin: 2px 0 12px; }
+  .rpm-source-toggle button { background: var(--surface); border: none; color: var(--text-dim); padding: 7px 16px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all var(--transition); }
+  .rpm-source-toggle button + button { border-left: 1px solid var(--border); }
+  .rpm-source-toggle button.active { background: var(--qlik-green); color: var(--accent-txt); }
+  .rpm-source-toggle button:not(.active):hover { background: var(--surface2); color: var(--text); }
 
   /* Section divider */
   .section-divider {
-    font-size: 12px;
-    font-weight: 600;
+    font-size: 13px;
+    font-weight: 700;
     color: var(--text-bright);
-    margin: 20px 0 10px;
+    margin: 22px 0 12px;
     padding-bottom: 8px;
     border-bottom: 1px solid var(--border);
     display: flex;
     align-items: center;
     gap: 8px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0;
   }
+  .wizard-page > .section-divider:first-of-type { margin-top: 4px; }
   .section-divider::before {
     content: '';
     width: 3px;
@@ -1389,45 +1636,48 @@ function getHTML() {
   .btn:disabled { opacity: 0.5; cursor: not-allowed; }
   .btn:disabled::after { display: none; }
   .btn-deploy {
-    background: linear-gradient(135deg, var(--qlik-green) 0%, var(--qlik-green-dark) 100%);
-    color: var(--text-bright);
+    background: var(--qlik-green);
+    color: var(--accent-txt);
+    box-shadow: 0 6px 16px var(--qlik-green-glow);
   }
   .btn-deploy:hover:not(:disabled) {
     transform: translateY(-1px);
-    box-shadow: 0 4px 16px var(--qlik-green-glow);
+    background: var(--qlik-green-dark);
+    box-shadow: 0 8px 20px var(--qlik-green-glow);
   }
   .btn-dry {
-    background: var(--surface2);
-    border: 1px solid var(--gold);
-    color: var(--gold);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
   }
-  .btn-dry:hover:not(:disabled) { background: var(--btn-dry-hover); }
+  .btn-dry:hover:not(:disabled) { background: var(--surface2); border-color: var(--text-faint); }
   .btn-stop {
     background: var(--error);
-    color: var(--text-bright);
+    color: #fff;
   }
   .btn-stop:hover:not(:disabled) { background: var(--stop-hover); }
   .btn-save {
-    background: var(--surface2);
-    border: 1px solid var(--teal);
-    color: var(--teal);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
     font-size: 12px;
-    padding: 6px 14px;
+    padding: 7px 14px;
     width: auto;
   }
-  .btn-save:hover { background: var(--btn-save-hover); }
+  .btn-save:hover { background: var(--surface2); border-color: var(--text-faint); }
   .btn-row { display: flex; gap: 8px; margin-top: 8px; }
   .btn-row .btn { flex: 1; }
 
-  /* Console */
+  /* Console (right column) */
   .console-area {
     display: flex;
     flex-direction: column;
     height: 100%;
-    background: radial-gradient(ellipse at top left, rgba(0,152,69,0.03) 0%, var(--console-bg) 60%);
+    background: var(--console-bg);
+    border-left: 1px solid var(--border);
   }
   .console-toolbar {
-    padding: 10px 16px;
+    padding: 9px 16px;
     border-bottom: 1px solid var(--border);
     display: flex;
     align-items: center;
@@ -1435,25 +1685,39 @@ function getHTML() {
     background: var(--surface);
     flex-shrink: 0;
   }
-  .console-toolbar h2 { font-size: 14px; font-weight: 600; }
-  .console-toolbar .status-text { margin-left: auto; font-size: 12px; }
+  .console-tabs { display: flex; gap: 16px; }
+  .console-tabs .ctab {
+    background: none; border: none; border-bottom: 2px solid transparent;
+    padding: 4px 2px; font-size: 13px; font-weight: 600; color: var(--text-dim);
+    cursor: pointer; transition: color var(--transition), border-color var(--transition);
+  }
+  .console-tabs .ctab.active { color: var(--text-bright); border-bottom-color: var(--qlik-green); }
+  .console-tabs .ctab[disabled] { opacity: 0.45; cursor: default; }
+  .console-actions { margin-left: auto; display: flex; gap: 6px; }
+  .status-pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12px; color: var(--text-dim);
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: var(--radius-full); padding: 3px 10px; flex-shrink: 0;
+  }
+  .status-pill .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--qlik-green); box-shadow: 0 0 6px var(--qlik-green-glow); flex-shrink: 0; }
   .console-toolbar button {
-    background: none;
+    background: var(--surface);
     border: 1px solid var(--border);
     color: var(--text-dim);
-    padding: 4px 10px;
+    padding: 4px 11px;
     border-radius: var(--radius-sm);
     font-size: 12px;
     cursor: pointer;
-    transition: border-color var(--transition), color var(--transition);
+    transition: border-color var(--transition), color var(--transition), background var(--transition);
   }
-  .console-toolbar button:hover { border-color: var(--text-dim); color: var(--text); }
+  .console-toolbar button:hover { border-color: var(--text-faint); color: var(--text); background: var(--surface2); }
 
-  #console {
+  .console-pane {
     flex: 1;
     overflow-y: auto;
-    padding: 12px 16px;
-    font-family: 'Cascadia Code', 'Fira Code', 'JetBrains Mono', 'Consolas', monospace;
+    padding: 14px 16px;
+    font-family: 'IBM Plex Mono', 'Cascadia Code', 'Fira Code', 'JetBrains Mono', 'Consolas', monospace;
     font-size: 12.5px;
     line-height: 1.7;
     white-space: pre-wrap;
@@ -1464,8 +1728,8 @@ function getHTML() {
   .log-success { color: var(--success); }
   .log-warn    { color: var(--warn); }
   .log-error   { color: var(--error); }
-  .log-section { color: var(--teal); font-weight: 700; }
-  .log-line .timestamp { color: var(--text-dim); margin-right: 4px; font-size: 11px; }
+  .log-section { color: var(--accent2); font-weight: 700; }
+  .log-line .timestamp { color: var(--text-faint); margin-right: 4px; font-size: 11px; }
 
   .empty-state {
     display: flex;
@@ -1474,10 +1738,18 @@ function getHTML() {
     justify-content: center;
     height: 100%;
     color: var(--text-dim);
-    gap: 12px;
+    gap: 10px;
+    text-align: center;
+    padding: 24px;
   }
-  .empty-state .icon { font-size: 48px; opacity: 0.3; }
-  .empty-state p { font-size: 14px; }
+  .empty-state .icon {
+    width: 56px; height: 56px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--surface2); border: 1px solid var(--border);
+    font-size: 22px; color: var(--qlik-green);
+  }
+  .empty-state .es-title { font-size: 15px; font-weight: 700; color: var(--text-bright); }
+  .empty-state p { font-size: 13px; max-width: 260px; line-height: 1.5; }
 
   ::-webkit-scrollbar { width: 6px; }
   ::-webkit-scrollbar-track { background: transparent; }
@@ -1513,24 +1785,23 @@ function getHTML() {
 
   /* Theme toggle button */
   .theme-toggle {
-    background: rgba(255,255,255,0.1);
-    border: 1px solid rgba(255,255,255,0.15);
-    color: #fff;
-    width: 32px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
     height: 32px;
+    padding: 0 12px;
     border-radius: var(--radius-full);
     cursor: pointer;
     display: flex;
     align-items: center;
-    justify-content: center;
-    font-size: 16px;
+    gap: 7px;
+    font-size: 13px;
+    font-weight: 600;
     transition: all var(--transition);
     flex-shrink: 0;
   }
-  .theme-toggle:hover {
-    background: rgba(255,255,255,0.2);
-    border-color: rgba(255,255,255,0.3);
-  }
+  .theme-toggle:hover { background: var(--surface2); border-color: var(--text-faint); color: var(--text); }
+  .theme-toggle #theme-icon { font-size: 14px; }
 
   /* Theme transition */
   body,
@@ -1541,61 +1812,8 @@ function getHTML() {
     transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
   }
 
-  /* Light theme overrides */
-  body.light-theme {
-    --bg: #f5f7fa;
-    --surface: #ffffff;
-    --surface2: #eef1f5;
-    --border: #d1d9e0;
-    --text: #1a2332;
-    --text-dim: #5a6b7d;
-    --text-bright: #0f1923;
-    --placeholder: #9ca8b5;
-    --switch-bg: #c0c8d0;
-    --switch-knob: #fff;
-    --hover-overlay: rgba(0,0,0,0.04);
-    --btn-sheen: rgba(255,255,255,0.15);
-    --sidebar-gradient-end: rgba(13,124,143,0.03);
-    --console-bg: #0b1219;
-    --dp-card-hover-border: rgba(13,124,143,0.4);
-    --badge-teal-bg: rgba(13,124,143,0.1);
-    --badge-teal-border: rgba(13,124,143,0.3);
-    --badge-gold-bg: rgba(196,146,46,0.1);
-    --badge-gold-border: rgba(196,146,46,0.3);
-    --badge-red-bg: rgba(248,113,113,0.1);
-    --badge-red-border: rgba(248,113,113,0.3);
-    --btn-dry-hover: rgba(196,146,46,0.08);
-    --btn-save-hover: rgba(13,124,143,0.08);
-    --stop-hover: #dc4444;
-    --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
-    --shadow-md: 0 4px 12px rgba(0,0,0,0.1);
-    --shadow-lg: 0 8px 24px rgba(0,0,0,0.12);
-  }
-
-  /* Console stays dark in light theme */
-  body.light-theme .console-area {
-    --bg: #0b1219;
-    --surface: #162230;
-    --border: #2a3f55;
-    --text: #e0e6ed;
-    --text-dim: #8899aa;
-    --text-bright: #fff;
-  }
-  body.light-theme .console-area .console-toolbar button {
-    color: #8899aa;
-    border-color: #2a3f55;
-  }
-  body.light-theme .console-area .console-toolbar button:hover {
-    color: #e0e6ed;
-    border-color: #8899aa;
-  }
-
-  /* Header stays dark navy in light theme */
-  body.light-theme .header {
-    --text-bright: #fff;
-    --text-dim: #8899aa;
-    --border: #2a3f55;
-  }
+  /* Light is the default theme (:root); dark is body.dark-theme. The console
+     and header now follow the active theme — no forced-dark overrides. */
 
   /* Keyboard focus-visible */
   *:focus-visible {
@@ -1610,10 +1828,15 @@ function getHTML() {
   @media (max-width: 768px) {
     .header {
       padding: 10px 16px;
-      gap: 10px;
+      gap: 10px 16px;
+      flex-wrap: wrap;
+      height: auto;
     }
-    .header h1 { font-size: 17px; }
-    .header .subtitle { display: none; }
+    .header h1 { font-size: 16px; }
+    .header .org-name { display: none; }
+    .header .mode-switch { flex-basis: 100%; height: auto; order: 3; }
+    .header .mode-switch button { flex: 1; height: auto; padding: 8px 2px; justify-content: center; }
+    .header-right { gap: 10px; }
 
     .wizard-nav {
       flex-direction: row;
@@ -1657,32 +1880,45 @@ function getHTML() {
   }
 </style>
 </head>
-<body>
+<body class="mode-tenant">
 
 <div class="header">
-  <h1>MCG Deploy</h1>
-  <span class="badge badge-teal">Qlik Cloud</span>
+  <div class="brand">
+    <span class="logo-square">M</span>
+    <h1>MCG Deploy</h1>
+  </div>
+  <div class="mode-switch" id="mode-switch">
+    <button id="mode-btn-tenant" class="active" onclick="setMode('tenant')">Tenant Deployment</button>
+    <button id="mode-btn-local" onclick="setMode('local')">Local Stack &amp; Gateway</button>
+  </div>
   <span id="run-badge" class="badge badge-gold" style="display:none">RUNNING</span>
-  <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" title="Toggle light/dark theme">
-    <span id="theme-icon">&#9790;</span>
-  </button>
-  <span class="subtitle">Meridian Commerce Group — Deployment Console</span>
+  <div class="header-right">
+    <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" title="Toggle light/dark theme">
+      <span id="theme-icon">&#9790;</span><span id="theme-label">Dark</span>
+    </button>
+    <span class="org-name">Meridian Commerce Group</span>
+    <span class="avatar">MC</span>
+  </div>
 </div>
 
 <div class="layout">
-  <!-- Sidebar: Wizard -->
-  <div class="sidebar">
+
+    <!-- Step rail -->
     <div class="wizard-nav" id="wizard-nav">
+      <div class="rail-progress" id="rail-progress">
+        <div class="rp-row"><span class="rp-label">Setup progress</span><span class="rp-step" id="rp-step">Step 1 of 9</span></div>
+        <div class="rp-bar"><div class="rp-fill" id="rp-fill" style="width:11%"></div></div>
+      </div>
       <button class="active" onclick="showPage(0)"><span class="step-num">1</span>Connection & Auth<span class="step-check" id="check-0"></span></button>
-      <button onclick="showPage(1)"><span class="step-num">2</span>Local Stack &amp; Gateway<span class="step-check" id="check-1"></span></button>
-      <button onclick="showPage(2)"><span class="step-num">3</span>Spaces & Infrastructure<span class="step-check" id="check-2"></span></button>
-      <button onclick="showPage(3)"><span class="step-num">4</span>Data Connections<span class="step-check" id="check-3"></span></button>
-      <button onclick="showPage(4)"><span class="step-num">5</span>Pipelines<span class="step-check" id="check-4"></span></button>
-      <button onclick="showPage(5)"><span class="step-num">6</span>Build Apps & Theme<span class="step-check" id="check-5"></span></button>
-      <button onclick="showPage(6)"><span class="step-num">7</span>Knowledge Base & Docs<span class="step-check" id="check-6"></span></button>
-      <button onclick="showPage(7)"><span class="step-num">8</span>Automations<span class="step-check" id="check-7"></span></button>
-      <button onclick="showPage(8)"><span class="step-num">9</span>Data Products<span class="step-check" id="check-8"></span></button>
-      <button onclick="showPage(9)"><span class="step-num">10</span>Glossary<span class="step-check" id="check-9"></span></button>
+      <button class="nav-local" onclick="showPage(1)"><span class="step-num">&#9632;</span>Local Stack &amp; Gateway<span class="step-check" id="check-1"></span></button>
+      <button onclick="showPage(2)"><span class="step-num">2</span>Spaces<span class="step-check" id="check-2"></span></button>
+      <button onclick="showPage(3)"><span class="step-num">3</span>Data Connections<span class="step-check" id="check-3"></span></button>
+      <button onclick="showPage(4)"><span class="step-num">4</span>Pipelines<span class="step-check" id="check-4"></span></button>
+      <button onclick="showPage(5)"><span class="step-num">5</span>Build Apps & Theme<span class="step-check" id="check-5"></span></button>
+      <button onclick="showPage(6)"><span class="step-num">6</span>Knowledge Base & Docs<span class="step-check" id="check-6"></span></button>
+      <button onclick="showPage(7)"><span class="step-num">7</span>Automations<span class="step-check" id="check-7"></span></button>
+      <button onclick="showPage(8)"><span class="step-num">8</span>Data Products<span class="step-check" id="check-8"></span></button>
+      <button onclick="showPage(9)"><span class="step-num">9</span>Glossary<span class="step-check" id="check-9"></span></button>
       <button onclick="showPage(10)"><span class="step-num">&#9654;</span>Deploy<span class="step-check" id="check-10"></span></button>
     </div>
 
@@ -1747,7 +1983,7 @@ function getHTML() {
         </div>
 
         <div class="btn-row" style="margin-top:16px">
-          <button class="btn btn-save" onclick="testConnection()" id="btn-test-conn" style="flex:1;font-size:13px;padding:9px 14px">
+          <button class="btn btn-deploy" onclick="testConnection()" id="btn-test-conn" style="flex:1;font-size:13px;padding:11px 14px">
             &#9889; Test Connection
           </button>
         </div>
@@ -1757,7 +1993,7 @@ function getHTML() {
       <!-- Page 1: Docker Containers -->
       <div class="wizard-page" id="page-1">
         <div class="page-title">Local Stack &amp; Gateway</div>
-        <div class="page-desc">Start the local data sources (Kafka, PostgreSQL, simulators) and the optional Data Movement Gateway on this machine.</div>
+        <div class="page-desc">Deploy and manage the local data sources (Kafka, PostgreSQL, simulators) and the optional Data Movement Gateway on this machine.</div>
 
         <div class="hint" style="background:rgba(13,124,143,0.12);border:1px solid var(--teal);border-radius:6px;padding:8px 12px;margin-bottom:10px">
           <strong>Deployed separately from the tenant.</strong> These containers run locally and are <strong>not</strong> part of the tenant <em>Deploy</em> step — start/stop them here on their own timeline. The Data Movement Gateway image build can take several minutes; closing this page won't cancel it (it builds in the Docker daemon).
@@ -1827,45 +2063,62 @@ function getHTML() {
           <div id="dmg-rpm-status" style="margin:8px 0"><!-- populated by JS --></div>
 
           <div style="font-size:12px;font-weight:600;color:var(--text-dim);margin:10px 0 6px;text-transform:uppercase;letter-spacing:0.5px">Gateway RPM Source</div>
-          <div class="field">
-            <label>RPM File Path <span style="font-weight:400;color:var(--text-dim)">(local file)</span></label>
-            <input type="text" id="f-docker-rpm-path" placeholder="C:\\Downloads\\qlik-data-gateway-data-movement.rpm">
-            <div class="hint">Absolute path to a downloaded RPM file on this machine. It will be copied into the Docker build context.</div>
+          <div class="rpm-source-toggle" id="rpm-source-toggle">
+            <button type="button" class="active" data-src="local" onclick="setRpmSource('local')">Local file</button>
+            <button type="button" data-src="github" onclick="setRpmSource('github')">GitHub URL</button>
           </div>
-          <div class="field">
-            <label>RPM Download URL <span style="font-weight:400;color:var(--text-dim)">(remote)</span></label>
+          <div class="field" id="rpm-field-local">
+            <label>RPM File Path <span style="font-weight:400;color:var(--text-dim)">(local — takes precedence)</span></label>
+            <input type="text" id="f-docker-rpm-path" placeholder="C:\\Users\\you\\Downloads\\qlik-data-gateway-data-movement.rpm">
+            <div class="hint">Absolute path to the RPM on this machine — it is copied into the Docker build context and used as-is.</div>
+          </div>
+          <div class="field" id="rpm-field-github" style="display:none">
+            <label>RPM Download URL</label>
             <input type="text" id="f-docker-rpm-url" placeholder="https://github.com/qlik-download/saas-download-links/releases/download/...">
-            <div class="hint">Direct download URL for the RPM. The file will be fetched automatically before building.<br>
+            <div class="hint">Direct download URL — fetched automatically before building.<br>
               Browse releases: <a href="https://github.com/qlik-download/saas-download-links/releases" target="_blank" style="color:var(--teal)">github.com/qlik-download/saas-download-links/releases</a>
             </div>
           </div>
-          <div class="field" style="margin-top:2px">
-            <div class="hint" style="font-style:italic">
-              Provide a local path OR a download URL. If both are provided, the local path takes priority.<br>
-              If neither is provided, the system checks for an existing RPM in infrastructure/dmg/gateway/rpmfiles/.<br>
-              DMG container source: <a href="https://github.com/robertschoenfeldqlik/qlik_data_movement_gateway_rdbms_container" target="_blank" style="color:var(--teal)">github.com/robertschoenfeldqlik/qlik_data_movement_gateway_rdbms_container</a>
-            </div>
-          </div>
         </div>
 
-        <div class="section-divider">Actions</div>
+        <div class="section-divider">Deploy</div>
         <div class="btn-row">
-          <button class="btn btn-deploy" id="btn-docker-up" onclick="dockerAction('up')">Start Containers</button>
-          <button class="btn btn-dry" id="btn-docker-status" onclick="dockerAction('status')">Status</button>
+          <button class="btn btn-deploy" id="btn-docker-deploy" onclick="dockerAction('up', true)" style="flex:1;font-size:14px;font-weight:700;padding:12px">Deploy Local Stack</button>
+        </div>
+        <div style="font-size:11px;color:var(--text-dim);margin-top:6px;padding-left:2px">
+          Builds and starts the selected profile's containers (and the gateway image for DMG profiles) on <strong>this machine</strong>. This Deploy is specific to the local stack &amp; gateway — it is <strong>separate from the tenant <em>Deploy</em> step</strong> and never touches your Qlik Cloud tenant.
+        </div>
+
+        <div class="section-divider">Manage Containers</div>
+        <div class="btn-row">
+          <button class="btn btn-dry" id="btn-docker-up" onclick="dockerAction('up')">Start Containers</button>
+          <button class="btn btn-stop" id="btn-docker-down" onclick="dockerAction('down')">Stop Containers</button>
         </div>
         <div class="btn-row" style="margin-top:6px">
-          <button class="btn btn-stop" id="btn-docker-down" onclick="dockerAction('down')">Stop Containers</button>
+          <button class="btn btn-dry" id="btn-docker-status" onclick="dockerAction('status')">Status</button>
           <button class="btn btn-stop" id="btn-docker-prune" onclick="dockerAction('prune')" style="background:rgba(196,146,46,0.15);border-color:var(--gold);color:var(--gold)">Clean All Artifacts</button>
         </div>
-        <div style="font-size:11px;color:var(--text-dim);margin-top:4px;padding-left:2px">
-          <strong>Clean All Artifacts</strong> stops containers, removes images, volumes, and build cache for a fresh rebuild.
+        <div style="font-size:11px;color:var(--text-dim);margin-top:6px;padding-left:2px">
+          <strong>Start Containers</strong> only starts the existing containers; <strong>Stop Containers</strong> stops them. Neither rebuilds — use <strong>Deploy</strong> above to (re)build. <strong>Status</strong> shows what's running. <strong>Clean All Artifacts</strong> removes images, volumes, and build cache for a fresh rebuild.
+        </div>
+
+        <div class="section-divider">Data Movement Gateway</div>
+        <div class="btn-row">
+          <button class="btn btn-dry" id="btn-docker-gateway-start" onclick="dockerAction('gateway-start')">Start Gateway</button>
+          <button class="btn btn-stop" id="btn-docker-gateway-stop" onclick="dockerAction('gateway-stop')">Stop Gateway</button>
+        </div>
+        <div class="btn-row" style="margin-top:6px">
+          <button class="btn btn-primary" id="btn-docker-gateway-token" onclick="dockerAction('gateway-token')" style="background:rgba(99,102,241,0.15);border-color:var(--accent2);color:var(--accent2)">Register Gateway / Get Token</button>
+        </div>
+        <div style="font-size:11px;color:var(--text-dim);margin-top:6px;padding-left:2px">
+          <strong>Start / Stop Gateway</strong> control just the <code>mcg-qlik-dmg</code> container — the gateway goes Connected / Disconnected in Qlik Cloud accordingly, independent of <strong>Start / Stop Containers</strong> above. <strong>Register Gateway / Get Token</strong> retrieves the registration token from the running container and prints it to the console — copy it, then in Qlik Cloud go to <strong>Administration → Data Gateways → Register</strong> and paste it. <a href="https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/Gateways/dm-gateway-setting-up.htm" target="_blank" rel="noopener" style="color:var(--accent)">Setup guide ↗</a>
         </div>
       </div>
 
-      <!-- Page 2: Spaces & Infrastructure -->
+      <!-- Page 2: Spaces -->
       <div class="wizard-page" id="page-2">
-        <div class="page-title">Spaces & Infrastructure</div>
-        <div class="page-desc">Configure Qlik Cloud spaces and optional Kafka infrastructure.</div>
+        <div class="page-title">Spaces</div>
+        <div class="page-desc">Configure the Qlik Cloud spaces the demo deploys into.</div>
 
         <div class="section-divider">Spaces</div>
         <div class="toggle-row">
@@ -1883,14 +2136,9 @@ function getHTML() {
           </div>
         </div>
 
-        <div class="section-divider">Infrastructure (Kafka)</div>
-        <div class="toggle-row">
-          <label>Enable Infrastructure</label>
-          <label class="switch"><input type="checkbox" id="f-en-infra" checked><span class="slider"></span></label>
-        </div>
-        <div class="toggle-row">
-          <label>Use Docker Compose for Kafka</label>
-          <label class="switch"><input type="checkbox" id="f-infra-docker" checked><span class="slider"></span></label>
+        <div class="hint" style="margin-top:12px">
+          Local containers (Kafka + simulators) and the Data Movement Gateway deploy separately from the
+          <strong>Local Stack &amp; Gateway</strong> tab using its <strong>Deploy</strong> button — they are never part of the tenant deployment.
         </div>
       </div>
 
@@ -1906,6 +2154,18 @@ function getHTML() {
 
         <div id="docker-prefill-banner" style="display:none;margin:8px 0 12px;padding:10px 14px;border-radius:var(--radius);background:rgba(13,124,143,0.12);border:1px solid rgba(13,124,143,0.3);font-size:12px;color:var(--teal)">
           &#9432; Docker containers are enabled — PostgreSQL and Kafka fields have been pre-filled with Docker-local values. You can override them if connecting to external services.
+        </div>
+
+        <div class="section-divider">Data Gateway</div>
+        <div class="field">
+          <label>Data Gateway ID <span style="color:var(--text-dim);font-weight:400">(Data Movement)</span></label>
+          <input type="text" id="f-data-gateway-id" placeholder="paste your Data gateway ID — see below">
+          <div class="hint">
+            Required for <strong>all gateway-bound source &amp; target connections</strong> (PostgreSQL, MySQL, SQL Server, Kafka, …) — it routes them through your on-prem Data Movement gateway.
+            <strong>How to find it:</strong> in Qlik Cloud go to <strong>Administration → Data Gateways</strong>, find your Data Movement gateway, and click its <strong>Data gateway ID</strong> value to select &amp; copy it.
+            Leave blank to skip auto-create and build connections in the Data Integration UI instead.
+            <a href="https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/Gateways/dm-gateway-setting-up.htm" target="_blank" rel="noopener" style="color:var(--accent)">Gateway help ↗</a>
+          </div>
         </div>
 
         <div class="section-divider">PostgreSQL (WMS)</div>
@@ -1945,21 +2205,28 @@ function getHTML() {
         </div>
         <div class="field-row-3">
           <div class="field">
-            <label>Username</label>
-            <input type="text" id="f-sf-username" placeholder="integration@mcg-demo.com">
+            <label>Salesforce Instance</label>
+            <input type="text" id="f-sf-instance" placeholder="orgfarm-xxxx-dev-ed.develop.my">
           </div>
           <div class="field">
-            <label>Password</label>
-            <input type="password" id="f-sf-password" placeholder="password">
+            <label>Login Domain</label>
+            <input type="text" id="f-sf-login-domain" placeholder="…develop.my.salesforce.com">
           </div>
           <div class="field">
-            <label>Security Token</label>
-            <input type="password" id="f-sf-token" placeholder="token">
+            <label>Client Id</label>
+            <input type="text" id="f-sf-client-id" placeholder="Connected App consumer key">
           </div>
+        </div>
+        <div class="field">
+          <label>Client Secret</label>
+          <input type="password" id="f-sf-client-secret" placeholder="Connected App consumer secret">
         </div>
         <div class="toggle-row" style="margin-top:4px">
           <label>Sandbox Environment</label>
           <label class="switch"><input type="checkbox" id="f-sf-sandbox" checked><span class="slider"></span></label>
+        </div>
+        <div class="hint">
+          Salesforce is a SaaS source — it authenticates <strong>with Salesforce via a Connected App (OAuth)</strong> over Qlik's <strong>managed gateway</strong> (not the on-prem Data Movement gateway). Because the OAuth consent is interactive, create it in the Qlik Cloud UI (Data Integration → Create connection → Salesforce) in the <strong>MCG Demo - DI</strong> space, entering the Instance, Login Domain, Client Id &amp; Secret and completing the Salesforce login.
         </div>
 
         <div class="section-divider">Kafka (IoT Telemetry)</div>
@@ -2289,21 +2556,34 @@ function getHTML() {
       </div>
 
     </div>
-  </div>
 
   <!-- Console Output -->
   <div class="console-area">
     <div class="console-toolbar">
-      <h2>Console Output</h2>
-      <button onclick="clearConsole()">Clear</button>
-      <button onclick="copyConsole()">Copy</button>
-      <button onclick="downloadLog()">Download</button>
-      <span class="status-text" id="status-text">Ready</span>
+      <div class="console-tabs">
+        <button class="ctab active">Output</button>
+        <button class="ctab" disabled title="Live output is shown in this pane">Logs</button>
+        <button class="ctab" disabled title="Configuration diff — coming soon">Diff</button>
+      </div>
+      <div class="console-actions">
+        <button onclick="clearConsole()">Clear</button>
+        <button onclick="copyConsole()">Copy</button>
+        <button onclick="downloadLog()">Download</button>
+      </div>
+      <span class="status-pill"><span class="dot"></span><span class="status-text" id="status-text-tenant">Ready</span><span class="status-text" id="status-text-local">Ready</span></span>
     </div>
-    <div id="console">
+    <div id="console-tenant" class="console-pane">
       <div class="empty-state">
         <div class="icon">&#9654;</div>
-        <p>Configure your deployment and click Deploy or Dry Run.</p>
+        <div class="es-title">No output yet</div>
+        <p>Configure your tenant deployment and click <strong>Deploy</strong> or <strong>Dry Run</strong> to stream live logs here.</p>
+      </div>
+    </div>
+    <div id="console-local" class="console-pane">
+      <div class="empty-state">
+        <div class="icon">&#9654;</div>
+        <div class="es-title">No output yet</div>
+        <p>Pick a compose profile and click <strong>Deploy Local Stack</strong> to stream live logs here.</p>
       </div>
     </div>
   </div>
@@ -2317,35 +2597,53 @@ function getHTML() {
   let discoveredFiles = {};
   let loadedConfig = null;
 
+  // --- Top-level mode (Tenant Deployment vs Local Stack & Gateway) ---
+  // currentMode = which area is VISIBLE; _logPane = which console an in-flight
+  // operation writes to (so a build's logs stay in their own pane even if the
+  // user switches modes mid-run). _lastTenantPage remembers the wizard step to
+  // return to when switching back from Local mode.
+  let currentMode = 'tenant';
+  let _logPane = 'tenant';
+  let _lastTenantPage = 0;
+  function logConsoleEl()  { return document.getElementById('console-' + _logPane); }
+  function logStatusEl()   { return document.getElementById('status-text-' + _logPane); }
+  function viewConsoleEl() { return document.getElementById('console-' + currentMode); }
+  function viewStatusEl()  { return document.getElementById('status-text-' + currentMode); }
+  function setMode(mode) {
+    currentMode = mode;
+    document.body.classList.toggle('mode-tenant', mode === 'tenant');
+    document.body.classList.toggle('mode-local', mode === 'local');
+    document.getElementById('mode-btn-tenant').classList.toggle('active', mode === 'tenant');
+    document.getElementById('mode-btn-local').classList.toggle('active', mode === 'local');
+    if (mode === 'local') showPage(1);
+    else showPage(_lastTenantPage);
+  }
+
   // --- Theme Toggle ---
   function initTheme() {
+    // Light-first: default to light; only honor an explicit saved choice.
     const saved = localStorage.getItem('mcg-deploy-theme');
-    if (saved) {
-      applyTheme(saved);
-    } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
-      applyTheme('light');
-    }
+    applyTheme(saved === 'dark' ? 'dark' : 'light');
   }
 
   function applyTheme(theme) {
-    if (theme === 'light') {
-      document.body.classList.add('light-theme');
-      document.getElementById('theme-icon').innerHTML = '&#9728;';
-    } else {
-      document.body.classList.remove('light-theme');
-      document.getElementById('theme-icon').innerHTML = '&#9790;';
-    }
+    const dark = theme === 'dark';
+    document.body.classList.toggle('dark-theme', dark);
+    const icon = document.getElementById('theme-icon');
+    if (icon) icon.innerHTML = dark ? '&#9728;' : '&#9790;';  // sun when dark (→light), moon when light (→dark)
+    const lbl = document.getElementById('theme-label');
+    if (lbl) lbl.textContent = dark ? 'Light' : 'Dark';
   }
 
   function toggleTheme() {
-    const isLight = document.body.classList.contains('light-theme');
-    const newTheme = isLight ? 'dark' : 'light';
+    const newTheme = document.body.classList.contains('dark-theme') ? 'light' : 'dark';
     applyTheme(newTheme);
     localStorage.setItem('mcg-deploy-theme', newTheme);
   }
 
   // --- Wizard Navigation ---
   function showPage(idx) {
+    if (idx !== 1) _lastTenantPage = idx;  // idx 1 is the Local Stack page (its own mode)
     document.querySelectorAll('.wizard-page').forEach((p, i) => {
       p.classList.toggle('active', i === idx);
     });
@@ -2357,6 +2655,21 @@ function getHTML() {
     if (idx === 4) renderPipelinesPage();
     if (idx === 5) renderBuildAppsPage();
     if (idx === 7) renderBuildAutomationsPage();
+    updateRailProgress(idx);
+    var wc = document.querySelector('.wizard-content');
+    if (wc) wc.scrollTop = 0;  // start each page/mode at the top, not mid-scroll
+  }
+
+  // Rail "Step X of 9" + progress bar. The 9 config steps are showPage 0,2..9;
+  // Deploy (10) is the terminal action; Local Stack (1) has its own mode.
+  var TENANT_STEP = { 0:1, 2:2, 3:3, 4:4, 5:5, 6:6, 7:7, 8:8, 9:9, 10:9 };
+  function updateRailProgress(idx) {
+    if (idx === 1) return;  // local page — not part of tenant progress
+    var stepEl = document.getElementById('rp-step'), fill = document.getElementById('rp-fill');
+    if (!stepEl || !fill) return;
+    var n = TENANT_STEP[idx] || 1;
+    if (idx === 10) { stepEl.textContent = 'Deploy'; fill.style.width = '100%'; }
+    else { stepEl.textContent = 'Step ' + n + ' of 9'; fill.style.width = Math.round(n / 9 * 100) + '%'; }
   }
 
   // --- Pipelines page: per-project task lists + live connection-binding map ---
@@ -2452,11 +2765,6 @@ function getHTML() {
       setVal('f-space-managed', cfg.spaces.managed);
     }
 
-    // Infrastructure
-    if (cfg.infrastructure) {
-      setCheck('f-infra-docker', cfg.infrastructure.useDocker !== false);
-    }
-
     // Docker
     if (cfg.docker) {
       setSelVal('f-docker-profile', cfg.docker.profile || 'full-stack');
@@ -2468,7 +2776,6 @@ function getHTML() {
     const en = cfg.enabledComponents || {};
     setCheck('f-en-docker', en.docker !== false);
     setCheck('f-en-spaces', en.spaces !== false);
-    setCheck('f-en-infra', en.infrastructure !== false);
     setCheck('f-en-connections', en.connections !== false);
     setCheck('f-en-theme', en.theme !== false);
     setCheck('f-en-knowledge', en.knowledge !== false);
@@ -2500,12 +2807,14 @@ function getHTML() {
       setVal('f-pg-database', pg.database);
       setVal('f-pg-username', pg.username);
       setVal('f-pg-password', pg.password);
+      setVal('f-data-gateway-id', (cfg.dataGateway && cfg.dataGateway.id) || '');
 
       const sf = cfg.dataConnections.salesforce || {};
       setVal('f-sf-name', sf.name);
-      setVal('f-sf-username', sf.username);
-      setVal('f-sf-password', sf.password);
-      setVal('f-sf-token', sf.securityToken);
+      setVal('f-sf-instance', sf.instance);
+      setVal('f-sf-login-domain', sf.loginDomain);
+      setVal('f-sf-client-id', sf.clientId);
+      setVal('f-sf-client-secret', sf.clientSecret);
       setCheck('f-sf-sandbox', sf.isSandbox !== false);
 
       const kf = cfg.dataConnections.kafka || {};
@@ -2835,14 +3144,19 @@ function getHTML() {
       document.getElementById('dmg-settings').style.display =
         (v === 'dmg' || v === 'full-stack-dmg') ? 'block' : 'none';
     };
-    sel.addEventListener('change', () => { toggleDmg(); prefillFromDocker(); });
+    sel.addEventListener('change', () => { toggleDmg(); updateDeployLabel(); prefillFromDocker(); });
     toggleDmg();
+    updateDeployLabel();
 
     // Also trigger prefill when Docker enable toggle changes
     const dockerToggle = document.getElementById('f-en-docker');
     if (dockerToggle) {
       dockerToggle.addEventListener('change', () => { prefillFromDocker(); });
     }
+
+    // If a gateway/stack build is already running on the server, re-attach to
+    // its live log so a page reload or re-navigation can't lose visibility.
+    resumeDockerIfRunning();
   }
 
   const COMPOSE_MAP = {
@@ -2853,7 +3167,7 @@ function getHTML() {
     'dmg': 'docker-compose.dmg.yml',
   };
 
-  const DOCKER_BTNS = ['btn-docker-up', 'btn-docker-down', 'btn-docker-status', 'btn-docker-prune'];
+  const DOCKER_BTNS = ['btn-docker-deploy', 'btn-docker-up', 'btn-docker-down', 'btn-docker-status', 'btn-docker-prune', 'btn-docker-gateway-token', 'btn-docker-gateway-start', 'btn-docker-gateway-stop'];
 
   function setDockerBtns(disabled) {
     DOCKER_BTNS.forEach(function(id) {
@@ -2862,7 +3176,71 @@ function getHTML() {
     });
   }
 
-  function dockerAction(action) {
+  // Make the prominent Deploy button name the selected profile, so it reads as
+  // "Deploy Gateway (DMG)" / "Deploy Full Stack" etc. rather than something generic.
+  var DEPLOY_LABELS = {
+    'full-stack': 'Deploy Full Stack',
+    'full-stack-dmg': 'Deploy Full Stack + Gateway',
+    'kafka': 'Deploy Kafka Stack',
+    'simulators': 'Deploy Simulators',
+    'dmg': 'Deploy Gateway (DMG)',
+  };
+  function updateDeployLabel() {
+    var sel = document.getElementById('f-docker-profile');
+    var btn = document.getElementById('btn-docker-deploy');
+    if (!sel || !btn) return;
+    btn.textContent = DEPLOY_LABELS[sel.value] || 'Deploy Local Stack';
+  }
+
+  // Gateway RPM source: 'local' (a file path on this machine — default, takes
+  // precedence) or 'github' (a download URL). One input shows at a time.
+  let _rpmSource = 'local';
+  function setRpmSource(src) {
+    _rpmSource = src;
+    var lf = document.getElementById('rpm-field-local'), gh = document.getElementById('rpm-field-github');
+    if (lf) lf.style.display = src === 'local' ? 'block' : 'none';
+    if (gh) gh.style.display = src === 'github' ? 'block' : 'none';
+    var btns = document.querySelectorAll('#rpm-source-toggle button');
+    for (var i = 0; i < btns.length; i++) btns[i].classList.toggle('active', btns[i].getAttribute('data-src') === src);
+  }
+
+  function dockerAction(action, forceBuild) {
+    // Gateway actions are profile-independent — they always target the running
+    // mcg-qlik-dmg container, so they need no compose file or env vars.
+    if (action === 'gateway-token' || action === 'gateway-start' || action === 'gateway-stop') {
+      var gMsg = action === 'gateway-start' ? 'Starting the gateway container…'
+               : action === 'gateway-stop'  ? 'Stopping the gateway container…'
+               :                               'Retrieving gateway registration token…';
+      _logPane = 'local';
+      _dockerLastTotal = 0; _dockerKeepaliveBucket = 0;
+      var gConsoleEl = logConsoleEl();
+      if (gConsoleEl) gConsoleEl.innerHTML = '';
+      setDockerBtns(true);
+      var gStatusEl = logStatusEl();
+      gStatusEl.style.color = 'var(--text-dim)';
+      gStatusEl.textContent = gMsg;
+      fetch('/api/docker/run?action=' + action, { cache: 'no-store' })
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+          if (!d || !d.started) {
+            var msg = (d && d.error) || 'Could not start the gateway operation.';
+            appendLog('error', msg);
+            gStatusEl.textContent = msg;
+            gStatusEl.style.color = 'var(--error)';
+            setDockerBtns(false);
+            return;
+          }
+          pollDockerStatus(0, 0);
+        })
+        .catch(function() {
+          appendLog('error', 'Could not reach the deploy server for the gateway operation.');
+          gStatusEl.textContent = 'Server unreachable.';
+          gStatusEl.style.color = 'var(--error)';
+          setDockerBtns(false);
+        });
+      return;
+    }
+
     const profile = getVal('f-docker-profile');
     const composeFile = COMPOSE_MAP[profile];
     if (!composeFile) return;
@@ -2886,47 +3264,136 @@ function getHTML() {
         envVars.DMG_MSSQL_PASSWORD = getVal('f-docker-dmg-mssql-pass');
       }
       params.set('envVars', JSON.stringify(envVars));
-      params.set('build', (isDmg && action === 'up') ? '1' : '0');
+      // Build (rebuild images) ONLY on an explicit Deploy click (forceBuild).
+      // "Start Containers" never builds — it just starts the existing instance.
+      params.set('build', (action === 'up' && forceBuild) ? '1' : '0');
     }
 
-    // Pass RPM source info for DMG up builds
-    if (isDmg && action === 'up') {
-      const rpmPath = getVal('f-docker-rpm-path');
-      const rpmUrl = getVal('f-docker-rpm-url');
-      if (rpmPath) params.set('rpmPath', rpmPath);
-      if (rpmUrl) params.set('rpmUrl', rpmUrl);
+    // Pass RPM source info only for an explicit DMG Deploy (build). Start
+    // Containers never builds, so it never needs to resolve a gateway RPM.
+    // Only the selected source is sent (Local file takes precedence by default).
+    if (isDmg && action === 'up' && forceBuild) {
+      if (_rpmSource === 'github') {
+        const rpmUrl = getVal('f-docker-rpm-url');
+        if (rpmUrl) params.set('rpmUrl', rpmUrl);
+      } else {
+        const rpmPath = getVal('f-docker-rpm-path');
+        if (rpmPath) params.set('rpmPath', rpmPath);
+      }
     }
 
+    // This is a Local Stack operation — its logs belong to the local console.
+    _logPane = 'local';
+    _dockerLastTotal = 0; _dockerKeepaliveBucket = 0;
     // Clear console and disable buttons
-    var consoleEl = document.getElementById('console');
+    var consoleEl = logConsoleEl();
     if (consoleEl) consoleEl.innerHTML = '';
     setDockerBtns(true);
 
-    const es = new EventSource('/api/docker/run?' + params.toString());
+    var statusEl = logStatusEl();
+    statusEl.style.color = 'var(--text-dim)';
+    statusEl.textContent = 'Starting…';
 
-    es.addEventListener('log', function(e) {
-      const data = JSON.parse(e.data);
-      appendLog(data.level, data.text);
-    });
-
-    es.addEventListener('status', function(e) {
-      const data = JSON.parse(e.data);
-      const statusEl = document.getElementById('status-text');
-      statusEl.textContent = data.message;
-
-      if (data.state === 'done' || data.state === 'error') {
-        es.close();
+    // Kick off the job (tiny JSON ack), then switch to polling. We never hold a
+    // long-lived stream, so a dropped console can't interrupt or lose the build.
+    fetch('/api/docker/run?' + params.toString(), { cache: 'no-store' })
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        if (!d || !d.started) {
+          var msg = (d && d.error) || 'Could not start the Docker operation.';
+          appendLog('error', msg);
+          statusEl.textContent = msg;
+          statusEl.style.color = 'var(--error)';
+          setDockerBtns(false);
+          return;
+        }
+        pollDockerStatus(0, 0);
+      })
+      .catch(function() {
+        appendLog('error', 'Could not reach the deploy server to start the operation.');
+        statusEl.textContent = 'Server unreachable.';
+        statusEl.style.color = 'var(--error)';
         setDockerBtns(false);
-        statusEl.style.color = (data.state === 'done' && data.code === 0)
-          ? 'var(--success)' : 'var(--error)';
-      }
-    });
+      });
+  }
 
-    es.onerror = function() {
-      es.close();
-      setDockerBtns(false);
-      appendLog('error', 'Connection lost.');
-    };
+  // Poll the server-side job log. A failed poll is harmless — the build keeps
+  // running on the server — so we just retry; we never show "Connection lost".
+  let dockerPollTimer = null;
+  let _dockerLastTotal = 0;        // last seen server line count (to detect new output)
+  let _dockerKeepaliveBucket = 0;  // which 20s silence-bucket we've already announced
+  function stopDockerPoll() {
+    if (dockerPollTimer) { clearTimeout(dockerPollTimer); dockerPollTimer = null; }
+  }
+  function fmtDuration(ms) {
+    var s = Math.max(0, Math.round((ms || 0) / 1000));
+    if (s < 60) return s + 's';
+    var m = Math.floor(s / 60), r = s % 60;
+    return m + 'm' + (r < 10 ? '0' : '') + r + 's';
+  }
+
+  function pollDockerStatus(offset, missed) {
+    stopDockerPoll();
+    fetch('/api/docker/status?offset=' + offset, { cache: 'no-store' })
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        var statusEl = logStatusEl();
+        if (d.lines && d.lines.length) {
+          for (var i = 0; i < d.lines.length; i++) appendLog(d.lines[i].level, d.lines[i].text);
+        }
+        var newOffset = (typeof d.total === 'number') ? d.total : offset;
+
+        if (d.running) {
+          // The live status (updated every poll) shows it's alive; periodic console
+          // lines come from the server's single 30s heartbeat — no duplicate notices here.
+          var idleSec = Math.round((d.idleMs || 0) / 1000);
+          statusEl.style.color = 'var(--text-dim)';
+          statusEl.textContent = '⏳ Working… ' + fmtDuration(d.runningMs) + ' elapsed'
+            + (idleSec >= 5 ? ' · waiting for Docker ' + idleSec + 's' : '')
+            + ' — safe to leave; the build continues on the server.';
+          setDockerBtns(true);
+          dockerPollTimer = setTimeout(function() { pollDockerStatus(newOffset, 0); }, 1500);
+        } else {
+          var ok = (d.code === 0 && !d.error);
+          statusEl.style.color = ok ? 'var(--success)' : 'var(--error)';
+          if (d.idle) statusEl.textContent = 'Idle.';
+          else if (d.error) statusEl.textContent = d.error;
+          else statusEl.textContent = ok ? 'Completed.' : ('Finished with exit code ' + d.code + '.');
+          setDockerBtns(false);
+        }
+      })
+      .catch(function() {
+        // Transient network/poll failure — retry with light backoff. The build
+        // is unaffected; this is purely the status channel reconnecting.
+        var m = (missed || 0) + 1;
+        var statusEl = logStatusEl();
+        statusEl.style.color = 'var(--gold)';
+        statusEl.textContent = 'Reconnecting… (the gateway build continues on the server)';
+        var delay = Math.min(1500 + m * 1000, 8000);
+        dockerPollTimer = setTimeout(function() { pollDockerStatus(offset, m); }, delay);
+      });
+  }
+
+  // If a build is already running (e.g. after a page reload or re-navigation),
+  // re-attach to it and replay its log from the start. Closing/reopening the
+  // page therefore can't lose visibility of an in-flight gateway build.
+  function resumeDockerIfRunning() {
+    fetch('/api/docker/status?offset=0', { cache: 'no-store' })
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        if (d && d.running) {
+          // A local build is in flight — switch to Local mode so the user sees it
+          // and route its logs to the local pane.
+          setMode('local');
+          _logPane = 'local';
+          _dockerLastTotal = 0; _dockerKeepaliveBucket = 0;
+          var consoleEl = logConsoleEl();
+          if (consoleEl) consoleEl.innerHTML = '';
+          appendLog('info', '↻ Reattached to a Docker operation already running on the server.');
+          pollDockerStatus(0, 0);
+        }
+      })
+      .catch(function() {});
   }
 
   // --- Build Apps page ---
@@ -3007,8 +3474,9 @@ function getHTML() {
   function startBuildApps(dryRun) {
     if (isBuildRunning) return;
     isBuildRunning = true;
+    _logPane = 'tenant';
 
-    const consoleEl = document.getElementById('console');
+    const consoleEl = logConsoleEl();
     consoleEl.innerHTML = '';
 
     document.getElementById('btn-build-apps').disabled = true;
@@ -3021,7 +3489,7 @@ function getHTML() {
     badge.textContent = dryRun ? 'BUILD DRY RUN' : 'BUILDING';
     badge.className = 'badge ' + (dryRun ? 'badge-gold' : 'badge-red') + ' running-indicator';
 
-    const statusEl = document.getElementById('status-text');
+    const statusEl = logStatusEl();
     statusEl.textContent = dryRun ? 'Build dry run starting...' : 'Build starting...';
     statusEl.style.color = '';
 
@@ -3096,7 +3564,7 @@ function getHTML() {
     document.getElementById('build-stop-row').style.display = 'none';
     document.getElementById('run-badge').style.display = 'none';
     appendLog('warn', 'Build stopped by user.');
-    document.getElementById('status-text').textContent = 'Stopped';
+    logStatusEl().textContent = 'Stopped';
   }
 
   // --- Build Automations UI ---
@@ -3137,8 +3605,9 @@ function getHTML() {
   function startBuildAutomations(dryRun) {
     if (isBuildAutoRunning) return;
     isBuildAutoRunning = true;
+    _logPane = 'tenant';
 
-    const consoleEl = document.getElementById('console');
+    const consoleEl = logConsoleEl();
     consoleEl.innerHTML = '';
 
     document.getElementById('btn-build-autos').disabled = true;
@@ -3151,7 +3620,7 @@ function getHTML() {
     badge.textContent = dryRun ? 'AUTO DRY RUN' : 'BUILDING AUTOS';
     badge.className = 'badge ' + (dryRun ? 'badge-gold' : 'badge-red') + ' running-indicator';
 
-    const statusEl = document.getElementById('status-text');
+    const statusEl = logStatusEl();
     statusEl.textContent = dryRun ? 'Automation dry run starting...' : 'Automation build starting...';
     statusEl.style.color = '';
 
@@ -3225,7 +3694,7 @@ function getHTML() {
     document.getElementById('build-auto-stop-row').style.display = 'none';
     document.getElementById('run-badge').style.display = 'none';
     appendLog('warn', 'Automation build stopped by user.');
-    document.getElementById('status-text').textContent = 'Stopped';
+    logStatusEl().textContent = 'Stopped';
   }
 
   // --- Build config from form ---
@@ -3249,8 +3718,8 @@ function getHTML() {
         managed: getVal('f-space-managed') || 'MCG Demo - Published',
       },
       enabledComponents: {
-        docker: false,  // Local infra + DMG gateway deploy separately (Infrastructure & Gateway tab), never as part of the tenant deploy
-        infrastructure: isChecked('f-en-infra'),
+        docker: false,  // Local stack + DMG gateway deploy separately (Local Stack & Gateway tab), never as part of the tenant deploy
+        infrastructure: false,  // Kafka/simulators run as local containers, deployed from the Local Stack & Gateway tab — not the tenant deploy
         spaces: isChecked('f-en-spaces'),
         connections: isChecked('f-en-connections'),
         theme: isChecked('f-en-theme'),
@@ -3271,13 +3740,14 @@ function getHTML() {
         publishDataProducts: isChecked('f-pipelines-publish'),
         bindings: {},
       },
-      infrastructure: {
-        useDocker: isChecked('f-infra-docker'),
-      },
       docker: {
         profile: getVal('f-docker-profile') || 'full-stack',
         rpmPath: getVal('f-docker-rpm-path') || '',
         rpmUrl: getVal('f-docker-rpm-url') || '',
+      },
+      dataGateway: {
+        id: getVal('f-data-gateway-id') || '',
+        name: 'MCG_DATA_MOVEMENT',
       },
       dataConnections: {
         postgresql: {
@@ -3291,9 +3761,10 @@ function getHTML() {
         },
         salesforce: {
           name: getVal('f-sf-name') || 'MCG Salesforce CRM',
-          securityToken: getVal('f-sf-token'),
-          username: getVal('f-sf-username'),
-          password: getVal('f-sf-password'),
+          instance: getVal('f-sf-instance'),
+          loginDomain: getVal('f-sf-login-domain'),
+          clientId: getVal('f-sf-client-id'),
+          clientSecret: getVal('f-sf-client-secret'),
           isSandbox: isChecked('f-sf-sandbox'),
         },
         kafka: {
@@ -3458,7 +3929,7 @@ function getHTML() {
     const el = document.getElementById('deploy-summary');
     const en = {
       docker: false,
-      infrastructure: isChecked('f-en-infra'),
+      infrastructure: false,
       spaces: isChecked('f-en-spaces'),
       connections: isChecked('f-en-connections'),
       theme: isChecked('f-en-theme'),
@@ -3544,8 +4015,9 @@ function getHTML() {
   function startDeploy(dryRun) {
     if (isRunning) return;
     isRunning = true;
+    _logPane = 'tenant';
 
-    const consoleEl = document.getElementById('console');
+    const consoleEl = logConsoleEl();
     consoleEl.innerHTML = '';
 
     const cfg = buildConfig();
@@ -3573,7 +4045,7 @@ function getHTML() {
 
       eventSource.addEventListener('status', (e) => {
         const data = JSON.parse(e.data);
-        const statusEl = document.getElementById('status-text');
+        const statusEl = logStatusEl();
         statusEl.textContent = data.message;
 
         if (data.state === 'done' || data.state === 'error') {
@@ -3596,7 +4068,7 @@ function getHTML() {
         setRunningState(false);
         if (eventSource) { eventSource.close(); eventSource = null; }
         appendLog('error', 'Connection to server lost.');
-        document.getElementById('status-text').textContent = 'Disconnected';
+        logStatusEl().textContent = 'Disconnected';
       };
     });
   }
@@ -3607,7 +4079,7 @@ function getHTML() {
     isRunning = false;
     setRunningState(false);
     appendLog('warn', 'Deployment stopped by user.');
-    document.getElementById('status-text').textContent = 'Stopped';
+    logStatusEl().textContent = 'Stopped';
   }
 
   function setRunningState(running, dryRun) {
@@ -3640,7 +4112,7 @@ function getHTML() {
   function _flushLogs() {
     _logRafId = null;
     if (_logQueue.length === 0) return;
-    const consoleEl = document.getElementById('console');
+    const consoleEl = logConsoleEl();
     if (!consoleEl) return;
     const frag = document.createDocumentFragment();
     const batch = _logQueue.splice(0);
@@ -3660,13 +4132,14 @@ function getHTML() {
   }
 
   function clearConsole() {
-    document.getElementById('console').innerHTML = '';
-    document.getElementById('status-text').textContent = 'Ready';
-    document.getElementById('status-text').style.color = '';
+    viewConsoleEl().innerHTML = '';
+    var s = viewStatusEl();
+    s.textContent = 'Ready';
+    s.style.color = '';
   }
 
   function copyConsole() {
-    const text = document.getElementById('console').innerText;
+    const text = viewConsoleEl().innerText;
     navigator.clipboard.writeText(text).then(() => {
       const btn = event.target;
       btn.textContent = 'Copied!';
@@ -3675,7 +4148,7 @@ function getHTML() {
   }
 
   function downloadLog() {
-    const text = document.getElementById('console').innerText;
+    const text = viewConsoleEl().innerText;
     if (!text.trim()) return;
     const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
     const blob = new Blob([text], { type: 'text/plain' });
@@ -3951,13 +4424,15 @@ const server = http.createServer((req, res) => {
     let envVars = null;
     try { envVars = JSON.parse(parsed.searchParams.get('envVars') || 'null'); } catch (_) {}
 
-    // Validate compose file name — must be one of our known files
+    // Validate compose file name — must be one of our known files.
+    // The gateway-token action is profile-independent (it targets the running
+    // mcg-qlik-dmg container directly), so it needs no compose file.
     const VALID_COMPOSE = new Set([
       'docker-compose.full-stack.yml', 'docker-compose.full-stack-dmg.yml',
       'kafka/docker-compose.yml', 'docker-compose.simulators.yml',
       'docker-compose.dmg.yml', 'docker-compose.simulators-dmg.yml',
     ]);
-    if (!composeFile || !VALID_COMPOSE.has(composeFile)) {
+    if (!action.startsWith('gateway-') && (!composeFile || !VALID_COMPOSE.has(composeFile))) {
       res.writeHead(400, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'Invalid or missing composeFile' }));
       return;
@@ -3965,7 +4440,36 @@ const server = http.createServer((req, res) => {
 
     const rpmPath = parsed.searchParams.get('rpmPath') || '';
     const rpmUrl = parsed.searchParams.get('rpmUrl') || '';
-    runDockerCompose(res, { action, composeFile, build, envVars, rpmPath, rpmUrl });
+    const result = startDockerJob({ action, composeFile, build, envVars, rpmPath, rpmUrl });
+    res.writeHead(result.started ? 200 : 409, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+    res.end(JSON.stringify(result));
+    return;
+  }
+
+  // Poll endpoint — returns new log lines since `offset` plus running state.
+  // The client polls this instead of holding a long-lived stream, so a dropped
+  // or throttled connection can never "lose" the gateway build.
+  if (req.method === 'GET' && parsed.pathname === '/api/docker/status') {
+    const offset = parseInt(parsed.searchParams.get('offset') || '0', 10) || 0;
+    res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+    if (!dockerJob) {
+      res.end(JSON.stringify({ idle: true, running: false, code: null, error: null, lines: [], total: 0 }));
+      return;
+    }
+    const total = dockerJob.lines.length;
+    const lines = offset < total ? dockerJob.lines.slice(offset) : [];
+    const now = Date.now();
+    res.end(JSON.stringify({
+      idle: false,
+      running: dockerJob.running,
+      action: dockerJob.action,
+      code: dockerJob.code,
+      error: dockerJob.error,
+      lines: lines,
+      total: total,
+      runningMs: now - (dockerJob.startedAt || now),
+      idleMs: now - (dockerJob.lastOutputAt || now),  // ms since last Docker output (for keepalive)
+    }));
     return;
   }
 
@@ -3973,6 +4477,10 @@ const server = http.createServer((req, res) => {
     if (activeDockerProcess) {
       activeDockerProcess.kill('SIGTERM');
       activeDockerProcess = null;
+    }
+    if (dockerJob && dockerJob.running) {
+      pushDockerLog('error', 'Stopped by user.');
+      finishDockerJob(null, 'Stopped by user.');
     }
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ ok: true }));

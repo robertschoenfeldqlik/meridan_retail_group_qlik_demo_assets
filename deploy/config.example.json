@@ -20,7 +20,9 @@
 
   "spaces": {
     "shared": "MCG Demo - Development",
-    "managed": "MCG Demo - Published"
+    "managed": "MCG Demo - Published",
+    "data": "MCG Demo - DI",
+    "comment_data": "Data space (type 'data') that holds Data Integration gateway-bound source connections (e.g. the PostgreSQL CDC source). Register/assign the Data Movement gateway to THIS space."
   },
 
   "enabledComponents": {
@@ -46,6 +48,12 @@
     "comment_simulatorInterval": "Seconds between Kafka IoT simulator batches when using --scheduled mode (default 900 = 15 min)"
   },
 
+  "dataGateway": {
+    "id": "",
+    "name": "MCG_DATA_MOVEMENT",
+    "comment_dataGateway": "Data Movement gateway ID used to bind the PostgreSQL CDC source connection. Get it from Qlik Cloud → Administration → Data Gateways → your gateway row → the 'Data gateway ID' column (click the value to select/copy it). Leave id empty to skip auto-create and set the connection up in the DI project UI instead. Can also be set via the QLIK_DATA_GATEWAY_ID env var."
+  },
+
   "dataConnections": {
     "postgresql": {
       "name": "MCG WMS Database",
@@ -54,14 +62,18 @@
       "database": "mcg_wms",
       "username": "mcg_admin",
       "password": "mcg_demo_2025",
-      "schema": "public"
+      "schema": "public",
+      "sslMode": "PREFER",
+      "comment_postgresql": "Created as a Data-Movement-gateway-bound replication SOURCE (repsrc_postgresql) when dataGateway.id is set. 'host' must be the PostgreSQL host reachable from the gateway container (Docker service name / host IP)."
     },
     "salesforce": {
       "name": "MCG Salesforce CRM",
-      "securityToken": "YOUR_SF_SECURITY_TOKEN",
-      "username": "integration@mcg-demo.com",
-      "password": "YOUR_SF_PASSWORD",
-      "isSandbox": true
+      "instance": "orgfarm-xxxx-dev-ed.develop.my",
+      "loginDomain": "orgfarm-xxxx-dev-ed.develop.my.salesforce.com",
+      "clientId": "YOUR_SF_CONNECTED_APP_CLIENT_ID",
+      "clientSecret": "YOUR_SF_CONNECTED_APP_CLIENT_SECRET",
+      "isSandbox": true,
+      "comment_salesforce": "Salesforce is a SaaS source created in the Qlik Cloud UI (Data Integration → Create connection → Salesforce), in the data space, over Qlik's managed gateway ($$qlikManagedGateway$$). It authenticates via a Connected App (OAuth: Instance, Login Domain, Client Id, Client Secret) — the interactive Salesforce login can't be done headlessly, so the deploy skips it with guidance."
     },
     "kafka": {
       "name": "MCG IoT Telemetry",

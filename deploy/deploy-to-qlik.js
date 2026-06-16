@@ -393,6 +393,10 @@ class QlikClient {
 
   async _delete(apiPath) {
     const fullUrl = `${this.baseUrl}${apiPath}`;
+    if (this.dryRun) {
+      this.log.info(`DRY RUN: Would DELETE ${fullUrl}`);
+      return { statusCode: 204, body: {} };
+    }
     this.log.debug(`DELETE ${fullUrl}`);
     return request('DELETE', fullUrl, { headers: this._authHeaders() });
   }
@@ -901,18 +905,20 @@ class QlikClient {
     } catch (err) {
       this.log.debug(`Data products API lookup failed (${err.message}) — trying Items API fallback.`);
     }
-    // Fallback: use the Items API with name filter (works even when Data Governance GET returns 405)
+    // Fallback: Items API (works even when the Data Governance GET returns 405).
+    // The OData-style `filter` is NOT reliably honored for data products (the API
+    // ignored it and returned every product, so items[0] matched the wrong one and
+    // every name resolved to the same id). Fetch candidates and match the EXACT
+    // name ourselves — never blindly take items[0] — so dedup is correct and we
+    // never create duplicates or falsely skip a missing product.
     try {
-      const filter = spaceId
-        ? `name eq "${name}" and resourceType eq "dataproduct" and spaceId eq "${spaceId}"`
-        : `name eq "${name}" and resourceType eq "dataproduct"`;
-      const res = await this._get(`/api/v1/items?${new URLSearchParams({ filter, limit: '100' })}`);
+      const qs = new URLSearchParams({ resourceType: 'dataproduct', limit: '100' });
+      if (name) qs.set('name', name);  // server-side narrowing (substring match)
+      const res = await this._get(`/api/v1/items?${qs.toString()}`);
       const items = (res.body && res.body.data) || [];
-      this.log.debug(`Items API fallback: found ${items.length} data product item(s) matching "${name}"`);
-      if (items.length > 0) {
-        const match = items[0];
-        return { id: match.resourceId || match.id, name: match.name, alreadyExists: true };
-      }
+      const match = items.find((it) => it.name === name);  // exact name match only
+      this.log.debug(`Items API fallback: ${items.length} candidate(s); exact match for "${name}": ${match ? (match.resourceId || match.id) : 'none'}`);
+      if (match) return { id: match.resourceId || match.id, name: match.name, alreadyExists: true };
     } catch (err2) {
       this.log.debug(`Items API fallback also failed: ${err2.message}`);
     }
@@ -958,6 +964,10 @@ class QlikClient {
   }
 
   async deleteDataProduct(id) {
+    if (this.dryRun) {
+      this.log.info(`DRY RUN: Would delete data product ${id}`);
+      return false;
+    }
     const res = await this._delete(`/api/data-governance/data-products/${id}`);
     if (res.statusCode === 200 || res.statusCode === 204) {
       this.log.success(`Deleted data product ${id}`);
@@ -999,7 +1009,7 @@ class QlikClient {
         kept++;
         continue;
       }
-      this.log.info(`  Deleting: "${dp.name}" (${dp.id})`);
+      this.log.info(`  ${this.dryRun ? 'Would delete' : 'Deleting'}: "${dp.name}" (${dp.id})`);
       await this.deleteDataProduct(dp.id);
       deleted++;
     }
@@ -1476,6 +1486,51 @@ function buildPostgresProperties(cfg) {
   };
 }
 
+// Build a Data-Movement-gateway-bound PostgreSQL SOURCE connection (datasourceID
+// repsrc_postgresql). The gateway is referenced by agentId — the "Data gateway ID"
+// shown in Qlik Cloud → Administration → Data Gateways — embedded in the connect
+// string with allowManagedGateway=true. This connect-string path creates the
+// connection WITHOUT the live test that the nested-connectionProperties path runs
+// (which fails with "Gateway not found"). Verified to return 201 against the tenant.
+// Source of truth: a template pulled from a real Qlik DI connection
+// (deploy/templates/postgres-source.connection.json, refreshed via
+// deploy/pull-connection-template.js). We fill the {{placeholders}} from config;
+// if the template file is missing we fall back to this inline copy.
+const PG_SOURCE_TEMPLATE_PATH = path.join(SCRIPT_DIR, 'templates', 'postgres-source.connection.json');
+const PG_SOURCE_INLINE =
+  'provider=QlikConnectorsCommonService.exe;sourceType=repsrc_postgresql;agentId={{agentId}};' +
+  'allowManagedGateway=true;replicateEndpointType=postgresqlsource###None;server={{server}};' +
+  'port={{port}};username={{username}};sshTunnel.enabled=false;sshTunnel.localHost=127.0.0.2;' +
+  'sshTunnel.sshServerPort=22;sshFlagEnabled=true;sshEnable=false;databaseManualInput=false;' +
+  'database={{database}};sslMode={{sslMode}};sslCompression=true;heartbeatEnable=false;' +
+  'heartbeatSchema=public;heartbeatFrequency=5;captureDDLs=true;ddlArtifactsSchema=public;' +
+  'useNativeBooleanDataType=false;starterMode=false';
+
+function buildPostgresGatewaySource(cfg, gatewayId) {
+  const vals = {
+    agentId: gatewayId,
+    server: cfg.host || 'localhost',
+    port: cfg.port || 5432,
+    username: cfg.username || 'postgres',
+    database: cfg.database || 'mcg_wms',
+    sslMode: cfg.sslMode || 'PREFER',
+  };
+  let template = PG_SOURCE_INLINE;
+  let qType = 'QlikConnectorsCommonService.exe';
+  try {
+    const t = JSON.parse(fs.readFileSync(PG_SOURCE_TEMPLATE_PATH, 'utf8'));
+    if (t.connectStringTemplate) template = t.connectStringTemplate;
+    if (t.qType) qType = t.qType;
+  } catch (_) { /* template file is optional — use the inline copy */ }
+  const inner = template.replace(/\{\{(\w+)\}\}/g, (_m, k) => (vals[k] !== undefined ? vals[k] : ''));
+  return {
+    qConnectStatement: `CUSTOM CONNECT TO "${inner}"`,
+    qType,
+    qUsername: vals.username,
+    qPassword: cfg.password,
+  };
+}
+
 // Salesforce, Kafka, and S3 connectors use REST-based data sources whose
 // property schemas are defined server-side. We create the connection shell
 // with an empty connectionProperties object (API requires at least one of
@@ -1622,7 +1677,7 @@ class DeploymentReport {
 
     let okCount = 0, failCount = 0, skipCount = 0;
     for (const s of this.steps) {
-      const icon = s.status === 'OK' ? 'OK' : s.status === 'SKIP' ? 'SKIP' : 'FAIL';
+      const icon = s.status === 'OK' ? 'OK' : s.status === 'SKIP' ? 'SKIP' : s.status === 'WARN' ? 'WARN' : 'FAIL';
       console.log(`${s.step.padEnd(maxStep + 2)}${icon.padEnd(11)}${s.detail}`);
       if (s.status === 'OK')   okCount++;
       if (s.status === 'FAIL') failCount++;
@@ -1982,19 +2037,24 @@ async function main() {
   }
 
   // ---- Create Spaces ------------------------------------------------------
-  let sharedSpace, managedSpace;
+  let sharedSpace, managedSpace, dataSpace;
 
   if (enabled.spaces !== false) {
     log.section('Step 3: Create Spaces');
     try {
       const sharedName  = (cfg.spaces && cfg.spaces.shared)  || 'MCG Demo - Development';
       const managedName = (cfg.spaces && cfg.spaces.managed)  || 'MCG Demo - Published';
+      const dataName    = (cfg.spaces && cfg.spaces.data)     || 'MCG Demo - DI';
 
       sharedSpace  = await client.createSpace(sharedName, 'shared');
       report.record('Space (shared)', 'OK', `"${sharedName}" id=${sharedSpace.id}`);
 
       managedSpace = await client.createSpace(managedName, 'managed');
       report.record('Space (managed)', 'OK', `"${managedName}" id=${managedSpace.id}`);
+
+      // Data Integration gateway-bound connections live in a DATA space.
+      dataSpace = await client.createSpace(dataName, 'data');
+      report.record('Space (data)', 'OK', `"${dataName}" id=${dataSpace.id}`);
     } catch (err) {
       log.error(`Space creation failed: ${err.message}`);
       report.record('Spaces', 'FAIL', err.message);
@@ -2010,15 +2070,80 @@ async function main() {
   if (enabled.connections !== false) {
     log.section('Step 4: Create Data Connections');
 
+    // Connection creation strategy:
+    //   • PostgreSQL (MCG WMS) is a CDC SOURCE routed through the registered Data
+    //     Movement gateway. We create it via the REST API by building the
+    //     qConnectStatement with agentId=<Data Gateway ID> + allowManagedGateway=true
+    //     (buildPostgresGatewaySource). The nested-connectionProperties path fails
+    //     with "Gateway not found" because it runs a live test; the connect-string
+    //     path does not. The gateway ID comes from config (dataGateway.id) — read it
+    //     in Qlik Cloud → Administration → Data Gateways → the "Data gateway ID"
+    //     column. Without an ID we fall back to UI guidance.
+    //   • Kafka has no SOURCE connector in the tenant (only reptgt_qdikafka, a
+    //     target); a Kafka source needs a Data Gateway - Streaming, created in the UI.
+    //   • Salesforce/S3/Athena are credentialed REST (dcaas) connectors that need an
+    //     OAuth/IAM flow, so they're created in the Qlik Cloud UI.
+    const GW = 'mcg-qlik-dmg';
+    const gatewayId = (cfg.dataGateway && cfg.dataGateway.id) || process.env.QLIK_DATA_GATEWAY_ID || '';
     const connectionDefs = [
-      { key: 'postgresql', keyword: 'postgres',   buildProps: buildPostgresProperties,   label: 'PostgreSQL (MCG WMS)',    required: ['host', 'database'] },
-      { key: 'salesforce', keyword: 'sfdc',        buildProps: buildSalesforceProperties, label: 'Salesforce (MCG CRM)',   required: ['username', 'password'] },
-      { key: 'kafka',      keyword: 'kafka',      buildProps: buildKafkaProperties,      label: 'Kafka (IoT Telemetry)',  required: ['bootstrapServers'] },
-      { key: 's3',         keyword: 's3',          buildProps: buildS3Properties,          label: 'S3 (Flat File Outputs)', required: ['bucketName', 'region'] },
-      { key: 'athena',     keyword: 'athena',      buildProps: buildAthenaProperties,      label: 'Amazon Athena (Open Lakehouse reads)', required: ['region'] },
+      { key: 'postgresql', label: 'PostgreSQL (MCG WMS)', gatewaySource: true,
+        dataSourceId: 'repsrc_postgresql', buildGateway: buildPostgresGatewaySource,
+        uiHint: `Set dataGateway.id in config to auto-create this (Qlik Cloud → Administration → Data Gateways → copy the "Data gateway ID"), or create it in the DI project UI selecting the "${GW}" gateway.` },
+      { key: 'salesforce', label: 'Salesforce (MCG CRM)', uiOnly: true,
+        uiHint: 'Create in the Qlik Cloud UI (Data Integration → Create connection → Salesforce) in the MCG Demo - DI space. Salesforce authenticates WITH Salesforce via a Connected App (OAuth: Instance, Login Domain, Client Id & Secret) over the Qlik-managed gateway ($$qlikManagedGateway$$, not the on-prem DMG) — the interactive Salesforce login cannot be performed headlessly.' },
+      { key: 'kafka',      label: 'Kafka (IoT Telemetry)', uiOnly: true,
+        uiHint: 'Create the Kafka source inside your Data Integration project. Kafka as a SOURCE requires a Data Gateway - Streaming (the Data Movement gateway does not expose a Kafka source), and there is no Kafka source connector in the public API.' },
+      { key: 's3',         label: 'S3 (Flat File Outputs)', uiOnly: true,
+        uiHint: 'Create in the Qlik Cloud UI (Data → Create connection → Amazon S3) — this credentialed connector needs IAM/key credentials the API cannot set headlessly.' },
+      { key: 'athena',     label: 'Amazon Athena (Open Lakehouse reads)', uiOnly: true,
+        uiHint: 'Create in the Qlik Cloud UI (Data → Create connection → Amazon Athena) — this credentialed connector needs IAM credentials the API cannot set headlessly.' },
     ];
 
     for (const def of connectionDefs) {
+      // Gateway-bound DB source — create via the connect-string path when a Data
+      // Gateway ID is configured; otherwise fall back to UI guidance.
+      if (def.gatewaySource) {
+        const connCfg = (cfg.dataConnections && cfg.dataConnections[def.key]) || {};
+        const connName = connCfg.name || `MCG ${def.label}`;
+        if (!gatewayId) {
+          log.warn(`${def.label}: ${def.uiHint}`);
+          report.record(`Connection: ${def.label}`, 'SKIP', 'No dataGateway.id configured — set it or create in the DI project UI');
+          continue;
+        }
+        try {
+          // Replace a stale same-name connection of the WRONG type (e.g. a plain
+          // non-gateway ODBC connection from an earlier deploy) so the gateway-bound
+          // source can be created. Same-type existing connections are left as-is
+          // (createDataConnection is idempotent).
+          const existing = await client.findDataConnectionByName(connName);
+          if (existing && existing.datasourceID && existing.datasourceID !== def.dataSourceId) {
+            if (dryRun) {
+              log.info(`DRY RUN: Would replace existing "${connName}" (type ${existing.datasourceID}) with gateway-bound ${def.dataSourceId}.`);
+            } else {
+              log.warn(`Replacing existing "${connName}" (type ${existing.datasourceID}, not gateway-bound) with the gateway-bound source.`);
+              await client._delete(`/api/v1/data-connections/${existing.qID || existing.id}`);
+            }
+          }
+          const props = def.buildGateway(connCfg, gatewayId);
+          // Gateway-bound sources belong in a DATA space (fall back to shared if the
+          // data space isn't available, e.g. spaces step disabled).
+          const targetSpace = dataSpace || sharedSpace;
+          await client.createDataConnection(connName, def.dataSourceId, props, targetSpace ? targetSpace.id : undefined, null);
+          report.record(`Connection: ${def.label}`, 'OK', `${connName} → gateway ${gatewayId.slice(0, 8)}… (space: ${(targetSpace && targetSpace.name) || 'personal'})`);
+        } catch (err) {
+          log.error(`${def.label}: ${err.message}`);
+          report.record(`Connection: ${def.label}`, 'FAIL', err.message);
+          if (!continueOnError) { report.print(log); process.exit(EXIT_FAILURE); }
+        }
+        continue;
+      }
+
+      // UI-created connectors (credentialed REST / Kafka streaming): skip with guidance.
+      if (def.uiOnly) {
+        log.warn(`${def.label}: ${def.uiHint}`);
+        report.record(`Connection: ${def.label}`, 'SKIP', def.uiHint);
+        continue;
+      }
       const connCfg = cfg.dataConnections && cfg.dataConnections[def.key];
       if (!connCfg) {
         log.warn(`No config for ${def.label} — skipping.`);
@@ -2044,15 +2169,21 @@ async function main() {
           log.warn(`Data source type "${def.keyword}" not found via discovery — using keyword as fallback.`);
         }
 
+        const connName = connCfg.name || `MCG ${def.label}`;
+        if (typeof def.buildProps !== 'function') {
+          log.warn(`${def.label}: no property builder defined — create this connection in the Qlik Cloud UI.`);
+          report.record(`Connection: ${def.label}`, 'SKIP', 'No builder — create in UI');
+          continue;
+        }
         const props = def.buildProps(connCfg);
         await client.createDataConnection(
-          connCfg.name || `MCG ${def.label}`,
+          connName,
           dataSourceId,
           props,
           sharedSpace ? sharedSpace.id : undefined,
           dataSource
         );
-        report.record(`Connection: ${def.label}`, 'OK', connCfg.name);
+        report.record(`Connection: ${def.label}`, 'OK', connName);
       } catch (err) {
         log.error(`${def.label}: ${err.message}`);
         report.record(`Connection: ${def.label}`, 'FAIL', err.message);
@@ -2148,9 +2279,14 @@ async function main() {
       report.record('KB Sync', 'OK', 'Indexing triggered');
       } // end if !notAvailable
     } catch (err) {
-      log.error(`Knowledge base setup failed: ${err.message}`);
-      report.record('Knowledge Base', 'FAIL', err.message);
-      if (!continueOnError) { report.print(log); process.exit(EXIT_FAILURE); }
+      if (/\b403\b/.test(err.message) && /licen[sc]e/i.test(err.message)) {
+        log.warn('Knowledge Base skipped — this tenant has no Qlik Answers license (403). Optional feature; continuing.');
+        report.record('Knowledge Base', 'SKIP', 'No Qlik Answers license (403)');
+      } else {
+        log.error(`Knowledge base setup failed: ${err.message}`);
+        report.record('Knowledge Base', 'FAIL', err.message);
+        if (!continueOnError) { report.print(log); process.exit(EXIT_FAILURE); }
+      }
     }
   } else {
     log.section('Step 6: Create Knowledge Base for Qlik Answers');
@@ -2178,9 +2314,14 @@ async function main() {
       });
       report.record('Assistant', 'OK', `"${assistant.name}" id=${assistant.id}`);
     } catch (err) {
-      log.error(`Assistant creation failed: ${err.message}`);
-      report.record('Assistant', 'FAIL', err.message);
-      if (!continueOnError) { report.print(log); process.exit(EXIT_FAILURE); }
+      if (/\b403\b/.test(err.message) && /licen[sc]e/i.test(err.message)) {
+        log.warn('Assistant skipped — this tenant has no Qlik Answers license (403). Optional feature; continuing.');
+        report.record('Assistant', 'SKIP', 'No Qlik Answers license (403)');
+      } else {
+        log.error(`Assistant creation failed: ${err.message}`);
+        report.record('Assistant', 'FAIL', err.message);
+        if (!continueOnError) { report.print(log); process.exit(EXIT_FAILURE); }
+      }
     }
   } else {
     log.section('Step 7: Create Qlik Answers Assistant');
@@ -2387,8 +2528,9 @@ async function main() {
       {
         name: 'MCG Pipeline Health Alert',
         url: (cfg.webhooks && cfg.webhooks.targetUrl) || 'https://your-endpoint.example.com/hooks/qlik-pipeline',
-        eventTypes: ['com.qlik.v1.datafile.created', 'com.qlik.v1.datafile.updated'],
-        description: 'Fires on data file events — used as proxy for pipeline health monitoring',
+        // Valid tenant-level DI (pipeline) task events — the old datafile.* events are not valid at tenant level.
+        eventTypes: ['com.qlik.v1.di-projects.di-tasks.failed', 'com.qlik.v1.di-projects.di-tasks.completed'],
+        description: 'Fires on data integration (pipeline) task failure/completion — pipeline health monitoring',
         enabled: true,
       },
     ];

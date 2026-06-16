@@ -390,6 +390,59 @@ function layerBadge(slide, y, label, color) {
 
 
 // =============================================================================
+// SLIDE 3.5 — GATEWAY & SOURCE CONNECTIONS
+// =============================================================================
+(function slide_gateway() {
+  const slide = contentSlide("Gateway & Source Connections", C.qlikTeal);
+
+  slide.addText("Local databases reach Qlik Cloud through a registered Data Movement gateway. Source connections are created in a Data Integration project that selects the gateway.", {
+    x: 0.5, y: 1.0, w: 12.3, h: 0.55,
+    fontSize: 13, color: C.medGray, fontFace: FONT, italic: true,
+  });
+
+  // Flow row: Local DBs → Gateway → Qlik Cloud
+  const ry = 1.95, rh = 1.1;
+  box(slide, 0.6, ry, 3.4, rh, "Local Databases", "PostgreSQL • MySQL • SQL Server\n(mcg-qlik-dmg container)", C.qlikTeal);
+  box(slide, 5.0, ry, 3.4, rh, "Data Movement Gateway", "Registered to tenant\nOutbound HTTPS 443", C.qlikBlue);
+  box(slide, 9.4, ry, 3.3, rh, "Qlik Cloud", "Data Integration project\nCDC → Open Lakehouse", C.qlikGreen);
+  arrow(slide, 4.05, ry + rh / 2, 4.95, ry + rh / 2, C.qlikGray);
+  arrow(slide, 8.45, ry + rh / 2, 9.35, ry + rh / 2, C.qlikGray);
+
+  // Two step columns
+  const sy = 3.55;
+  slide.addText("1 · Register the gateway", {
+    x: 0.6, y: sy, w: 6.0, h: 0.4, fontSize: 14, color: C.qlikTeal, fontFace: FONT, bold: true,
+  });
+  [
+    "Deploy UI → Local Stack & Gateway → Register Gateway / Get Token",
+    "  (or run agentctl in the mcg-qlik-dmg container)",
+    "Admin → Data Gateways → Register → paste token → Connected",
+  ].forEach((t, i) => slide.addText("▸  " + t, {
+    x: 0.7, y: sy + 0.5 + i * 0.45, w: 6.0, h: 0.42, fontSize: 11.5, color: C.darkText, fontFace: FONT,
+  }));
+
+  slide.addText("2 · Create source connections", {
+    x: 6.9, y: sy, w: 6.0, h: 0.4, fontSize: 14, color: C.qlikBlue, fontFace: FONT, bold: true,
+  });
+  [
+    "Data Integration → project → Create connection",
+    "Pick PostgreSQL/MySQL/SQL Server, select the gateway",
+    "Enter host/port/db/credentials → Test → Save",
+  ].forEach((t, i) => slide.addText("▸  " + t, {
+    x: 7.0, y: sy + 0.5 + i * 0.45, w: 5.9, h: 0.42, fontSize: 11.5, color: C.darkText, fontFace: FONT,
+  }));
+
+  // Footnote callout
+  slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
+    x: 0.6, y: 6.15, w: 12.1, h: 0.8, fill: { color: C.lightBg }, rectRadius: 0.08, line: { color: C.qlikGray, width: 0.5 },
+  });
+  slide.addText("Data Movement gateway connections are created in the Data Integration UI (the public REST API cannot bind them) — the deploy script skips them with guidance. Kafka sources need a Data Gateway - Streaming; Salesforce/S3/Athena are credentialed connectors.", {
+    x: 0.8, y: 6.22, w: 11.7, h: 0.68, fontSize: 10.5, color: C.darkText, fontFace: FONT, lineSpacingMultiple: 1.1,
+  });
+})();
+
+
+// =============================================================================
 // SLIDE 4 — OPEN LAKEHOUSE (MEDALLION ARCHITECTURE)
 // =============================================================================
 (function slide_lakehouse() {

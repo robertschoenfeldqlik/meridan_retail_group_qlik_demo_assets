@@ -1,0 +1,14 @@
+{
+  "_comment": "Pulled from Qlik Cloud data connection \"MCG WMS Database\" (repsrc_postgresql) and parameterized. buildPostgresGatewaySource() in deploy-to-qlik.js fills the {{placeholders}} from deploy config (dataGateway.id, dataConnections.postgresql.{host,port,username,database,sslMode}). Refresh after changing the connection in Qlik: node deploy/pull-connection-template.js",
+  "datasourceID": "repsrc_postgresql",
+  "qType": "QlikConnectorsCommonService.exe",
+  "placeholders": [
+    "agentId",
+    "server",
+    "port",
+    "username",
+    "database",
+    "sslMode"
+  ],
+  "connectStringTemplate": "provider=QlikConnectorsCommonService.exe;sourceType=repsrc_postgresql;agentId={{agentId}};allowManagedGateway=true;replicateEndpointType=postgresqlsource###None;server={{server}};port={{port}};username={{username}};sshTunnel.enabled=false;sshTunnel.localHost=127.0.0.2;sshTunnel.sshServerPort=22;sshFlagEnabled=true;sshEnable=false;databaseManualInput=false;database={{database}};sslMode={{sslMode}};sslCompression=true;heartbeatEnable=false;heartbeatSchema=public;heartbeatFrequency=5;captureDDLs=true;ddlArtifactsSchema=public;useNativeBooleanDataType=false;starterMode=false"
+}

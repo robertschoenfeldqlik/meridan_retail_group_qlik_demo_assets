@@ -476,12 +476,12 @@ slide.addText("Three live data sources feeding the Qlik Open Lakehouse in real-t
 
 const sources = [
   {
-    name: "PostgreSQL (WMS)", method: "CDC via Qlik Cloud Connector", color: C.qlikTeal,
+    name: "PostgreSQL (WMS)", method: "CDC via Data Movement gateway", color: C.qlikTeal,
     tables: "inventory_positions • warehouse_events • shipments",
     detail: "Real-time Change Data Capture, logical replication, sub-second latency",
   },
   {
-    name: "Apache Kafka (IoT)", method: "Streaming via Kafka Connector", color: C.qlikBlue,
+    name: "Apache Kafka (IoT)", method: "Streaming via Data Gateway - Streaming", color: C.qlikBlue,
     tables: "mcg.iot.cold-chain • mcg.iot.carrier-events",
     detail: "Continuous IoT telemetry from cold chain sensors + carrier GPS/status events",
   },
@@ -525,6 +525,60 @@ slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
 slide.addText("Demo Tip: Run all 3 simulators before the demo. Data flows into Bronze within seconds (PostgreSQL, Kafka) or 15 min (Salesforce).", {
   x: 0.8, y: 6.42, w: 11.8, h: 0.45,
   fontSize: 11, color: C.qlikTeal, fontFace: FONT, bold: true,
+});
+
+// ─── Slide: Connecting the Sources — Gateways ───
+slide = contentSlide("Connecting the Sources — Data Movement Gateway", C.qlikTeal);
+
+slide.addText("Local databases reach Qlik Cloud through a registered gateway: one-time registration, then a connection per source created in a Data Integration project.", {
+  x: 0.5, y: 0.85, w: 12.3, h: 0.5,
+  fontSize: 14, color: C.medGray, fontFace: FONT, italic: true,
+});
+
+// Column 1 — Register the gateway
+slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
+  x: 0.5, y: 1.5, w: 6.0, h: 3.05,
+  fill: { color: C.lightBg }, rectRadius: 0.1, line: { color: C.qlikTeal, width: 1.5 },
+});
+slide.addText("1 · Register the gateway", {
+  x: 0.7, y: 1.6, w: 5.6, h: 0.4, fontSize: 15, color: C.qlikTeal, fontFace: FONT, bold: true,
+});
+bulletList(slide, [
+  "Deploy UI → Local Stack & Gateway → Register Gateway / Get Token",
+  "(or run agentctl in the mcg-qlik-dmg container) to print the token",
+  "Qlik Cloud → Administration → Data Gateways → Register",
+  "Paste the token, then wait for status Connected",
+], 0.7, 2.15, 5.7, { fontSize: 11.5, spacing: 0.5 });
+
+// Column 2 — Create source connections
+slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
+  x: 6.8, y: 1.5, w: 6.0, h: 3.05,
+  fill: { color: C.lightBg }, rectRadius: 0.1, line: { color: C.qlikBlue, width: 1.5 },
+});
+slide.addText("2 · Create source connections", {
+  x: 7.0, y: 1.6, w: 5.6, h: 0.4, fontSize: 15, color: C.qlikBlue, fontFace: FONT, bold: true,
+});
+bulletList(slide, [
+  "Data Integration → your project → Create connection",
+  "Choose PostgreSQL / MySQL / SQL Server",
+  "Select the mcg-qlik-dmg gateway from the dropdown",
+  "Enter host/port/db/credentials → Test → Save",
+], 7.0, 2.15, 5.7, { fontSize: 11.5, spacing: 0.5 });
+
+// Gateway-types note
+recommendBox(slide, "Gateway types", [
+  "Data Movement gateway → database CDC sources (Postgres / MySQL / SQL Server) — used here",
+  "Data Gateway - Streaming → required for Kafka sources (a separate gateway type)",
+  "Salesforce / S3 / Athena → credentialed connectors created in Data → Create connection",
+], 4.8, C.lightGreen);
+
+// Callout: API limitation
+slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
+  x: 0.5, y: 6.4, w: 12.3, h: 0.5, fill: { color: C.lightCyan }, rectRadius: 0.08,
+});
+slide.addText("Note: a Data Movement gateway connection is created in the Data Integration UI by selecting the gateway — the public REST API cannot create it, so the deploy script skips these sources with on-screen guidance.", {
+  x: 0.8, y: 6.42, w: 11.8, h: 0.45,
+  fontSize: 10.5, color: C.qlikTeal, fontFace: FONT, bold: true,
 });
 
 // ─── Slide: Open Lakehouse Architecture ───

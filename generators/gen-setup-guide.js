@@ -224,6 +224,44 @@ function sectionInfrastructure() {
     numberedItem(2, "Navigate to Topics to verify the MCG topics exist"),
     numberedItem(3, "Expected topics: mcg.iot.cold-chain, mcg.iot.carrier-events"),
     screenshot("Confluent Control Center at localhost:9021 showing the Topics page with mcg.iot.cold-chain and mcg.iot.carrier-events listed"),
+
+    heading("3.7 Register the Data Movement Gateway in Qlik Cloud", 2),
+    para("The Data Movement Gateway runs inside the local container but must be registered to your Qlik Cloud tenant before any Postgres, MySQL, SQL Server, or Kafka source connection can bind to it. Registration is a one-time, token-based step. Qlik Cloud generates nothing automatically — you retrieve a registration token from the running container and paste it into the tenant's admin console."),
+
+    para("Easiest path — use the deploy UI (recommended):"),
+    numberedItem(1, "Open the MCG Deploy UI and switch to the Local Stack & Gateway view."),
+    numberedItem(2, "Under Data Movement Gateway, click Register Gateway / Get Token."),
+    numberedItem(3, "The console prints the registration token directly — copy the entire JSON token string."),
+    calloutBox("The Register Gateway / Get Token button lives in Local Stack & Gateway, not in the Tenant Deployment wizard. It targets the running mcg-qlik-dmg container and prints the token to the local console. If the gateway is still initializing, wait a few seconds and click again.", "info"),
+
+    para("Manual path — retrieve the token from the container terminal:"),
+    numberedItem(1, "Open Docker Desktop and locate the gateway container (it appears as mcg-qlik-dmg)."),
+    numberedItem(2, "Open that container's terminal (Docker Desktop → Containers → mcg-qlik-dmg → Exec / Terminal tab), or run the command below from any shell."),
+    numberedItem(3, "Run the registration command to print the token:"),
+    cmd('docker exec -it mcg-qlik-dmg bash -lc "cd /opt/qlik/gateway/movement/bin && ./agentctl qcs get_registration"'),
+    numberedItem(4, "Copy the JSON token string it outputs (it begins with {\"agentType\"...})."),
+
+    para("Register the token in your tenant:"),
+    numberedItem(1, "In Qlik Cloud, go to Administration → Data Gateways."),
+    numberedItem(2, "Click Register, paste the token, give the gateway a name, and confirm."),
+    numberedItem(3, "Wait for the gateway status to change to Connected (it may take a minute)."),
+    numberedItem(4, "Once Connected, your database source connections (PostgreSQL, MySQL, SQL Server) can select this gateway to reach the local databases — see section 3.8."),
+    calloutBox("Full step-by-step gateway setup documentation: https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/Gateways/dm-gateway-setting-up.htm", "info"),
+    screenshot("Qlik Cloud Administration → Data Gateways page showing the registered gateway with a 'Connected' status"),
+
+    heading("3.8 Create the Source Connections (Data Integration project)", 2),
+    para("With the gateway Connected, create the database source connections inside a Qlik Talend Data Integration project. The connection selects the gateway so Qlik Cloud can reach the databases running locally in the mcg-qlik-dmg container."),
+    calloutBox("Important: a Data Movement gateway connection cannot be created through the public REST API — it is created here in the Data Integration UI by selecting the gateway. The MCG deploy script intentionally skips these database/Kafka sources and prints this same guidance instead of creating a non-functional connection.", "warning"),
+    numberedItem(1, "In Qlik Cloud, open Data Integration and create (or open) a data project."),
+    numberedItem(2, "Click Create connection and choose the source type: PostgreSQL, MySQL, or SQL Server."),
+    numberedItem(3, "In the Data gateway field, select the registered gateway (mcg-qlik-dmg)."),
+    numberedItem(4, "Enter the host, port, database, and credentials for the source (see section 3.3 Default Credentials). Inside the gateway container the databases are reachable on localhost at their standard ports (PostgreSQL 5432, MySQL 3306, SQL Server 1433)."),
+    numberedItem(5, "Test the connection, then save it. Repeat for each database source you want to demonstrate."),
+    screenshot("Data Integration → Create connection dialog with PostgreSQL selected and the mcg-qlik-dmg Data Movement gateway chosen in the Data gateway dropdown"),
+    para("Kafka and credentialed cloud connectors are set up separately:"),
+    numberedItem(1, "Kafka (IoT telemetry) as a source requires a Data Gateway - Streaming — a different gateway type from Data Movement. Register a Streaming gateway, then create the Kafka source in the Data Integration project."),
+    numberedItem(2, "Salesforce, Amazon S3, and Amazon Athena are credentialed connectors — create them in Qlik Cloud (Data → Create connection) and supply their OAuth/IAM credentials."),
+    calloutBox("Gateway types overview (Direct Access vs. Data Movement vs. Streaming): https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/Gateways/setting-up-gateways.htm", "info"),
   ];
 }
 

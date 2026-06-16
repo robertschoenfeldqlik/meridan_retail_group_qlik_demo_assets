@@ -36,13 +36,39 @@ Complete setup guide for deploying the Meridian Commerce Group demo environment 
 
 ### 1.2 Data Movement Gateway (for PostgreSQL CDC)
 
-The Data Movement Gateway enables CDC from on-prem or cloud-hosted databases.
+The Data Movement Gateway enables CDC from on-prem or cloud-hosted databases. In this demo the gateway runs **inside the local `mcg-qlik-dmg` container** (deployed from the Local Stack & Gateway view), so there is no separate OS installer to download — you only need to register the running gateway to your tenant with a one-time token.
 
-**Installation:**
-1. In Qlik Cloud: **Administration** → **Data Gateways** → **Create**
-2. Download the gateway installer for your OS (Windows Server 2019+ or Linux RHEL 8+/Ubuntu 20+)
-3. Install and register with the token provided by Qlik Cloud
-4. Verify status shows "Connected" in Administration → Data Gateways
+**Registration (easiest — deploy UI):**
+1. Open the MCG Deploy UI → **Local Stack & Gateway**.
+2. Under **Data Movement Gateway**, click **Register Gateway / Get Token**.
+3. The console prints the registration token — copy the entire JSON string.
+4. In Qlik Cloud: **Administration** → **Data Gateways** → **Register**, paste the token, name it, and confirm.
+5. Wait for the status to show **Connected**.
+
+> The **Register Gateway / Get Token** button lives in **Local Stack & Gateway**, not in the Tenant Deployment wizard.
+
+**Registration (manual — container terminal):**
+1. In Docker Desktop, find the gateway container (shown as **`mcg-qlik-dmg`**) and open its terminal (**Containers → mcg-qlik-dmg → Exec**), or run the command below from any shell:
+   ```bash
+   docker exec -it mcg-qlik-dmg bash -lc "cd /opt/qlik/gateway/movement/bin && ./agentctl qcs get_registration"
+   ```
+2. Copy the JSON token it prints (begins with `{"agentType"...}`).
+3. In Qlik Cloud: **Administration** → **Data Gateways** → **Register**, paste the token, and confirm.
+4. Verify status shows **Connected** in Administration → Data Gateways.
+
+> Full gateway setup guide: https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/Gateways/dm-gateway-setting-up.htm
+
+**Creating the source connections (after the gateway is Connected):**
+
+The database source connections are created **inside a Qlik Talend Data Integration project**, selecting the gateway — they cannot be created through the public REST API, so the MCG deploy script skips them and prints this guidance instead of creating a non-functional connection.
+
+1. In Qlik Cloud, open **Data Integration** and create (or open) a data project.
+2. Click **Create connection** → choose **PostgreSQL** (or **MySQL** / **SQL Server**).
+3. In the **Data gateway** field, select the registered gateway (**`mcg-qlik-dmg`**).
+4. Enter host/port/database/credentials (see [1.4 Default Credentials](#)). Inside the gateway container the databases are on `localhost` at their standard ports (PostgreSQL 5432, MySQL 3306, SQL Server 1433).
+5. **Test**, then **Save**. Repeat per source.
+
+> **Kafka** as a source needs a **Data Gateway - Streaming** (a different gateway type) — register one, then create the Kafka source in the DI project. **Salesforce / S3 / Athena** are credentialed connectors created in **Data → Create connection** with their own OAuth/IAM credentials.
 
 **Network requirements:**
 - Outbound HTTPS (443) to `*.qlikcloud.com`
