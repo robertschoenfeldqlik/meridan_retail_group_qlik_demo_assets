@@ -2534,6 +2534,13 @@ function getHTML() {
           <label class="switch"><input type="checkbox" id="f-pipelines-publish"><span class="slider"></span></label>
         </div>
         <div class="hint">Each product above shows the gold dataset the pipeline creates for it. Attachment happens via the Data Products API (JSON-Patch datasetIds) after the pipeline has run; tables not in the catalog yet are skipped with a warning — re-deploy after the first run to attach them.</div>
+
+        <div class="section-divider">Qlik Predict (ML)</div>
+        <div class="toggle-row">
+          <label>Enable Qlik Predict</label>
+          <label class="switch"><input type="checkbox" id="f-en-predict" checked><span class="slider"></span></label>
+        </div>
+        <div class="hint">Creates the Qlik Predict (ML) <strong>experiment</strong> via the <code>/api/v1/ml</code> API (idempotent). The <strong>deployment + model activation</strong> run once a trained model exists — train the experiment on the gold feature dataset (needs the Open Lakehouse), or set <code>predict.modelId</code>, then re-deploy. Configure the target in <code>config.json → predict</code>. See <strong>Help → §6 Analytics</strong>.</div>
       </div>
 
       <!-- Page 8: Glossary -->
@@ -2980,6 +2987,7 @@ function getHTML() {
     setCheck('f-en-assistant', en.assistant !== false);
     setCheck('f-en-automations', en.automations !== false);
     setCheck('f-en-dataproducts', en.dataproducts !== false);
+    setCheck('f-en-predict', en.predict !== false);
     setCheck('f-en-glossary', en.glossary !== false);
     setCheck('f-en-pipelines', en.pipelines !== false);
 
@@ -3926,6 +3934,7 @@ function getHTML() {
         assistant: isChecked('f-en-assistant'),
         automations: isChecked('f-en-automations'),
         dataproducts: isChecked('f-en-dataproducts'),
+        predict: isChecked('f-en-predict'),
         glossary: isChecked('f-en-glossary'),
         pipelines: isChecked('f-en-pipelines'),
       },
@@ -4136,6 +4145,7 @@ function getHTML() {
       assistant: isChecked('f-en-assistant'),
       automations: isChecked('f-en-automations'),
       dataproducts: isChecked('f-en-dataproducts'),
+      predict: isChecked('f-en-predict'),
       glossary: isChecked('f-en-glossary'),
       pipelines: isChecked('f-en-pipelines'),
     };

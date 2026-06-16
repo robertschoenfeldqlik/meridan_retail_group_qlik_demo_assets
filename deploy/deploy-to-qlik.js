@@ -1097,6 +1097,110 @@ class QlikClient {
   }
 
   // ========================================================================
+  //  MACHINE LEARNING / QLIK PREDICT  (/api/v1/ml/*)
+  //  The legacy automl-* REST APIs were removed (~Feb 2026); this is the
+  //  current API. Responses are JSON:API-style ({ data: [{ id, attributes }] }).
+  // ========================================================================
+
+  _mlFlatten(node) {
+    if (!node) return null;
+    const a = node.attributes || node;
+    return { id: node.id || a.id, ...a };
+  }
+
+  async findMlExperimentByName(name) {
+    const res = await this._get('/api/v1/ml/experiments', { limit: 100 });
+    const list = (res.body && res.body.data) || [];
+    const hit = list.find((e) => ((e.attributes && e.attributes.name) || e.name) === name);
+    return hit ? this._mlFlatten(hit) : null;
+  }
+
+  async createMlExperiment(name, spaceId, description) {
+    const existing = await this.findMlExperimentByName(name);
+    if (existing) {
+      this.log.success(`ML experiment already exists: "${name}" (${existing.id}) — skipping.`);
+      return existing;
+    }
+    if (this.dryRun) {
+      this.log.info(`DRY RUN: Would create ML experiment "${name}" (space=${spaceId})`);
+      return { id: 'dry-run-experiment-id', name };
+    }
+    const res = await this._post('/api/v1/ml/experiments', { data: { type: 'experiment', attributes: { name, spaceId, description: description || '' } } });
+    if (res.statusCode === 200 || res.statusCode === 201) {
+      const d = this._mlFlatten(res.body.data || res.body);
+      this.log.success(`Created ML experiment "${name}" (${d.id})`);
+      return d;
+    }
+    if (res.statusCode === 409) return this.findMlExperimentByName(name);
+    throw new Error(`Failed to create ML experiment "${name}" (${res.statusCode}): ${JSON.stringify(res.body)}`);
+  }
+
+  // The deployable model id of the first "ready" experiment version, if any.
+  async getReadyModelId(experimentId) {
+    const res = await this._get(`/api/v1/ml/experiments/${experimentId}/versions`, { limit: 100 });
+    const list = (res.body && res.body.data) || [];
+    for (const v of list) {
+      const a = v.attributes || v;
+      if (a.status === 'ready' && (a.topModelId || a.modelId)) return a.topModelId || a.modelId;
+    }
+    return null;
+  }
+
+  // Optional: start a training run. Body is a pass-through ExperimentVersionInput
+  // (target, experimentType, algorithms, experimentMode, dataset, featuresList…).
+  async createMlExperimentVersion(experimentId, body) {
+    if (this.dryRun) { this.log.info(`DRY RUN: Would train a version on experiment ${experimentId}`); return { id: 'dry-run-version' }; }
+    const payload = (body && body.data) ? body : { data: { type: 'experiment-version', attributes: body } };
+    const res = await this._post(`/api/v1/ml/experiments/${experimentId}/versions`, payload);
+    if (res.statusCode === 200 || res.statusCode === 201) return this._mlFlatten(res.body.data || res.body);
+    throw new Error(`Failed to train experiment version (${res.statusCode}): ${JSON.stringify(res.body)}`);
+  }
+
+  async findMlDeploymentByName(name) {
+    const res = await this._get('/api/v1/ml/deployments', { limit: 100 });
+    const list = (res.body && res.body.data) || [];
+    const hit = list.find((e) => ((e.attributes && e.attributes.name) || e.name) === name);
+    return hit ? this._mlFlatten(hit) : null;
+  }
+
+  async createMlDeployment(name, spaceId, modelId, enablePredictions, description) {
+    const existing = await this.findMlDeploymentByName(name);
+    if (existing) {
+      this.log.success(`ML deployment already exists: "${name}" (${existing.id}) — skipping.`);
+      return existing;
+    }
+    if (this.dryRun) {
+      this.log.info(`DRY RUN: Would create ML deployment "${name}" (modelId=${modelId})`);
+      return { id: 'dry-run-deployment-id', name };
+    }
+    const res = await this._post('/api/v1/ml/deployments', { data: { type: 'deployment', attributes: { name, spaceId, modelId, enablePredictions: enablePredictions !== false, description: description || '' } } });
+    if (res.statusCode === 200 || res.statusCode === 201) {
+      const d = this._mlFlatten(res.body.data || res.body);
+      this.log.success(`Created ML deployment "${name}" (${d.id})`);
+      return d;
+    }
+    if (res.statusCode === 409) return this.findMlDeploymentByName(name);
+    throw new Error(`Failed to create ML deployment "${name}" (${res.statusCode}): ${JSON.stringify(res.body)}`);
+  }
+
+  async activateDeploymentModels(deploymentId) {
+    if (this.dryRun) { this.log.info(`DRY RUN: Would activate models on deployment ${deploymentId}`); return; }
+    const res = await this._post(`/api/v1/ml/deployments/${deploymentId}/actions/activate-models`, {});
+    if (res.statusCode >= 200 && res.statusCode < 300) { this.log.success('Activated deployment models.'); return res.body; }
+    throw new Error(`Failed to activate models (${res.statusCode}): ${JSON.stringify(res.body)}`);
+  }
+
+  // Optional: a batch-prediction configuration. Body is a pass-through
+  // BatchPredictionInput (source dataset, output, schedule…).
+  async createBatchPrediction(deploymentId, body) {
+    if (this.dryRun) { this.log.info(`DRY RUN: Would create batch-prediction config on deployment ${deploymentId}`); return { id: 'dry-run-prediction' }; }
+    const payload = (body && body.data) ? body : { data: { type: 'batch-prediction', attributes: body } };
+    const res = await this._post(`/api/v1/ml/deployments/${deploymentId}/batch-predictions`, payload);
+    if (res.statusCode === 200 || res.statusCode === 201) return this._mlFlatten(res.body.data || res.body);
+    throw new Error(`Failed to create batch-prediction (${res.statusCode}): ${JSON.stringify(res.body)}`);
+  }
+
+  // ========================================================================
   //  WEBHOOKS  (/api/v1/webhooks)
   // ========================================================================
 
@@ -2441,6 +2545,63 @@ async function main() {
     log.section('Step 9: Create Data Products (Gold Layer)');
     log.info('Skipped (disabled).');
     report.record('Data Products', 'SKIP', 'disabled');
+  }
+
+  // ---- Qlik Predict (ML) --------------------------------------------------
+  // Creates the experiment (idempotent). Deployment + model activation run once a
+  // trained model exists (set predict.modelId, or train the experiment on the gold
+  // feature dataset — needs the Open Lakehouse — then re-run). Training and the
+  // batch-prediction configuration are optional pass-through bodies (predict.*),
+  // since they depend on the dataset/model being present.
+  if (enabled.predict !== false) {
+    log.section('Step 9b: Qlik Predict (ML experiment, deployment & predictions)');
+    const pc = cfg.predict || {};
+    const expName = pc.experimentName || 'MCG Predict';
+    try {
+      const predictSpace = (pc.space === 'data' ? (dataSpace || sharedSpace) : (sharedSpace || dataSpace));
+      const spaceId = predictSpace ? predictSpace.id : undefined;
+      if (!spaceId && !dryRun) {
+        log.warn('Qlik Predict: no space resolved — enable Spaces (or set predict.space). Skipping.');
+        report.record('Qlik Predict', 'SKIP', 'No space (enable Spaces)');
+      } else {
+        const exp = await client.createMlExperiment(expName, spaceId, pc.description);
+
+        // Optional training run (async; needs the gold feature dataset)
+        if (pc.trainingVersion && exp.id && exp.id !== 'dry-run-experiment-id') {
+          try { await client.createMlExperimentVersion(exp.id, pc.trainingVersion); log.success('Started experiment training (async).'); }
+          catch (e) { log.warn(`Training not started (non-fatal): ${e.message}`); }
+        }
+
+        // Resolve a deployable model: explicit config, else a ready version's model
+        let modelId = pc.modelId || null;
+        if (!modelId && exp.id && exp.id !== 'dry-run-experiment-id') modelId = await client.getReadyModelId(exp.id);
+
+        if (!modelId) {
+          log.warn(`Qlik Predict: experiment "${expName}" is set up, but no trained model is available yet. Train it (needs the gold feature dataset from the Open Lakehouse) or set predict.modelId, then re-run — deployment & predictions skipped for now.`);
+          report.record('Qlik Predict', 'OK', `Experiment "${expName}" ready — train a model to deploy`);
+        } else {
+          const dep = await client.createMlDeployment(pc.deploymentName || (expName + ' Deployment'), spaceId, modelId, pc.enablePredictions !== false, pc.deploymentDescription);
+          if (dep.id && dep.id !== 'dry-run-deployment-id') {
+            try { await client.activateDeploymentModels(dep.id); } catch (e) { log.warn(`Activate models (non-fatal): ${e.message}`); }
+            if (pc.batchPrediction) {
+              try { const bp = await client.createBatchPrediction(dep.id, pc.batchPrediction); log.success(`Created prediction configuration (${bp.id}).`); }
+              catch (e) { log.warn(`Prediction configuration not created (non-fatal): ${e.message}`); }
+            } else {
+              log.info('No predict.batchPrediction config provided — create the prediction configuration in the Qlik Predict UI (Deployment → Create prediction).');
+            }
+          }
+          report.record('Qlik Predict', 'OK', `Experiment + deployment "${dep.name || expName}"`);
+        }
+      }
+    } catch (err) {
+      log.error(`Qlik Predict step failed: ${err.message}`);
+      report.record('Qlik Predict', 'FAIL', err.message);
+      if (!continueOnError) { report.print(log); process.exit(EXIT_FAILURE); }
+    }
+  } else {
+    log.section('Step 9b: Qlik Predict');
+    log.info('Skipped (disabled).');
+    report.record('Qlik Predict', 'SKIP', 'disabled');
   }
 
   // ---- Create Business Glossary -------------------------------------------

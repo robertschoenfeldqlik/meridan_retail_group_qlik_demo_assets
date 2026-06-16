@@ -34,11 +34,12 @@
     "assistant": true,
     "automations": true,
     "dataproducts": true,
+    "predict": true,
     "glossary": true,
     "webhooks": true,
     "reloadtasks": true,
     "pipelines": true,
-    "comment_components": "Toggle individual deployment steps on/off. 'infrastructure' controls Kafka Docker/topic setup. 'pipelines' imports the declarative QTCP pipeline project (Step 13)."
+    "comment_components": "Toggle individual deployment steps on/off. 'infrastructure' controls Kafka Docker/topic setup. 'predict' creates the Qlik Predict (ML) experiment/deployment. 'pipelines' imports the declarative QTCP pipeline project (Step 13)."
   },
 
   "infrastructure": {
@@ -148,6 +149,18 @@
   "dataProducts": {
     "sourceFile": "./data_products.json",
     "comment_sourceFile": "JSON file with Gold-layer data product definitions (7 products). Loaded automatically by deploy script."
+  },
+
+  "predict": {
+    "experimentName": "MCG Delivery Risk",
+    "description": "Predicts late-delivery risk from the gold last_mile_performance features.",
+    "space": "shared",
+    "deploymentName": "MCG Delivery Risk Deployment",
+    "enablePredictions": true,
+    "modelId": "",
+    "trainingVersion": null,
+    "batchPrediction": null,
+    "comment_predict": "Qlik Predict (ML) via the /api/v1/ml API (the legacy automl-* APIs were removed ~Feb 2026). The deploy creates the experiment (idempotent). Deployment + model activation run once a trained model exists — either set 'modelId' to a trained model, or train the experiment on the gold feature dataset (needs the Open Lakehouse deployed) and re-run. 'space' is 'shared' or 'data'. 'trainingVersion' and 'batchPrediction' are optional pass-through request bodies for POST .../versions (training) and POST .../batch-predictions (the prediction configuration) — supply them once the dataset/model are available, or build the prediction in the Qlik Predict UI."
   },
 
   "glossary": {
