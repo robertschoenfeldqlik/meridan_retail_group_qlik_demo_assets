@@ -845,8 +845,14 @@ function runDeploy(res, options) {
     Connection: 'keep-alive',
   });
 
+  let clientOpen = true;
   const send = (type, data) => {
-    res.write(`event: ${type}\ndata: ${JSON.stringify(data)}\n\n`);
+    if (!clientOpen) return;
+    try {
+      res.write(`event: ${type}\ndata: ${JSON.stringify(data)}\n\n`);
+    } catch (_) {
+      clientOpen = false;  // socket already gone — stop writing to it
+    }
   };
 
   const args = [path.join(SCRIPT_DIR, 'deploy-to-qlik.js')];
@@ -882,7 +888,8 @@ function runDeploy(res, options) {
 
   // SSE heartbeat — keeps the connection alive during long operations (e.g. Docker pulls)
   const heartbeat = setInterval(() => {
-    try { res.write(':heartbeat\n\n'); } catch (_) {}
+    if (!clientOpen) return;
+    try { res.write(':heartbeat\n\n'); } catch (_) { clientOpen = false; }
   }, 10000);
 
   child.stdout.on('data', (chunk) => {
@@ -915,7 +922,7 @@ function runDeploy(res, options) {
       code,
       message: code === 0 ? 'Deployment completed successfully.' : `Deployment finished with exit code ${code}.`,
     });
-    res.end();
+    if (clientOpen) { try { res.end(); } catch (_) {} }
   });
 
   child.on('error', (err) => {
@@ -923,15 +930,17 @@ function runDeploy(res, options) {
     activeProcess = null;
     send('log', { level: 'error', text: `Process error: ${err.message}` });
     send('status', { state: 'error', message: err.message });
-    res.end();
+    if (clientOpen) { try { res.end(); } catch (_) {} }
   });
 
+  // A dropped console must NOT abort a running deployment — a transient SSE
+  // disconnect (tab refresh, network blip, a burst of Docker build output)
+  // would otherwise leave the tenant half-provisioned. Stop the heartbeat and
+  // mark the client gone (so we stop writing to a dead socket), but let the
+  // deploy run to completion. Cancel deliberately with Stop (POST /api/stop).
   res.on('close', () => {
+    clientOpen = false;
     clearInterval(heartbeat);
-    if (activeProcess === child) {
-      child.kill('SIGTERM');
-      activeProcess = null;
-    }
   });
 }
 
@@ -1814,7 +1823,7 @@ function getHTML() {
           <div style="font-size:12px;font-weight:600;color:var(--text-dim);margin:10px 0 6px;text-transform:uppercase;letter-spacing:0.5px">Gateway RPM Source</div>
           <div class="field">
             <label>RPM File Path <span style="font-weight:400;color:var(--text-dim)">(local file)</span></label>
-            <input type="text" id="f-docker-rpm-path" placeholder="C:\Downloads\qlik-data-gateway-movement.rpm">
+            <input type="text" id="f-docker-rpm-path" placeholder="C:\\Downloads\\qlik-data-gateway-data-movement.rpm">
             <div class="hint">Absolute path to a downloaded RPM file on this machine. It will be copied into the Docker build context.</div>
           </div>
           <div class="field">
