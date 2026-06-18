@@ -33,7 +33,7 @@ const pptx = new PptxGenJS();
 pptx.layout = "LAYOUT_WIDE"; // 13.33 x 7.5
 pptx.author = "Qlik";
 pptx.company = "Qlik";
-pptx.title = "MCG Qlik Cloud Demo — Four Stories";
+pptx.title = "Project Qlarity — MCG Qlik Cloud Demo — Four Stories";
 
 let slideNum = 0;
 
@@ -44,7 +44,7 @@ function footer(slide) {
   slide.addShape(pptx.shapes.RECTANGLE, { x: 0.5, y: 7.0, w: 12.33, h: 0.01, fill: { color: C.qlikGray } });
   // Qlik logo small
   slide.addImage({ path: QLIK_LOGO, x: 0.5, y: 7.1, w: 0.7, h: 0.3 });
-  slide.addText("MCG End-to-End Demo  •  Qlik Cloud", {
+  slide.addText("Project Qlarity  •  MCG End-to-End Demo  •  Qlik Cloud", {
     x: 1.4, y: 7.1, w: 8, h: 0.3,
     fontSize: 8, color: C.qlikGray, fontFace: FONT,
   });
@@ -180,8 +180,8 @@ slide.addText("Qlik Cloud\nEnd-to-End Demo", {
   x: 0.5, y: 2.3, w: 6.5, h: 1.6,
   fontSize: 38, color: C.qlikBlue, fontFace: FONT, bold: true, lineSpacingMultiple: 1.1,
 });
-slide.addText("Integrations  •  Governance  •  Analytics  •  AI & Outcomes", {
-  x: 0.5, y: 4.0, w: 6.5, h: 0.5,
+slide.addText("Project Qlarity  ·  Integrations  •  Governance  •  Analytics  •  AI & Outcomes", {
+  x: 0.5, y: 4.0, w: 7.5, h: 0.5,
   fontSize: 16, color: C.qlikGreen, fontFace: FONT, bold: true,
 });
 slide.addText("From 47 fragmented systems to a trusted, AI-ready data platform", {
@@ -409,6 +409,11 @@ stories.forEach((s, i) => {
 // SLIDE 4: Agenda — Four Stories
 // ═══════════════════════════════════════════════════
 slide = contentSlide("Demo Agenda — Four Stories, One Platform");
+
+slide.addText("Four proof points behind Project Qlarity's business case — MCG's unified Qlik data platform", {
+  x: 0.5, y: 0.86, w: 12.3, h: 0.24,
+  fontSize: 12, color: C.qlikGreen, fontFace: FONT, italic: true,
+});
 
 const agendaItems = [
   {
@@ -1283,7 +1288,7 @@ const agenticFeatures = [
       "25 MCG operational documents",
       "SOPs, contracts, incident reports",
       "Cross-document reasoning",
-      "MCG: \"What is Project CLARITY?\"",
+      "MCG: \"What is Project Qlarity?\"",
     ],
   },
 ];
@@ -1441,7 +1446,7 @@ const answersScenarios = [
   { q: "\"What is the goods receiving procedure?\"", ref: "→ SOP-WH-001" },
   { q: "\"What happened at Rotterdam in September?\"", ref: "→ INC-2025-04872" },
   { q: "\"What are cold chain temp requirements?\"", ref: "→ SOP-SC-002, MCG-POL-012" },
-  { q: "\"What is Project CLARITY?\"", ref: "→ PROJ-CLARITY-2025" },
+  { q: "\"What is Project Qlarity?\"", ref: "→ PROJ-CLARITY-2025" },
   { q: "\"What caused the lettuce recall?\"", ref: "→ RCL-2025-003" },
 ];
 answersScenarios.forEach((s, i) => {
@@ -1545,7 +1550,7 @@ yPos = 1.1;
 yPos = recommendBox(slide, "Agentic Analytics Experience", [
   "Open Qlik Answers → ask: \"Which distribution centers have the lowest inventory accuracy?\" → data agent queries Qlik Analytics",
   "Follow up: \"What happened at Rotterdam in September?\" → document agent pulls INC-2025-04872 with citations",
-  "Ask: \"What does Project CLARITY propose to fix this?\" → chain-of-thought reasoning across data + documents",
+  "Ask: \"What does Project Qlarity propose to fix this?\" → chain-of-thought reasoning across data + documents",
 ], yPos, C.lightGreen);
 
 yPos = recommendBox(slide, "Qlik Predict Live Demo", [

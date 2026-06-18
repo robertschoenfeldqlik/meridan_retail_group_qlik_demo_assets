@@ -77,7 +77,7 @@ Customer Service updates WISMO scripts (within 48 hours)
 Supply Chain Analytics updates SLA monitoring dashboards (within 48 hours)
 ```
 
-**KNOWN GAP**: This process is currently **manual and email-based**. There is no system that automatically links carrier contract changes to delivery promise logic. Project CLARITY (Qlik platform) will address this by including carrier contract data in the Qlik Answers knowledge base and enabling Discovery Agent to detect when a contract change should trigger a website update.
+**KNOWN GAP**: This process is currently **manual and email-based**. There is no system that automatically links carrier contract changes to delivery promise logic. Project Qlarity (Qlik platform) will address this by including carrier contract data in the Qlik Answers knowledge base and enabling Discovery Agent to detect when a contract change should trigger a website update.
 
 ### 4.2 Monitoring
 

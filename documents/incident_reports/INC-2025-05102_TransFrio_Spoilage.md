@@ -83,7 +83,7 @@ If uncorrected, estimated ongoing exposure: **$180K/week** ($9.36M annualized)
 | 2 | Deploy redundant Tive sensors on all GRU-BA shipments (2 sensors per truck) | Ana Ferreira | Oct 20, 2025 | **Completed** |
 | 3 | Negotiate with TransFrio for auxiliary power unit (APU) installation to maintain refrigeration during engine-off periods | Carlos Mendez | Nov 30, 2025 | In Progress |
 | 4 | Evaluate air freight for high-value perishables on GRU-BA route | Carlos Mendez | Nov 15, 2025 | In Progress |
-| 5 | Implement automated IoT anomaly detection linking sensor data to carrier/route | Priya Ramanathan | Q2 2026 (Project CLARITY) | Planned |
+| 5 | Implement automated IoT anomaly detection linking sensor data to carrier/route | Priya Ramanathan | Q2 2026 (Project Qlarity) | Planned |
 | 6 | Contract penalty clause addition: temperature exceedance financial responsibility | Carlos Mendez | Dec 31, 2025 | Pending TransFrio negotiation |
 
 ## 6. TransFrio Response

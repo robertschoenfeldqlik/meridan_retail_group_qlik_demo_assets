@@ -290,7 +290,7 @@ function incRotterdam() {
         ["Add heartbeat check for all batch sync jobs", "IT Ops", "15 Aug 2025", "Complete"],
         ["Create SAP data freshness indicator on inventory reports", "BI Team", "01 Sep 2025", "In Progress"],
         ["Include integration team in Oracle maintenance notifications", "DBA Team", "Immediate", "Complete"],
-        ["Evaluate Project CLARITY for enterprise pipeline monitoring", "CDO Office", "31 Oct 2025", "Pending"],
+        ["Evaluate Project Qlarity for enterprise pipeline monitoring", "CDO Office", "31 Oct 2025", "Pending"],
       ]
     ),
 
@@ -356,7 +356,7 @@ function incTransFrio() {
         ["Require TransFrio 0°C pre-cooling (up from 2°C)", "T. Brennan", "Immediate", "Complete"],
         ["TransFrio APU installation for border wait periods", "TransFrio", "30 days", "In Progress"],
         ["Real-time telemetry data sharing from TransFrio", "TransFrio", "60 days", "In Progress"],
-        ["Integrate IoT + carrier data in unified dashboard", "CDO Office", "Project CLARITY", "Planned"],
+        ["Integrate IoT + carrier data in unified dashboard", "CDO Office", "Project Qlarity", "Planned"],
         ["Penalty structure for temperature exceedances", "Legal", "30 days", "Complete"],
       ]
     ),

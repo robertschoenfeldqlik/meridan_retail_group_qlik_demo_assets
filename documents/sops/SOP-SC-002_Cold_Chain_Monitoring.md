@@ -78,7 +78,7 @@ All temperature-controlled zones are monitored by fixed sensors with 1-minute re
 
 ## 5. Spoilage Risk Scoring
 
-The Supply Chain Analytics team is developing a predictive spoilage risk model (Project CLARITY, Qlik AutoML) that will score each shipment based on:
+The Supply Chain Analytics team is developing a predictive spoilage risk model (Project Qlarity, Qlik AutoML) that will score each shipment based on:
 - Cold chain temperature history
 - Time in transit
 - Product shelf life remaining

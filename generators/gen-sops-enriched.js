@@ -234,7 +234,7 @@ function sopWH001() {
     ),
 
     heading("6.7 Post-Receipt Activities", 2),
-    numberedItem(1, "DAILY SYNC VERIFICATION (mandatory until Project CLARITY pipeline monitoring is deployed): At 08:00 local time, the Inventory Control Analyst selects 5 random transactions from the previous day's WMS receiving log and verifies each appears in SAP with matching quantities. Results recorded in the Daily Sync Check Spreadsheet (SharePoint > Supply Chain > Inventory Control > Daily Sync Checks). Estimated time: 15-20 minutes. Reference: TRN-2025-001 Section 5."),
+    numberedItem(1, "DAILY SYNC VERIFICATION (mandatory until Project Qlarity pipeline monitoring is deployed): At 08:00 local time, the Inventory Control Analyst selects 5 random transactions from the previous day's WMS receiving log and verifies each appears in SAP with matching quantities. Results recorded in the Daily Sync Check Spreadsheet (SharePoint > Supply Chain > Inventory Control > Daily Sync Checks). Estimated time: 15-20 minutes. Reference: TRN-2025-001 Section 5."),
     numberedItem(2, "Carrier documentation (delivery notes, bills of lading, temperature logs, customs declarations) must be scanned and uploaded to the Document Management System (DMS) within 24 hours of receipt. Link to the PO number and WMS receipt ID."),
     numberedItem(3, "For perishable receipts with IoT sensor data: Ensure the Tive trip summary is saved in the DMS. This data may be required for regulatory audits (NVWA), carrier disputes, or insurance claims."),
     numberedItem(4, "For receipts with quantity discrepancies: Verify that the Procurement team has acknowledged the shortage alert within 48 hours. If no acknowledgment, escalate to Procurement Manager."),
@@ -362,7 +362,7 @@ function sopWH002() {
 
     heading("1. Purpose and Business Context"),
     para("This procedure establishes the standard process for conducting inventory cycle counts across all MCG distribution centers. Regular cycle counting is essential for maintaining inventory record accuracy (IRA) and identifying discrepancies before they impact customer orders, store replenishment, and financial reporting."),
-    calloutBox("CRITICAL CONTEXT: MCG's enterprise Inventory Record Accuracy (IRA) stands at 74% — critically below the 97% target and well below the industry benchmark of 95%. This 23-percentage-point gap translates to approximately $48M in annual losses from phantom inventory, misallocated stock, emergency transfers, store stockouts on products showing as 'available' in SAP, and customer order cancellations. Cycle count compliance and accuracy are the primary operational levers for improving IRA while the enterprise invests in systemic fixes through Project CLARITY.", "critical"),
+    calloutBox("CRITICAL CONTEXT: MCG's enterprise Inventory Record Accuracy (IRA) stands at 74% — critically below the 97% target and well below the industry benchmark of 95%. This 23-percentage-point gap translates to approximately $48M in annual losses from phantom inventory, misallocated stock, emergency transfers, store stockouts on products showing as 'available' in SAP, and customer order cancellations. Cycle count compliance and accuracy are the primary operational levers for improving IRA while the enterprise invests in systemic fixes through Project Qlarity.", "critical"),
     para("Key business impacts of low IRA:"),
     para("Store replenishment orders are allocated against inventory that doesn't physically exist ('phantom inventory'), resulting in store stockouts with no ERP visibility", { bullet: true }),
     para("E-commerce orders are accepted and confirmed for products that are not in stock, leading to cancellations, refunds, and WISMO contacts ($14.8M/year in WISMO costs)", { bullet: true }),
@@ -633,7 +633,7 @@ function sopSC001() {
     para("Output: All customer orders containing the affected product, with delivery address, order status, and tracking information.", { bullet: true }),
     para("Known limitation: Salesforce order records do not contain lot-level information. The link between customer order → specific lot requires cross-referencing order date + fulfillment DC + lot availability at time of pick.", { bullet: true }),
 
-    calloutBox("CURRENT GAP — NO UNIFIED TRACEABILITY KEY: These four systems are not linked by a common lot-level traceability key. During the June 2025 lettuce recall, this required 65 person-hours of manual cross-referencing involving 28 hours in SAP, 15 hours in WMS, 18 hours on physical store audits, and 4 hours of IT data extraction support. Project CLARITY Phase 1 will create a unified data layer connecting all 4 systems with a common traceability key. Until then, the manual process described above is the ONLY reliable method.", "critical"),
+    calloutBox("CURRENT GAP — NO UNIFIED TRACEABILITY KEY: These four systems are not linked by a common lot-level traceability key. During the June 2025 lettuce recall, this required 65 person-hours of manual cross-referencing involving 28 hours in SAP, 15 hours in WMS, 18 hours on physical store audits, and 4 hours of IT data extraction support. Project Qlarity Phase 1 will create a unified data layer connecting all 4 systems with a common traceability key. Until then, the manual process described above is the ONLY reliable method.", "critical"),
 
     heading("6.2 Traceability Completeness Verification", 2),
     para("The Recall Lead must verify that the following inventory categories are ALL accounted for:"),
@@ -732,7 +732,7 @@ function sopSC001() {
         ["MCG-POL-007", "EU Food Safety Compliance Policy"],
         ["SUPP-2025-FreshDirect", "Fresh Direct NL Supplier Performance Review (connected to lettuce recall)"],
         ["SOP-WH-001", "Goods Receiving Procedure (lot number capture requirements)"],
-        ["PROJ-CLARITY-2025", "Project CLARITY Business Case (unified traceability solution)"],
+        ["PROJ-CLARITY-2025", "Project Qlarity Business Case (unified traceability solution)"],
       ]
     ),
 
@@ -1006,7 +1006,7 @@ function sopCS001() {
     para("MCG mobile app — Push notification for ship and delivery events. Current adoption: 22% of customers.", { bullet: true }),
     para("Proactive email notifications — Ship confirmation and delivery confirmation emails. Current opt-in rate: 78%.", { bullet: true }),
     para("SMS tracking — Available in EU and Americas (carrier-dependent). Opt-in via checkout or MCG account settings.", { bullet: true }),
-    calloutBox("TARGET: Project CLARITY Phase 3 includes a unified order tracking experience powered by Qlik Answers, where customers can ask 'where is my order?' in natural language and get a real-time answer pulling from all 5 systems. This is projected to reduce WISMO volume by 40% ($5.9M annual savings). Target launch: 18-24 months.", "info"),
+    calloutBox("TARGET: Project Qlarity Phase 3 includes a unified order tracking experience powered by Qlik Answers, where customers can ask 'where is my order?' in natural language and get a real-time answer pulling from all 5 systems. This is projected to reduce WISMO volume by 40% ($5.9M annual savings). Target launch: 18-24 months.", "info"),
 
     heading("7. Revision History"),
     dataTable(

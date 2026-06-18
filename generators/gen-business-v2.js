@@ -59,7 +59,7 @@ function poSamsung() {
         ["Procurement spreadsheet", "Samsung Corp", "N/A (manual)"],
       ]
     ),
-    calloutBox("This supplier name inconsistency is tracked under Nightmare #3 (Product Master Data Mess). The Supplier Identity Resolution transformation route in Project CLARITY will resolve all 4 variants to a single canonical record using fuzzy matching and the D-U-N-S number (KR-542881901).", "info"),
+    calloutBox("This supplier name inconsistency is tracked under Nightmare #3 (Product Master Data Mess). The Supplier Identity Resolution transformation route in Project Qlarity will resolve all 4 variants to a single canonical record using fuzzy matching and the D-U-N-S number (KR-542881901).", "info"),
 
     heading("4. Financial Reconciliation"),
     para("Due to the 13-unit shortage on Line 10, the invoice amount will differ from the PO total:"),
@@ -344,7 +344,7 @@ function recallLettuce() {
         ["Salesforce Commerce", "Customer orders, store assignments", "Supplier lot numbers"],
       ]
     ),
-    calloutBox("No single system can answer: 'Which stores received products from lot LOT-FD-2025-0614?' This is the fundamental traceability gap that Project CLARITY's unified data layer will solve.", "info"),
+    calloutBox("No single system can answer: 'Which stores received products from lot LOT-FD-2025-0614?' This is the fundamental traceability gap that Project Qlarity's unified data layer will solve.", "info"),
 
     heading("6. Regulatory Outcome"),
     para("NVWA issued formal citation NVWA-2025-CIT-04412 on 12 June 2025 during a routine inspection that coincided with the recall period. The citation included 5 findings (detailed in COMP-2025-NVWA). MCG submitted corrective action plan on 15 July 2025. NVWA follow-up inspection expected Q1 2026."),
@@ -429,7 +429,7 @@ function shipManifest() {
         ["RTD-44821-BE-02", "Livré", "French", "Delivered"],
       ]
     ),
-    calloutBox("Multi-language carrier statuses must be normalized before ingestion into MCG analytics. Currently this is done via a manual mapping spreadsheet maintained by Sophie Müller. Project CLARITY's Talend Carrier Status Normalizer transformation route will automate this for DPD (3 languages), FedEx (English), NinjaVan (English + Malay), and TransFrio (Portuguese + Spanish).", "info"),
+    calloutBox("Multi-language carrier statuses must be normalized before ingestion into MCG analytics. Currently this is done via a manual mapping spreadsheet maintained by Sophie Müller. Project Qlarity's Talend Carrier Status Normalizer transformation route will automate this for DPD (3 languages), FedEx (English), NinjaVan (English + Malay), and TransFrio (Portuguese + Spanish).", "info"),
 
     heading("4. WISMO Impact"),
     para("Of the 3 failed deliveries on this manifest, 2 generated WISMO (Where Is My Order) calls to MCG customer service:"),
@@ -509,7 +509,7 @@ function incRotterdam() {
     labelValue("Primary Cause", "TLS certificate on the Qlik Replicate CDC server expired on 31 August 2025. The certificate was issued 12 months prior and was not included in the IT certificate renewal tracking system."),
     labelValue("Contributing Cause", "No automated pipeline health monitoring. The CDC pipeline had no heartbeat check, no row-count reconciliation, and no alerting on sync lag."),
     labelValue("Detection Gap", "The failure was only detected because Rotterdam DC has implemented the daily manual sync check procedure (TRN-2025-001 Section 5). Other DCs do NOT have this check — similar silent failures may be occurring undetected."),
-    calloutBox("This incident validates the $48M annual cost estimate for Nightmare #1 (Phantom Inventory). If a single 72-hour outage at one DC creates 847 phantom units and costs €30,500, the cumulative impact across 28 DCs with no monitoring is catastrophic. Pipeline health monitoring is Priority #1 for Project CLARITY Phase 1.", "critical"),
+    calloutBox("This incident validates the $48M annual cost estimate for Nightmare #1 (Phantom Inventory). If a single 72-hour outage at one DC creates 847 phantom units and costs €30,500, the cumulative impact across 28 DCs with no monitoring is catastrophic. Pipeline health monitoring is Priority #1 for Project Qlarity Phase 1.", "critical"),
 
     heading("5. Corrective Actions"),
     dataTable(
@@ -583,7 +583,7 @@ function incTransFrio() {
     para("TransFrio's fleet management system recorded which trucks were used on which routes — data was NOT shared with MCG", { bullet: true }),
     para("MCG's analytics dashboards showed spoilage trending upward but had no carrier fleet metadata to correlate against", { bullet: true }),
     para("The 'summer heat' explanation was plausible and accepted without challenge for 3 weeks", { bullet: true }),
-    calloutBox("If MCG had a unified data layer connecting IoT telemetry with carrier fleet data, the correlation between fleet truck changeover (July) and spoilage spike (July) would have been immediately visible. This is exactly the kind of insight Project CLARITY's data integration will enable.", "info"),
+    calloutBox("If MCG had a unified data layer connecting IoT telemetry with carrier fleet data, the correlation between fleet truck changeover (July) and spoilage spike (July) would have been immediately visible. This is exactly the kind of insight Project Qlarity's data integration will enable.", "info"),
 
     heading("4. Corrective Actions"),
     para("Immediate actions taken:"),
@@ -592,7 +592,7 @@ function incTransFrio() {
     numberedItem(3, "TransFrio required to install APUs for Argentine border wait (14-hour average)"),
     numberedItem(4, "Telemetry data sharing via API required within 60 days"),
     para("Long-term actions:"),
-    numberedItem(5, "Project CLARITY Phase 1 will include IoT-to-carrier data correlation pipeline"),
+    numberedItem(5, "Project Qlarity Phase 1 will include IoT-to-carrier data correlation pipeline"),
     numberedItem(6, "Spoilage prediction model (Qlik AutoML) to detect anomalies within 48 hours, not 3 weeks"),
 
     ...signatureBlock("Roberto Almeida", "LATAM Operations Director", "Meridian Commerce Group"),

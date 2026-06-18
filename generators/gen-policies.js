@@ -72,7 +72,7 @@ function pol007() {
     para("All food-handling facilities must implement the following by their respective deadlines:"),
     numberedItem(1, "Lot number capture: Convert from free-text to structured field with validation. Reject receipts without valid lot numbers. Target: 100% capture by 01 October 2025."),
     numberedItem(2, "Store receipt tracking: Deploy lot-level tracking at all EU stores. Target: 90% by 01 March 2026."),
-    numberedItem(3, "Unified traceability: Implement single-query traceability across all 4 systems (SAP, WMS, TMS, Salesforce). Target: Project CLARITY Phase 1."),
+    numberedItem(3, "Unified traceability: Implement single-query traceability across all 4 systems (SAP, WMS, TMS, Salesforce). Target: Project Qlarity Phase 1."),
     numberedItem(4, "Sub-tier supplier mapping: Complete mapping for all food suppliers. Target: 80% by 01 January 2026."),
 
     heading("6. Revision History"),
@@ -202,7 +202,7 @@ function pol015() {
 
     heading("4. Data Quality Monitoring"),
     para("Current state: MCG has NO automated enterprise-wide data quality monitoring.", { bold: true }),
-    para("Planned state (Project CLARITY Phase 2):"),
+    para("Planned state (Project Qlarity Phase 2):"),
     para("Automated data profiling on all source systems at ingestion", { bullet: true }),
     para("Real-time data quality dashboards with Trust Score trending", { bullet: true }),
     para("Automated alerting when quality thresholds are breached", { bullet: true }),

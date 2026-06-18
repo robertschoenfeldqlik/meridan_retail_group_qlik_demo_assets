@@ -76,7 +76,7 @@ When a cycle count variance exceeds tolerance:
 
 ### 3.3 Store-Level Inventory Reconciliation
 
-**Note**: Store managers currently perform a manual daily reconciliation using spreadsheets. This process takes approximately 45 minutes per store each morning. The Supply Chain Transformation team is working to replace this with automated real-time reconciliation via the Qlik platform (Project CLARITY, target go-live Q2 2026).
+**Note**: Store managers currently perform a manual daily reconciliation using spreadsheets. This process takes approximately 45 minutes per store each morning. The Supply Chain Transformation team is working to replace this with automated real-time reconciliation via the Qlik platform (Project Qlarity, target go-live Q2 2026).
 
 Current store reconciliation process:
 1. Export POS sales data from previous day

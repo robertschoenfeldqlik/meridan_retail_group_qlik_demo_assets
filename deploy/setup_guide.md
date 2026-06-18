@@ -757,13 +757,13 @@ python deploy/deploy_qlik.py  # Creates KB + uploads all 25 documents
 |---|---|
 | Name | MCG Operations Assistant |
 | Knowledge bases | MCG Operations Knowledge Base |
-| Description | AI assistant for MCG operations — procedures, incidents, policies, carrier contracts, and Project CLARITY |
+| Description | AI assistant for MCG operations — procedures, incidents, policies, carrier contracts, and Project Qlarity |
 
 **Conversation starters:**
 1. "What is the procedure for goods receiving?"
 2. "What happened during the Rotterdam pipeline failure?"
 3. "What are the cold chain temperature requirements?"
-4. "What is Project CLARITY and what's the ROI?"
+4. "What is Project Qlarity and what's the ROI?"
 5. "What was the lettuce recall and what went wrong?"
 
 ### 8.3 Demo Scenarios for Qlik Answers
@@ -788,8 +788,8 @@ python deploy/deploy_qlik.py  # Creates KB + uploads all 25 documents
 - Ask: "What's the procedure for handling a Where Is My Order call?"
 - Expected: References SOP-CS-001 (4-step WISMO procedure), cross-references carrier tracking systems
 
-**Scenario 6: Project CLARITY ROI**
-- Ask: "What is Project CLARITY and what's the expected return?"
+**Scenario 6: Project Qlarity ROI**
+- Ask: "What is Project Qlarity and what's the expected return?"
 - Expected: References PROJ-CLARITY-2025 ($12.4M investment, $52.7M conservative annual benefit, 952% 3-year ROI)
 
 ---
@@ -1183,7 +1183,7 @@ claude mcp add --transport sse qlik https://your-tenant.us.qlikcloud.com/api/ai/
 **Claude's response:**
 > "Rotterdam DC's Inventory Record Accuracy is currently 74%, significantly below the 97% target. The primary cause was a silent pipeline failure (INC-2025-04872) where the WMS-to-SAP CDC sync stopped for 72 hours due to an expired TLS certificate. This created 847 units of phantom inventory across 143 SKUs, costing €30,500 in emergency transfers.
 >
-> The pipeline has been recovered, and automated monitoring has been deployed at Rotterdam. However, the remaining 27 DCs still rely on manual daily sync checks (855 person-hours/day total). Project CLARITY Phase 1 will extend automated monitoring to all DCs by Q2 2026."
+> The pipeline has been recovered, and automated monitoring has been deployed at Rotterdam. However, the remaining 27 DCs still rely on manual daily sync checks (855 person-hours/day total). Project Qlarity Phase 1 will extend automated monitoring to all DCs by Q2 2026."
 
 **Demo talking point:** "Claude didn't just query a number — it combined real-time data from the Lakehouse with operational context from Qlik Answers documents, all through the MCP integration."
 

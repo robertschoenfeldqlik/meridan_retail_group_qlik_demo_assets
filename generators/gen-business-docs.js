@@ -49,7 +49,7 @@ function poSamsung() {
     para("WMS: 'Samsung Elec.'", { bullet: true }),
     para("Salesforce: 'SAMSUNG'", { bullet: true }),
     para("Procurement spreadsheet: 'Samsung Corp'", { bullet: true }),
-    calloutBox("This supplier name inconsistency is tracked under Nightmare #3 (Product Master Data Mess). The Supplier Identity Resolution transformation route in Project CLARITY will resolve all 4 variants to a single canonical record.", "info"),
+    calloutBox("This supplier name inconsistency is tracked under Nightmare #3 (Product Master Data Mess). The Supplier Identity Resolution transformation route in Project Qlarity will resolve all 4 variants to a single canonical record.", "info"),
 
     heading("4. Approval"),
     ...signatureBlock("Henrik Jansen", "VP Warehouse Operations", "Receiving Authorization"),

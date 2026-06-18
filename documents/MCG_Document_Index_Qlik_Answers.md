@@ -71,7 +71,7 @@
 ### Project Briefs (1)
 | ID | Title | File |
 |---|---|---|
-| PROJ-CLARITY | Project CLARITY Business Case | `project_briefs/PROJ-CLARITY-2025_Business_Case.md` |
+| PROJ-CLARITY | Project Qlarity Business Case | `project_briefs/PROJ-CLARITY-2025_Business_Case.md` |
 
 ### Shipping (1)
 | ID | Title | File |
@@ -116,7 +116,7 @@ CARRIER-NV-2025 ──→ MTG-SC-2025-Q3 (Li Wei discussed the issue)
 | 2 | "How do I check if the WMS-SAP sync is working?" | TRN-2025-001, INC-2025-04872 | Daily manual sync check: compare WMS and SAP transaction counts, spot-check 5 SKUs, verify batch job status in SM37. |
 | 3 | "What is our inventory accuracy rate?" | MTG-SC-2025-Q3, SOP-WH-002, MCG-POL-015 | Current IRA: 74% (target: 97%). Cycle count procedure identifies variances. Data quality policy sets 99% accuracy target for inventory. |
 | 4 | "How many pipeline failures happen per week?" | INC-2025-04872, MCG-POL-015 | Estimated 23 pipeline failures per week. ~25% are silent (5-6 undetected at any given time). |
-| 5 | "What is Project CLARITY going to fix about this?" | PROJ-CLARITY, INC-2025-04872 | Replace batch interface with CDC via Qlik Talend Cloud. Pipeline health monitoring. Data freshness checks. Silent failure detection. |
+| 5 | "What is Project Qlarity going to fix about this?" | PROJ-CLARITY, INC-2025-04872 | Replace batch interface with CDC via Qlik Talend Cloud. Pipeline health monitoring. Data freshness checks. Silent failure detection. |
 
 ### Document Cross-References
 ```
@@ -139,10 +139,10 @@ INC-2025-04872 ──→ TRN-2025-001 (training updated to include daily sync ch
 |---|---|---|---|
 | 1 | "What happened with the lettuce recall?" | RCL-2025-003, SUPP-2025-FD | Listeria detected in organic butter lettuce from FARM-NL-0042 (Fresh Direct supplier). 12,400 units across 210 stores. Took 11 days to complete trace (target: 24 hours). |
 | 2 | "Why did the recall take so long?" | RCL-2025-003, COMP-2025-NVWA | Data fragmented across 4 systems. 15% missing lot numbers. Only 32% store-level receipt tracking. 65 person-hours of manual cross-referencing. |
-| 3 | "What is the NVWA corrective action plan?" | COMP-2025-NVWA, MCG-POL-007 | 5 corrective actions: mandatory lot number capture (done), store receipt tracking (78%), unified traceability plan (CLARITY), sub-tier mapping (36%), origin documentation (88%). |
+| 3 | "What is the NVWA corrective action plan?" | COMP-2025-NVWA, MCG-POL-007 | 5 corrective actions: mandatory lot number capture (done), store receipt tracking (78%), unified traceability plan (Qlarity), sub-tier mapping (36%), origin documentation (88%). |
 | 4 | "What is Fresh Direct's supplier rating?" | SUPP-2025-FD | Rating: C (Needs Improvement), down from B. Quality rejection rate 4.8% (was 2.1%). Connected to FARM-NL-0042 recall. Conditional renewal recommendation. |
 | 5 | "How do we handle a product recall?" | SOP-SC-001 | 5-phase procedure: Identification, Traceability, Containment, Notification, Post-Recall. Recall team contacts listed. Current limitations documented. |
-| 6 | "When is the next NVWA inspection?" | COMP-2025-NVWA, MCG-POL-007 | Expected Q1 2026. MCG must demonstrate lot number compliance at 100%, store tracking >85%, and Project CLARITY in active implementation. |
+| 6 | "When is the next NVWA inspection?" | COMP-2025-NVWA, MCG-POL-007 | Expected Q1 2026. MCG must demonstrate lot number compliance at 100%, store tracking >85%, and Project Qlarity in active implementation. |
 
 ### Document Cross-References
 ```
@@ -193,7 +193,7 @@ INC-2025-05102 ──→ SUPP-2025-TF (formal notice to TransFrio)
 |---|---|---|---|
 | 1 | "What is the status of order WEB-2025-10-0094827?" | SHIP-2025-RTD-44821, SOP-CS-001 | Order shipped via DPD Classic from Rotterdam DC. Tracking: DPD-1025487321. Status: DELIVERED (Oct 16). |
 | 2 | "How do I handle a WISMO call?" | SOP-CS-001 | 4-step procedure: Identify order (1 min), Check fulfillment status (2 min), Check carrier tracking (3 min), Escalation if needed (2 min). |
-| 3 | "What systems do I need to check for order status?" | SOP-CS-001, TRN-2025-001 | Currently 5 systems: Salesforce Commerce Cloud, Salesforce CRM, Descartes TMS, Carrier tracking portal, WMS. Project CLARITY will provide unified view. |
+| 3 | "What systems do I need to check for order status?" | SOP-CS-001, TRN-2025-001 | Currently 5 systems: Salesforce Commerce Cloud, Salesforce CRM, Descartes TMS, Carrier tracking portal, WMS. Project Qlarity will provide unified view. |
 | 4 | "Customer says their order shows delivered but they didn't receive it" | SOP-CS-001 | Ask customer to check household members, building reception, safe place. If not found: create case in CRM, initiate carrier investigation (48-hour response SLA from carrier). |
 | 5 | "Why doesn't my Singapore customer have tracking for their order?" | SOP-CS-001, CARRIER-NV-2025 | 42% of orders (especially APAC) don't have tracking due to carrier limitations. Use scripted response about regional carrier and estimated delivery window. |
 | 6 | "A DPD delivery failed because of a truncated address" | SHIP-2025-RTD-44821, CARRIER-DPD-2025 | Known address quality issue: MCG 35-character field limit truncates long street names. DPD charges EUR 2.80 correction fee per address fix. Contact carrier for reattempt. |
@@ -218,11 +218,11 @@ SOP-CS-001 ──→ SHIP-2025-RTD-44821 (example of actual shipment with tracki
 | # | Question | Expected Answer Sources | Key Citations |
 |---|---|---|---|
 | 1 | "What is the annual cost of our data quality problems?" | MCG-POL-015, PROJ-CLARITY | $127M annually: phantom inventory ($48M), spoilage ($57M), WISMO ($14.8M), compliance ($4.2M), carrier SLA ($3.1M). |
-| 2 | "What is Project CLARITY?" | PROJ-CLARITY, MTG-SC-2025-Q3 | Qlik platform implementation: Talend Cloud, Open Lakehouse, Qlik Analytics, Qlik Answers, Discovery Agent, AutoML. $12.4M investment. $85M+ annual benefit. |
+| 2 | "What is Project Qlarity?" | PROJ-CLARITY, MTG-SC-2025-Q3 | Qlik platform implementation: Talend Cloud, Open Lakehouse, Qlik Analytics, Qlik Answers, Discovery Agent, AutoML. $12.4M investment. $85M+ annual benefit. |
 | 3 | "What data quality dimensions do we measure?" | MCG-POL-015 | Six dimensions: Completeness, Accuracy, Timeliness, Consistency, Uniqueness, Validity. Aligned with Qlik Trust Score for AI framework. |
 | 4 | "How many data pipeline failures do we have?" | MCG-POL-015, INC-2025-04872 | 23 failures/week, ~25% silent (5-6 undetected at any time). Rotterdam failure went 4.3 days without detection. |
-| 5 | "What is the ROI of Project CLARITY?" | PROJ-CLARITY | 3-year ROI: 952%. Payback: <4 months after Phase 1. Conservative annual benefit: $52.7M. |
-| 6 | "When will we be ready for the NVWA inspection?" | COMP-2025-NVWA, PROJ-CLARITY | Q1 2026 inspection expected. Must demonstrate: lot number 100%, store tracking >85%, CLARITY in active implementation. Risk: CIO approval delay beyond November. |
+| 5 | "What is the ROI of Project Qlarity?" | PROJ-CLARITY | 3-year ROI: 952%. Payback: <4 months after Phase 1. Conservative annual benefit: $52.7M. |
+| 6 | "When will we be ready for the NVWA inspection?" | COMP-2025-NVWA, PROJ-CLARITY | Q1 2026 inspection expected. Must demonstrate: lot number 100%, store tracking >85%, Qlarity in active implementation. Risk: CIO approval delay beyond November. |
 
 ### Document Cross-References
 ```

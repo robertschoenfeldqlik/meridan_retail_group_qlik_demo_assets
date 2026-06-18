@@ -286,7 +286,7 @@ function sopSC001() {
     numberedItem(2, "WMS (Oracle/Manhattan) — Current warehouse inventory by lot"),
     numberedItem(3, "Descartes TMS — In-transit shipment details"),
     numberedItem(4, "Salesforce Commerce Cloud — Customer orders with affected SKUs"),
-    calloutBox("CURRENT GAP: These four systems are not linked by a common lot-level traceability key. The June lettuce recall required 65 person-hours of manual cross-referencing. Project CLARITY (business case pending CIO approval) will create this unified traceability layer.", "warning"),
+    calloutBox("CURRENT GAP: These four systems are not linked by a common lot-level traceability key. The June lettuce recall required 65 person-hours of manual cross-referencing. Project Qlarity (business case pending CIO approval) will create this unified traceability layer.", "warning"),
 
     heading("5. Store-Level Actions"),
     numberedItem(1, "Recall notification pushed to all stores via MCG Alert System."),

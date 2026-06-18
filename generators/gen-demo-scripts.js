@@ -118,6 +118,18 @@ function talkingPoint(text) {
   return para(text, { bullet: true, color: Q.blue });
 }
 
+// ─── HELPER: Project Qlarity context line ───
+// One concise line per scenario tying it to its Qlarity phase / data-quality nightmare.
+function clarityContext(text) {
+  return new Paragraph({
+    spacing: { before: 80, after: 120 },
+    children: [
+      new TextRun({ text: "Project Qlarity context:  ", font: FONT, size: 20, bold: true, color: Q.teal }),
+      new TextRun({ text, font: FONT, size: 20, italics: true, color: Q.darkText }),
+    ],
+  });
+}
+
 // ─── DEMO2WIN / SHOW-TELL-SHOW HELPERS ──────────────────────
 
 // Limbic Opening box — emotional hook at the start of each module
@@ -226,6 +238,9 @@ function module01() {
       ["Components", "PostgreSQL, Apache Kafka (Confluent), Salesforce, Docker"],
     ]),
 
+    para("This is Module 1 of the Project Qlarity demo walkthrough — the end-to-end story of MCG's unified Qlik data-platform initiative (Connected Logistics, Analytics, and Real-time Intelligence Technology). Each module maps to a Project Qlarity phase and to the data-quality nightmares it eliminates.", { italics: true, color: Q.teal }),
+    clarityContext("Project Qlarity Phase 1 (Foundation) — the three independent sources are exactly the systems Qlarity unifies; their baked-in quality problems are the origin of all Seven Data Quality Nightmares."),
+
     heading("Overview", 2),
     para("This module covers the foundational infrastructure: three independent data sources that feed the MCG demo. Each source represents a real-world system in a global supply chain company — a warehouse management database, IoT cold-chain sensors, and a CRM platform."),
     calloutBox("Key message: MCG's data problems start at the source. Three different systems, three different data formats, three different quality levels. This is the reality for every enterprise."),
@@ -311,6 +326,8 @@ function module02() {
       ["Nightmares", "#4 (Silent Pipeline Failures), #6 (Carrier Data Black Hole)"],
       ["Components", "Qlik Cloud Administration, Data Integration connectors"],
     ]),
+
+    clarityContext("Project Qlarity Phase 1 (Foundation): the CDC + Kafka integration backbone. Governed dev/prod spaces and gateway-bound connections are the prerequisite for the pipeline-health monitoring that closes Nightmare #4 (Silent Pipeline Failures) and the carrier feed behind Nightmare #6."),
 
     heading("Overview", 2),
     para("This module establishes the Qlik Cloud workspace and connects to all three MCG data sources. The space architecture separates development, production analytics, and data governance — a best practice for enterprise Qlik deployments."),
@@ -421,6 +438,8 @@ function module03() {
       ["Components", "Open Lakehouse, Data Integration pipelines, Transformation Flows, Table Recipes"],
     ]),
 
+    clarityContext("Project Qlarity Phase 1 → Phase 2: the Open Lakehouse Bronze/Silver foundation (Phase 1) plus the remaining transforms and governed Gold data products (Phase 2 Analytics & Quality). The 8 Silver routes are where all Seven Data Quality Nightmares are systematically remediated."),
+
     heading("Overview", 2),
     para("The Open Lakehouse is the heart of the MCG demo. It implements the medallion architecture (Bronze/Silver/Gold) where raw data lands, gets cleansed and transformed, and emerges as governed data products. This is where MCG's 7 data quality nightmares get resolved."),
     calloutBox("Key message: Without a Lakehouse, MCG had 3 disconnected data silos. With it, they have a single source of truth with full lineage from raw source to business-ready data product."),
@@ -519,6 +538,8 @@ function module04() {
       ["Components", "Data Lineage, Impact Analysis, Data Profiling, Trust Score"],
     ]),
 
+    clarityContext("Project Qlarity Phase 1 (Foundation): pipeline-health monitoring and Trust Score. Lineage, profiling, and a single Trust Score turn Rotterdam's 72-hour silent pipeline failure (Nightmare #4) and phantom inventory (Nightmare #1) into a 5-minute alert."),
+
     heading("Overview", 2),
     para("This module demonstrates Qlik's governance capabilities: tracing data from source to dashboard (lineage), understanding what breaks when a table changes (impact analysis), automated quality profiling, and Trust Scores that quantify data reliability."),
 
@@ -592,6 +613,8 @@ function module05() {
       ["Components", "Data Products, AI-Driven Descriptions, Semantic Types, Validation Rules, API Sharing, Data Marketplace"],
     ]),
 
+    clarityContext("Project Qlarity Phase 2 (Analytics & Quality): the governed Gold data products. Owners, SLAs, Trust Scores, and validation rules that route violations to stewardship are how Qlarity makes the remediation of all Seven Nightmares durable and consumable."),
+
     heading("Overview", 2),
     para("Gold-layer tables become governed Data Products with owners, SLAs, Trust Scores, and API access. AI automatically generates descriptions and suggests validation rules. The Data Marketplace lets business users discover and request access to data products."),
 
@@ -664,6 +687,8 @@ function module06() {
       ["Nightmares", "All 7 (dashboards visualize every nightmare)"],
       ["Components", "Qlik Analytics, Business Logic, Agentic Analytics, Section Access, MCG Dark Theme"],
     ]),
+
+    clarityContext("Project Qlarity Phase 2 (Analytics & Quality): full analytics on governed data. The inventory and cold-chain dashboards (begun in Phase 1) plus the Executive Cost Impact view quantify all Seven Nightmares; the in-app Qlik Answers preview bridges to Phase 3 conversational AI."),
 
     heading("Overview", 2),
     para("Two domain-based Qlik Analytics apps bring MCG's data to life: Supply Chain Operations (inventory, cold chain, compliance) and Delivery & Customer Experience (carrier SLAs, WISMO, order tracking). Both use the MCG Dark Theme and connect to Gold-layer data products with streaming IoT data."),
@@ -753,6 +778,8 @@ function module07() {
       ["Components", "Native Data Alerts, Reporting Service (PixelPerfect, Tabular)"],
     ]),
 
+    clarityContext("Project Qlarity Phase 1 (Foundation): pipeline-health monitoring made proactive. Threshold alerts catch Nightmare #4 (Silent Pipeline Failures) and #1 (Phantom Inventory) in minutes, while scheduled compliance reports pre-compile the traceability data behind Nightmare #7."),
+
     heading("Overview", 2),
     para("Native alerts push notifications when data crosses thresholds — no automation needed. The Reporting Service generates formatted PDF and Excel reports on schedule or on-demand, ensuring stakeholders who don't log into Qlik still get the information they need."),
 
@@ -804,6 +831,8 @@ function module08() {
       ["Nightmares", "#2 (Address Catastrophe), #6 (Carrier Data Black Hole)"],
       ["Components", "Qlik Predict (AutoML experiments, model deployment, API sharing)"],
     ]),
+
+    clarityContext("Project Qlarity Phase 2 (Analytics & Quality): AutoML spoilage prediction. The Cold Chain Exceedance model is Qlarity's spoilage predictor (it would have flagged the TransFrio fleet change, Nightmare #6); the Late Delivery model links tracking and address gaps (Nightmare #2) to SLA outcomes."),
 
     heading("Overview", 2),
     para("Two AutoML models predict real-world outcomes from MCG data: a Cold Chain Exceedance (spoilage risk) model and a Late Delivery (SLA) model. Both train on the silver datasets the declarative pipelines land in the Open Lakehouse — picked straight from the catalog (read via the Athena/lakehouse layer), so the training data carries the same lineage and Trust Score as everything else — and deploy with API access."),
@@ -876,8 +905,10 @@ function module09() {
       ["Components", "Qlik Answers, Knowledge Base, AI Assistant, Knowledge Mart"],
     ]),
 
+    clarityContext("Project Qlarity Phase 3 (AI & Conversational): Qlik Answers over structured data plus documents. This is Qlarity's knowledge layer — cited, traceable answers across the 25 operational documents, including the Project Qlarity business case itself."),
+
     heading("Overview", 2),
-    para("Qlik Answers provides AI-powered natural language access to MCG's 25 operational documents — SOPs, incident reports, policies, carrier contracts, and the Project CLARITY brief. The AI assistant understands context, cites sources, and connects structured data with unstructured knowledge."),
+    para("Qlik Answers provides AI-powered natural language access to MCG's 25 operational documents — SOPs, incident reports, policies, carrier contracts, and the Project Qlarity brief. The AI assistant understands context, cites sources, and connects structured data with unstructured knowledge."),
 
     heading("Prerequisites", 2),
     numberedItem(1, "All 25 DOCX documents uploaded to documents/ directory"),
@@ -900,30 +931,36 @@ function module09() {
     heading("Demo Scenarios", 2),
 
     heading("Scenario 1: Singapore SLA Decline", 3),
+    clarityContext("Project Qlarity Phase 3: conversational access to carrier knowledge (Nightmare #6, Carrier Data Black Hole)."),
     promptBox("Why did Singapore delivery promise accuracy drop to 69%?", "Ask Qlik Answers"),
     expectedBox("References CARRIER-NV-2025 (NinjaVan AMD3 reclassification effective October 1). Explains: 5-10 kg parcels reclassified from 2-day to 3-day delivery. MCG website was not updated for 3 weeks. 14,000 customers/month affected. Also references MCG-POL-020 (Delivery Promise Policy) for the contractual obligations."),
     para("Follow-up: 'What should we do about it?'"),
 
     heading("Scenario 2: Rotterdam Pipeline Failure", 3),
+    clarityContext("Project Qlarity Phase 1 made queryable in Phase 3: pipeline-health monitoring behind Nightmare #4 (Silent Pipeline Failures) and the phantom inventory of Nightmare #1."),
     promptBox("What happened at Rotterdam DC in September 2025?", "Ask Qlik Answers"),
     expectedBox("References INC-2025-04872: WMS-to-SAP CDC sync stopped for 72 hours due to expired TLS certificate. Created 847 phantom inventory units across 143 SKUs. Cost: EUR 30,500 in emergency transfers. References TRN-2025-001 for the remediation training guide."),
     para("Follow-up: 'How are we preventing this from happening again?'"),
 
     heading("Scenario 3: Lettuce Recall Investigation", 3),
+    clarityContext("Project Qlarity Phase 3 closing the loop on Nightmare #7 (Compliance Traceability Gap) — 11-day, four-system traceability collapses to a cited 30-second answer."),
     promptBox("How long did the lettuce recall take and what was the root cause?", "Ask Qlik Answers"),
     expectedBox("References RCL-2025-003: Listeria detected in organic butter lettuce from backup farm FARM-NL-0042. Full traceability took 11 days across 4 disconnected systems. EU regulation requires 24 hours. Affected 210 stores. NVWA citation NVWA-2025-CIT-04412 issued with 5 findings."),
 
     heading("Scenario 4: Cold Chain Spoilage", 3),
+    clarityContext("Project Qlarity Phase 3 narrating the outcome the Phase 2 AutoML spoilage model predicts — the TransFrio fleet change behind Nightmare #6 (Carrier Data Black Hole)."),
     promptBox("What caused the $2.48M spoilage on the Sao Paulo-Buenos Aires route?", "Ask Qlik Answers"),
     expectedBox("References INC-2025-05102: TransFrio replaced 6 trucks with new Thermo King X4 7500 refrigeration units. Drivers were not retrained on the new startup procedure (requires pressing and holding START for 3 seconds). Temperature exceedance rate spiked from 2.1% to 8.8%. References TRN-2025-002 for the correct procedure."),
     para("Follow-up: 'What is the correct startup procedure for the Thermo King X4 7500?'"),
 
     heading("Scenario 5: WISMO Call Handling", 3),
+    clarityContext("Project Qlarity Phase 3: WISMO deflection — surfacing the SOP behind the carrier visibility gap (Nightmare #6) so customers self-serve instead of calling."),
     promptBox("What is the procedure for handling a Where Is My Order call?", "Ask Qlik Answers"),
     expectedBox("References SOP-CS-001: 4-step WISMO procedure. Step 1: Verify customer identity. Step 2: Check carrier tracking system. Step 3: Provide estimated delivery window. Step 4: Escalate if delivery is 48+ hours overdue. Cross-references carrier contact information."),
 
-    heading("Scenario 6: Project CLARITY ROI", 3),
-    promptBox("What is Project CLARITY and what is the expected return on investment?", "Ask Qlik Answers"),
+    heading("Scenario 6: Project Qlarity ROI", 3),
+    clarityContext("The capstone question — Project Qlarity itself: the $12.4M / 24-month initiative across all three phases that eliminates all Seven Data Quality Nightmares for a 952% 3-year ROI."),
+    promptBox("What is Project Qlarity and what is the expected return on investment?", "Ask Qlik Answers"),
     expectedBox("References PROJ-CLARITY-2025: $12.4M Qlik platform investment. Conservative annual benefit: $52.7M. 3-year ROI: 952%. Covers all 7 data quality nightmares. Phase 1 (Integration Foundation) starts Q1 2026. Each nightmare has a specific remediation workstream with cost savings quantified."),
 
     tellAnnotation("close", "Six questions, six instant answers, all sourced and cited from MCG's actual operational documents. The lettuce recall investigation that took 11 days? Qlik Answers gives you the supplier, the incident ID, the NVWA findings, and the remediation steps in 30 seconds. And it connects structured data with document intelligence for complete answers."),
@@ -951,6 +988,8 @@ function module10() {
       ["Nightmares", "#2 (Address), #3 (Product Master), #7 (Compliance)"],
       ["Components", "Qlik Stewardship campaigns, human-in-the-loop data quality"],
     ]),
+
+    clarityContext("Project Qlarity Phase 2 (Analytics & Quality): the human-in-the-loop stewardship layer. The four campaigns finish what automation can't — address standardization (Nightmare #2), supplier dedup / product master (Nightmare #3), and lot-number compliance (Nightmare #7)."),
 
     heading("Overview", 2),
     para("Some data quality issues can't be fixed algorithmically — they need human judgment. Stewardship campaigns route ambiguous records to domain experts for review: fuzzy address matches, duplicate suppliers, missing product weights, and compliance gaps. This is human-in-the-loop data quality at scale."),
@@ -1043,6 +1082,8 @@ function module11() {
       ["Components", "Business Glossary, term definitions, data product linkage"],
     ]),
 
+    clarityContext("Project Qlarity Phase 2 (Analytics & Quality): the shared-vocabulary backbone. A single agreed definition for every term — phantom inventory, Trust Score, WISMO — links each of the Seven Nightmares to the data products and stewardship campaigns that resolve it."),
+
     heading("Overview", 2),
     para("The Business Glossary provides a single source of truth for MCG terminology. When someone says 'phantom inventory', everyone means the same thing. Terms link to data products, datasets, and nightmares — creating a connected governance layer across the platform."),
 
@@ -1089,6 +1130,8 @@ function module12() {
       ["Nightmares", "#4 (Silent Pipelines), #6 (Carrier Data Black Hole)"],
       ["Components", "Qlik Application Automation, Microsoft Teams, Talend Job trigger"],
     ]),
+
+    clarityContext("Project Qlarity Phase 1 → Phase 2: turning monitoring into action. The pipeline-health summary and cold-chain alert operationalize Phase 1 monitoring (Nightmares #4 and #6), while the Stewardship → Talend → Lakehouse correction loop closes Phase 2 data-quality remediation."),
 
     heading("Overview", 2),
     para("Automations close the loop between data quality detection and action. When a cold chain exceedance is detected, an alert fires to Teams. When a pipeline fails, the engineering team is notified. When a stewardship task is approved, a Talend job processes the correction. No manual intervention required."),
@@ -1154,6 +1197,8 @@ function module13() {
       ["Components", "Discovery Agent, Qlik MCP Server, Claude Desktop/Code, Agentic Analytics"],
     ]),
 
+    clarityContext("Project Qlarity Phase 3 (AI & Conversational) — the capstone. The Discovery Agent and MCP server are Qlarity's proactive, agentic layer: anomalies find you, and AI agents query the same governed data and documents that earlier phases built."),
+
     heading("Overview", 2),
     para("The Discovery Agent proactively monitors data products for anomalies and alerts users before problems escalate. The MCP Server connects Qlik data to AI agents (Claude), enabling natural language queries that combine structured data with document intelligence. Together, they represent the AI-driven future of data analytics."),
 
@@ -1178,6 +1223,7 @@ function module13() {
     ),
 
     heading("Demo Scenario: TransFrio Spoilage Detection", 3),
+    clarityContext("Project Qlarity Phase 3 Discovery Agent acting on the Phase 2 spoilage signal — proactively catching the TransFrio fleet change behind Nightmare #6 (Carrier Data Black Hole)."),
     para("The Discovery Agent monitors silver.iot_normalized and detects an anomaly pattern:"),
     numberedItem(1, "Temperature exceedance rate on GRU-BA route spiked from 2.1% to 8.8% over 3 weeks"),
     numberedItem(2, "Agent correlates: fleet metadata shows 6 truck replacements in the same period"),
@@ -1212,22 +1258,27 @@ function module13() {
     ),
 
     heading("MCP Demo Scenario 1: Rotterdam Inventory", 3),
+    clarityContext("Project Qlarity Phase 3 MCP querying Phase 1 monitoring outputs — phantom inventory (Nightmare #1) from the Rotterdam silent pipeline failure (Nightmare #4)."),
     promptBox("What is the current inventory accuracy rate at Rotterdam DC, and what is causing the issues?", "Ask Claude"),
-    expectedBox("Claude uses MCP to query gold.supply_chain_health filtered by dc = DC-RTD-01. Gets: IRA = 74%, phantom_units = 847, pipeline_status = RECOVERED. Then queries silver.order_delivery_timeline for affected orders. Finally pulls context from INC-2025-04872 (Rotterdam Pipeline Failure) via Qlik Answers.\n\nResponse: Rotterdam DC IRA is 74%, significantly below the 97% target. Root cause: silent pipeline failure INC-2025-04872 where WMS-to-SAP CDC sync stopped for 72 hours due to an expired TLS certificate. Created 847 phantom units across 143 SKUs, costing EUR 30,500. Pipeline recovered; Project CLARITY Phase 1 will extend monitoring to all 28 DCs."),
+    expectedBox("Claude uses MCP to query gold.supply_chain_health filtered by dc = DC-RTD-01. Gets: IRA = 74%, phantom_units = 847, pipeline_status = RECOVERED. Then queries silver.order_delivery_timeline for affected orders. Finally pulls context from INC-2025-04872 (Rotterdam Pipeline Failure) via Qlik Answers.\n\nResponse: Rotterdam DC IRA is 74%, significantly below the 97% target. Root cause: silent pipeline failure INC-2025-04872 where WMS-to-SAP CDC sync stopped for 72 hours due to an expired TLS certificate. Created 847 phantom units across 143 SKUs, costing EUR 30,500. Pipeline recovered; Project Qlarity Phase 1 will extend monitoring to all 28 DCs."),
 
     heading("MCP Demo Scenario 2: Cold Chain Risk", 3),
+    clarityContext("Project Qlarity Phase 3 MCP combining the Phase 2 spoilage prediction with live IoT data — the cold-chain carrier risk of Nightmare #6."),
     promptBox("What is the current spoilage risk for active TransFrio shipments on the Sao Paulo to Buenos Aires route?", "Ask Claude"),
     expectedBox("Claude queries silver.iot_normalized for route=GRU-BA and carrier=TransFrio with active shipments. Returns: 4 active shipments, 2 with exceedance_minutes > 30. Pulls INC-2025-05102 for context about the fleet change and TRN-2025-002 for the Thermo King X4 7500 startup procedure."),
 
     heading("MCP Demo Scenario 3: Carrier SLA Analysis", 3),
+    clarityContext("Project Qlarity Phase 3 MCP across the canonicalized carrier data — resolving Nightmare #6 (Carrier Data Black Hole) into a single APAC SLA comparison."),
     promptBox("Compare carrier on-time delivery performance across APAC. Which carrier is worst and why?", "Ask Claude"),
     expectedBox("Claude queries gold.last_mile_performance filtered by destination_region=APAC. Returns: NinjaVan at 69% on-time (worst), vs FedEx 94%, DHL 91%. Pulls CARRIER-NV-2025 for context: AMD3 reclassification effective Oct 1 changed 5-10 kg parcels from 2-day to 3-day delivery. 14,000 customers/month affected."),
 
     heading("MCP Demo Scenario 4: Customer WISMO Impact", 3),
+    clarityContext("Project Qlarity Phase 3: WISMO deflection — quantifying the carrier-visibility cost (Nightmare #6) the conversational layer is designed to reduce."),
     promptBox("What is our WISMO rate and how much is it costing us?", "Ask Claude"),
     expectedBox("Claude queries gold.last_mile_performance filtered by wismo_flag=TRUE. Returns: overall WISMO rate 41%, cost per inquiry $2.30. Singapore worst at 52% (up from 30% pre-October). Annual WISMO cost: ~$4.2M. Pulls SOP-CS-001 for the current handling procedure and suggests process improvements."),
 
     heading("MCP Demo Scenario 5: Compliance Audit", 3),
+    clarityContext("Project Qlarity Phase 3 MCP closing Nightmare #7 (Compliance Traceability Gap) — instant NVWA audit readiness from the governed lot-capture and recall data."),
     promptBox("How ready are we for the next NVWA food safety audit? What are our biggest gaps?", "Ask Claude"),
     expectedBox("Claude queries silver.inventory_reconciled filtered by nvwa_applicable=TRUE. Returns: 85% lot capture rate (target 100%), 30% of lettuce records missing trace_complete. Pulls COMP-2025-NVWA for the 5 findings from the last audit and RCL-2025-003 for the recall timeline. Recommends prioritizing lot number capture for perishables."),
 
@@ -1257,19 +1308,19 @@ async function main() {
   console.log();
 
   const modules = [
-    { fn: module01, name: "01_Infrastructure_Data_Sources", title: "DEMO SCRIPT — Module 1" },
-    { fn: module02, name: "02_Connections_Spaces", title: "DEMO SCRIPT — Module 2" },
-    { fn: module03, name: "03_Open_Lakehouse", title: "DEMO SCRIPT — Module 3" },
-    { fn: module04, name: "04_Lineage_Profiling_Trust", title: "DEMO SCRIPT — Module 4" },
-    { fn: module05, name: "05_Data_Products_API", title: "DEMO SCRIPT — Module 5" },
-    { fn: module06, name: "06_Analytics_Apps", title: "DEMO SCRIPT — Module 6" },
-    { fn: module07, name: "07_Alerting_Reporting", title: "DEMO SCRIPT — Module 7" },
-    { fn: module08, name: "08_Qlik_Predict", title: "DEMO SCRIPT — Module 8" },
-    { fn: module09, name: "09_Qlik_Answers", title: "DEMO SCRIPT — Module 9" },
-    { fn: module10, name: "10_Stewardship", title: "DEMO SCRIPT — Module 10" },
-    { fn: module11, name: "11_Business_Glossary", title: "DEMO SCRIPT — Module 11" },
-    { fn: module12, name: "12_Automations", title: "DEMO SCRIPT — Module 12" },
-    { fn: module13, name: "13_Discovery_Agent_MCP", title: "DEMO SCRIPT — Module 13" },
+    { fn: module01, name: "01_Infrastructure_Data_Sources", title: "Project Qlarity Demo Walkthrough — Module 1" },
+    { fn: module02, name: "02_Connections_Spaces", title: "Project Qlarity Demo Walkthrough — Module 2" },
+    { fn: module03, name: "03_Open_Lakehouse", title: "Project Qlarity Demo Walkthrough — Module 3" },
+    { fn: module04, name: "04_Lineage_Profiling_Trust", title: "Project Qlarity Demo Walkthrough — Module 4" },
+    { fn: module05, name: "05_Data_Products_API", title: "Project Qlarity Demo Walkthrough — Module 5" },
+    { fn: module06, name: "06_Analytics_Apps", title: "Project Qlarity Demo Walkthrough — Module 6" },
+    { fn: module07, name: "07_Alerting_Reporting", title: "Project Qlarity Demo Walkthrough — Module 7" },
+    { fn: module08, name: "08_Qlik_Predict", title: "Project Qlarity Demo Walkthrough — Module 8" },
+    { fn: module09, name: "09_Qlik_Answers", title: "Project Qlarity Demo Walkthrough — Module 9" },
+    { fn: module10, name: "10_Stewardship", title: "Project Qlarity Demo Walkthrough — Module 10" },
+    { fn: module11, name: "11_Business_Glossary", title: "Project Qlarity Demo Walkthrough — Module 11" },
+    { fn: module12, name: "12_Automations", title: "Project Qlarity Demo Walkthrough — Module 12" },
+    { fn: module13, name: "13_Discovery_Agent_MCP", title: "Project Qlarity Demo Walkthrough — Module 13" },
   ];
 
   for (const mod of modules) {

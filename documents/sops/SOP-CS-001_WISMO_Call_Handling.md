@@ -29,7 +29,7 @@ Customer service agents must check **5 separate systems** to answer a single WIS
 
 Average handle time for a WISMO call: **8.5 minutes** (target: 4 minutes).
 
-**NOTE**: Project CLARITY (Qlik platform, target Q2 2026) will provide a unified order tracking view via Qlik Answers, enabling agents to ask natural language questions about order status. Until then, follow the manual procedure below.
+**NOTE**: Project Qlarity (Qlik platform, target Q2 2026) will provide a unified order tracking view via Qlik Answers, enabling agents to ask natural language questions about order status. Until then, follow the manual procedure below.
 
 ## 3. Procedure
 
@@ -107,7 +107,7 @@ Average handle time for a WISMO call: **8.5 minutes** (target: 4 minutes).
 | Customer satisfaction (WISMO) | > 4.0/5.0 | 3.1/5.0 |
 | Cost per WISMO contact | < $1.50 | **$2.30** |
 
-## 6. Future State (Project CLARITY)
+## 6. Future State (Project Qlarity)
 
 The Qlik platform implementation will introduce:
 - **Qlik Answers**: Agents can ask "What is the status of order WEB-2025-10-0094827?" in natural language and receive a unified answer drawing from all 5 systems simultaneously.

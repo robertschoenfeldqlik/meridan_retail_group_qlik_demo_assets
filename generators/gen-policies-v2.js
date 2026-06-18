@@ -61,10 +61,10 @@ function pol007() {
       ["Finding", "Severity", "Description", "Corrective Action"],
       [
         ["F1", "Major", "Lot numbers not consistently captured — free-text field allowed blank entries", "WMS field converted to structured input with validation; blank blocked"],
-        ["F2", "Major", "Unable to complete product trace from supplier to store within 24 hours", "Project CLARITY Phase 1 — unified traceability layer"],
+        ["F2", "Major", "Unable to complete product trace from supplier to store within 24 hours", "Project Qlarity Phase 1 — unified traceability layer"],
         ["F3", "Significant", "Country of origin missing for 12% of fresh produce SKUs", "Procurement updating supplier requirements; 88% complete"],
         ["F4", "Significant", "Sub-tier supplier relationships not documented for 64% of food suppliers", "Supplier mapping program; 36% complete (at risk)"],
-        ["F5", "Observation", "Temperature recording at goods receipt uses inconsistent timestamp formats", "Timestamp standardization planned under Project CLARITY"],
+        ["F5", "Observation", "Temperature recording at goods receipt uses inconsistent timestamp formats", "Timestamp standardization planned under Project Qlarity"],
       ]
     ),
     para("MCG submitted corrective action plan COMP-2025-NVWA on 15 July 2025. NVWA follow-up inspection expected Q1 2026."),
@@ -86,7 +86,7 @@ function pol007() {
         ["VP Warehouse Operations (Henrik Jansen)", "Lot number capture at all DCs; goods receipt compliance; cycle count for food traceability"],
         ["VP Supply Chain (Thomas Brennan)", "Cold chain compliance; carrier food safety requirements; in-transit traceability"],
         ["Head of Procurement", "Supplier qualification; sub-tier mapping; country of origin data collection"],
-        ["CDO (Priya Ramanathan)", "Data quality monitoring for traceability elements; Project CLARITY delivery"],
+        ["CDO (Priya Ramanathan)", "Data quality monitoring for traceability elements; Project Qlarity delivery"],
         ["Store Operations VPs", "Store-level lot tracking deployment; recall execution at retail"],
         ["Quality Managers (per DC)", "Receiving inspection; temperature verification; rejection authority for non-compliant deliveries"],
       ]
@@ -242,7 +242,7 @@ function pol015() {
 
     heading("4. Current State: No Enterprise Monitoring"),
     calloutBox("MCG currently has NO automated enterprise-wide data quality monitoring. Data quality is measured through periodic manual assessments, cycle count results, and incident-driven investigations. The Rotterdam pipeline failure (INC-2025-04872) went undetected for 4.3 days because no system monitors data freshness or pipeline health.", "critical"),
-    para("Planned state under Project CLARITY Phase 2:"),
+    para("Planned state under Project Qlarity Phase 2:"),
     para("Automated data profiling on all source systems at ingestion (Qlik Talend Cloud)", { bullet: true }),
     para("Real-time data quality dashboards with Trust Score trending (Qlik Analytics)", { bullet: true }),
     para("Automated alerting when quality thresholds are breached", { bullet: true }),
@@ -253,7 +253,7 @@ function pol015() {
     dataTable(
       ["Role", "Responsibility", "Reporting"],
       [
-        ["Chief Data Officer", "Enterprise data quality strategy; policy ownership; Project CLARITY sponsorship", "Quarterly to CEO and Board"],
+        ["Chief Data Officer", "Enterprise data quality strategy; policy ownership; Project Qlarity sponsorship", "Quarterly to CEO and Board"],
         ["Data Domain Owners", "Quality targets and improvement plans for their domain CDEs; root cause resolution", "Monthly to CDO"],
         ["Data Stewards", "Day-to-day quality issue investigation and resolution; stewardship task completion", "Weekly to Domain Owner"],
         ["IT Operations", "Pipeline monitoring and alerting; infrastructure for data quality tools", "Real-time dashboards"],

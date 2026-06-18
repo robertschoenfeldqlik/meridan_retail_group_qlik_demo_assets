@@ -64,7 +64,7 @@ This procedure defines the end-to-end process for executing a product recall at 
    - **Sub-tier supplier visibility is limited.** If the recall involves a raw ingredient (e.g., a specific lettuce farm), we may not be able to trace through our Tier 1 suppliers to the farm of origin for ~47% of food suppliers.
    - **Traceability data is stored across 4 separate systems** (SAP, WMS, supplier portal, quality management system) with no unified query interface.
 
-3. **Remediation target**: The Supply Chain Transformation Program (Project CLARITY) aims to resolve these limitations by Q2 2026 via unified data lineage in the Qlik platform.
+3. **Remediation target**: The Supply Chain Transformation Program (Project Qlarity) aims to resolve these limitations by Q2 2026 via unified data lineage in the Qlik platform.
 
 ### Phase 3: Containment (Target: 8-16 hours)
 
@@ -121,7 +121,7 @@ This procedure defines the end-to-end process for executing a product recall at 
 | Regulatory outcome | -- | EU citation issued, corrective action plan required within 90 days | -- |
 
 **Corrective actions in progress:**
-- Project CLARITY: Unified traceability platform (Qlik) -- target Q2 2026
+- Project Qlarity: Unified traceability platform (Qlik) -- target Q2 2026
 - Mandatory lot number capture at all DCs -- enforced since October 2025
 - Sub-tier supplier mapping initiative -- 60% complete as of January 2026
 

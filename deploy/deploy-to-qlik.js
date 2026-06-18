@@ -638,7 +638,7 @@ class QlikClient {
     return kbs.find((kb) => kb.name === name) || null;
   }
 
-  async createKnowledgeBase(name, description) {
+  async createKnowledgeBase(name, description, spaceId) {
     const existing = await this.findKnowledgeBaseByName(name);
     if (existing) {
       this.log.success(`Knowledge base already exists: "${name}" (${existing.id}) — skipping creation.`);
@@ -646,11 +646,14 @@ class QlikClient {
     }
 
     if (this.dryRun) {
-      this.log.info(`DRY RUN: Would create knowledge base "${name}"`);
+      this.log.info(`DRY RUN: Would create knowledge base "${name}"${spaceId ? ` in space ${spaceId}` : ' (personal space)'}`);
       return { id: 'dry-run-kb-id', name };
     }
 
-    const res = await this._post('/api/v1/knowledgebases', { name, description });
+    // Omit spaceId -> Qlik Answers files the KB in the creator's personal space.
+    const body = { name, description };
+    if (spaceId) body.spaceId = spaceId;
+    const res = await this._post('/api/v1/knowledgebases', body);
     if (res.statusCode === 200 || res.statusCode === 201) {
       this.log.success(`Created knowledge base "${name}" (${res.body.id})`);
       return res.body;
@@ -662,49 +665,35 @@ class QlikClient {
     throw new Error(`Failed to create knowledge base (${res.statusCode}): ${JSON.stringify(res.body)}`);
   }
 
-  async createKBFileDatasource(kbId, name) {
-    if (this.dryRun) {
-      this.log.info(`DRY RUN: Would create file datasource "${name}" on KB ${kbId}`);
-      return { id: 'dry-run-ds-id', name };
-    }
+  // The current Qlik Answers flow indexes files that already live in a space's
+  // built-in "DataFiles" connection (the old direct upload-to-KB endpoint was
+  // removed — it 404s "fileconfig not found"). So: resolve that connection, push
+  // the bytes there via the Data Files API, then point a file datasource at them.
 
-    // Check existing datasources on this KB
-    const existingDs = await this._getAll(`/api/v1/knowledgebases/${kbId}/datasources`);
-    const found = existingDs.find((ds) => ds.name === name);
-    if (found) {
-      this.log.success(`KB datasource already exists: "${name}" (${found.id}) — skipping.`);
-      return found;
-    }
-
-    const res = await this._post(`/api/v1/knowledgebases/${kbId}/datasources`, {
-      name,
-      type: 'file',
-    });
-    if (res.statusCode === 200 || res.statusCode === 201) {
-      this.log.success(`Created KB file datasource "${name}" (${res.body.id})`);
-      return res.body;
-    }
-    if (res.statusCode === 409) {
-      this.log.warn(`KB datasource "${name}" already exists (409).`);
-      const all = await this._getAll(`/api/v1/knowledgebases/${kbId}/datasources`);
-      return all.find((ds) => ds.name === name);
-    }
-    // Handle tenant-side configuration issues (e.g., fileconfig not found)
-    const bodyStr = JSON.stringify(res.body);
-    if (bodyStr.includes('fileconfig') || res.statusCode === 500) {
-      this.log.warn(`KB datasource creation returned ${res.statusCode}: ${bodyStr}`);
-      this.log.warn('This is typically a tenant-side configuration issue. KB datasource will be skipped.');
-      return { id: null, name, notAvailable: true };
-    }
-    throw new Error(`Failed to create KB datasource (${res.statusCode}): ${bodyStr}`);
+  async getCurrentUserId() {
+    if (this.userId) return this.userId;
+    const res = await this._get('/api/v1/users/me');
+    if (res.statusCode === 200) { this.userId = res.body.id || res.body.subject; return this.userId; }
+    return undefined;
   }
 
-  async uploadDocumentToKB(kbId, dsId, filePath) {
+  // Resolve a space's built-in "DataFiles" connection id (used for both the file
+  // upload and the datasource fileConfig). Omit spaceId for the personal space.
+  async getDataFilesConnectionId(spaceId) {
+    const conns = await this._getAll('/api/v1/data-files/connections', spaceId ? { spaceId } : {});
+    const c = conns.find((x) => x.name === 'DataFiles') || conns[0];
+    return c ? c.id : undefined;
+  }
+
+  // Upload one local file into the DataFiles connection via the Data Files API.
+  // Returns the file's logical name (folder/basename) used by fileConfig.files.
+  async uploadDocumentToDataFiles(connectionId, filePath, folder) {
     const fileName = path.basename(filePath);
+    const logicalName = folder ? `${folder}/${fileName}` : fileName;
 
     if (this.dryRun) {
-      this.log.info(`DRY RUN: Would upload "${fileName}" to KB datasource`);
-      return { name: fileName };
+      this.log.info(`DRY RUN: Would upload "${fileName}" to DataFiles as "${logicalName}"`);
+      return logicalName;
     }
 
     const fileBuffer = fs.readFileSync(filePath);
@@ -713,27 +702,61 @@ class QlikClient {
       : 'application/octet-stream';
 
     const { boundary, payload } = buildMultipart([
-      { name: 'file', filename: fileName, contentType, value: fileBuffer },
+      { name: 'File', filename: fileName, contentType, value: fileBuffer },
+      { name: 'Json', value: JSON.stringify({ name: logicalName, connectionId }) },
     ]);
 
     const res = await this._postRaw(
-      `/api/v1/knowledgebases/${kbId}/datasources/${dsId}/files`,
+      '/api/v1/data-files',
       payload,
       { 'Content-Type': `multipart/form-data; boundary=${boundary}` }
     );
 
-    if (res.statusCode === 200 || res.statusCode === 201 || res.statusCode === 204) {
-      this.log.debug(`Uploaded "${fileName}" to KB datasource`);
-      return res.body || { name: fileName };
+    if (res.statusCode === 200 || res.statusCode === 201) {
+      this.log.debug(`Uploaded "${fileName}" -> ${(res.body && res.body.name) || logicalName}`);
+      return (res.body && res.body.name) || logicalName;
     }
-
-    // 409 = file already uploaded
+    // 409 = a file with this name already exists in the connection — reuse it.
     if (res.statusCode === 409) {
-      this.log.debug(`File "${fileName}" already uploaded — skipping.`);
-      return { name: fileName, alreadyExists: true };
+      this.log.debug(`File "${logicalName}" already in DataFiles — reusing.`);
+      return logicalName;
+    }
+    throw new Error(`Failed to upload "${fileName}" to DataFiles (${res.statusCode}): ${JSON.stringify(res.body)}`);
+  }
+
+  async createKBFileDatasource(kbId, name, fileConfig) {
+    if (this.dryRun) {
+      this.log.info(`DRY RUN: Would create file datasource "${name}" on KB ${kbId} (${(fileConfig && fileConfig.files && fileConfig.files.length) || 0} files)`);
+      return { id: 'dry-run-ds-id', name };
     }
 
-    throw new Error(`Failed to upload "${fileName}" to KB (${res.statusCode}): ${JSON.stringify(res.body)}`);
+    // Datasources are embedded in the KB object (no standalone list endpoint).
+    const existing = await this._kbDatasources(kbId);
+    const found = existing.find((ds) => ds.name === name);
+    if (found) {
+      this.log.success(`KB datasource already exists: "${name}" (${found.id}) — skipping.`);
+      return found;
+    }
+
+    const res = await this._post(`/api/v1/knowledgebases/${kbId}/datasources`, {
+      name,
+      type: 'file',
+      fileConfig,  // REQUIRED for type:'file' — { connectionId, userId, files[] }
+    });
+    if (res.statusCode === 200 || res.statusCode === 201) {
+      this.log.success(`Created KB file datasource "${name}" (${res.body.id})`);
+      return res.body;
+    }
+    if (res.statusCode === 409) {
+      this.log.warn(`KB datasource "${name}" already exists (409).`);
+      return (await this._kbDatasources(kbId)).find((ds) => ds.name === name);
+    }
+    throw new Error(`Failed to create KB datasource (${res.statusCode}): ${JSON.stringify(res.body)}`);
+  }
+
+  async _kbDatasources(kbId) {
+    const res = await this._get(`/api/v1/knowledgebases/${kbId}`);
+    return (res.body && res.body.datasources) || [];
   }
 
   async syncKBDatasource(kbId, dsId) {
@@ -759,7 +782,7 @@ class QlikClient {
     return assistants.find((a) => a.name === name) || null;
   }
 
-  async createAssistant({ name, description, knowledgeBaseId, conversationStarters }) {
+  async createAssistant({ name, description, knowledgeBaseId, spaceId }) {
     const existing = await this.findAssistantByName(name);
     if (existing) {
       this.log.success(`Assistant already exists: "${name}" (${existing.id}) — skipping.`);
@@ -767,7 +790,7 @@ class QlikClient {
     }
 
     if (this.dryRun) {
-      this.log.info(`DRY RUN: Would create assistant "${name}"`);
+      this.log.info(`DRY RUN: Would create assistant "${name}"${spaceId ? ` in space ${spaceId}` : ' (personal space)'}`);
       return { id: 'dry-run-assistant-id', name };
     }
 
@@ -775,8 +798,9 @@ class QlikClient {
       name,
       description,
       knowledgebases: knowledgeBaseId ? [knowledgeBaseId] : [],
-      conversationStarters: (conversationStarters || []).map((text) => ({ text })),
     };
+    // Omit spaceId -> Qlik Answers files the assistant in the creator's personal space.
+    if (spaceId) payload.spaceId = spaceId;
 
     const res = await this._post('/api/v1/assistants', payload);
     if (res.statusCode === 200 || res.statusCode === 201) {
@@ -790,6 +814,31 @@ class QlikClient {
     throw new Error(`Failed to create assistant (${res.statusCode}): ${JSON.stringify(res.body)}`);
   }
 
+  // Conversation starters are a separate sub-resource (not a create-body field).
+  // Idempotent: skips questions already present on the assistant.
+  async addAssistantStarters(assistantId, questions) {
+    const list = (questions || []).filter(Boolean);
+    if (!list.length) return 0;
+    if (this.dryRun) { this.log.info(`DRY RUN: Would add ${list.length} conversation starter(s)`); return 0; }
+
+    let existing = [];
+    try {
+      const r = await this._get(`/api/v1/assistants/${assistantId}/starters`);
+      existing = (r.body && (r.body.data || r.body)) || [];
+    } catch (e) { /* none yet */ }
+    const have = new Set((Array.isArray(existing) ? existing : []).map((s) => s.question));
+
+    let added = 0;
+    for (const question of list) {
+      if (have.has(question)) continue;
+      const res = await this._post(`/api/v1/assistants/${assistantId}/starters`, { question });
+      if (res.statusCode === 200 || res.statusCode === 201) added++;
+      else this.log.warn(`Conversation starter not added (${res.statusCode}): "${question}"`);
+    }
+    if (added) this.log.success(`Added ${added} conversation starter(s).`);
+    return added;
+  }
+
   // ========================================================================
   //  CONNECTION VERIFICATION
   // ========================================================================
@@ -801,6 +850,7 @@ class QlikClient {
     }
     const res = await this._get('/api/v1/users/me');
     if (res.statusCode === 200) {
+      this.userId = res.body.id || res.body.subject;  // cached for KB fileConfig.userId
       const name = res.body.name || res.body.subject || 'unknown';
       this.log.success(`Connected as: ${name}`);
       return true;
@@ -2324,6 +2374,12 @@ async function main() {
     report.record('Theme Upload', 'SKIP', 'disabled');
   }
 
+  // Qlik Answers assets (knowledge base + assistant) belong in a framework space,
+  // not the creator's personal space (where they land when no spaceId is sent).
+  // Default to the shared space; allow 'data' as an override (config: *.space).
+  const resolveAnswersSpace = (which) =>
+    (which === 'data' ? (dataSpace || sharedSpace) : (sharedSpace || dataSpace));
+
   // ---- Create Knowledge Base & Upload Documents ---------------------------
   let knowledgeBase = null;
   let kbDatasource  = null;
@@ -2334,15 +2390,20 @@ async function main() {
     try {
       const kbName = (cfg.knowledgeBase && cfg.knowledgeBase.name) || 'MCG Operations Knowledge Base';
       const kbDesc = (cfg.knowledgeBase && cfg.knowledgeBase.description) || '';
+      const kbSpace = resolveAnswersSpace(cfg.knowledgeBase && cfg.knowledgeBase.space);
+      if (!kbSpace && !dryRun) log.warn('Knowledge base: no framework space resolved (enable Spaces or set knowledgeBase.space) — it will be created in your personal space.');
 
-      knowledgeBase = await client.createKnowledgeBase(kbName, kbDesc);
-      report.record('Knowledge Base', 'OK', `"${kbName}" id=${knowledgeBase.id}`);
+      knowledgeBase = await client.createKnowledgeBase(kbName, kbDesc, kbSpace ? kbSpace.id : undefined);
+      report.record('Knowledge Base', 'OK', `"${kbName}" id=${knowledgeBase.id} (space: ${(kbSpace && kbSpace.name) || 'personal'})`);
 
-      kbDatasource = await client.createKBFileDatasource(knowledgeBase.id, 'MCG Documents');
-      if (kbDatasource.notAvailable) {
-        report.record('KB Datasource', 'SKIP', 'Tenant configuration issue — skipping uploads');
-      } else {
-        report.record('KB Datasource', 'OK', `id=${kbDatasource.id}`);
+      // Resolve the space's DataFiles connection + owner id (both required by the
+      // current file-datasource fileConfig), then upload -> datasource -> sync.
+      const kbSpaceId = kbSpace ? kbSpace.id : undefined;
+      const connectionId = await client.getDataFilesConnectionId(kbSpaceId);
+      const userId = await client.getCurrentUserId();
+      if (!dryRun && (!connectionId || !userId)) {
+        throw new Error(`Cannot ingest documents: ${!connectionId ? 'no DataFiles connection for the KB space (set one up in the Qlik UI)' : 'could not resolve current userId'}`);
+      }
 
       const docsDir = path.resolve(SCRIPT_DIR, (cfg.documents && cfg.documents.sourceDir) || '../documents');
       const allDocxFiles = findFiles(docsDir, '.docx');
@@ -2361,27 +2422,35 @@ async function main() {
         report.record('Document Upload', 'SKIP', 'No operational .docx files found');
       } else {
         log.info(`Found ${docxFiles.length} operational .docx file(s) to upload (${allDocxFiles.length} total, ${allDocxFiles.length - docxFiles.length} excluded).`);
-        let uploaded = 0;
-        let failed   = 0;
+        const uploadedNames = [];
+        let failed = 0;
 
         for (const docPath of docxFiles) {
           try {
-            await client.uploadDocumentToKB(knowledgeBase.id, kbDatasource.id, docPath);
-            uploaded++;
+            const lname = await client.uploadDocumentToDataFiles(connectionId, docPath, 'MCG Documents');
+            uploadedNames.push(lname);
           } catch (err) {
             log.error(`Upload failed for "${path.basename(docPath)}": ${err.message}`);
             failed++;
             if (!continueOnError) throw err;
           }
         }
-        log.success(`Uploaded ${uploaded}/${docxFiles.length} documents (${failed} failed).`);
-        report.record('Document Upload', failed === 0 ? 'OK' : 'FAIL', `${uploaded} uploaded, ${failed} failed`);
-      }
+        log.success(`Uploaded ${uploadedNames.length}/${docxFiles.length} documents to DataFiles (${failed} failed).`);
+        report.record('Document Upload', failed === 0 ? 'OK' : 'FAIL', `${uploadedNames.length} uploaded, ${failed} failed`);
 
-      log.info('Triggering knowledge base sync/indexing...');
-      await client.syncKBDatasource(knowledgeBase.id, kbDatasource.id);
-      report.record('KB Sync', 'OK', 'Indexing triggered');
-      } // end if !notAvailable
+        if (uploadedNames.length || dryRun) {
+          kbDatasource = await client.createKBFileDatasource(knowledgeBase.id, 'MCG Documents', {
+            connectionId, userId, files: uploadedNames,
+          });
+          report.record('KB Datasource', 'OK', `id=${kbDatasource.id} (${uploadedNames.length} files)`);
+
+          log.info('Triggering knowledge base sync/indexing...');
+          await client.syncKBDatasource(knowledgeBase.id, kbDatasource.id);
+          report.record('KB Sync', 'OK', 'Indexing triggered (indexes asynchronously, ~minutes)');
+        } else {
+          report.record('KB Datasource', 'SKIP', 'No documents uploaded');
+        }
+      }
     } catch (err) {
       if (/\b403\b/.test(err.message) && /licen[sc]e/i.test(err.message)) {
         log.warn('Knowledge Base skipped — this tenant has no Qlik Answers license (403). Optional feature; continuing.');
@@ -2404,19 +2473,26 @@ async function main() {
 
     try {
       const astCfg = cfg.assistant || {};
+      const astSpace = resolveAnswersSpace(astCfg.space);
+      if (!astSpace && !dryRun) log.warn('Assistant: no framework space resolved (enable Spaces or set assistant.space) — it will be created in your personal space.');
+      const starters = astCfg.conversationStarters || [
+        'What is the procedure for goods receiving?',
+        'What happened during the Rotterdam pipeline failure?',
+        'What are the cold chain temperature requirements?',
+        'What is Project Qlarity?',
+        'What was the lettuce recall and what went wrong?',
+      ];
       const assistant = await client.createAssistant({
         name: astCfg.name || 'MCG Operations Assistant',
         description: astCfg.description || 'AI assistant for Meridian Commerce Group operations.',
         knowledgeBaseId: knowledgeBase ? knowledgeBase.id : undefined,
-        conversationStarters: astCfg.conversationStarters || [
-          'What is the procedure for goods receiving?',
-          'What happened during the Rotterdam pipeline failure?',
-          'What are the cold chain temperature requirements?',
-          'What is Project CLARITY?',
-          'What was the lettuce recall and what went wrong?',
-        ],
+        spaceId: astSpace ? astSpace.id : undefined,
       });
-      report.record('Assistant', 'OK', `"${assistant.name}" id=${assistant.id}`);
+      let starterCount = 0;
+      if (assistant && assistant.id && !String(assistant.id).startsWith('dry-run')) {
+        starterCount = await client.addAssistantStarters(assistant.id, starters);
+      }
+      report.record('Assistant', 'OK', `"${assistant.name}" id=${assistant.id} (space: ${(astSpace && astSpace.name) || 'personal'}, +${starterCount} starters)`);
     } catch (err) {
       if (/\b403\b/.test(err.message) && /licen[sc]e/i.test(err.message)) {
         log.warn('Assistant skipped — this tenant has no Qlik Answers license (403). Optional feature; continuing.');

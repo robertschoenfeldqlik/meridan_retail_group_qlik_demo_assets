@@ -73,7 +73,7 @@ Cold chain sensor data flows through multiple paths:
 
 **KNOWN ISSUE**: There is no unified view of cold chain data across all three paths. DC sensors report to WMS, transit sensors report to Kafka, and store sensors report to SAP. Correlating a temperature exceedance with a specific product lot requires manual cross-referencing across these three systems. Average investigation time: **4-6 hours per incident**.
 
-**Future State**: Project CLARITY (Qlik platform) will normalize all IoT telemetry into a unified cold chain dashboard with automated exceedance-to-lot correlation. Target: Q2 2026.
+**Future State**: Project Qlarity (Qlik platform) will normalize all IoT telemetry into a unified cold chain dashboard with automated exceedance-to-lot correlation. Target: Q2 2026.
 
 ### 4.3 Alerting Thresholds
 
@@ -116,7 +116,7 @@ MCG operates a basic spoilage prediction model (deployed Q1 2025):
 
 ### 6.2 Future State (Qlik AutoML)
 
-The Project CLARITY platform will enable:
+The Project Qlarity platform will enable:
 - Real-time feature engineering from IoT telemetry
 - Automated model retraining on new data
 - Embedded predictions in Qlik Analytics dashboards

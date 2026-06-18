@@ -63,7 +63,7 @@ function trnWmsSap() {
     calloutBox("KNOWN ISSUE: Some APAC DCs (specifically Singapore and Jakarta) have Manhattan WMS misconfigured to use local time instead of UTC. IT is aware and correction is planned for Q1 2026.", "warning"),
 
     heading("5. Daily Manual Sync Check"),
-    para("Until automated monitoring is fully deployed (Project CLARITY), all DC supervisors must perform a daily manual sync check:"),
+    para("Until automated monitoring is fully deployed (Project Qlarity), all DC supervisors must perform a daily manual sync check:"),
     numberedItem(1, "At 08:00 local time, select 5 random transactions from yesterday's WMS activity log."),
     numberedItem(2, "Verify each transaction appears in SAP with matching quantities."),
     numberedItem(3, "Record results in the Daily Sync Check spreadsheet."),
@@ -192,19 +192,19 @@ function mtgQ3Review() {
     para("NVWA corrective action plan is in progress. Lot number capture at 93% (target: 100%). Store-level tracking at 78% (target: 90% by March 2026). NVWA follow-up inspection expected Q1 2026."),
     para("Elena: \"If we don't have a unified traceability solution by the NVWA follow-up, we risk escalation from citation to enforcement action. The lettuce recall exposed a fundamental gap.\""),
 
-    heading("3. Project CLARITY Discussion"),
-    para("Priya Ramanathan presented the Project CLARITY business case:"),
+    heading("3. Project Qlarity Discussion"),
+    para("Priya Ramanathan presented the Project Qlarity business case:"),
     para("Investment: $12.4M over 24 months", { bullet: true }),
     para("Conservative benefit: $52.7M annually (60% realization of $87.9M potential)", { bullet: true }),
     para("3-year ROI: 952%", { bullet: true }),
     para("Platform: Qlik Talend Cloud + Open Lakehouse + Qlik Analytics + Qlik Answers", { bullet: true }),
-    para("CEO: \"Data quality is now our #1 operational priority for 2026. Priya, schedule the full CLARITY presentation for the CIO review on October 31.\"", { bold: true }),
+    para("CEO: \"Data quality is now our #1 operational priority for 2026. Priya, schedule the full Qlarity presentation for the CIO review on October 31.\"", { bold: true }),
 
     heading("4. Action Items"),
     dataTable(
       ["Action", "Owner", "Deadline"],
       [
-        ["Present Project CLARITY to CIO review board", "P. Ramanathan", "31 Oct 2025"],
+        ["Present Project Qlarity to CIO review board", "P. Ramanathan", "31 Oct 2025"],
         ["Roll out pipeline monitoring to all DCs", "M. Chen", "31 Dec 2025"],
         ["Implement carrier SLA change notification process", "T. Brennan + L. Park", "15 Nov 2025"],
         ["Complete TransFrio corrective actions", "T. Brennan", "31 Dec 2025"],
@@ -263,9 +263,9 @@ function compNVWA() {
 
     heading("2.3 Action 3: Unified Traceability (F2)", 2),
     labelValue("Target", "Single-query traceability across SAP, WMS, TMS, Salesforce"),
-    labelValue("Deadline", "Project CLARITY Phase 1"),
+    labelValue("Deadline", "Project Qlarity Phase 1"),
     labelValue("Status", "Business case submitted — Pending CIO approval"),
-    para("This corrective action depends on the implementation of Project CLARITY, which will create a unified data layer connecting all 4 traceability systems. Business case presented to senior leadership on 15 October 2025. CIO review scheduled for 31 October 2025."),
+    para("This corrective action depends on the implementation of Project Qlarity, which will create a unified data layer connecting all 4 traceability systems. Business case presented to senior leadership on 15 October 2025. CIO review scheduled for 31 October 2025."),
 
     heading("2.4 Action 4: Sub-Tier Supplier Mapping (F4)", 2),
     labelValue("Target", "80% of food suppliers with documented sub-tier relationships"),
@@ -294,7 +294,7 @@ function compNVWA() {
 // ═══ PROJ-CLARITY-2025: Business Case ═══
 function projClarity() {
   return buildDocument("PROJECT BUSINESS CASE", [
-    heading("Project CLARITY: Business Case for Qlik Platform Implementation"),
+    heading("Project Qlarity: Business Case for Qlik Platform Implementation"),
     metadataTable([
       ["Document ID", "PROJ-CLARITY-2025"],
       ["Version", "2.0"],
@@ -307,7 +307,7 @@ function projClarity() {
     ]),
 
     heading("1. Executive Summary"),
-    para("Meridian Commerce Group's data quality crisis costs an estimated $127M annually across seven identified problem areas. Project CLARITY proposes a $12.4M investment in the Qlik data platform to create a unified, governed, trusted data foundation. Conservative projections show $52.7M in annual benefits, yielding a 952% 3-year ROI."),
+    para("Meridian Commerce Group's data quality crisis costs an estimated $127M annually across seven identified problem areas. Project Qlarity proposes a $12.4M investment in the Qlik data platform to create a unified, governed, trusted data foundation. Conservative projections show $52.7M in annual benefits, yielding a 952% 3-year ROI."),
 
     heading("2. The Problem: Seven Data Quality Nightmares"),
     dataTable(

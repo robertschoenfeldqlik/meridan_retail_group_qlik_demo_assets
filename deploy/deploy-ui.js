@@ -1395,7 +1395,7 @@ function getHTML() {
   }
   .wizard-nav button .step-check { margin-left: auto; font-size: 14px; color: var(--qlik-green); }
   /* Deploy step set apart as the terminal action */
-  .wizard-nav button[onclick*="showPage(10)"] {
+  .wizard-nav button[onclick*="showPage(11)"] {
     margin-top: 10px;
     background: var(--surface);
     border-color: var(--border);
@@ -1403,7 +1403,7 @@ function getHTML() {
     color: var(--text-bright);
     font-weight: 600;
   }
-  .wizard-nav button[onclick*="showPage(10)"] .step-num { background: var(--accent2); color: #fff; border-color: transparent; }
+  .wizard-nav button[onclick*="showPage(11)"] .step-num { background: var(--accent2); color: #fff; border-color: transparent; }
 
   /* Form (middle column) */
   .wizard-content {
@@ -1928,8 +1928,8 @@ function getHTML() {
     <!-- Step rail -->
     <div class="wizard-nav" id="wizard-nav">
       <div class="rail-progress" id="rail-progress">
-        <div class="rp-row"><span class="rp-label">Setup progress</span><span class="rp-step" id="rp-step">Step 1 of 9</span></div>
-        <div class="rp-bar"><div class="rp-fill" id="rp-fill" style="width:11%"></div></div>
+        <div class="rp-row"><span class="rp-label">Setup progress</span><span class="rp-step" id="rp-step">Step 1 of 10</span></div>
+        <div class="rp-bar"><div class="rp-fill" id="rp-fill" style="width:10%"></div></div>
       </div>
       <button class="active" onclick="showPage(0)"><span class="step-num">1</span>Connection & Auth<span class="step-check" id="check-0"></span></button>
       <button class="nav-local" onclick="showPage(1)"><span class="step-num">&#9632;</span>Local Stack &amp; Gateway<span class="step-check" id="check-1"></span></button>
@@ -1940,8 +1940,9 @@ function getHTML() {
       <button onclick="showPage(6)"><span class="step-num">6</span>Knowledge Base & Docs<span class="step-check" id="check-6"></span></button>
       <button onclick="showPage(7)"><span class="step-num">7</span>Automations<span class="step-check" id="check-7"></span></button>
       <button onclick="showPage(8)"><span class="step-num">8</span>Data Products<span class="step-check" id="check-8"></span></button>
-      <button onclick="showPage(9)"><span class="step-num">9</span>Glossary<span class="step-check" id="check-9"></span></button>
-      <button onclick="showPage(10)"><span class="step-num">&#9654;</span>Deploy<span class="step-check" id="check-10"></span></button>
+      <button onclick="showPage(9)"><span class="step-num">9</span>Qlik Predict<span class="step-check" id="check-predict"></span></button>
+      <button onclick="showPage(10)"><span class="step-num">10</span>Glossary<span class="step-check" id="check-9"></span></button>
+      <button onclick="showPage(11)"><span class="step-num">&#9654;</span>Deploy<span class="step-check" id="check-10"></span></button>
     </div>
 
     <div class="wizard-content">
@@ -2430,6 +2431,15 @@ function getHTML() {
           <label class="switch"><input type="checkbox" id="f-en-knowledge" checked><span class="slider"></span></label>
         </div>
 
+        <div class="field">
+          <label>Space <span style="color:var(--text-dim);font-weight:400">(Knowledge Base &amp; Assistant)</span></label>
+          <select id="f-answers-space">
+            <option value="shared">Shared (MCG Demo - Development)</option>
+            <option value="data">Data (MCG Demo - DI)</option>
+          </select>
+        </div>
+        <div class="hint">The Qlik Answers knowledge base and assistant are created in this framework space — not your personal space. Shared is recommended. If one already exists in your personal space from a prior run, delete it first, then re-deploy.</div>
+
         <div class="section-divider">Knowledge Base</div>
         <div class="field">
           <label>Knowledge Base Name</label>
@@ -2511,7 +2521,7 @@ function getHTML() {
         </div>
       </div>
 
-      <!-- Page 7: Data Products -->
+      <!-- Page (index 8): Data Products -->
       <div class="wizard-page" id="page-7">
         <div class="page-title">Data Products</div>
         <div class="page-desc">Gold-layer data product definitions to register in the Qlik Cloud catalog.</div>
@@ -2535,15 +2545,57 @@ function getHTML() {
         </div>
         <div class="hint">Each product above shows the gold dataset the pipeline creates for it. Attachment happens via the Data Products API (JSON-Patch datasetIds) after the pipeline has run; tables not in the catalog yet are skipped with a warning — re-deploy after the first run to attach them.</div>
 
-        <div class="section-divider">Qlik Predict (ML)</div>
+      </div>
+
+      <!-- Page (index 9): Qlik Predict -->
+      <div class="wizard-page" id="page-predict">
+        <div class="page-title">Qlik Predict (ML)</div>
+        <div class="page-desc">Create the Qlik Predict (AutoML) experiment, deployment, and prediction configuration over the gold data.</div>
+
         <div class="toggle-row">
           <label>Enable Qlik Predict</label>
           <label class="switch"><input type="checkbox" id="f-en-predict" checked><span class="slider"></span></label>
         </div>
-        <div class="hint">Creates the Qlik Predict (ML) <strong>experiment</strong> via the <code>/api/v1/ml</code> API (idempotent). The <strong>deployment + model activation</strong> run once a trained model exists — train the experiment on the gold feature dataset (needs the Open Lakehouse), or set <code>predict.modelId</code>, then re-deploy. Configure the target in <code>config.json → predict</code>. See <strong>Help → §6 Analytics</strong>.</div>
+
+        <div class="section-divider">Experiment</div>
+        <div class="field">
+          <label>Experiment Name</label>
+          <input type="text" id="f-predict-experiment" placeholder="MCG Delivery Risk">
+        </div>
+        <div class="field">
+          <label>Description</label>
+          <input type="text" id="f-predict-description" placeholder="Predicts late-delivery risk from the gold last_mile_performance features.">
+        </div>
+        <div class="field">
+          <label>Space</label>
+          <select id="f-predict-space">
+            <option value="shared">Shared (MCG Demo - Development)</option>
+            <option value="data">Data (MCG Demo - DI)</option>
+          </select>
+        </div>
+
+        <div class="section-divider">Deployment</div>
+        <div class="field-row">
+          <div class="field">
+            <label>Deployment Name</label>
+            <input type="text" id="f-predict-deployment" placeholder="MCG Delivery Risk Deployment">
+          </div>
+          <div class="field">
+            <label>Model ID <span style="color:var(--text-dim);font-weight:400">(optional)</span></label>
+            <input type="text" id="f-predict-modelid" placeholder="trained model id — else resolved from a ready version">
+          </div>
+        </div>
+        <div class="toggle-row" style="margin-top:4px">
+          <label>Enable Predictions on the deployment</label>
+          <label class="switch"><input type="checkbox" id="f-predict-enable-predictions" checked><span class="slider"></span></label>
+        </div>
+
+        <div class="hint">
+          The deploy creates the <strong>experiment</strong> via the <code>/api/v1/ml</code> API (idempotent). The <strong>deployment + model activation + prediction configuration</strong> run once a trained model exists — train the experiment on the gold feature dataset (needs the <strong>Open Lakehouse</strong> deployed) or set a <strong>Model ID</strong>, then re-deploy; otherwise the step skips with guidance. Advanced <code>trainingVersion</code> / <code>batchPrediction</code> request bodies live in <code>config.json → predict</code>. See <strong>Help → §6 Analytics</strong>. (The legacy automl-* APIs were removed ~Feb 2026.)
+        </div>
       </div>
 
-      <!-- Page 8: Glossary -->
+      <!-- Page (index 10): Glossary -->
       <div class="wizard-page" id="page-8">
         <div class="page-title">Business Glossary</div>
         <div class="page-desc">Business glossary terms from glossary_terms.json to load into Qlik Cloud.</div>
@@ -2557,7 +2609,7 @@ function getHTML() {
         <div id="gl-list" style="max-height:400px;overflow-y:auto"><!-- populated by JS --></div>
       </div>
 
-      <!-- Page 9: Deploy -->
+      <!-- Page (index 11): Deploy -->
       <div class="wizard-page" id="page-9">
         <div class="page-title">Deploy</div>
         <div class="page-desc">Review your configuration, run pre-flight checks, and launch the deployment.</div>
@@ -2769,7 +2821,7 @@ function getHTML() {
       <tr><td>supplier_comms/ (2)</td><td>FreshDirect Performance Review · TransFrio Contract Review</td></tr>
       <tr><td>training/ (2)</td><td>WMS↔SAP Integration Guide · Cold Chain Monitoring for Drivers</td></tr>
       <tr><td>purchase_orders/ (2)</td><td>Samsung Electronics · NinjaVan Packaging</td></tr>
-      <tr><td>compliance · recall_notices · project_briefs · meeting_minutes · shipping (1 each)</td><td>NVWA Corrective Action Plan · Lettuce Recall · Project CLARITY Business Case · Q3 Supply Chain Review · Delivery Manifest</td></tr>
+      <tr><td>compliance · recall_notices · project_briefs · meeting_minutes · shipping (1 each)</td><td>NVWA Corrective Action Plan · Lettuce Recall · Project Qlarity Business Case · Q3 Supply Chain Review · Delivery Manifest</td></tr>
     </table>
 
     <h3>Source repositories (GitHub)</h3>
@@ -2854,7 +2906,7 @@ function getHTML() {
     document.querySelectorAll('.wizard-nav button').forEach((b, i) => {
       b.classList.toggle('active', i === idx);
     });
-    if (idx === 10) renderSummary();
+    if (idx === 11) renderSummary();
     if (idx === 3) prefillFromDocker();
     if (idx === 4) renderPipelinesPage();
     if (idx === 5) renderBuildAppsPage();
@@ -2864,16 +2916,16 @@ function getHTML() {
     if (wc) wc.scrollTop = 0;  // start each page/mode at the top, not mid-scroll
   }
 
-  // Rail "Step X of 9" + progress bar. The 9 config steps are showPage 0,2..9;
-  // Deploy (10) is the terminal action; Local Stack (1) has its own mode.
-  var TENANT_STEP = { 0:1, 2:2, 3:3, 4:4, 5:5, 6:6, 7:7, 8:8, 9:9, 10:9 };
+  // Rail "Step X of 10" + progress bar. The 10 config steps are showPage 0,2..10;
+  // Deploy (11) is the terminal action; Local Stack (1) has its own mode.
+  var TENANT_STEP = { 0:1, 2:2, 3:3, 4:4, 5:5, 6:6, 7:7, 8:8, 9:9, 10:10, 11:10 };
   function updateRailProgress(idx) {
     if (idx === 1) return;  // local page — not part of tenant progress
     var stepEl = document.getElementById('rp-step'), fill = document.getElementById('rp-fill');
     if (!stepEl || !fill) return;
     var n = TENANT_STEP[idx] || 1;
-    if (idx === 10) { stepEl.textContent = 'Deploy'; fill.style.width = '100%'; }
-    else { stepEl.textContent = 'Step ' + n + ' of 9'; fill.style.width = Math.round(n / 9 * 100) + '%'; }
+    if (idx === 11) { stepEl.textContent = 'Deploy'; fill.style.width = '100%'; }
+    else { stepEl.textContent = 'Step ' + n + ' of 10'; fill.style.width = Math.round(n / 10 * 100) + '%'; }
   }
 
   // --- Pipelines page: per-project task lists + live connection-binding map ---
@@ -2970,6 +3022,17 @@ function getHTML() {
       setVal('f-space-data', cfg.spaces.data);
     }
 
+    // Qlik Predict
+    if (cfg.predict) {
+      const pr = cfg.predict;
+      setVal('f-predict-experiment', pr.experimentName);
+      setVal('f-predict-description', pr.description);
+      setVal('f-predict-space', pr.space || 'shared');
+      setVal('f-predict-deployment', pr.deploymentName);
+      setVal('f-predict-modelid', pr.modelId);
+      setCheck('f-predict-enable-predictions', pr.enablePredictions !== false);
+    }
+
     // Docker
     if (cfg.docker) {
       setSelVal('f-docker-profile', cfg.docker.profile || 'full-stack');
@@ -3059,6 +3122,10 @@ function getHTML() {
       setVal('f-ast-name', cfg.assistant.name);
       setVal('f-ast-desc', cfg.assistant.description);
     }
+    // Qlik Answers space (KB + assistant share one selector)
+    setVal('f-answers-space',
+      (cfg.assistant && cfg.assistant.space) ||
+      (cfg.knowledgeBase && cfg.knowledgeBase.space) || 'shared');
 
     // Automations
     if (cfg.automations) {
@@ -3924,6 +3991,15 @@ function getHTML() {
         managed: getVal('f-space-managed') || 'MCG Demo - Published',
         data: getVal('f-space-data') || 'MCG Demo - DI',
       },
+      predict: {
+        ...((loadedConfig && loadedConfig.predict) || {}),
+        experimentName: getVal('f-predict-experiment') || 'MCG Delivery Risk',
+        description: getVal('f-predict-description') || '',
+        space: getVal('f-predict-space') || 'shared',
+        deploymentName: getVal('f-predict-deployment') || '',
+        modelId: getVal('f-predict-modelid') || '',
+        enablePredictions: isChecked('f-predict-enable-predictions'),
+      },
       enabledComponents: {
         docker: false,  // Local stack + DMG gateway deploy separately (Local Stack & Gateway tab), never as part of the tenant deploy
         infrastructure: false,  // Kafka/simulators run as local containers, deployed from the Local Stack & Gateway tab — not the tenant deploy
@@ -4006,15 +4082,17 @@ function getHTML() {
       knowledgeBase: {
         name: getVal('f-kb-name') || 'MCG Operations Knowledge Base',
         description: getVal('f-kb-desc') || '',
+        space: getVal('f-answers-space') || 'shared',
       },
       assistant: {
         name: getVal('f-ast-name') || 'MCG Operations Assistant',
         description: getVal('f-ast-desc') || '',
+        space: getVal('f-answers-space') || 'shared',
         conversationStarters: [
           'What is the procedure for goods receiving?',
           'What happened during the Rotterdam pipeline failure?',
           'What are the cold chain temperature requirements?',
-          'What is Project CLARITY?',
+          'What is Project Qlarity?',
           'What was the lettuce recall and what went wrong?',
         ],
       },
@@ -4166,6 +4244,7 @@ function getHTML() {
       ['assistant', 'Qlik Answers Assistant'],
       ['automations', 'Automations'],
       ['dataproducts', 'Data Products'],
+      ['predict', 'Qlik Predict (ML)'],
       ['glossary', 'Business Glossary'],
       ['pipelines', 'Declarative Pipeline'],
     ];

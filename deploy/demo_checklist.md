@@ -279,7 +279,7 @@ Master checklist of everything required to stand up the full Meridian Commerce G
 - [ ] "What is the procedure for goods receiving?" → Should reference SOP-WH-001
 - [ ] "What happened during the Rotterdam pipeline failure?" → Should reference INC-2025-04872
 - [ ] "What are the cold chain temperature requirements?" → Should reference SOP-SC-002 and MCG-POL-012
-- [ ] "What is Project CLARITY?" → Should reference PROJ-CLARITY-2025
+- [ ] "What is Project Qlarity?" → Should reference PROJ-CLARITY-2025
 - [ ] "What was the lettuce recall?" → Should reference RCL-2025-003
 
 ---

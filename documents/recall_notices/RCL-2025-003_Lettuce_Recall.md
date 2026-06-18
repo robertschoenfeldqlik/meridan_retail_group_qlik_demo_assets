@@ -113,9 +113,9 @@ MCG submitted a corrective action plan to NVWA (see MCG-POL-007, Section 4.3). A
 | 1 | Mandate structured lot number capture at all DCs (eliminate free-text entries) | Henrik Jansen | **Completed** (Oct 1, 2025) | Oct 1, 2025 |
 | 2 | Implement store-level receipt scanning for food products | Henrik Jansen | In progress (78% of stores) | Dec 31, 2025 |
 | 3 | Require Fresh Direct to disclose all sub-tier farm identities | Sophie de Groot | Pending -- deadline issued | Nov 15, 2025 |
-| 4 | Implement unified traceability platform (Project CLARITY) | Priya Ramanathan | In planning | Q2 2026 |
+| 4 | Implement unified traceability platform (Project Qlarity) | Priya Ramanathan | In planning | Q2 2026 |
 | 5 | Conduct post-recall drill using lot-to-store trace within 24 hours | Dr. Elena Vasquez | Scheduled | Jan 2026 |
-| 6 | Deploy Qlik Answers for natural language recall trace queries | Priya Ramanathan | Pending CLARITY Phase 2 | Q3 2026 |
+| 6 | Deploy Qlik Answers for natural language recall trace queries | Priya Ramanathan | Pending Qlarity Phase 2 | Q3 2026 |
 
 ## 9. Lessons Learned
 

@@ -68,17 +68,17 @@ function trnWmsSap() {
       ]
     ),
     calloutBox("EXAMPLE: WMS shows receipt at '14:32' in Rotterdam (CET, summer). SAP shows same receipt at '12:32 UTC'. These are the SAME TIME (CEST = UTC + 2 hours in summer). Do NOT create a discrepancy report for timezone differences. This is Nightmare #5 (Timestamp Tower of Babel).", "critical"),
-    calloutBox("KNOWN ISSUE: Singapore and Jakarta DCs have Manhattan WMS misconfigured to use local time (SGT/WIB) instead of UTC. When comparing with SAP, add 8 hours (SGT) or 7 hours (WIB) to get UTC. IT is aware and correction is planned for Q1 2026 under Project CLARITY.", "warning"),
+    calloutBox("KNOWN ISSUE: Singapore and Jakarta DCs have Manhattan WMS misconfigured to use local time (SGT/WIB) instead of UTC. When comparing with SAP, add 8 hours (SGT) or 7 hours (WIB) to get UTC. IT is aware and correction is planned for Q1 2026 under Project Qlarity.", "warning"),
 
     heading("5. Daily Manual Sync Check (MANDATORY)"),
-    para("Until automated monitoring is fully deployed across all DCs (Project CLARITY Phase 1, target: Q2 2026), all DC supervisors must perform a daily manual sync check. This check detected the Rotterdam pipeline failure (INC-2025-04872) and is currently the ONLY defense against silent pipeline failures at most DCs."),
+    para("Until automated monitoring is fully deployed across all DCs (Project Qlarity Phase 1, target: Q2 2026), all DC supervisors must perform a daily manual sync check. This check detected the Rotterdam pipeline failure (INC-2025-04872) and is currently the ONLY defense against silent pipeline failures at most DCs."),
     numberedItem(1, "At 08:00 local time, open WMS and select 5 random transactions from yesterday's activity log."),
     numberedItem(2, "For each transaction, note the WMS document number, SKU, quantity, and timestamp."),
     numberedItem(3, "Open SAP and verify each transaction appears with matching quantities (allow for timezone offset per Section 4)."),
     numberedItem(4, "Record results in the Daily Sync Check spreadsheet (SharePoint > Operations > Sync Checks > [DC Name])."),
     numberedItem(5, "If ANY transaction is missing from SAP after 60+ minutes, escalate to IT Operations IMMEDIATELY (see Section 7)."),
     para("Estimated time: 15-20 minutes per day."),
-    calloutBox("This check costs MCG approximately 855 person-hours per day across all 28 DCs (28 supervisors × ~30 min including login/navigation). This manual effort will be eliminated by Project CLARITY's automated pipeline health monitoring.", "info"),
+    calloutBox("This check costs MCG approximately 855 person-hours per day across all 28 DCs (28 supervisors × ~30 min including login/navigation). This manual effort will be eliminated by Project Qlarity's automated pipeline health monitoring.", "info"),
 
     heading("6. Phantom Inventory — How It Happens"),
     para("Phantom inventory occurs when SAP shows stock that doesn't physically exist in the warehouse. This is MCG's #1 data quality nightmare (Nightmare #1), with an estimated annual cost of $48M."),
@@ -255,15 +255,15 @@ function mtgQ3Review() {
       [
         ["Lot number capture", "100%", "93%", "On track — firmware updates pending on legacy scanners"],
         ["Store-level lot tracking", "90% by Mar 2026", "78%", "On track — 250 stores need POS upgrade"],
-        ["Unified traceability", "Project CLARITY", "Business case", "Pending CIO approval"],
+        ["Unified traceability", "Project Qlarity", "Business case", "Pending CIO approval"],
         ["Sub-tier supplier mapping", "80% by Jan 2026", "36%", "AT RISK — supplier resistance"],
         ["Country of origin", "100%", "88%", "On track"],
       ]
     ),
     calloutBox("Elena: \"If we don't have a credible unified traceability plan approved before the NVWA follow-up inspection in Q1 2026, we risk escalation from citation to enforcement action. The lettuce recall demonstrated that our current 4-system manual tracing process is fundamentally inadequate.\"", "warning"),
 
-    heading("3. Project CLARITY Presentation"),
-    para("Priya Ramanathan presented the Project CLARITY business case (PROJ-CLARITY-2025):"),
+    heading("3. Project Qlarity Presentation"),
+    para("Priya Ramanathan presented the Project Qlarity business case (PROJ-CLARITY-2025):"),
     para("Total investment: $12.4M over 24 months (3 phases)", { bullet: true }),
     para("Conservative annual benefit: $52.7M (60% realization of $87.9M potential)", { bullet: true }),
     para("3-year ROI: 952%", { bullet: true }),
@@ -271,13 +271,13 @@ function mtgQ3Review() {
     para("Phase 1 (Foundation, $5.2M): CDC pipelines, lakehouse, 4 priority transformation routes, pipeline monitoring", { bullet: true }),
     para("Phase 2 (Analytics & Quality, $4.8M): remaining transformation routes, data quality monitoring, AutoML models", { bullet: true }),
     para("Phase 3 (AI & Conversational, $2.4M): Qlik Answers knowledge base, Discovery Agent, MCP Server", { bullet: true }),
-    para("CEO directed Priya to schedule the full CLARITY presentation for the CIO review board on 31 October 2025."),
+    para("CEO directed Priya to schedule the full Qlarity presentation for the CIO review board on 31 October 2025."),
 
     heading("4. Action Items"),
     dataTable(
       ["#", "Action", "Owner", "Deadline", "Priority"],
       [
-        ["1", "Present Project CLARITY to CIO review board", "P. Ramanathan", "31 Oct 2025", "Critical"],
+        ["1", "Present Project Qlarity to CIO review board", "P. Ramanathan", "31 Oct 2025", "Critical"],
         ["2", "Roll out pipeline monitoring to all 28 DCs", "M. Chen", "31 Dec 2025", "High"],
         ["3", "Implement carrier SLA change notification process", "T. Brennan + L. Park", "15 Nov 2025", "High"],
         ["4", "Complete TransFrio corrective actions or initiate carrier transition", "T. Brennan", "31 Dec 2025", "High"],
@@ -351,9 +351,9 @@ function compNVWA() {
 
     heading("2.3 Action 3: Unified Traceability (F2)", 2),
     labelValue("Target", "Single-query traceability across SAP, WMS, TMS, and Salesforce Commerce"),
-    labelValue("Deadline", "Dependent on Project CLARITY Phase 1"),
+    labelValue("Deadline", "Dependent on Project Qlarity Phase 1"),
     labelValue("Status", "Business case submitted — Pending CIO approval (31 October 2025)"),
-    para("This corrective action depends on the implementation of Project CLARITY, which will create a unified data layer connecting all 4 traceability systems via Qlik Talend Cloud CDC pipelines and a Qlik Open Lakehouse. The business case ($12.4M over 24 months) was presented to senior leadership on 15 October 2025."),
+    para("This corrective action depends on the implementation of Project Qlarity, which will create a unified data layer connecting all 4 traceability systems via Qlik Talend Cloud CDC pipelines and a Qlik Open Lakehouse. The business case ($12.4M over 24 months) was presented to senior leadership on 15 October 2025."),
     para("If approved, the traceability data product (Phase 1) would be operational by Q3 2026, enabling single-query lot-to-store tracing in under 1 hour."),
     calloutBox("NVWA PREPARATION: For the Q1 2026 follow-up inspection, MCG must demonstrate at minimum an approved project plan with committed timeline and budget. A verbal commitment is not sufficient — the inspector will expect a signed project charter and evidence of vendor engagement.", "warning"),
 
@@ -385,7 +385,7 @@ function compNVWA() {
     para("MCG is preparing a comprehensive evidence file for the anticipated Q1 2026 NVWA follow-up inspection:"),
     numberedItem(1, "Lot number capture statistics — monthly reports from WMS showing compliance trend"),
     numberedItem(2, "Store-level tracking rollout schedule and completion evidence"),
-    numberedItem(3, "Project CLARITY charter (signed) with traceability milestone dates"),
+    numberedItem(3, "Project Qlarity charter (signed) with traceability milestone dates"),
     numberedItem(4, "Sub-tier supplier mapping progress report with category breakdown"),
     numberedItem(5, "Country of origin compliance report from procurement system"),
     numberedItem(6, "Updated SOPs incorporating all corrective action changes"),
@@ -397,7 +397,7 @@ function compNVWA() {
 // ═══ PROJ-CLARITY-2025: Business Case ═══
 function projClarity() {
   return buildDocument("PROJECT BUSINESS CASE", [
-    heading("Project CLARITY: Business Case for Qlik Platform Implementation"),
+    heading("Project Qlarity: Business Case for Qlik Platform Implementation"),
     metadataTable([
       ["Document ID", "PROJ-CLARITY-2025"],
       ["Version", "2.0"],
@@ -411,7 +411,7 @@ function projClarity() {
     ]),
 
     heading("1. Executive Summary"),
-    para("Meridian Commerce Group's data quality crisis costs an estimated $127M annually across seven identified problem areas ('The Seven Data Quality Nightmares'). Project CLARITY proposes a $12.4M investment in the Qlik data platform to create a unified, governed, and trusted data foundation. Conservative projections show $52.7M in annual benefits, yielding a 952% 3-year ROI with payback within 4 months of Phase 1 completion."),
+    para("Meridian Commerce Group's data quality crisis costs an estimated $127M annually across seven identified problem areas ('The Seven Data Quality Nightmares'). Project Qlarity proposes a $12.4M investment in the Qlik data platform to create a unified, governed, and trusted data foundation. Conservative projections show $52.7M in annual benefits, yielding a 952% 3-year ROI with payback within 4 months of Phase 1 completion."),
     para("The urgency is driven by three converging pressures: (1) the NVWA regulatory citation requiring credible corrective action by Q1 2026, (2) escalating operational losses ($2.48M in Q3 2025 spoilage alone), and (3) competitive pressure as peers adopt data-driven supply chain optimization."),
 
     heading("2. The Problem: Seven Data Quality Nightmares"),

@@ -45,7 +45,7 @@ MCG operates two WMS platforms depending on region:
 
 **IMPORTANT**: There is a known issue where the WMS-SAP batch job can fail **silently** without generating any error alerts. In September 2025, a batch job failure at the Rotterdam DC went undetected for **4.3 days**, creating 847 units of phantom inventory across 42 SKUs (see INC-2025-04872).
 
-Until automated pipeline monitoring is implemented (Project CLARITY, Q1 2026), warehouse managers must perform a **daily manual sync check** (see Section 5).
+Until automated pipeline monitoring is implemented (Project Qlarity, Q1 2026), warehouse managers must perform a **daily manual sync check** (see Section 5).
 
 ## 3. Common Data Flow Scenarios
 
@@ -134,7 +134,7 @@ The actual time difference is only ~30 minutes (batch delay), but if you naively
 
 ## 5. Daily Manual Sync Check
 
-Until Project CLARITY provides automated pipeline health monitoring, all warehouse managers must perform this check every morning:
+Until Project Qlarity provides automated pipeline health monitoring, all warehouse managers must perform this check every morning:
 
 ### Step 1: Compare WMS and SAP transaction counts
 
@@ -177,7 +177,7 @@ Record your daily check in the Warehouse Operations Log (Excel file on shared dr
 ## 7. Frequently Asked Questions
 
 **Q: Why can't we just have real-time sync instead of batch?**
-A: The current SAP-WMS interface was designed in 2018 when transaction volumes were lower. Real-time sync requires a different technical architecture. Project CLARITY will replace the batch interface with Change Data Capture (CDC) via Qlik Talend Cloud, providing near real-time sync (< 1 minute latency).
+A: The current SAP-WMS interface was designed in 2018 when transaction volumes were lower. Real-time sync requires a different technical architecture. Project Qlarity will replace the batch interface with Change Data Capture (CDC) via Qlik Talend Cloud, providing near real-time sync (< 1 minute latency).
 
 **Q: What happens if I enter data in SAP directly instead of WMS?**
 A: Do NOT do this. SAP inventory changes that bypass WMS will create phantom inventory (SAP thinks we have stock that WMS doesn't know about). Always make physical inventory changes through WMS.
@@ -186,7 +186,7 @@ A: Do NOT do this. SAP inventory changes that bypass WMS will create phantom inv
 A: Contact the supplier for the lot number. Do NOT leave the lot number blank or enter "N/A" -- this violates MCG-POL-007 (EU Food Safety Compliance). If you cannot obtain the lot number within 4 hours, escalate to the Quality team for disposition.
 
 **Q: Manhattan WMS shows timestamps differently than Oracle WMS. Why?**
-A: Different WMS platforms have different timestamp configurations. See Section 4 for the full breakdown. This is a known issue that will be resolved by the timestamp normalization pipeline in Project CLARITY.
+A: Different WMS platforms have different timestamp configurations. See Section 4 for the full breakdown. This is a known issue that will be resolved by the timestamp normalization pipeline in Project Qlarity.
 
 ---
 *Meridian Commerce Group -- Warehouse Operations Training -- Internal Use Only*

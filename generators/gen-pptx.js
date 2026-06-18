@@ -19,13 +19,13 @@ const pptx = new PptxGenJS();
 pptx.layout = "LAYOUT_WIDE"; // 13.33 x 7.5
 pptx.author = "Meridian Commerce Group";
 pptx.company = "Meridian Commerce Group";
-pptx.title = "MCG Company Profile & Data Quality Assessment";
+pptx.title = "Project Qlarity — MCG Company Profile & Data Quality Assessment";
 
 // ─── HELPER: Add footer bar to every slide ───
 function addFooter(slide, slideNum, totalSlides) {
   // Bottom bar
   slide.addShape(pptx.shapes.RECTANGLE, { x: 0, y: 7.0, w: 13.33, h: 0.5, fill: { color: MCG.navy } });
-  slide.addText("Meridian Commerce Group  •  Confidential", {
+  slide.addText("Project Qlarity  •  Meridian Commerce Group  •  Confidential", {
     x: 0.5, y: 7.05, w: 8, h: 0.4,
     fontSize: 9, color: MCG.medGray, fontFace: "Calibri",
   });
@@ -87,6 +87,11 @@ slide.addText("Q3 2025  •  Prepared for Senior Leadership", {
   x: 0.8, y: 4.6, w: 11.5, h: 0.5,
   fontSize: 16, color: MCG.medGray, fontFace: "Calibri",
 });
+// Project Qlarity initiative eyebrow
+slide.addText([
+  { text: "PROJECT Qlarity", options: { fontSize: 16, color: MCG.teal, bold: true, letterSpacing: 2 } },
+  { text: "   Connected Logistics, Analytics & Real-time Intelligence Technology", options: { fontSize: 14, color: MCG.medGray } },
+], { x: 0.8, y: 5.3, w: 11.7, h: 0.5, fontFace: "Calibri" });
 // Bottom
 slide.addText("CONFIDENTIAL", {
   x: 0.8, y: 6.5, w: 4, h: 0.4,
@@ -552,9 +557,9 @@ slide.addText("\"Data quality is now our #1 operational priority for 2026.\" —
 });
 
 // ═══════════════════════════════════════
-// SLIDE 10: Project CLARITY
+// SLIDE 10: Project Qlarity
 // ═══════════════════════════════════════
-sectionSlide("Project CLARITY", "The path from data chaos to trusted intelligence — $12.4M investment, 952% 3-year ROI");
+sectionSlide("Project Qlarity", "The path from data chaos to trusted intelligence — $12.4M investment, 952% 3-year ROI");
 
 // ═══════════════════════════════════════
 // SLIDE 11: Solution Overview
@@ -563,7 +568,7 @@ slide = pptx.addSlide();
 slide.background = { fill: MCG.white };
 addFooter(slide, 11);
 slide.addShape(pptx.shapes.RECTANGLE, { x: 0, y: 0, w: 13.33, h: 0.06, fill: { color: MCG.green } });
-slide.addText("Project CLARITY — Qlik Platform Solution", {
+slide.addText("Project Qlarity — Qlik Platform Solution", {
   x: 0.5, y: 0.2, w: 12, h: 0.6,
   fontSize: 26, color: MCG.navy, fontFace: "Calibri", bold: true,
 });

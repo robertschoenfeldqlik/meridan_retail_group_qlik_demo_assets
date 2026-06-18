@@ -66,7 +66,7 @@ Per SOP-SC-001 (Product Recall Procedure), MCG must be able to identify all affe
 - Average time to trace a food product from DC to all receiving stores: **6-11 days**
 - Target: **< 24 hours**
 - Gap: Traceability data is fragmented across 4 systems (SAP, Oracle WMS, supplier portal, quality management system) with no unified query capability
-- Remediation: Project CLARITY (Qlik platform implementation) will provide unified traceability lineage. Target: Q2 2026.
+- Remediation: Project Qlarity (Qlik platform implementation) will provide unified traceability lineage. Target: Q2 2026.
 
 ## 4. Compliance Monitoring
 
@@ -95,7 +95,7 @@ Following the June 2025 NVWA citation, MCG submitted a corrective action plan wi
 
 1. **Immediate (completed)**: Mandatory lot number capture at all DCs (SOP-WH-001 v3.0+)
 2. **60 days (completed)**: Store-level receipt tracking improvement to > 85%
-3. **90 days (in progress)**: Unified traceability system implementation plan (Project CLARITY)
+3. **90 days (in progress)**: Unified traceability system implementation plan (Project Qlarity)
 4. **12 months (in progress)**: Full sub-tier supplier mapping for fresh produce
 
 The next NVWA follow-up inspection is expected in Q1 2026.

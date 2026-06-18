@@ -81,7 +81,7 @@ The batch job scheduler does not distinguish between "running normally" and "hun
 | 2 | Add data freshness monitoring: alert if MAX(snapshot_timestamp) for any DC is > 4 hours old | Raj Patel | 2025-10-30 | COMPLETED |
 | 3 | Add retry logic to batch job: 3 retries with 5-minute backoff on connection timeout | Raj Patel | 2025-11-15 | COMPLETED |
 | 4 | Require change tickets for ALL database maintenance windows | DBA Team Lead | 2025-10-15 | COMPLETED |
-| 5 | **Replace nightly batch with real-time CDC** (Project CLARITY -- Qlik Talend Cloud) | Priya Ramanathan | 2026-Q2 | IN PROGRESS |
+| 5 | **Replace nightly batch with real-time CDC** (Project Qlarity -- Qlik Talend Cloud) | Priya Ramanathan | 2026-Q2 | IN PROGRESS |
 | 6 | Implement pipeline health dashboard with SLA tracking (Qlik Analytics) | Data Engineering | 2026-Q2 | IN PROGRESS |
 
 ## 6. Lessons Learned
@@ -92,7 +92,7 @@ The batch job scheduler does not distinguish between "running normally" and "hun
 
 3. **Silent failures are the most dangerous kind.** The system showed green across the board. No errors, no alerts, no warnings. Just quietly stale data.
 
-4. **Batch is fragile. Real-time CDC is the answer.** The Project CLARITY initiative to replace batch synchronization with Qlik Talend Cloud CDC will eliminate this entire class of failure.
+4. **Batch is fragile. Real-time CDC is the answer.** The Project Qlarity initiative to replace batch synchronization with Qlik Talend Cloud CDC will eliminate this entire class of failure.
 
 ---
 *Meridian Commerce Group -- IT Incident Management -- CONFIDENTIAL*

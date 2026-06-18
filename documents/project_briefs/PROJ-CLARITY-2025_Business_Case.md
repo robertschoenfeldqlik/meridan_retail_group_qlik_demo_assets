@@ -1,10 +1,10 @@
 # PROJECT BRIEF
-## Project CLARITY: Unified Data Platform Business Case
+## Project Qlarity: Unified Data Platform Business Case
 
 | | |
 |---|---|
-| **Project Name** | CLARITY (Connected Logistics, Analytics, and Real-time Intelligence Technology) |
-| **Project ID** | PROJ-2025-CLARITY |
+| **Project Name** | Qlarity (Connected Logistics, Analytics, and Real-time Intelligence Technology) |
+| **Project ID** | PROJ-2025-Qlarity |
 | **Sponsor** | Thomas Brennan, VP Supply Chain |
 | **Project Lead** | Priya Ramanathan, Chief Data Officer |
 | **Status** | Business Case -- Pending CIO Approval |
@@ -17,7 +17,7 @@
 
 Meridian Commerce Group's supply chain is failing due to fragmented, poor-quality data distributed across **47 source systems** with no unified view. In Q3 2025, data quality failures cost MCG an estimated **$127M annually** in phantom inventory, spoilage, customer service overhead, compliance penalties, and SLA failures.
 
-Project CLARITY proposes implementing the **Qlik platform** (Qlik Talend Cloud, Qlik Open Lakehouse, Qlik Analytics, Qlik Answers, and supporting AI capabilities) as MCG's strategic data platform to connect, trust, store, analyze, predict, and converse with supply chain data.
+Project Qlarity proposes implementing the **Qlik platform** (Qlik Talend Cloud, Qlik Open Lakehouse, Qlik Analytics, Qlik Answers, and supporting AI capabilities) as MCG's strategic data platform to connect, trust, store, analyze, predict, and converse with supply chain data.
 
 **Total investment**: $12.4M over 24 months
 **Expected annual benefit**: $85M+ (conservative estimate)
@@ -210,7 +210,7 @@ Additionally, Gold-tier data products will be exported as flat files for downstr
 
 ## 8. Recommendation
 
-We recommend **immediate approval** of Project CLARITY with a January 2026 start date. Every month of delay costs MCG approximately **$10.6M** in preventable losses. The NVWA follow-up inspection expected in Q1 2026 adds regulatory urgency -- demonstrating an in-progress unified traceability platform will significantly strengthen MCG's position.
+We recommend **immediate approval** of Project Qlarity with a January 2026 start date. Every month of delay costs MCG approximately **$10.6M** in preventable losses. The NVWA follow-up inspection expected in Q1 2026 adds regulatory urgency -- demonstrating an in-progress unified traceability platform will significantly strengthen MCG's position.
 
 ---
 *Meridian Commerce Group -- Office of the CDO -- CONFIDENTIAL -- Board Material*

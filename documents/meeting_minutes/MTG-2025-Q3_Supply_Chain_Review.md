@@ -62,7 +62,7 @@ Key points discussed:
 
 **Priya:** "Based on the data health assessment, we estimate 23 pipeline failures per week across the organization. About 25% of those are silent -- so roughly 5-6 undetected failures at any given time."
 
-**ACTION ITEM**: Priya to present Project CLARITY platform recommendation to the CIO by October 31.
+**ACTION ITEM**: Priya to present Project Qlarity platform recommendation to the CIO by October 31.
 
 ### 3. APAC SLA Decline
 
@@ -105,7 +105,7 @@ Ana presented the cold chain performance review:
 1. Carlos to issue formal requirement to TransFrio: pre-cool to 0°C or face contract review
 2. Ana to deploy redundant Tive sensors on all GRU-BA shipments immediately
 3. Ana to work with IT to resolve Lagos DC sensor connectivity (ISP issue?)
-4. Priya to include IoT telemetry normalization in Project CLARITY scope
+4. Priya to include IoT telemetry normalization in Project Qlarity scope
 
 ### 5. EU Compliance Update
 
@@ -113,12 +113,12 @@ Dr. Vasquez provided an update on the NVWA corrective action plan:
 
 - Mandatory lot number capture: Implemented at all DCs since October 1. Compliance rate improved from 85% to 93% in first week.
 - Store-level receipt tracking: Improved from 70% to 78%. Target 85% by December.
-- Unified traceability system: Dependent on Project CLARITY. Priya confirmed it's in scope.
+- Unified traceability system: Dependent on Project Qlarity. Priya confirmed it's in scope.
 - Sub-tier supplier mapping: 36% complete. On track for 50% by year end, 80% by end of 2026.
 
 **Dr. Vasquez:** "The NVWA will likely conduct a follow-up inspection in Q1 2026. If we can demonstrate the Qlik platform with unified lineage by then, it will significantly strengthen our position."
 
-### 6. Project CLARITY Status
+### 6. Project Qlarity Status
 
 Priya provided a brief update on the data platform evaluation:
 
@@ -136,7 +136,7 @@ Priya provided a brief update on the data platform evaluation:
 
 | # | Action | Owner | Due Date | Priority |
 |---|---|---|---|---|
-| 1 | Present Project CLARITY to CIO | Priya + Thomas | Oct 31 | HIGH |
+| 1 | Present Project Qlarity to CIO | Priya + Thomas | Oct 31 | HIGH |
 | 2 | Update Singapore delivery estimates on website | Li Wei / E-commerce | IMMEDIATE | CRITICAL |
 | 3 | Evaluate secondary carriers for Singapore 5-10 kg bracket | Li Wei | Nov 15 | HIGH |
 | 4 | Issue pre-cool requirement to TransFrio | Carlos | Oct 15 | HIGH |

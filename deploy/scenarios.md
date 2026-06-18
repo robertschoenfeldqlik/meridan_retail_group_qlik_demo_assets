@@ -50,7 +50,7 @@ Rotterdam DC's WMS-to-SAP CDC pipeline silently failed for 72 hours. SAP showed 
 **Talking Points:**
 - "Without unified pipeline monitoring, this failure cost €30,500 and took 4.3 days to find"
 - "With Qlik, the Discovery Agent detects it in minutes, Teams notifies the team, and the dashboard shows real-time impact"
-- "Project CLARITY Phase 1 deploys this monitoring to all 28 DCs"
+- "Project Qlarity Phase 1 deploys this monitoring to all 28 DCs"
 
 ---
 
@@ -257,7 +257,7 @@ NinjaVan contract amendment AMD3 reclassified 5-10 kg parcels from 2-day to 3-da
 
 ---
 
-## Scenario 6: Project CLARITY — The Full Platform Story
+## Scenario 6: Project Qlarity — The Full Platform Story
 
 **Duration:** 12-15 minutes
 **Nightmares:** All 7
@@ -265,7 +265,7 @@ NinjaVan contract amendment AMD3 reclassified 5-10 kg parcels from 2-day to 3-da
 
 ### The Business Problem
 
-MCG's data quality crisis costs $127M annually. Project CLARITY is a $12.4M Qlik platform investment with a projected 952% 3-year ROI. This scenario shows how every Qlik component addresses one or more of the 7 nightmares.
+MCG's data quality crisis costs $127M annually. Project Qlarity is a $12.4M Qlik platform investment with a projected 952% 3-year ROI. This scenario shows how every Qlik component addresses one or more of the 7 nightmares.
 
 ### Demo Walk-Through
 
@@ -304,7 +304,7 @@ MCG's data quality crisis costs $127M annually. Project CLARITY is a $12.4M Qlik
 **Step 7 — AI: "Intelligence Everywhere" (3 min)**
 - Predict: spoilage risk model flags at-risk shipment
 - Discovery Agent: proactive alert about GRU-BA route anomaly
-- Qlik Answers: "What is Project CLARITY's expected ROI?" → $52.7M conservative, 952% over 3 years
+- Qlik Answers: "What is Project Qlarity's expected ROI?" → $52.7M conservative, 952% over 3 years
 - MCP (optional): Claude queries data products and answers in one integrated response
 
 **Step 8 — Automation: "Act Immediately" (1 min)**
@@ -313,7 +313,7 @@ MCG's data quality crisis costs $127M annually. Project CLARITY is a $12.4M Qlik
 - Steward gets a DM about a new data quality task
 
 **Closing talking point:**
-"Every dollar of that $127M in data quality costs is addressable. Project CLARITY's $12.4M investment pays back in under 4 months. What you've seen today is not a concept — it's a working demo using real Qlik Cloud capabilities connected to realistic supply chain data."
+"Every dollar of that $127M in data quality costs is addressable. Project Qlarity's $12.4M investment pays back in under 4 months. What you've seen today is not a concept — it's a working demo using real Qlik Cloud capabilities connected to realistic supply chain data."
 
 ---
 

@@ -40,7 +40,7 @@ const pptx = new PptxGenJS();
 pptx.layout = "LAYOUT_WIDE";   // 13.33 × 7.5 inches
 pptx.author = "Qlik";
 pptx.company = "Qlik / Meridian Commerce Group";
-pptx.title = "MCG Technology Architecture — Qlik Cloud Full Stack Demo";
+pptx.title = "Project Qlarity — MCG Technology Architecture (Qlik Cloud)";
 
 let slideNum = 0;
 
@@ -51,7 +51,7 @@ function footer(slide) {
   slide.addShape(pptx.shapes.RECTANGLE, { x: 0.5, y: 7.05, w: 12.33, h: 0.008, fill: { color: C.qlikGray } });
   if (fs.existsSync(QLIK_LOGO))
     slide.addImage({ path: QLIK_LOGO, x: 0.5, y: 7.12, w: 0.65, h: 0.28 });
-  slide.addText("MCG Technology Architecture  •  Qlik Cloud", {
+  slide.addText("Project Qlarity  •  MCG Technology Architecture  •  Qlik Cloud", {
     x: 1.3, y: 7.12, w: 8, h: 0.28, fontSize: 8, color: C.qlikGray, fontFace: FONT,
   });
   slide.addText(`${slideNum}`, {
@@ -160,8 +160,8 @@ function layerBadge(slide, y, label, color) {
     x: 0.6, y: 2.2, w: 6, h: 1.7,
     fontSize: 40, color: C.qlikBlue, fontFace: FONT, bold: true, lineSpacingMultiple: 1.05,
   });
-  slide.addText("Qlik Cloud Full Stack Demo", {
-    x: 0.6, y: 4.0, w: 6, h: 0.5,
+  slide.addText("Project Qlarity  ·  Qlik Cloud Full Stack Demo", {
+    x: 0.6, y: 4.0, w: 7, h: 0.5,
     fontSize: 16, color: C.qlikGreen, fontFace: FONT, bold: true,
   });
   slide.addText(

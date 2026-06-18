@@ -131,17 +131,21 @@
 
   "knowledgeBase": {
     "name": "MCG Operations Knowledge Base",
-    "description": "Operational documents for Meridian Commerce Group — SOPs, policies, incident reports, contracts, and project documentation."
+    "description": "Operational documents for Meridian Commerce Group — SOPs, policies, incident reports, contracts, and project documentation.",
+    "space": "shared",
+    "comment_space": "Framework space the Qlik Answers knowledge base is created in ('shared' or 'data'). Omit/empty -> created in your personal space. Defaults to the shared space."
   },
 
   "assistant": {
     "name": "MCG Operations Assistant",
-    "description": "AI assistant for Meridian Commerce Group operations. Ask about procedures, incidents, policies, carrier contracts, and Project CLARITY.",
+    "description": "AI assistant for Meridian Commerce Group operations. Ask about procedures, incidents, policies, carrier contracts, and Project Qlarity.",
+    "space": "shared",
+    "comment_space": "Framework space the Qlik Answers assistant is created in ('shared' recommended). Omit/empty -> created in your personal space.",
     "conversationStarters": [
       "What is the procedure for goods receiving?",
       "What happened during the Rotterdam pipeline failure?",
       "What are the cold chain temperature requirements?",
-      "What is Project CLARITY?",
+      "What is Project Qlarity?",
       "What was the lettuce recall and what went wrong?"
     ]
   },

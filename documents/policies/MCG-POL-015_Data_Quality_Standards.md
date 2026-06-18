@@ -94,7 +94,7 @@ MCG currently has **no automated, enterprise-wide data quality monitoring**. Qua
 - Through quarterly manual audits by Internal Audit
 - Reactively when data quality issues cause visible business failures
 
-### 5.2 Future State (Project CLARITY)
+### 5.2 Future State (Project Qlarity)
 
 The Qlik platform implementation will provide:
 
@@ -161,7 +161,7 @@ Based on MCG's analysis of data quality issues in 2025:
 - INC-2025-04872: Rotterdam Pipeline Failure Incident Report
 - MCG-POL-007: EU Food Safety and Traceability Compliance
 - SOP-WH-002: Cycle Count Procedure (inventory accuracy remediation)
-- Project CLARITY Business Case (pending CIO approval)
+- Project Qlarity Business Case (pending CIO approval)
 
 ---
 *Meridian Commerce Group -- APPROVED BY CEO -- Mandatory Compliance*

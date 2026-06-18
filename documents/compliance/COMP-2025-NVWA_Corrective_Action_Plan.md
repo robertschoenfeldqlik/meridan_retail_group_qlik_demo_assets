@@ -62,10 +62,10 @@ NVWA issued a **formal citation** (NVWA-2025-CIT-04412) for findings F-001 and F
 |---|---|
 | **Finding Addressed** | F-001, F-005 |
 | **Action** | Provide NVWA with a documented plan for implementing a unified traceability system that can provide end-to-end product trace within 24 hours. |
-| **Implementation** | Project CLARITY (Qlik platform) business case developed. Platform provides unified data integration across SAP, WMS, supplier portal, and QMS with Qlik Answers enabling natural language traceability queries. |
+| **Implementation** | Project Qlarity (Qlik platform) business case developed. Platform provides unified data integration across SAP, WMS, supplier portal, and QMS with Qlik Answers enabling natural language traceability queries. |
 | **Due Date** | October 10, 2025 |
 | **Status** | **IN PROGRESS** -- Business case submitted to CIO, presentation scheduled October 31 |
-| **Evidence** | Project CLARITY Business Case (PROJ-2025-CLARITY). Qlik platform selected as strategic partner. Phase 1 includes CDC integration and unified traceability dashboard. |
+| **Evidence** | Project Qlarity Business Case (PROJ-2025-Qlarity). Qlik platform selected as strategic partner. Phase 1 includes CDC integration and unified traceability dashboard. |
 | **Timeline** | Phase 1 go-live: Q2 2026 (unified traceability dashboard). Full Qlik Answers integration: Q4 2026. |
 
 ### Action 4: Sub-Tier Supplier Mapping (12 Months)
@@ -108,10 +108,10 @@ For the anticipated NVWA follow-up inspection in Q1 2026, MCG will be prepared t
 1. **Lot number compliance at 100%** (mandatory field in WMS, no free-text entries)
 2. **Store receipt tracking at > 85%** (scanner-based verification at store level)
 3. **Country of origin at > 95%** (WMS validation + supplier enforcement)
-4. **Project CLARITY in active implementation** (Phase 1 infrastructure deployed, first dashboards live)
+4. **Project Qlarity in active implementation** (Phase 1 infrastructure deployed, first dashboards live)
 5. **Sub-tier mapping at > 50%** (with roadmap to 80% by end of 2026)
 
-**Key risk**: If Project CLARITY CIO approval is delayed beyond November 2025, MCG will not be able to demonstrate an active unified traceability implementation at the Q1 2026 inspection. This would significantly weaken our position with NVWA.
+**Key risk**: If Project Qlarity CIO approval is delayed beyond November 2025, MCG will not be able to demonstrate an active unified traceability implementation at the Q1 2026 inspection. This would significantly weaken our position with NVWA.
 
 ## 5. Contacts
 
