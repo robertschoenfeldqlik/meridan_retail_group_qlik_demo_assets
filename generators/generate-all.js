@@ -23,6 +23,14 @@ const GEN_DIR = __dirname;
 // ---------------------------------------------------------------------------
 
 const GENERATORS = [
+  // Phase 0: Rasterize Qlik line-art icons (SVG → square PNG) for deck diagrams
+  {
+    name: 'icons',
+    script: 'lib/render-icons.js',
+    label: 'Qlik Line-Art Icons (SVG → PNG)',
+    group: 'assets',
+  },
+
   // Phase 1: Logos and base assets (no dependencies)
   {
     name: 'logos',

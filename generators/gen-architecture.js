@@ -34,6 +34,7 @@ const ASSETS = path.join(__dirname, "assets");
 const COVER_BG = path.join(ASSETS, "qlik_cover_bg.png");
 const DIVIDER_BG = path.join(ASSETS, "qlik_divider_bg.png");
 const QLIK_LOGO = path.join(ASSETS, "qlik_logo.png");
+const ICON_DIR = path.join(ASSETS, "icons");
 const FONT = "Inter";
 
 const pptx = new PptxGenJS();
@@ -117,6 +118,75 @@ function box(slide, x, y, w, h, label, sub, bgColor, txtColor) {
       fontSize: 12, color: txt, fontFace: FONT, bold: true, align: "center", valign: "middle",
     });
   }
+}
+
+// ─── Icon chip: white circle + Qlik line-art icon (legible on any fill) ───
+function iconBadge(slide, name, x, y, d, ring) {
+  slide.addShape(pptx.shapes.OVAL, {
+    x, y, w: d, h: d, fill: { color: C.white },
+    line: { color: ring || C.qlikGray, width: 1 },
+    shadow: { type: "outer", blur: 3, offset: 1, color: "000000", opacity: 0.15 },
+  });
+  const p = path.join(ICON_DIR, name + ".png");
+  if (fs.existsSync(p)) {
+    const ip = d * 0.62, off = (d - ip) / 2;
+    slide.addImage({ path: p, x: x + off, y: y + off, w: ip, h: ip });
+  }
+}
+
+// ─── Icon card: rounded box with a left icon chip + left-aligned label/sub ───
+function iconCard(slide, x, y, w, h, iconName, label, sub, bgColor, txtColor) {
+  const bg = bgColor || C.lightBg;
+  const txt = txtColor || C.white;
+  const borderColor = bg === C.white ? C.qlikGray : bg;
+  slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
+    x, y, w, h, fill: { color: bg }, rectRadius: 0.1,
+    line: { color: borderColor, width: 0.5 },
+    shadow: { type: "outer", blur: 4, offset: 1.5, color: "000000", opacity: 0.08 },
+  });
+  const d = Math.min(0.62, h - 0.22, w * 0.34);
+  iconBadge(slide, iconName, x + 0.13, y + (h - d) / 2, d, C.white);
+  const tx = x + 0.13 + d + 0.14;
+  const tw = w - (tx - x) - 0.1;
+  if (sub) {
+    slide.addText(label, {
+      x: tx, y: y + 0.08, w: tw, h: h * 0.5 - 0.02,
+      fontSize: 12, color: txt, fontFace: FONT, bold: true, align: "left", valign: "bottom",
+    });
+    slide.addText(sub, {
+      x: tx, y: y + h * 0.5, w: tw, h: h * 0.5 - 0.06,
+      fontSize: 9.5, color: txt === C.white ? "D8DCE0" : C.medGray,
+      fontFace: FONT, align: "left", valign: "top", lineSpacingMultiple: 1.02,
+    });
+  } else {
+    slide.addText(label, {
+      x: tx, y, w: tw, h,
+      fontSize: 12, color: txt, fontFace: FONT, bold: true, align: "left", valign: "middle",
+    });
+  }
+}
+
+// ─── Icon card (tall): centered icon chip on top + centered label/sub ───
+function iconCardTop(slide, x, y, w, h, iconName, label, sub, bgColor, txtColor) {
+  const bg = bgColor || C.lightBg;
+  const txt = txtColor || C.white;
+  const borderColor = bg === C.white ? C.qlikGray : bg;
+  slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
+    x, y, w, h, fill: { color: bg }, rectRadius: 0.1,
+    line: { color: borderColor, width: 0.5 },
+    shadow: { type: "outer", blur: 4, offset: 1.5, color: "000000", opacity: 0.08 },
+  });
+  const d = 0.6;
+  iconBadge(slide, iconName, x + (w - d) / 2, y + 0.16, d, C.white);
+  slide.addText(label, {
+    x: x + 0.1, y: y + 0.16 + d + 0.04, w: w - 0.2, h: 0.34,
+    fontSize: 13, color: txt, fontFace: FONT, bold: true, align: "center", valign: "top",
+  });
+  if (sub) slide.addText(sub, {
+    x: x + 0.12, y: y + 0.16 + d + 0.40, w: w - 0.24, h: h - (0.16 + d + 0.40) - 0.06,
+    fontSize: 9.5, color: txt === C.white ? "D8DCE0" : C.medGray,
+    fontFace: FONT, align: "center", valign: "top", lineSpacingMultiple: 1.0,
+  });
 }
 
 // ─── Arrow line ───
@@ -214,9 +284,9 @@ function layerBadge(slide, y, label, color) {
   layerBadge(slide, R4 + 0.17, "AI &\nOUTCOMES", C.qlikLightGreen);
 
   // ── ROW 1: DATA SOURCES ──
-  box(slide, LX, R1, 3.1, RH, "PostgreSQL (WMS)", "CDC • 3 tables • Real-time", C.qlikTeal);
-  box(slide, LX + 3.3, R1, 3.1, RH, "Apache Kafka", "Streaming • 2 IoT topics", C.qlikTeal);
-  box(slide, LX + 6.6, R1, 3.1, RH, "Salesforce CRM", "Connector • 3 objects • 15 min", C.qlikTeal);
+  iconCard(slide, LX, R1, 3.1, RH, "database", "PostgreSQL (WMS)", "CDC • 3 tables • Real-time", C.qlikTeal);
+  iconCard(slide, LX + 3.3, R1, 3.1, RH, "stream", "Apache Kafka", "Streaming • 2 IoT topics", C.qlikTeal);
+  iconCard(slide, LX + 6.6, R1, 3.1, RH, "cloud", "Salesforce CRM", "Connector • 3 objects • 15 min", C.qlikTeal);
 
   // Arrows → row 2
   [LX + 1.55, LX + 4.85, LX + 8.15].forEach(ax => arrow(slide, ax, R1 + RH, ax, R2, C.qlikTeal));
@@ -228,6 +298,7 @@ function layerBadge(slide, y, label, color) {
     fill: { color: C.lightGreen }, rectRadius: 0.12,
     line: { color: C.qlikGreen, width: 1.5 },
   });
+  iconBadge(slide, "lakehouse", LX + 0.12, R2 + 0.02, 0.28, C.qlikGreen);
   slide.addText("Qlik Open Lakehouse", {
     x: LX, y: R2 - 0.01, w: 7.7, h: 0.32,
     fontSize: 11, color: C.qlikGreen, fontFace: FONT, bold: true, align: "center",
@@ -240,7 +311,7 @@ function layerBadge(slide, y, label, color) {
   arrow(slide, LX + 2.4, R2 + 0.61, LX + 2.6, R2 + 0.61, C.qlikGreen);
   arrow(slide, LX + 4.8, R2 + 0.61, LX + 5.0, R2 + 0.61, C.qlikBlue);
   // Talend box
-  box(slide, LX + 7.9, R2, 1.85, RH, "Talend Cloud", "Address Validation\n+ Stewardship", C.qlikGreen);
+  iconCard(slide, LX + 7.85, R2, 2.05, RH, "transform", "Talend Cloud", "Address Validation", C.qlikGreen);
 
   // Qlik Cloud Pipelines band — sits on the source→lakehouse flow
   slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
@@ -252,26 +323,27 @@ function layerBadge(slide, y, label, color) {
     x: LX, y: R2 - 0.42, w: 7.7, h: 0.33,
     fontSize: 10, color: C.white, fontFace: FONT, bold: true, align: "center", valign: "middle",
   });
+  iconBadge(slide, "pipeline", LX + 0.07, R2 - 0.40, 0.28, C.white);
 
   // Arrows → row 3
   [LX + 2.0, LX + 6.5].forEach(ax => arrow(slide, ax, R2 + RH, ax, R3, C.qlikGreen));
 
   // ── ROW 3: ANALYTICS ──
-  box(slide, LX, R3, 3.0, RH, "Qlik Analytics", "2 apps • 10 sheets", C.qlikBlue);
-  box(slide, LX + 3.2, R3, 3.0, RH, "Qlik Predict", "Exceedance • Late Delivery", C.qlikBlue);
-  box(slide, LX + 6.4, R3, 3.35, RH, "Governance & Trust", "Trust Score • Stewardship\nGlossary • Lineage", C.qlikBlue);
+  iconCard(slide, LX, R3, 3.0, RH, "analytics", "Qlik Analytics", "2 apps • 10 sheets", C.qlikBlue);
+  iconCard(slide, LX + 3.2, R3, 3.0, RH, "predict", "Qlik Predict", "Exceedance • Late Delivery", C.qlikBlue);
+  iconCard(slide, LX + 6.4, R3, 3.35, RH, "governance", "Governance & Trust", "Trust Score • Stewardship\nGlossary • Lineage", C.qlikBlue);
 
   // Arrows → row 4
   [LX + 1.5, LX + 4.7, LX + 8.1].forEach(ax => arrow(slide, ax, R3 + RH, ax, R4, C.qlikBlue));
 
   // ── ROW 4: AI & OUTCOMES ──
   const ai4 = [
-    { off: 0,    w: 2.3, label: "Qlik Answers", sub: "25 DOCX docs\nKnowledge base" },
-    { off: 2.5,  w: 2.3, label: "Discovery Agent", sub: "Anomaly detection\nProactive alerts" },
-    { off: 5.0,  w: 2.3, label: "MCP Server", sub: "Claude integration\nAgentic queries" },
-    { off: 7.5,  w: 2.25, label: "Automations", sub: "Teams alerts\nTalend jobs" },
+    { off: 0,    w: 2.3, icon: "answers",    label: "Qlik Answers", sub: "25 DOCX docs\nKnowledge base" },
+    { off: 2.5,  w: 2.3, icon: "agent",      label: "Discovery Agent", sub: "Anomaly detection\nProactive alerts" },
+    { off: 5.0,  w: 2.3, icon: "mcp",        label: "MCP Server", sub: "Claude integration\nAgentic queries" },
+    { off: 7.5,  w: 2.25, icon: "automation", label: "Automations", sub: "Teams alerts\nTalend jobs" },
   ];
-  ai4.forEach(b => box(slide, LX + b.off, R4, b.w, RH, b.label, b.sub, C.qlikLightGreen, C.white));
+  ai4.forEach(b => iconCard(slide, LX + b.off, R4, b.w, RH, b.icon, b.label, b.sub, C.qlikLightGreen, C.white));
 
   // Side callout
   slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
@@ -402,9 +474,9 @@ function layerBadge(slide, y, label, color) {
 
   // Flow row: Local DBs → Gateway → Qlik Cloud
   const ry = 1.95, rh = 1.1;
-  box(slide, 0.6, ry, 3.4, rh, "Local Databases", "PostgreSQL • MySQL • SQL Server\n(mcg-qlik-dmg container)", C.qlikTeal);
-  box(slide, 5.0, ry, 3.4, rh, "Data Movement Gateway", "Registered to tenant\nOutbound HTTPS 443", C.qlikBlue);
-  box(slide, 9.4, ry, 3.3, rh, "Qlik Cloud", "Data Integration project\nCDC → Open Lakehouse", C.qlikGreen);
+  iconCard(slide, 0.6, ry, 3.4, rh, "database", "Local Databases", "PostgreSQL • MySQL • SQL Server\n(mcg-qlik-dmg container)", C.qlikTeal);
+  iconCard(slide, 5.0, ry, 3.4, rh, "gateway", "Data Movement Gateway", "Registered to tenant\nOutbound HTTPS 443", C.qlikBlue);
+  iconCard(slide, 9.4, ry, 3.3, rh, "cloud", "Qlik Cloud", "Data Integration project\nCDC → Open Lakehouse", C.qlikGreen);
   arrow(slide, 4.05, ry + rh / 2, 4.95, ry + rh / 2, C.qlikGray);
   arrow(slide, 8.45, ry + rh / 2, 9.35, ry + rh / 2, C.qlikGray);
 
@@ -642,6 +714,7 @@ dividerSlide("Analytics &\nAI Layer", "Qlik Analytics  •  Predict  •  Answer
     x: 0.5, y: 1.1, w: 6.1, h: 2.6, fill: { color: C.lightBlue }, rectRadius: 0.12,
     line: { color: C.qlikBlue, width: 1.5 },
   });
+  iconBadge(slide, "analytics", 0.68, 1.13, 0.36, C.qlikBlue);
   slide.addText("Qlik Analytics — 2 Domain Apps", {
     x: 0.5, y: 1.12, w: 6.1, h: 0.42,
     fontSize: 14, color: C.qlikBlue, fontFace: FONT, bold: true, align: "center",
@@ -658,6 +731,7 @@ dividerSlide("Analytics &\nAI Layer", "Qlik Analytics  •  Predict  •  Answer
     x: 6.85, y: 1.1, w: 5.95, h: 2.6, fill: { color: C.lightTeal }, rectRadius: 0.12,
     line: { color: C.qlikTeal, width: 1.5 },
   });
+  iconBadge(slide, "predict", 7.03, 1.13, 0.36, C.qlikTeal);
   slide.addText("Qlik Predict — 2 AutoML Models", {
     x: 6.85, y: 1.12, w: 5.95, h: 0.42,
     fontSize: 14, color: C.qlikTeal, fontFace: FONT, bold: true, align: "center",
@@ -674,17 +748,18 @@ dividerSlide("Analytics &\nAI Layer", "Qlik Analytics  •  Predict  •  Answer
     x: 0.5, y: 4.05, w: 12.3, h: 2.7, fill: { color: C.lightGreen }, rectRadius: 0.12,
     line: { color: C.qlikLightGreen, width: 1.5 },
   });
+  iconBadge(slide, "agent", 0.68, 4.06, 0.36, C.qlikLightGreen);
   slide.addText("AI & Agentic Layer", {
     x: 0.5, y: 4.05, w: 12.3, h: 0.42,
     fontSize: 14, color: C.qlikLightGreen, fontFace: FONT, bold: true, align: "center",
   });
   const aiBoxes = [
-    { x: 0.75, label: "Qlik Answers", sub: "25 DOCX docs\n6 demo scenarios\nKnowledge Mart" },
-    { x: 3.6,  label: "Discovery Agent", sub: "Anomaly detection\nTransFrio spoilage\nProactive alerts" },
-    { x: 6.45, label: "MCP Server", sub: "Claude integration\n5 demo prompts\nData + docs" },
-    { x: 9.3,  label: "Automations", sub: "5 automations\nTeams integration\nTalend job trigger" },
+    { x: 0.75, icon: "answers",    label: "Qlik Answers", sub: "25 DOCX docs\n6 demo scenarios\nKnowledge Mart" },
+    { x: 3.6,  icon: "agent",      label: "Discovery Agent", sub: "Anomaly detection\nTransFrio spoilage\nProactive alerts" },
+    { x: 6.45, icon: "mcp",        label: "MCP Server", sub: "Claude integration\n5 demo prompts\nData + docs" },
+    { x: 9.3,  icon: "automation", label: "Automations", sub: "5 automations\nTeams integration\nTalend job trigger" },
   ];
-  aiBoxes.forEach(b => box(slide, b.x, 4.6, 2.6, 1.9, b.label, b.sub, C.qlikLightGreen, C.white));
+  aiBoxes.forEach(b => iconCardTop(slide, b.x, 4.6, 2.6, 1.9, b.icon, b.label, b.sub, C.qlikLightGreen, C.white));
 })();
 
 

@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 70 75">
+  <g fill="none" stroke="#545659" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 6 6 H 40 L 50 16 V 68 H 6 Z"/>
+    <polyline points="40,6 40,16 50,16"/>
+    <line x1="14" y1="28" x2="42" y2="28"/>
+    <line x1="14" y1="36" x2="42" y2="36"/>
+    <line x1="14" y1="44" x2="34" y2="44"/>
+    <line x1="14" y1="52" x2="42" y2="52"/>
+    <line x1="14" y1="60" x2="28" y2="60"/>
+  </g>
+  <g stroke="#009845" stroke-width="2.2" stroke-linecap="round" fill="none">
+    <line x1="58" y1="6" x2="58" y2="22"/>
+    <line x1="50" y1="14" x2="66" y2="14"/>
+    <line x1="62" y1="26" x2="62" y2="32"/>
+    <line x1="58" y1="29" x2="66" y2="29"/>
+  </g>
+</svg>

@@ -3,6 +3,7 @@
 // Integrations | Governance | Analytics | AI & Outcomes
 const PptxGenJS = require("pptxgenjs");
 const path = require("path");
+const fs = require("fs");
 
 // ─── Qlik brand palette (from Qlik Powerpoint template theme1.xml) ───
 const C = {
@@ -27,7 +28,22 @@ const ASSETS = path.join(__dirname, "assets");
 const COVER_BG = path.join(ASSETS, "qlik_cover_bg.png");
 const DIVIDER_BG = path.join(ASSETS, "qlik_divider_bg.png");
 const QLIK_LOGO = path.join(ASSETS, "qlik_logo.png");
+const ICON_DIR = path.join(ASSETS, "icons");
 const FONT = "Inter";
+
+// ─── Icon chip: white circle + Qlik line-art icon (legible on any fill) ───
+function iconBadge(slide, name, x, y, d, ring) {
+  slide.addShape(pptx.shapes.OVAL, {
+    x, y, w: d, h: d, fill: { color: "FFFFFF" },
+    line: { color: ring || "A9B3B6", width: 1 },
+    shadow: { type: "outer", blur: 3, offset: 1, color: "000000", opacity: 0.15 },
+  });
+  const p = path.join(ICON_DIR, name + ".png");
+  if (fs.existsSync(p)) {
+    const ip = d * 0.62, off = (d - ip) / 2;
+    slide.addImage({ path: p, x: x + off, y: y + off, w: ip, h: ip });
+  }
+}
 
 const pptx = new PptxGenJS();
 pptx.layout = "LAYOUT_WIDE"; // 13.33 x 7.5
@@ -226,30 +242,37 @@ stories.forEach((s, i) => {
     });
   }
 
-  // ── Helper: component box ──
-  function compBox(x, y, w, h, title, subtitle, bgColor) {
+  // ── Helper: component box with a left icon chip + left-aligned text ──
+  function compBox(x, y, w, h, icon, title, subtitle, bgColor) {
+    h = h || 0.95;
     s.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
-      x, y, w, h: h || 0.95,
+      x, y, w, h,
       fill: { color: bgColor || C.lightBg }, rectRadius: 0.08,
       shadow: { type: "outer", blur: 3, offset: 1, color: "D0D0D0", opacity: 0.3 },
     });
+    const d = Math.min(0.56, h - 0.2, w * 0.3);
+    iconBadge(s, icon, x + 0.12, y + (h - d) / 2, d, C.qlikGray);
+    const tx = x + 0.12 + d + 0.12;
+    const tw = w - (tx - x) - 0.1;
     s.addText(title, {
-      x, y: y + 0.08, w, h: 0.38,
-      fontSize: 10, color: C.qlikBlue, fontFace: FONT, bold: true, align: "center",
+      x: tx, y: y + 0.08, w: tw, h: subtitle ? 0.34 : h - 0.16,
+      fontSize: 10, color: C.qlikBlue, fontFace: FONT, bold: true,
+      align: "left", valign: subtitle ? "bottom" : "middle",
     });
     if (subtitle) {
       s.addText(subtitle, {
-        x, y: y + 0.42, w, h: 0.38,
-        fontSize: 8, color: C.medGray, fontFace: FONT, align: "center",
+        x: tx, y: y + 0.44, w: tw, h: h - 0.5,
+        fontSize: 8, color: C.medGray, fontFace: FONT, align: "left", valign: "top",
+        lineSpacingMultiple: 1.02,
       });
     }
   }
 
   // ── Row 1: DATA SOURCES (y=1.1) ──
   rowBadge("DATA SOURCES", 1.3, C.qlikTeal);
-  compBox(1.85, 1.1, 3.2, 0.95, "PostgreSQL (WMS)", "CDC — Change Data Capture", C.lightTeal);
-  compBox(5.25, 1.1, 3.2, 0.95, "Apache Kafka (IoT)", "Streaming — Cold Chain & Carrier", C.lightTeal);
-  compBox(8.65, 1.1, 3.2, 0.95, "Salesforce CRM", "API — Contacts, Orders, Products", C.lightTeal);
+  compBox(1.85, 1.1, 3.2, 0.95, "database", "PostgreSQL (WMS)", "CDC — Change Data Capture", C.lightTeal);
+  compBox(5.25, 1.1, 3.2, 0.95, "stream", "Apache Kafka (IoT)", "Streaming — Cold Chain & Carrier", C.lightTeal);
+  compBox(8.65, 1.1, 3.2, 0.95, "cloud", "Salesforce CRM", "API — Contacts, Orders, Products", C.lightTeal);
 
   // ── Flow arrow 1→2 ──
   s.addText("▼", { x: 6.1, y: 2.08, w: 1, h: 0.5, fontSize: 18, color: C.qlikGray, fontFace: FONT, align: "center" });
@@ -262,28 +285,28 @@ stories.forEach((s, i) => {
     fill: { color: C.lightGreen }, rectRadius: 0.1,
     shadow: { type: "outer", blur: 4, offset: 1, color: "D0D0D0", opacity: 0.25 },
   });
-  compBox(2.05, 2.65, 3.1, 0.85, "Open Lakehouse", "Bronze → Silver → Gold", C.white);
-  compBox(5.35, 2.65, 3.1, 0.85, "Qlik Cloud Pipelines", "2 declarative projects (YAML)", C.white);
-  compBox(8.65, 2.65, 3.0, 0.85, "Talend Cloud", "Address Validation & Cleansing", C.white);
+  compBox(2.05, 2.65, 3.1, 0.85, "lakehouse", "Open Lakehouse", "Bronze → Silver → Gold", C.white);
+  compBox(5.35, 2.65, 3.1, 0.85, "pipeline", "Qlik Cloud Pipelines", "2 declarative projects (YAML)", C.white);
+  compBox(8.65, 2.65, 3.0, 0.85, "transform", "Talend Cloud", "Address Validation & Cleansing", C.white);
 
   // ── Flow arrow 2→3 ──
   s.addText("▼", { x: 6.1, y: 3.92, w: 1, h: 0.5, fontSize: 18, color: C.qlikGray, fontFace: FONT, align: "center" });
 
   // ── Row 3: ANALYTICS & GOVERNANCE (y=4.3) ──
   rowBadge("ANALYTICS", 4.5, C.qlikBlue);
-  compBox(1.85, 4.3, 3.2, 0.95, "Qlik Analytics", "2 Apps  •  10 Sheets", C.lightBlue);
-  compBox(5.25, 4.3, 3.2, 0.95, "Qlik Predict", "2 AutoML Models", C.lightBlue);
-  compBox(8.65, 4.3, 3.2, 0.95, "Governance", "Trust • Lineage • Glossary • Stewardship", C.lightBlue);
+  compBox(1.85, 4.3, 3.2, 0.95, "analytics", "Qlik Analytics", "2 Apps  •  10 Sheets", C.lightBlue);
+  compBox(5.25, 4.3, 3.2, 0.95, "predict", "Qlik Predict", "2 AutoML Models", C.lightBlue);
+  compBox(8.65, 4.3, 3.2, 0.95, "governance", "Governance", "Trust • Lineage • Glossary • Stewardship", C.lightBlue);
 
   // ── Flow arrow 3→4 ──
   s.addText("▼", { x: 6.1, y: 5.28, w: 1, h: 0.5, fontSize: 18, color: C.qlikGray, fontFace: FONT, align: "center" });
 
   // ── Row 4: AI & OUTCOMES (y=5.7) ──
   rowBadge("AI & OUTCOMES", 5.9, C.qlikLightGreen);
-  compBox(1.85, 5.7, 2.3, 0.95, "Qlik Answers", "25 Documents", C.lightGreen);
-  compBox(4.35, 5.7, 2.3, 0.95, "Discovery Agent", "Autonomous Analysis", C.lightGreen);
-  compBox(6.85, 5.7, 2.3, 0.95, "MCP Server", "Claude Integration", C.lightGreen);
-  compBox(9.35, 5.7, 2.5, 0.95, "Automations", "Teams Notifications", C.lightGreen);
+  compBox(1.85, 5.7, 2.3, 0.95, "answers", "Qlik Answers", "25 Documents", C.lightGreen);
+  compBox(4.35, 5.7, 2.3, 0.95, "agent", "Discovery Agent", "Autonomous Analysis", C.lightGreen);
+  compBox(6.85, 5.7, 2.3, 0.95, "mcp", "MCP Server", "Claude Integration", C.lightGreen);
+  compBox(9.35, 5.7, 2.5, 0.95, "automation", "Automations", "Teams Notifications", C.lightGreen);
 
   // ── Right sidebar callout ──
   s.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
@@ -309,11 +332,12 @@ stories.forEach((s, i) => {
   const s = contentSlide("Functional Architecture — The Four Stories", C.qlikGreen);
 
   // ── Helper: column header badge ──
-  function colHeader(x, w, num, label, color) {
+  function colHeader(x, w, num, label, color, icon) {
     s.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
       x, y: 1.0, w, h: 0.45,
       fill: { color }, rectRadius: 0.06,
     });
+    if (icon) iconBadge(s, icon, x + 0.1, 1.055, 0.34, C.white);
     s.addText(`${num}. ${label}`, {
       x, y: 1.0, w, h: 0.45,
       fontSize: 11, color: C.white, fontFace: FONT, bold: true, align: "center", valign: "middle",
@@ -347,7 +371,7 @@ stories.forEach((s, i) => {
   }
 
   // ── Column 1: INTEGRATIONS ──
-  colHeader(0.5, 3.0, "1", "Integrations", C.qlikTeal);
+  colHeader(0.5, 3.0, "1", "Integrations", C.qlikTeal, "pipeline");
   colItems(0.5, 3.0, [
     "3 Data Sources",
     "2 Declarative Pipeline Projects (8 feeds)",
@@ -359,7 +383,7 @@ stories.forEach((s, i) => {
   flowArrow(3.6);
 
   // ── Column 2: GOVERNANCE ──
-  colHeader(3.7, 3.0, "2", "Governance", C.qlikGreen);
+  colHeader(3.7, 3.0, "2", "Governance", C.qlikGreen, "governance");
   colItems(3.7, 3.0, [
     "8 Transformation Routes",
     "Silver Layer (cleansed)",
@@ -372,7 +396,7 @@ stories.forEach((s, i) => {
   flowArrow(6.8);
 
   // ── Column 3: ANALYTICS ──
-  colHeader(6.9, 3.0, "3", "Analytics", C.qlikBlue);
+  colHeader(6.9, 3.0, "3", "Analytics", C.qlikBlue, "analytics");
   colItems(6.9, 3.0, [
     "2 Qlik Analytics Apps (10 sheets)",
     "Agentic Analytics & NLI",
@@ -384,7 +408,7 @@ stories.forEach((s, i) => {
   flowArrow(10.0);
 
   // ── Column 4: AI & OUTCOMES ──
-  colHeader(10.1, 2.7, "4", "AI & Outcomes", C.qlikLightGreen);
+  colHeader(10.1, 2.7, "4", "AI & Outcomes", C.qlikLightGreen, "agent");
   colItems(10.1, 2.7, [
     "2 Predict Models (Spoilage/SLA)",
     "Qlik Answers (25 docs)",
