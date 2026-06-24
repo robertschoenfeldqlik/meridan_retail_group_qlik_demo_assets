@@ -413,4 +413,4 @@ async function main() {
   console.log("✅ All remaining documents generated.");
 }
 
-main().catch(console.error);
+main().catch((err) => { console.error(err); process.exit(1); });

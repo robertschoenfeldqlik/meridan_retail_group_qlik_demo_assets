@@ -121,7 +121,7 @@ function createLogoSquareSVG(size) {
 }
 
 async function generateLogos() {
-  const outDir = path.join(__dirname, "..", "generators", "assets");
+  const outDir = path.join(__dirname, "assets");
 
   // 1. Light logo (transparent bg, navy text)
   const lightSVG = Buffer.from(createLogoSVG(WIDTH, HEIGHT));
@@ -154,4 +154,4 @@ async function generateLogos() {
   console.log("\nAll MCG logos generated in generators/assets/");
 }
 
-generateLogos().catch(console.error);
+generateLogos().catch((err) => { console.error(err); process.exit(1); });

@@ -174,7 +174,7 @@ function applyEnvOverrides(cfg) {
  * Make an HTTP(S) request and return { statusCode, headers, body }.
  * `body` is parsed as JSON when the response Content-Type is application/json.
  */
-function requestOnce(method, reqUrl, { headers = {}, body = null, rawBody = null, timeout = 60000, binary = false } = {}) {
+function requestOnce(method, reqUrl, { headers = {}, body = null, rawBody = null, timeout = 60000, binary = false, _redirectCount = 0 } = {}) {
   return new Promise((resolve, reject) => {
     const parsed = new URL(reqUrl);
     const transport = parsed.protocol === 'https:' ? https : http;
@@ -194,12 +194,17 @@ function requestOnce(method, reqUrl, { headers = {}, body = null, rawBody = null
       payload = JSON.stringify(body);
       opts.headers['Content-Type']   = opts.headers['Content-Type'] || 'application/json';
       opts.headers['Content-Length'] = Buffer.byteLength(payload);
+    } else if (payload != null && opts.headers['Content-Length'] == null) {
+      // rawBody path (OAuth token POST, multipart uploads): set Content-Length so
+      // Node doesn't fall back to chunked Transfer-Encoding, which some
+      // multipart/form-data and token endpoints reject.
+      opts.headers['Content-Length'] = Buffer.byteLength(payload);
     }
 
     const req = transport.request(opts, (res) => {
       // Follow 301/302/307/308 redirects (max 10)
       if ([301, 302, 307, 308].includes(res.statusCode) && res.headers.location) {
-        const rc = (opts._redirectCount || 0) + 1;
+        const rc = _redirectCount + 1;
         if (rc > 10) { res.resume(); reject(new Error(`Too many redirects (>10): ${reqUrl}`)); return; }
         const redirectUrl = new URL(res.headers.location, reqUrl).toString();
         res.resume(); // drain response
@@ -567,13 +572,16 @@ class QlikClient {
    *   3. POST /api/v1/data-connections — create with properties
    */
   async discoverDataSourceByType(keyword) {
-    const res = await this._get('/api/v1/data-sources', { limit: 100 });
-    if (res.statusCode !== 200) {
-      this.log.warn(`Data sources discovery failed (${res.statusCode})`);
+    // Paginate the full connector catalog — it can exceed 100 entries, so a
+    // single-page lookup could miss a connector type and wrongly report it
+    // "not found" (causing a skipped/duplicate connection on larger tenants).
+    let sources;
+    try {
+      sources = await this._getAll('/api/v1/data-sources');
+    } catch (e) {
+      this.log.warn(`Data sources discovery failed: ${e.message}`);
       return null;
     }
-    // API returns { dataSources: [...] }, not { data: [...] }
-    const sources = res.body.dataSources || res.body.data || (Array.isArray(res.body) ? res.body : []);
     const kw = keyword.toLowerCase();
     return sources.find((s) =>
       (s.dataSourceId || '').toLowerCase() === kw ||
@@ -1159,8 +1167,9 @@ class QlikClient {
   }
 
   async findMlExperimentByName(name) {
-    const res = await this._get('/api/v1/ml/experiments', { limit: 100 });
-    const list = (res.body && res.body.data) || [];
+    let list;
+    try { list = await this._getAll('/api/v1/ml/experiments'); }
+    catch (_) { return null; }
     const hit = list.find((e) => ((e.attributes && e.attributes.name) || e.name) === name);
     return hit ? this._mlFlatten(hit) : null;
   }
@@ -1187,8 +1196,9 @@ class QlikClient {
 
   // The deployable model id of the first "ready" experiment version, if any.
   async getReadyModelId(experimentId) {
-    const res = await this._get(`/api/v1/ml/experiments/${experimentId}/versions`, { limit: 100 });
-    const list = (res.body && res.body.data) || [];
+    let list;
+    try { list = await this._getAll(`/api/v1/ml/experiments/${experimentId}/versions`); }
+    catch (_) { return null; }
     for (const v of list) {
       const a = v.attributes || v;
       if (a.status === 'ready' && (a.topModelId || a.modelId)) return a.topModelId || a.modelId;
@@ -1207,8 +1217,9 @@ class QlikClient {
   }
 
   async findMlDeploymentByName(name) {
-    const res = await this._get('/api/v1/ml/deployments', { limit: 100 });
-    const list = (res.body && res.body.data) || [];
+    let list;
+    try { list = await this._getAll('/api/v1/ml/deployments'); }
+    catch (_) { return null; }
     const hit = list.find((e) => ((e.attributes && e.attributes.name) || e.name) === name);
     return hit ? this._mlFlatten(hit) : null;
   }

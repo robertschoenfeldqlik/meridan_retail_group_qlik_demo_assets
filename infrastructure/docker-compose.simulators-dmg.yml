@@ -96,9 +96,6 @@ services:
     container_name: mcg-salesforce-simulator
     command: >
       python salesforce_simulator.py
-        --username ${SF_USERNAME}
-        --password ${SF_PASSWORD}
-        --token ${SF_SECURITY_TOKEN}
     environment:
       SF_USERNAME: ${SF_USERNAME:-}
       SF_PASSWORD: ${SF_PASSWORD:-}

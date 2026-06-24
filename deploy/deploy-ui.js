@@ -237,6 +237,117 @@ function saveConfig(cfg) {
 }
 
 // ---------------------------------------------------------------------------
+//  Security & I/O helpers
+// ---------------------------------------------------------------------------
+
+// Secret fields that must never be sent to the browser in cleartext. GET
+// /api/config masks these; the POST handlers restore them from the stored
+// config so a masked round-trip never wipes a real secret (see unredactSecrets).
+const SECRET_MASK = '__MCG_REDACTED__';
+const SECRET_KEY_RE = /^(apiKey|clientSecret|password|saslPassword|secretAccessKey|accessKeyId|teamsWebhookUrl)$/;
+
+function redactSecrets(value) {
+  if (Array.isArray(value)) return value.map(redactSecrets);
+  if (value && typeof value === 'object') {
+    const out = {};
+    for (const [k, v] of Object.entries(value)) {
+      if (typeof v === 'string' && v && SECRET_KEY_RE.test(k)) out[k] = SECRET_MASK;
+      else out[k] = redactSecrets(v);
+    }
+    return out;
+  }
+  return value;
+}
+
+// Replace SECRET_MASK sentinels in `incoming` with the real values from the
+// stored `existing` config. Non-masked values pass through, so a user can still
+// set a brand-new secret.
+function unredactSecrets(incoming, existing) {
+  if (Array.isArray(incoming)) {
+    return incoming.map((v, i) => unredactSecrets(v, Array.isArray(existing) ? existing[i] : undefined));
+  }
+  if (incoming && typeof incoming === 'object') {
+    const out = {};
+    const ex = (existing && typeof existing === 'object') ? existing : {};
+    for (const [k, v] of Object.entries(incoming)) {
+      if (v === SECRET_MASK) out[k] = (ex[k] != null ? ex[k] : '');
+      else out[k] = unredactSecrets(v, ex[k]);
+    }
+    return out;
+  }
+  if (incoming === SECRET_MASK) return (existing != null ? existing : '');
+  return incoming;
+}
+
+// Buffer a byte stream into complete lines — a single log line split across two
+// 'data' chunks is emitted once, not as two partial lines.
+function makeLineBuffer(onLine) {
+  let buf = '';
+  return {
+    push(chunk) {
+      buf += chunk.toString();
+      let nl;
+      while ((nl = buf.indexOf('\n')) >= 0) {
+        const line = buf.slice(0, nl).replace(/\r$/, '');
+        buf = buf.slice(nl + 1);
+        if (line.length) onLine(line);
+      }
+    },
+    flush() { const l = buf.replace(/\r$/, ''); buf = ''; if (l.length) onLine(l); },
+  };
+}
+
+// Classify a child-process log line by anchored tokens, so 'OK' doesn't match
+// inside other words (LOOKUP, BROKEN, TOKEN…).
+function classifyLevel(line) {
+  if (/\bERROR\b/.test(line)) return 'error';
+  if (/\bWARN(?:ING)?\b/.test(line)) return 'warn';
+  if (/\bOK\b/.test(line)) return 'success';
+  if (/====/.test(line)) return 'section';
+  return 'info';
+}
+
+// Terminate a child AND its descendants. SIGTERM to a shell:true child only
+// reaps the shell wrapper, orphaning the real docker/build process — so on
+// Windows use taskkill /T, and on POSIX signal the detached process group.
+function killProcessTree(child) {
+  if (!child || child.killed) return;
+  try {
+    if (process.platform === 'win32') {
+      spawn('taskkill', ['/pid', String(child.pid), '/T', '/F'], { stdio: 'ignore' });
+    } else {
+      try { process.kill(-child.pid, 'SIGTERM'); }
+      catch (_) { child.kill('SIGTERM'); }
+    }
+  } catch (_) { /* best effort */ }
+}
+
+// Validate an operator-supplied RPM download URL before handing it to curl, to
+// block SSRF (cloud-metadata / internal hosts) and non-HTTP schemes.
+function validateRpmUrl(raw) {
+  let u;
+  try { u = new URL(raw); } catch (_) { return { ok: false, error: 'Not a valid URL.' }; }
+  if (u.protocol !== 'http:' && u.protocol !== 'https:') {
+    return { ok: false, error: 'Only http(s) URLs are allowed.' };
+  }
+  const host = u.hostname.replace(/^\[|\]$/g, '').toLowerCase();
+  if (host === 'localhost') return { ok: false, error: 'Loopback host is not allowed.' };
+  if (host.includes(':')) { // IPv6 literal — reject loopback/link-local/unique-local
+    if (host === '::1' || host.startsWith('fe80') || host.startsWith('fc') || host.startsWith('fd') || host.startsWith('::ffff:')) {
+      return { ok: false, error: 'Private/loopback IPv6 hosts are not allowed.' };
+    }
+  }
+  const m = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (m) {
+    const a = parseInt(m[1], 10), b = parseInt(m[2], 10);
+    if (a === 127 || a === 10 || a === 0 || (a === 192 && b === 168) || (a === 172 && b >= 16 && b <= 31) || (a === 169 && b === 254)) {
+      return { ok: false, error: 'Private/loopback IPs are not allowed.' };
+    }
+  }
+  return { ok: true };
+}
+
+// ---------------------------------------------------------------------------
 //  App definitions helper
 // ---------------------------------------------------------------------------
 
@@ -280,8 +391,12 @@ function runBuildApps(res, options) {
     Connection: 'keep-alive',
   });
 
+  let clientOpen = true;
   const send = (type, data) => {
-    res.write(`event: ${type}\ndata: ${JSON.stringify(data)}\n\n`);
+    if (!clientOpen) return;
+    try {
+      res.write(`event: ${type}\ndata: ${JSON.stringify(data)}\n\n`);
+    } catch (_) { clientOpen = false; }
   };
 
   const args = [path.join(SCRIPT_DIR, 'build-apps.js')];
@@ -311,26 +426,13 @@ function runBuildApps(res, options) {
 
   activeBuildProcess = child;
 
-  child.stdout.on('data', (chunk) => {
-    const lines = chunk.toString().split('\n').filter(Boolean);
-    for (const line of lines) {
-      let level = 'info';
-      if (line.includes('ERROR')) level = 'error';
-      else if (line.includes('WARN')) level = 'warn';
-      else if (line.includes('OK')) level = 'success';
-      else if (line.includes('====')) level = 'section';
-      send('log', { level, text: line });
-    }
-  });
-
-  child.stderr.on('data', (chunk) => {
-    const lines = chunk.toString().split('\n').filter(Boolean);
-    for (const line of lines) {
-      send('log', { level: 'error', text: line });
-    }
-  });
+  const stdoutBuf = makeLineBuffer((line) => send('log', { level: classifyLevel(line), text: line }));
+  const stderrBuf = makeLineBuffer((line) => send('log', { level: 'error', text: line }));
+  child.stdout.on('data', (chunk) => stdoutBuf.push(chunk));
+  child.stderr.on('data', (chunk) => stderrBuf.push(chunk));
 
   child.on('close', (code) => {
+    stdoutBuf.flush(); stderrBuf.flush();
     activeBuildProcess = null;
     if (tempConfig && fs.existsSync(tempConfig)) {
       try { fs.unlinkSync(tempConfig); } catch (_) {}
@@ -351,6 +453,7 @@ function runBuildApps(res, options) {
   });
 
   res.on('close', () => {
+    clientOpen = false;
     if (activeBuildProcess === child) {
       child.kill('SIGTERM');
       activeBuildProcess = null;
@@ -403,8 +506,12 @@ function runBuildAutomations(res, options) {
     Connection: 'keep-alive',
   });
 
+  let clientOpen = true;
   const send = (type, data) => {
-    res.write(`event: ${type}\ndata: ${JSON.stringify(data)}\n\n`);
+    if (!clientOpen) return;
+    try {
+      res.write(`event: ${type}\ndata: ${JSON.stringify(data)}\n\n`);
+    } catch (_) { clientOpen = false; }
   };
 
   const args = [path.join(SCRIPT_DIR, 'build-automations.js')];
@@ -433,26 +540,13 @@ function runBuildAutomations(res, options) {
 
   activeBuildAutoProcess = child;
 
-  child.stdout.on('data', (chunk) => {
-    const lines = chunk.toString().split('\n').filter(Boolean);
-    for (const line of lines) {
-      let level = 'info';
-      if (line.includes('ERROR')) level = 'error';
-      else if (line.includes('WARN')) level = 'warn';
-      else if (line.includes('OK')) level = 'success';
-      else if (line.includes('====')) level = 'section';
-      send('log', { level, text: line });
-    }
-  });
-
-  child.stderr.on('data', (chunk) => {
-    const lines = chunk.toString().split('\n').filter(Boolean);
-    for (const line of lines) {
-      send('log', { level: 'error', text: line });
-    }
-  });
+  const stdoutBuf = makeLineBuffer((line) => send('log', { level: classifyLevel(line), text: line }));
+  const stderrBuf = makeLineBuffer((line) => send('log', { level: 'error', text: line }));
+  child.stdout.on('data', (chunk) => stdoutBuf.push(chunk));
+  child.stderr.on('data', (chunk) => stderrBuf.push(chunk));
 
   child.on('close', (code) => {
+    stdoutBuf.flush(); stderrBuf.flush();
     activeBuildAutoProcess = null;
     if (tempConfig && fs.existsSync(tempConfig)) {
       try { fs.unlinkSync(tempConfig); } catch (_) {}
@@ -473,6 +567,7 @@ function runBuildAutomations(res, options) {
   });
 
   res.on('close', () => {
+    clientOpen = false;
     if (activeBuildAutoProcess === child) {
       child.kill('SIGTERM');
       activeBuildAutoProcess = null;
@@ -604,9 +699,11 @@ async function dockerSanityCheck(composeFile) {
     const child = spawn('docker', ['compose', '-f', composeFile, 'ps', '--format', 'json'], {
       cwd: INFRA_DIR, env: { ...process.env }, stdio: ['ignore', 'pipe', 'pipe'], shell: true,
     });
+    activeDockerProcess = child;
     child.stdout.on('data', (d) => { out += d.toString(); });
     child.stderr.on('data', (d) => { errOut += d.toString(); });
     child.on('close', () => {
+      activeDockerProcess = null;
       let rows = [];
       const trimmed = out.trim();
       // Newer docker emits one JSON object per line; some versions emit a JSON array.
@@ -643,7 +740,7 @@ async function dockerSanityCheck(composeFile) {
         + (ok ? ' Stack looks healthy.' : ' Some services may still be starting — re-run Status in a moment.'));
       resolve();
     });
-    child.on('error', (e) => { pushDockerLog('error', 'Sanity check could not run: ' + e.message); resolve(); });
+    child.on('error', (e) => { activeDockerProcess = null; pushDockerLog('error', 'Sanity check could not run: ' + e.message); resolve(); });
   });
 }
 
@@ -659,10 +756,11 @@ async function dockerGatewayRegistrationToken(containerName) {
   const tryGet = () => new Promise((resolve) => {
     let out = '';
     const child = spawn(cmdStr, { env: { ...process.env }, stdio: ['ignore', 'pipe', 'pipe'], shell: true });
+    activeDockerProcess = child;
     child.stdout.on('data', (d) => { out += d.toString(); });
     child.stderr.on('data', (d) => { out += d.toString(); });
-    child.on('close', () => resolve(out));
-    child.on('error', (e) => resolve('ERR ' + e.message));
+    child.on('close', () => { activeDockerProcess = null; resolve(out); });
+    child.on('error', (e) => { activeDockerProcess = null; resolve('ERR ' + e.message); });
   });
   let token = '', noContainer = false;
   for (let i = 0; i < 6; i++) {
@@ -791,12 +889,22 @@ async function runDockerJob(options) {
         return;
       }
     } else if (options.rpmUrl) {
-      // Download URL — fetch via curl
+      // Download URL — fetch via curl. Validate first to block SSRF (cloud
+      // metadata / internal hosts) and non-HTTP schemes.
+      const v = validateRpmUrl(options.rpmUrl);
+      if (!v.ok) {
+        pushDockerLog('error', `Invalid RPM URL: ${v.error}`);
+        finishDockerJob(null, `Invalid RPM URL: ${v.error}`);
+        return;
+      }
       pushDockerLog('info', `Downloading RPM from: ${options.rpmUrl}`);
       if (!fs.existsSync(rpmDir)) fs.mkdirSync(rpmDir, { recursive: true });
+      // Download to a temp file and promote to gateway.rpm only on success, so an
+      // aborted/partial transfer never leaves a corrupt RPM a later build trusts.
+      const rpmPart = rpmDest + '.part';
       try {
         await new Promise((resolve, reject) => {
-          const dl = spawn('curl', ['-L', '-f', '-o', rpmDest, '--progress-bar', options.rpmUrl], {
+          const dl = spawn('curl', ['-L', '--max-redirs', '3', '--proto', '=http,https', '-f', '-o', rpmPart, '--progress-bar', options.rpmUrl], {
             cwd: INFRA_DIR, stdio: ['ignore', 'pipe', 'pipe'],
           });
           activeDockerProcess = dl;
@@ -813,8 +921,10 @@ async function runDockerJob(options) {
           });
           dl.on('error', (e) => { activeDockerProcess = null; reject(e); });
         });
+        fs.renameSync(rpmPart, rpmDest);
         pushDockerLog('info', `RPM downloaded to build context: ${rpmDest}`);
       } catch (err) {
+        try { if (fs.existsSync(rpmPart)) fs.unlinkSync(rpmPart); } catch (_) {}
         pushDockerLog('error', `RPM download failed: ${err.message}`);
         finishDockerJob(null, `RPM download failed: ${err.message}`);
         return;
@@ -858,6 +968,7 @@ async function runDockerJob(options) {
           const child = spawn(step.cmd, step.args, {
             cwd: INFRA_DIR, env: { ...process.env },
             stdio: ['ignore', 'pipe', 'pipe'], shell: true,
+            detached: process.platform !== 'win32', // own process group so Stop can kill the tree
           });
           activeDockerProcess = child;
           child.stdout.on('data', (chunk) => {
@@ -945,6 +1056,7 @@ async function runDockerJob(options) {
       env: { ...process.env },
       stdio: ['ignore', 'pipe', 'pipe'],
       shell: true,
+      detached: process.platform !== 'win32', // own process group so Stop can kill the tree
     });
 
     activeDockerProcess = child;
@@ -1055,26 +1167,13 @@ function runDeploy(res, options) {
     try { res.write(':heartbeat\n\n'); } catch (_) { clientOpen = false; }
   }, 10000);
 
-  child.stdout.on('data', (chunk) => {
-    const lines = chunk.toString().split('\n').filter(Boolean);
-    for (const line of lines) {
-      let level = 'info';
-      if (line.includes('ERROR')) level = 'error';
-      else if (line.includes('WARN')) level = 'warn';
-      else if (line.includes('OK')) level = 'success';
-      else if (line.includes('====')) level = 'section';
-      send('log', { level, text: line });
-    }
-  });
-
-  child.stderr.on('data', (chunk) => {
-    const lines = chunk.toString().split('\n').filter(Boolean);
-    for (const line of lines) {
-      send('log', { level: 'error', text: line });
-    }
-  });
+  const stdoutBuf = makeLineBuffer((line) => send('log', { level: classifyLevel(line), text: line }));
+  const stderrBuf = makeLineBuffer((line) => send('log', { level: 'error', text: line }));
+  child.stdout.on('data', (chunk) => stdoutBuf.push(chunk));
+  child.stderr.on('data', (chunk) => stderrBuf.push(chunk));
 
   child.on('close', (code) => {
+    stdoutBuf.flush(); stderrBuf.flush();
     clearInterval(heartbeat);
     activeProcess = null;
     if (tempConfig && fs.existsSync(tempConfig)) {
@@ -4481,6 +4580,18 @@ let pendingBuildAutoConfig = null;
 const server = http.createServer((req, res) => {
   const parsed = new URL(req.url, `http://localhost:${port}`);
 
+  // CSRF / cross-origin defense: modern browsers stamp Sec-Fetch-Site on every
+  // request (including <img>/<script> and fetch) and JS cannot forge it. Reject
+  // any cross-site/same-site request to an API route so a malicious page the
+  // operator visits cannot read config or trigger deploys. Same-origin requests
+  // (our own UI) send 'same-origin'/'none' and pass through untouched.
+  const sfs = req.headers['sec-fetch-site'];
+  if ((sfs === 'cross-site' || sfs === 'same-site') && parsed.pathname.startsWith('/api/')) {
+    res.writeHead(403, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Cross-site request blocked.' }));
+    return;
+  }
+
   if (req.method === 'GET' && parsed.pathname === '/') {
     res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
     res.end(getHTML());
@@ -4495,7 +4606,9 @@ const server = http.createServer((req, res) => {
 
   if (req.method === 'GET' && parsed.pathname === '/api/config') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify(loadConfig() || { error: 'config.json not found' }));
+    // Mask secrets so the browser never receives the live tenant key / OAuth
+    // secret / webhook URL in cleartext.
+    res.end(JSON.stringify(redactSecrets(loadConfig() || { error: 'config.json not found' })));
     return;
   }
 
@@ -4504,7 +4617,9 @@ const server = http.createServer((req, res) => {
     req.on('data', chunk => body += chunk);
     req.on('end', () => {
       try {
-        const cfg = JSON.parse(body);
+        // Restore any masked secrets from the stored config before saving, so an
+        // untouched (masked) field is never persisted over a real secret.
+        const cfg = unredactSecrets(JSON.parse(body), loadConfig() || {});
         saveConfig(cfg);
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ ok: true }));
@@ -4523,6 +4638,11 @@ const server = http.createServer((req, res) => {
     req.on('end', async () => {
       try {
         const params = JSON.parse(body);
+        // Restore masked secrets from the stored config (the form may submit the
+        // redacted sentinel if the user did not retype the key).
+        const stored = loadConfig() || {};
+        if (params.apiKey === SECRET_MASK) params.apiKey = (stored.auth && stored.auth.apiKey) || '';
+        if (params.clientSecret === SECRET_MASK) params.clientSecret = (stored.auth && stored.auth.oauth && stored.auth.oauth.clientSecret) || '';
         const baseUrl = 'https://' + params.host + '.' + params.region;
         let headers = {};
 
@@ -4590,7 +4710,8 @@ const server = http.createServer((req, res) => {
     const dryRun  = parsed.searchParams.get('dryRun') === '1';
     const verbose = parsed.searchParams.get('verbose') === '1';
 
-    const cfg = pendingDeployConfig || loadConfig();
+    const existing = loadConfig();
+    const cfg = pendingDeployConfig ? unredactSecrets(pendingDeployConfig, existing || {}) : existing;
     pendingDeployConfig = null;
 
     if (!cfg || cfg.error) {
@@ -4634,7 +4755,8 @@ const server = http.createServer((req, res) => {
     const dryRun  = parsed.searchParams.get('dryRun') === '1';
     const verbose = parsed.searchParams.get('verbose') === '1';
 
-    const cfg = pendingBuildConfig || loadConfig();
+    const existing = loadConfig();
+    const cfg = pendingBuildConfig ? unredactSecrets(pendingBuildConfig, existing || {}) : existing;
     pendingBuildConfig = null;
 
     runBuildApps(res, { dryRun, verbose, config: cfg });
@@ -4679,7 +4801,8 @@ const server = http.createServer((req, res) => {
     const dryRun  = parsed.searchParams.get('dryRun') === '1';
     const verbose = parsed.searchParams.get('verbose') === '1';
 
-    const cfg = pendingBuildAutoConfig || loadConfig();
+    const existing = loadConfig();
+    const cfg = pendingBuildAutoConfig ? unredactSecrets(pendingBuildAutoConfig, existing || {}) : existing;
     pendingBuildAutoConfig = null;
 
     runBuildAutomations(res, { dryRun, verbose, config: cfg });
@@ -4763,7 +4886,7 @@ const server = http.createServer((req, res) => {
 
   if (req.method === 'POST' && parsed.pathname === '/api/docker/stop') {
     if (activeDockerProcess) {
-      activeDockerProcess.kill('SIGTERM');
+      killProcessTree(activeDockerProcess);
       activeDockerProcess = null;
     }
     if (dockerJob && dockerJob.running) {
@@ -4789,8 +4912,13 @@ const server = http.createServer((req, res) => {
   res.end('Not found');
 });
 
-server.listen(port, () => {
+// Bind to loopback only by default — this console serves the live tenant API
+// key and can trigger real deploys, so it must not be reachable from the LAN.
+// Set MCG_UI_HOST=0.0.0.0 to deliberately expose it on the network.
+const HOST = process.env.MCG_UI_HOST || '127.0.0.1';
+server.listen(port, HOST, () => {
   console.log(`\n  MCG Deploy UI running at:\n`);
   console.log(`    http://localhost:${port}\n`);
+  console.log(`  Bound to ${HOST} (loopback). Set MCG_UI_HOST=0.0.0.0 to expose on your network.\n`);
   console.log(`  Press Ctrl+C to stop.\n`);
 });

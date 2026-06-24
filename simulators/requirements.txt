@@ -1,4 +1,4 @@
-psycopg2-binary>=2.9.9
-confluent-kafka>=2.3.0
-simple-salesforce>=1.12.5
-faker>=22.0.0
+psycopg2-binary>=2.9.9,<3
+confluent-kafka>=2.3.0,<3
+simple-salesforce>=1.12.5,<2
+faker>=22.0.0,<25

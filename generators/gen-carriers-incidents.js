@@ -380,4 +380,4 @@ async function main() {
   console.log("✅ 2 incident reports generated.");
 }
 
-main().catch(console.error);
+main().catch((err) => { console.error(err); process.exit(1); });

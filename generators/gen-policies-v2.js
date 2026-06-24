@@ -381,4 +381,4 @@ async function main() {
   console.log("✅ 4 enriched policies generated.");
 }
 
-main().catch(console.error);
+main().catch((err) => { console.error(err); process.exit(1); });

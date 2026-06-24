@@ -14,7 +14,7 @@ A complete, deployable demo environment showcasing the full Qlik platform — fr
 | **Governance** | Business glossary (25 terms), 2 Gold-layer data products, data lineage |
 | **Data Pipelines** | Declarative QTCP pipeline (YAML) — bronze/silver/gold tasks imported via the DI Projects API |
 | **Automations** | Teams alerting for cold-chain breaches and pipeline health |
-| **Content Generation** | 21 Node.js generators for documents, presentations, SOPs, and glossaries |
+| **Content Generation** | 18 Node.js generators for documents, presentations, SOPs, and glossaries |
 | **Demo Scripts** | 13 guided walkthrough scripts covering every platform capability |
 
 ## Quick Start
@@ -22,7 +22,7 @@ A complete, deployable demo environment showcasing the full Qlik platform — fr
 ```bash
 # 1. Clone the repo (with DMG gateway submodule)
 git clone --recurse-submodules <repo-url>
-cd "End-To-End Demo"
+cd "MCG Full Stack"
 
 # 2. Install Node.js dependencies (for generators and deploy UI)
 npm install
@@ -47,9 +47,9 @@ npm run deploy
 ## Project Structure
 
 ```
-End-To-End Demo/
+MCG Full Stack/
 ├── deploy/                     # Qlik Cloud deployment
-│   ├── deploy-to-qlik.js       # Node.js deployer (1,586 lines)
+│   ├── deploy-to-qlik.js       # Node.js deployer
 │   ├── deploy-ui.js            # Web UI for deployment (port 3939)
 │   ├── config.example.json     # Configuration template
 │   ├── apps/                   # .qvf app files + HTML mockups
@@ -77,7 +77,7 @@ End-To-End Demo/
 │   ├── gen-demo-overview.js    # Demo overview presentation
 │   ├── gen-glossary-excel.js   # Business glossary Excel
 │   ├── generate-all.js         # Run all generators in order
-│   └── ...                     # 15 more specialized generators
+│   └── ...                     # 12 more specialized generators
 │
 ├── simulators/                 # Python data simulators
 │   ├── postgres_simulator.py   # WMS inventory events
@@ -122,7 +122,7 @@ Starts: Kafka broker, ZooKeeper, Schema Registry, Control Center, PostgreSQL, PG
 ```bash
 npm run docker:up:dmg
 ```
-Adds: Qlik Data Movement Gateway container with PostgreSQL 15, MySQL 8.0, and SQL Server 2022.
+Adds: Qlik Data Movement Gateway container with PostgreSQL 15, MySQL 8.0, and SQL Server 2022. (Note: the standalone simulator stack above runs Postgres 16 on the `postgres:16-alpine` image, whereas this DMG co-located container ships Postgres 15.)
 
 **Prerequisites for DMG:**
 1. `git submodule update --init`
@@ -168,13 +168,13 @@ See [`deploy/README.md`](deploy/README.md) for detailed deployment documentation
 
 Meridian Commerce Group is a fictional European logistics company operating 12 warehouses across 6 countries. The demo is structured around **seven data quality "nightmares"** that showcase Qlik's platform capabilities:
 
-1. **Phantom Inventory** — Stock records don't match physical counts
-2. **Cold Chain Blind Spots** — Temperature gaps in perishable logistics
-3. **Address Chaos** — 12% delivery failure rate from bad addresses
-4. **WISMO Overload** — "Where Is My Order?" calls overwhelming support
-5. **Recall Roulette** — Inability to trace contaminated produce upstream
-6. **Compliance Cliff** — Regulatory deadlines with incomplete audit trails
-7. **Cost Black Holes** — Hidden operational costs across the supply chain
+1. **The Phantom Inventory Problem** — A silent batch-job failure leaves SAP, WMS, and physical counts disagreeing for weeks
+2. **The Address Catastrophe** — Inconsistent, truncated, and duplicate addresses across 5+ systems drive carrier rejections
+3. **The Product Master Data Mess** — Three SKU schemes, mismatched category hierarchies, missing weights, and duplicate suppliers
+4. **The Silent Pipeline Failures** — Integrations fail without alerts, going undetected for days on stale or partial data
+5. **The Timestamp Tower of Babel** — 14 time zones and inconsistent timestamp conventions corrupt cross-system metrics
+6. **The Carrier Data Black Hole** — 42 carriers with no standard status codes and only 58% real-time tracking visibility
+7. **The Compliance Traceability Gap** — Broken farm-to-shelf lineage and unknown sub-tier suppliers stall food recalls
 
 ## License
 

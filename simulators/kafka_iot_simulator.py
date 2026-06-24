@@ -202,13 +202,20 @@ class ActiveShipment:
         self._suffix = random.randint(1000, 9999)
         self.shipment_id = f"SHP-{route['id']}-{date_str}-{self._suffix}"
 
-    def advance(self, elapsed_seconds, speed):
-        """Advance the shipment along its route."""
-        hours_elapsed = (elapsed_seconds * speed) / 3600.0
+    def advance(self, elapsed_seconds, speed=1.0):
+        """Advance the shipment along its route.
+
+        `elapsed_seconds` is the simulated transit time one tick represents. The
+        run loop already fires faster (interval / speed) to honor --speed, so we
+        must NOT multiply by speed again here — doing so compounded to ~speed**2,
+        making shipments complete almost instantly and batteries hit 0 at high
+        --speed.
+        """
+        hours_elapsed = elapsed_seconds / 3600.0
         self.progress = min(1.0, self.progress + hours_elapsed / self.duration_hours)
-        # Drain batteries
+        # Drain batteries (per tick — proportional to simulated time elapsed)
         for sid in self.sensor_ids:
-            drain = random.uniform(0.01, 0.05) * speed
+            drain = random.uniform(0.01, 0.05)
             self.battery_pcts[sid] = max(0, self.battery_pcts[sid] - drain)
         # Occasional door open events
         if random.random() < 0.02:
@@ -232,10 +239,11 @@ class ActiveShipment:
 # Cold-chain message generation
 # ---------------------------------------------------------------------------
 
-def generate_cold_chain_reading(shipment, sensor_id):
+def generate_cold_chain_reading(shipment, sensor_id, speed=1.0):
     """
     Generate a single IoT sensor reading for a cold-chain shipment.
-    Includes intentional data quality issues.
+    Includes intentional data quality issues. `speed` scales the Lagos
+    connectivity-blackout duration so it recovers within a sped-up demo.
     """
     route = shipment.route
     now = datetime.now(timezone.utc)
@@ -309,7 +317,9 @@ def generate_cold_chain_reading(shipment, sensor_id):
     if route["id"] == "LOS-ABJ-001" and random.random() < 0.02:
         if not shipment.lagos_blackout:
             shipment.lagos_blackout = True
-            shipment.lagos_blackout_until = now + timedelta(hours=6)
+            # Scale the 6-hour outage by --speed so the recovery actually occurs
+            # within a sped-up demo (6 real hours would outlast any session).
+            shipment.lagos_blackout_until = now + timedelta(hours=6) / max(speed, 1.0)
     if shipment.lagos_blackout:
         if now < (shipment.lagos_blackout_until or now):
             return None  # Drop the reading (connectivity blackout)
@@ -574,7 +584,7 @@ def main():
                     continue
                 shipment.advance(args.cold_chain_interval, args.speed)
                 for sensor_id in shipment.sensor_ids:
-                    reading = generate_cold_chain_reading(shipment, sensor_id)
+                    reading = generate_cold_chain_reading(shipment, sensor_id, args.speed)
                     if reading is None:
                         stats["cold_chain_dropped"] += 1
                         continue
@@ -705,6 +715,10 @@ def main():
 
     except KeyboardInterrupt:
         print("\n\n  Flushing remaining Kafka messages...")
+        producer.flush(timeout=10)
+    finally:
+        # Guarantee buffered messages flush on ANY exit path — including an
+        # unexpected exception in the produce loop, not just Ctrl+C.
         producer.flush(timeout=10)
 
     # --- Final summary ---

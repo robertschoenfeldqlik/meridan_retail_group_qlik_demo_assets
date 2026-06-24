@@ -10,6 +10,7 @@
 
 const ExcelJS = require("exceljs");
 const path = require("path");
+const fs = require("fs");
 
 // ─── Qlik brand colors ───
 const COLORS = {
@@ -517,6 +518,7 @@ async function generate() {
   // Save
   // ═══════════════════════════════════════════════════
   const outPath = path.join(__dirname, "..", "documents", "MCG_Business_Glossary.xlsx");
+  fs.mkdirSync(path.dirname(outPath), { recursive: true });
   await wb.xlsx.writeFile(outPath);
   console.log(`✅ Glossary Excel saved: ${outPath}`);
   console.log(`   Sheet 1: Glossary Terms (${terms.length} terms, 10 columns)`);

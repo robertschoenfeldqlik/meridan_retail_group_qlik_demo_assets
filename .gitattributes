@@ -1,0 +1,5 @@
+# Keep shell/service/Dockerfile and Qlik script sources LF on Windows checkouts
+*.sh text eol=lf
+*.service text eol=lf
+Dockerfile text eol=lf
+*.qvs text eol=lf

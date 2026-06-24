@@ -759,7 +759,7 @@ class QlikAppBuilder {
     this.results.steps.push({ step, status, detail, timestamp: new Date().toISOString() });
     if (status === 'OK')   this.results.created++;
     if (status === 'FAIL') this.results.failed++;
-    if (status === 'SKIP') this.results.skipped++;
+    if (status === 'SKIP' || status === 'WARN') this.results.skipped++;
   }
 
   // ---- Space lookup ------------------------------------------------------
@@ -793,16 +793,17 @@ class QlikAppBuilder {
    * Create a new empty app via POST /api/v1/apps.
    */
   async createApp(name, spaceId, description) {
+    if (this.dryRun) {
+      // Dry run must not hit the API — skip the existence lookup too.
+      this.log.info(`DRY RUN: Would create app "${name}" in space ${spaceId || 'personal'}`);
+      return { id: 'dry-run-app-id', name };
+    }
+
     const existing = await this.findAppByName(name, spaceId);
     if (existing) {
       const appId = existing.resourceId || existing.id;
       this.log.success(`App already exists: "${name}" (${appId}) -- will update in place.`);
       return { id: appId, name, alreadyExisted: true };
-    }
-
-    if (this.dryRun) {
-      this.log.info(`DRY RUN: Would create app "${name}" in space ${spaceId || 'personal'}`);
-      return { id: 'dry-run-app-id', name };
     }
 
     const payload = {
@@ -930,7 +931,7 @@ class QlikAppBuilder {
   //    - Creating sheets and child visualization objects
   //    - Setting app properties (theme)
   //
-  //  Protocol: JSON-RPC 1.0 with handle-based object addressing.
+  //  Protocol: JSON-RPC 2.0 with handle-based object addressing.
   //    Handle -1 = Global
   //    Handle  1 = Doc (after OpenDoc)
   //
@@ -965,6 +966,11 @@ class QlikAppBuilder {
       let msgId = 0;
       const pending = new Map();
 
+      const failPending = (err) => {
+        for (const { reject: rej } of pending.values()) rej(err);
+        pending.clear();
+      };
+
       ws.on('message', (data) => {
         try {
           const msg = JSON.parse(data.toString());
@@ -976,16 +982,23 @@ class QlikAppBuilder {
             } else {
               res(msg.result || msg);
             }
+          } else if (msg.error) {
+            // Server-initiated error with no/unknown id — log rather than drop.
+            this.log.debug(`Engine WS unmatched error: ${JSON.stringify(msg.error)}`);
           }
         } catch (e) {
           this.log.debug(`Engine WS parse error: ${e.message}`);
         }
       });
 
+      // A socket error/close mid-build must reject every in-flight call so the
+      // build fails fast instead of hanging until each 30s RPC timeout fires.
       ws.on('error', (err) => {
         this.log.error(`Engine WebSocket error: ${err.message}`);
+        failPending(err);
         reject(err);
       });
+      ws.on('close', () => failPending(new Error('Engine WebSocket closed before all calls completed')));
 
       ws.on('open', () => {
         this.log.debug('Engine WebSocket connected.');
@@ -1339,7 +1352,10 @@ class QlikAppBuilder {
 
         // Open the doc (handle = -1 for Global, OpenDoc returns doc handle)
         const openResult = await engineSession.send(-1, 'OpenDoc', [appId]);
-        const docHandle = openResult && openResult.qReturn ? openResult.qReturn.qHandle : 1;
+        if (!openResult || !openResult.qReturn || typeof openResult.qReturn.qHandle !== 'number') {
+          throw new Error(`OpenDoc returned an unexpected response for app ${appId}: ${JSON.stringify(openResult)}`);
+        }
+        const docHandle = openResult.qReturn.qHandle;
         this.log.debug(`Doc handle: ${docHandle}`);
 
         if (this.sheetsViaMcp) {
@@ -1353,6 +1369,11 @@ class QlikAppBuilder {
           this._record('Sheets', 'SKIP', 'authored via Qlik MCP prompting');
         } else {
           // --- Create master dimensions (legacy builder path) ---
+          // NOTE: this path is NOT idempotent — the Engine does not reject
+          // duplicate master items by name, so re-running --build-sheets adds a
+          // second copy of every dimension/measure/sheet. Prefer the default MCP
+          // path (sheetsViaMcp), or delete the app before rebuilding.
+          this.log.warn('Legacy sheet builder is not idempotent — re-running --build-sheets duplicates master items/sheets. Delete the app first to rebuild cleanly.');
           stepNum++;
           this.log.step(stepNum, totalSteps, `Creating ${appDef.dimensions.length} master dimensions`);
           let dimOk = 0, dimFail = 0;
@@ -1451,7 +1472,7 @@ class QlikAppBuilder {
         this._record('Reload', 'OK', appDef.name);
       } catch (err) {
         this.log.warn(`Reload failed (data connections may not be configured yet): ${err.message}`);
-        this._record('Reload', 'SKIP', err.message);
+        this._record('Reload', 'WARN', err.message);
       }
     } else {
       this.log.info('Skipping reload (--skip-reload).');
@@ -1491,6 +1512,7 @@ class QlikAppBuilder {
     for (const s of this.results.steps) {
       const icon = s.status === 'OK' ? '\x1b[32mOK\x1b[0m  '
         : s.status === 'SKIP' ? '\x1b[33mSKIP\x1b[0m'
+        : s.status === 'WARN' ? '\x1b[33mWARN\x1b[0m'
         : '\x1b[31mFAIL\x1b[0m';
       console.log(`${s.step.padEnd(maxStep + 2)}${icon}       ${s.detail}`);
     }

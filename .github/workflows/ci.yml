@@ -93,6 +93,28 @@ jobs:
           fi
           echo "OK: deploy/config.json is not tracked."
 
+      - name: Scan tracked files for secret patterns
+        run: |
+          echo "Scanning tracked files for high-signal secret patterns..."
+          # Files that legitimately contain truncated example JWTs / placeholders.
+          ALLOWLIST="README.md deploy/setup_guide.md generators/gen-setup-guide.js deploy/creation_guide.md deploy/demo_checklist.md"
+          # Build the list of tracked files to scan, excluding the allowlist.
+          # Keep only regular files (drops submodule/gitlink dir entries).
+          FILES=$(git ls-files | grep -vxF -f <(printf '%s\n' $ALLOWLIST) | while IFS= read -r f; do [ -f "$f" ] && printf '%s\n' "$f"; done || true)
+          if [ -z "$FILES" ]; then
+            echo "No files to scan."
+            exit 0
+          fi
+          # High-signal secret patterns: AWS keys, Slack tokens, OpenAI keys,
+          # private key headers, and full Qlik/JWT tokens (header.payload.).
+          PATTERN='AKIA[0-9A-Z]{16}|xox[baprs]-[0-9A-Za-z-]{10,}|sk-[A-Za-z0-9]{20,}|-----BEGIN [A-Z ]*PRIVATE KEY-----|eyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.'
+          # -E extended regex, -n line numbers, -I skip binary files.
+          if echo "$FILES" | xargs -d '\n' grep -EnI "$PATTERN" ; then
+            echo "ERROR: Potential hardcoded secret found in tracked files (see file:line above)."
+            exit 1
+          fi
+          echo "OK: no secret patterns detected in tracked files."
+
   python-validate:
     name: Validate Python Simulators
     runs-on: ubuntu-latest

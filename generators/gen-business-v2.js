@@ -618,4 +618,4 @@ async function main() {
   console.log("✅ 8 enriched business documents generated.");
 }
 
-main().catch(console.error);
+main().catch((err) => { console.error(err); process.exit(1); });

@@ -345,10 +345,21 @@ class QlikAutomationBuilder {
   // -------------------------------------------------------------------------
 
   async findAutomationByName(name) {
-    const res = await this._get('/api/v1/automations', { limit: '100' });
-    if (res.statusCode === 200) {
-      const items = res.body.data || res.body || [];
-      return items.find((a) => a.name === name) || null;
+    // Page through all automations — a single capped page could miss the target
+    // on a tenant with >100 automations and create a duplicate on re-run.
+    let url = null;
+    let first = true;
+    while (first || url) {
+      const res = first
+        ? await this._get('/api/v1/automations', { limit: '100' })
+        : await request('GET', url, { headers: this._authHeaders() });
+      first = false;
+      if (res.statusCode !== 200) return null;
+      const items = res.body.data || (Array.isArray(res.body) ? res.body : []);
+      const hit = items.find((a) => a.name === name);
+      if (hit) return hit;
+      const href = res.body.links && res.body.links.next && res.body.links.next.href;
+      url = href ? (href.startsWith('http') ? href : new URL(href, this.baseUrl).toString()) : null;
     }
     return null;
   }

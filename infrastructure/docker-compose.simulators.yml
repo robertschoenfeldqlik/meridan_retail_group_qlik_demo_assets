@@ -39,7 +39,9 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-mcg_wms}
       POSTGRES_USER: ${POSTGRES_USER:-mcg_admin}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mcg_demo_2025}
-      # Enable logical replication for Qlik CDC
+      # Enable data page checksums to detect on-disk corruption (set at initdb).
+      # Logical replication for Qlik CDC is enabled separately via
+      # wal_level=logical in the command: block below.
       POSTGRES_INITDB_ARGS: "--data-checksums"
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
@@ -129,6 +131,9 @@ services:
       context: ../simulators
       dockerfile: Dockerfile
     container_name: mcg-kafka-iot-simulator
+    depends_on:
+      kafka:
+        condition: service_healthy
     command: >
       python kafka_iot_simulator.py
         --bootstrap-servers ${KAFKA_BOOTSTRAP:-kafka:9092}
@@ -156,9 +161,6 @@ services:
     container_name: mcg-salesforce-simulator
     command: >
       python salesforce_simulator.py
-        --username ${SF_USERNAME}
-        --password ${SF_PASSWORD}
-        --token ${SF_SECURITY_TOKEN}
     environment:
       SF_USERNAME: ${SF_USERNAME:-}
       SF_PASSWORD: ${SF_PASSWORD:-}

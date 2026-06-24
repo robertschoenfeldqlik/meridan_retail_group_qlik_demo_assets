@@ -351,4 +351,4 @@ async function main() {
   console.log("✅ Batch complete (6 documents).");
 }
 
-main().catch(console.error);
+main().catch((err) => { console.error(err); process.exit(1); });
