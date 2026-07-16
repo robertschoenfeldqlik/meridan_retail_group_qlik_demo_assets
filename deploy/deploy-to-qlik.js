@@ -238,12 +238,26 @@ function requestOnce(method, reqUrl, { headers = {}, body = null, rawBody = null
 
 /**
  * HTTP request with retry on transient failures (429, 502, 503, 504).
+ * 502/504 (gateway errors) are only auto-retried for GET — retrying a
+ * POST/PUT/PATCH/DELETE behind a flaky gateway risks re-submitting a request
+ * that already succeeded server-side, creating a duplicate resource.
  */
 async function request(method, reqUrl, opts = {}, { maxRetries = 3, backoff = 2.0 } = {}) {
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       const res = await requestOnce(method, reqUrl, opts);
-      if ([429, 502, 503, 504].includes(res.statusCode) && attempt < maxRetries) {
+
+      // Dry runs authenticate with a placeholder OAuth token, so existence-check
+      // GETs made before a step's own dry-run short-circuit get a real 401 from
+      // the tenant. Treat that as "can't verify — assume not present" instead of
+      // letting it throw and cascade the whole dry run to failure.
+      if (opts.dryRun && res.statusCode === 401) {
+        console.warn(`  WARN  dry run: cannot verify existing state without valid OAuth token — assuming not present (${method} ${reqUrl})`);
+        return { statusCode: 200, headers: {}, body: {} };
+      }
+
+      const retryableStatuses = method === 'GET' ? [429, 502, 503, 504] : [429, 503];
+      if (retryableStatuses.includes(res.statusCode) && attempt < maxRetries) {
         const retryAfter = parseFloat(res.headers['retry-after']) || backoff * Math.pow(2, attempt);
         console.warn(`  WARN  HTTP ${res.statusCode} — retrying in ${retryAfter.toFixed(1)}s (attempt ${attempt + 1}/${maxRetries})`);
         await sleep(retryAfter * 1000);
@@ -369,31 +383,31 @@ class QlikClient {
     const qs = new URLSearchParams(query).toString();
     const fullUrl = `${this.baseUrl}${apiPath}${qs ? '?' + qs : ''}`;
     this.log.debug(`GET ${fullUrl}`);
-    return request('GET', fullUrl, { headers: this._authHeaders() });
+    return request('GET', fullUrl, { headers: this._authHeaders(), dryRun: this.dryRun });
   }
 
   async _post(apiPath, body, extraHeaders = {}) {
     const fullUrl = `${this.baseUrl}${apiPath}`;
     this.log.debug(`POST ${fullUrl}`);
-    return request('POST', fullUrl, { headers: this._authHeaders(extraHeaders), body });
+    return request('POST', fullUrl, { headers: this._authHeaders(extraHeaders), body, dryRun: this.dryRun });
   }
 
   async _postRaw(apiPath, rawBody, extraHeaders = {}) {
     const fullUrl = `${this.baseUrl}${apiPath}`;
     this.log.debug(`POST ${fullUrl} (raw, ${rawBody.length} bytes)`);
-    return request('POST', fullUrl, { headers: this._authHeaders(extraHeaders), rawBody });
+    return request('POST', fullUrl, { headers: this._authHeaders(extraHeaders), rawBody, dryRun: this.dryRun });
   }
 
   async _put(apiPath, body, extraHeaders = {}) {
     const fullUrl = `${this.baseUrl}${apiPath}`;
     this.log.debug(`PUT ${fullUrl}`);
-    return request('PUT', fullUrl, { headers: this._authHeaders(extraHeaders), body });
+    return request('PUT', fullUrl, { headers: this._authHeaders(extraHeaders), body, dryRun: this.dryRun });
   }
 
   async _patch(apiPath, body, extraHeaders = {}) {
     const fullUrl = `${this.baseUrl}${apiPath}`;
     this.log.debug(`PATCH ${fullUrl}`);
-    return request('PATCH', fullUrl, { headers: this._authHeaders(extraHeaders), body });
+    return request('PATCH', fullUrl, { headers: this._authHeaders(extraHeaders), body, dryRun: this.dryRun });
   }
 
   async _delete(apiPath) {
@@ -418,7 +432,7 @@ class QlikClient {
       const res = nextLink
         ? await (async () => {
             this.log.debug(`GET ${nextLink}`);
-            return request('GET', nextLink, { headers: this._authHeaders() });
+            return request('GET', nextLink, { headers: this._authHeaders(), dryRun: this.dryRun });
           })()
         : await this._get(apiPath, pageQuery);
 
@@ -1046,10 +1060,11 @@ class QlikClient {
     } catch (err) {
       this.log.debug(`Data governance API list failed: ${err.message}`);
     }
-    // Fallback: Items API
+    // Fallback: Items API — paginate via _getAll so tenants with >100 data
+    // products don't miss entries on later pages (which would leave stale
+    // products undeleted and risk creating duplicates on re-deploy).
     try {
-      const res = await this._get('/api/v1/items?resourceType=dataproduct&limit=100');
-      const items = (res.body && res.body.data) || [];
+      const items = await this._getAll('/api/v1/items', { resourceType: 'dataproduct' });
       return items.map(it => ({ id: it.resourceId || it.id, name: it.name }));
     } catch (err2) {
       this.log.debug(`Items API fallback failed: ${err2.message}`);
@@ -1941,12 +1956,32 @@ function printChecklist(report, enabled, log) {
     ['reloadtasks',  'Create Reload Tasks (scheduled app refreshes)'],
   ];
 
+  // Maps each component key to the actual substring(s) used in the
+  // report.record() step names for that component — the key itself often
+  // doesn't appear verbatim (e.g. "Connection: X" vs key "connections",
+  // "Automation: X" vs "automations", "Data Products" vs "dataproducts"),
+  // so a raw `s.includes(key)` check silently never matched.
+  const componentStepMatchers = {
+    spaces:       ['space (shared)', 'space (managed)', 'space (data)'],
+    connections:  ['connection:'],
+    theme:        ['theme upload'],
+    apps:         [], // apps are built/published by build-apps.js, not this script
+    knowledge:    ['knowledge base'],
+    assistant:    ['assistant'],
+    automations:  ['automation:'],
+    dataproducts: ['data products'],
+    glossary:     ['glossary'],
+    webhooks:     ['webhook'],
+    reloadtasks:  ['reload task'],
+  };
+
   let idx = 1;
 
   for (const [key, label] of components) {
     if (!enabled[key]) continue;
     const steps = manualSteps[key] || [];
-    const componentOk = [...okSteps].some((s) => s.includes(key));
+    const matchers = componentStepMatchers[key] || [];
+    const componentOk = [...okSteps].some((s) => matchers.some((m) => s.includes(m)));
     if (!steps.length || !componentOk) continue;
     console.log(`\n  ${label}:`);
     for (const step of steps) {
@@ -2034,6 +2069,10 @@ async function main() {
   // redeployed to any tenant.
   if (args.exportPipeline) {
     log.section('Export: Declarative Pipeline Projects');
+    if (dryRun) {
+      log.info('DRY RUN: would export pipeline project(s) to deploy/pipelines/');
+      process.exit(EXIT_SUCCESS);
+    }
     const pCfg = cfg.pipelines || {};
     const projectDefs = (Array.isArray(pCfg.projects) && pCfg.projects.length > 0)
       ? pCfg.projects
@@ -2572,68 +2611,6 @@ async function main() {
     report.record('Automations', 'SKIP', 'disabled');
   }
 
-  // ---- Create Data Products -----------------------------------------------
-  if (enabled.dataproducts !== false) {
-    log.section('Step 9: Create Data Products (Gold Layer)');
-
-    const dpFile = path.resolve(SCRIPT_DIR, (cfg.dataProducts && cfg.dataProducts.sourceFile) || './data_products.json');
-    if (fs.existsSync(dpFile)) {
-      try {
-        const dpData = JSON.parse(fs.readFileSync(dpFile, 'utf-8'));
-        const products = dpData.dataProducts || [];
-        log.info(`Found ${products.length} data product definition(s) in ${path.basename(dpFile)}`);
-        const spaceId = sharedSpace ? sharedSpace.id : undefined;
-
-        // Clean up stale data products not in current definitions
-        const desiredNames = products.map(p => p.name);
-        try {
-          const { deleted: staleDeleted } = await client.deleteAllDataProducts(desiredNames);
-          if (staleDeleted > 0) {
-            log.success(`Removed ${staleDeleted} stale data product(s) not in current definitions.`);
-          }
-        } catch (cleanupErr) {
-          log.warn(`Data product cleanup failed (non-fatal): ${cleanupErr.message}`);
-        }
-
-        let created = 0, skipped = 0, failedDp = 0;
-        for (const dpDef of products) {
-          try {
-            const result = await client.createDataProduct({
-              name: dpDef.name,
-              description: dpDef.description || '',
-              tags: dpDef.tags,
-              owner: dpDef.owner,
-              sla: dpDef.sla,
-              schema: dpDef.schema,
-              apiSharing: dpDef.apiSharing || false,
-              spaceId,
-            });
-            if (result.notAvailable || result.alreadyExists) skipped++;
-            else created++;
-          } catch (err) {
-            log.error(`Data product "${dpDef.name}": ${err.message}`);
-            failedDp++;
-            if (!continueOnError) throw err;
-          }
-        }
-        log.success(`Data products: ${created} created, ${skipped} skipped, ${failedDp} failed.`);
-        report.record('Data Products', failedDp === 0 ? 'OK' : 'FAIL',
-          `${created} created, ${skipped} skipped, ${failedDp} failed`);
-      } catch (err) {
-        log.error(`Data products step failed: ${err.message}`);
-        report.record('Data Products', 'FAIL', err.message);
-        if (!continueOnError) { report.print(log); process.exit(EXIT_FAILURE); }
-      }
-    } else {
-      log.warn(`${path.basename(dpFile)} not found — skipping data products.`);
-      report.record('Data Products', 'SKIP', 'No definitions file found');
-    }
-  } else {
-    log.section('Step 9: Create Data Products (Gold Layer)');
-    log.info('Skipped (disabled).');
-    report.record('Data Products', 'SKIP', 'disabled');
-  }
-
   // ---- Qlik Predict (ML) --------------------------------------------------
   // Creates the experiment (idempotent). Deployment + model activation run once a
   // trained model exists (set predict.modelId, or train the experiment on the gold
@@ -2641,7 +2618,7 @@ async function main() {
   // batch-prediction configuration are optional pass-through bodies (predict.*),
   // since they depend on the dataset/model being present.
   if (enabled.predict !== false) {
-    log.section('Step 9b: Qlik Predict (ML experiment, deployment & predictions)');
+    log.section('Step 9: Qlik Predict (ML experiment, deployment & predictions)');
     const pc = cfg.predict || {};
     const expName = pc.experimentName || 'MCG Predict';
     try {
@@ -2686,7 +2663,7 @@ async function main() {
       if (!continueOnError) { report.print(log); process.exit(EXIT_FAILURE); }
     }
   } else {
-    log.section('Step 9b: Qlik Predict');
+    log.section('Step 9: Qlik Predict');
     log.info('Skipped (disabled).');
     report.record('Qlik Predict', 'SKIP', 'disabled');
   }
@@ -2817,10 +2794,12 @@ async function main() {
           try {
             const res = await client._get(`/api/v1/items?${new URLSearchParams({ resourceType: 'app', name: task.appName, limit: '10' })}`);
             const items = (res.body && res.body.data) || [];
-            const match = items.find((it) => it.name === task.appName) || items[0];
+            const match = items.find((it) => it.name === task.appName);
             if (match) {
               task.appId = match.resourceId || match.id;
               log.info(`Resolved app "${task.appName}" → ${task.appId}`);
+            } else {
+              log.warn(`No exact name match for app "${task.appName}" (${items.length} candidate(s) found) — skipping reload task "${task.name}".`);
             }
           } catch (err) {
             log.debug(`App lookup failed for "${task.appName}": ${err.message}`);
@@ -2968,11 +2947,94 @@ async function main() {
         if (!continueOnError) { report.print(log); process.exit(EXIT_FAILURE); }
       }
     }
+  } else {
+    log.section('Step 13: Import Declarative Data Pipelines');
+    log.info('Skipped (disabled).');
+    report.record('Declarative Pipelines', 'SKIP', 'disabled');
+  }
 
-    // Attach gold datasets to their data products (and optionally publish).
-    // Runs once after all projects; dataset items exist in the catalog after
-    // prepare/run, so misses are soft — re-deploy after the first pipeline run.
-    if (pCfg.attachDatasets !== false) {
+  // ---- Create Data Products (Gold Layer) ----------------------------------
+  // Runs right after the pipelines import so the gold datasets these products
+  // describe already exist (or are being created) in the catalog. Kept as its
+  // own toggle (enabled.dataproducts) so it is independent of the pipeline step.
+  if (enabled.dataproducts !== false) {
+    log.section('Step 14: Create Data Products (Gold Layer)');
+
+    const dpFile = path.resolve(SCRIPT_DIR, (cfg.dataProducts && cfg.dataProducts.sourceFile) || './data_products.json');
+    if (fs.existsSync(dpFile)) {
+      try {
+        const dpData = JSON.parse(fs.readFileSync(dpFile, 'utf-8'));
+        const products = dpData.dataProducts || [];
+        log.info(`Found ${products.length} data product definition(s) in ${path.basename(dpFile)}`);
+        const spaceId = sharedSpace ? sharedSpace.id : undefined;
+
+        // Clean up stale data products not in current definitions
+        const desiredNames = products.map(p => p.name);
+        try {
+          const { deleted: staleDeleted } = await client.deleteAllDataProducts(desiredNames);
+          if (staleDeleted > 0) {
+            log.success(`Removed ${staleDeleted} stale data product(s) not in current definitions.`);
+          }
+        } catch (cleanupErr) {
+          log.warn(`Data product cleanup failed (non-fatal): ${cleanupErr.message}`);
+        }
+
+        let created = 0, skipped = 0, failedDp = 0;
+        for (const dpDef of products) {
+          try {
+            const result = await client.createDataProduct({
+              name: dpDef.name,
+              description: dpDef.description || '',
+              tags: dpDef.tags,
+              owner: dpDef.owner,
+              sla: dpDef.sla,
+              schema: dpDef.schema,
+              apiSharing: dpDef.apiSharing || false,
+              spaceId,
+            });
+            if (result.notAvailable || result.alreadyExists) skipped++;
+            else created++;
+          } catch (err) {
+            log.error(`Data product "${dpDef.name}": ${err.message}`);
+            failedDp++;
+            if (!continueOnError) throw err;
+          }
+        }
+        log.success(`Data products: ${created} created, ${skipped} skipped, ${failedDp} failed.`);
+        report.record('Data Products', failedDp === 0 ? 'OK' : 'FAIL',
+          `${created} created, ${skipped} skipped, ${failedDp} failed`);
+      } catch (err) {
+        log.error(`Data products step failed: ${err.message}`);
+        report.record('Data Products', 'FAIL', err.message);
+        if (!continueOnError) { report.print(log); process.exit(EXIT_FAILURE); }
+      }
+    } else {
+      log.warn(`${path.basename(dpFile)} not found — skipping data products.`);
+      report.record('Data Products', 'SKIP', 'No definitions file found');
+    }
+  } else {
+    log.section('Step 14: Create Data Products (Gold Layer)');
+    log.info('Skipped (disabled).');
+    report.record('Data Products', 'SKIP', 'disabled');
+  }
+
+  // ---- Attach Gold Datasets to Data Products ------------------------------
+  // Runs after the products exist and the pipeline has produced their gold
+  // datasets; dataset items appear in the catalog after prepare/run, so misses
+  // are soft — re-deploy after the first pipeline run to attach any stragglers.
+  {
+    const pCfg = cfg.pipelines || {};
+    if (enabled.pipelines !== false && pCfg.attachDatasets !== false) {
+      // Resolve the target space (shared space, with a lookup fallback).
+      let spaceId = sharedSpace ? sharedSpace.id : undefined;
+      if (!spaceId && !dryRun && cfg.spaces && cfg.spaces.shared) {
+        try {
+          const found = await client.findSpaceByName(cfg.spaces.shared);
+          if (found) spaceId = found.id;
+        } catch (err) {
+          log.debug(`Space lookup failed: ${err.message}`);
+        }
+      }
       if (dryRun) {
         log.info('DRY RUN: Would attach gold catalog datasets to their data products.');
         report.record('Dataset Attachment', 'OK', 'dry run');
@@ -3023,10 +3085,6 @@ async function main() {
         }
       }
     }
-  } else {
-    log.section('Step 13: Import Declarative Data Pipelines');
-    log.info('Skipped (disabled).');
-    report.record('Declarative Pipelines', 'SKIP', 'disabled');
   }
 
   // ---- Final Report -------------------------------------------------------

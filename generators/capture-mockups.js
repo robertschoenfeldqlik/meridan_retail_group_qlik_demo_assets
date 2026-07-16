@@ -41,30 +41,42 @@ const HTML_FILES = [
     args: ["--no-sandbox", "--disable-setuid-sandbox"],
   });
 
-  for (const htmlFile of HTML_FILES) {
-    const htmlPath = path.join(MOCKUPS_DIR, htmlFile);
-    const pngFile = htmlFile.replace(".html", ".png");
-    const pngPath = path.join(SCREENSHOTS_DIR, pngFile);
+  let capturedCount = 0;
+  let skippedCount = 0;
 
-    if (!fs.existsSync(htmlPath)) {
-      console.log(`  ✗ Missing: ${htmlFile}`);
-      continue;
+  try {
+    for (const htmlFile of HTML_FILES) {
+      const htmlPath = path.join(MOCKUPS_DIR, htmlFile);
+      const pngFile = htmlFile.replace(".html", ".png");
+      const pngPath = path.join(SCREENSHOTS_DIR, pngFile);
+
+      if (!fs.existsSync(htmlPath)) {
+        console.log(`  ✗ Missing: ${htmlFile}`);
+        skippedCount++;
+        continue;
+      }
+
+      const page = await browser.newPage();
+      await page.setViewport({ width: 1920, height: 1080 });
+      await page.goto(`file:///${htmlPath.replace(/\\/g, "/")}`, {
+        waitUntil: "networkidle0",
+        timeout: 15000,
+      });
+      // Brief pause for any CSS animations to settle
+      await new Promise(r => setTimeout(r, 500));
+      await page.screenshot({ path: pngPath, fullPage: false });
+      await page.close();
+      console.log(`  ✓ ${pngFile}`);
+      capturedCount++;
     }
-
-    const page = await browser.newPage();
-    await page.setViewport({ width: 1920, height: 1080 });
-    await page.goto(`file:///${htmlPath.replace(/\\/g, "/")}`, {
-      waitUntil: "networkidle0",
-      timeout: 15000,
-    });
-    // Brief pause for any CSS animations to settle
-    await new Promise(r => setTimeout(r, 500));
-    await page.screenshot({ path: pngPath, fullPage: false });
-    await page.close();
-    console.log(`  ✓ ${pngFile}`);
+  } finally {
+    await browser.close();
   }
 
-  await browser.close();
-  console.log(`\n  Captured ${HTML_FILES.length} screenshots to:`);
+  console.log(`\n  Captured ${capturedCount} of ${HTML_FILES.length} screenshots` +
+    (skippedCount > 0 ? ` (${skippedCount} skipped as missing)` : "") + " to:");
   console.log(`  ${SCREENSHOTS_DIR}\n`);
-})();
+})().catch(err => {
+  console.error("ERROR:", err);
+  process.exit(1);
+});

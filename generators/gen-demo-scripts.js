@@ -1,30 +1,34 @@
 #!/usr/bin/env node
 // =============================================================================
-// MCG Demo Scripts Generator — Creates 13 DOCX demo walk-through documents
+// MCG Demo Scripts Generator — Creates 18 DOCX demo walk-through documents
 // =============================================================================
 // Each document covers one phase of the MCG Full Stack Demo checklist with
 // presenter-ready narration, click-by-click steps, and talking points.
+// Modules 1-13 cover the consumption-side platform; Modules 14-18 cover the
+// build-side agentic data engineering story (Qlik Agentic Data Engineering).
+// Rendered in the Qlik brand (Inter, Qlik palette, official Qlik logo).
 //
 // Usage:  node generators/gen-demo-scripts.js
-// Output: documents/demo-scripts/*.docx (13 files)
+// Output: documents/demo-scripts/*.docx (18 files)
 // =============================================================================
 
 const {
   buildQlikDocument, saveDocument,
   heading, para, numberedItem, calloutBox, metadataTable, dataTable, labelValue,
-  useQlikTheme,
+  setDocTheme,
 } = require("./mcg-docx-builder");
-const { MCG } = require("./mcg-styles");
+const { QLIK, ensureQlikLogo } = require("./qlik-doc-styles");
 const { Paragraph, TextRun, PageBreak, BorderStyle, Table, TableRow, TableCell, ShadingType, WidthType } = require("docx");
 const path = require("path");
 
-// Switch to Qlik theme (Inter font, Qlik Colors 2024) for all demo scripts
-useQlikTheme();
+// Render all demo scripts in the Qlik brand: Inter typography, Qlik palette,
+// and the official Qlik logo header/footer (injected via the QLIK theme object).
+setDocTheme(QLIK);
 
-// Qlik brand colors for local helpers
+// Qlik brand colors for local helpers (canonical Qlik palette)
 const Q = {
   blue: "19416C", green: "009845", teal: "006580", cyan: "10CFC9",
-  lightGreen: "4CB393", gray: "A9B3B6", darkText: "454659",
+  lightGreen: "4CB393", gray: "A9B3B6", darkText: "54565A",
   lightBg: "F6F7F8", medGray: "6B7280",
 };
 const FONT = "Inter";
@@ -1243,7 +1247,7 @@ function module13() {
     promptBox('{\n  "mcpServers": {\n    "qlik": {\n      "url": "https://your-tenant.us.qlikcloud.com/api/ai/mcp",\n      "headers": {\n        "Authorization": "Bearer YOUR_API_KEY_HERE"\n      }\n    }\n  }\n}', "Claude Desktop Config (claude_desktop_config.json)"),
     numberedItem(3, "Restart Claude Desktop — the Qlik MCP server connects automatically over SSE"),
     numberedItem(4, 'Test: Ask Claude "Search my Qlik tenant for supply chain apps"'),
-    calloutBox("Key talking point: The Qlik MCP Server exposes 71 tools across 11 categories — App Discovery, Bookmarks, Business Glossary, Datasets & Data Quality, Data Exploration, Data Products, Lineage, Master Items, Selections, Visualization & Sheets. These are live Qlik Cloud capabilities, not simulated responses.", "info"),
+    calloutBox("Key talking point: The Qlik MCP Server exposes 71 tools across 10 categories — App Discovery, Bookmarks, Business Glossary, Datasets & Data Quality, Data Exploration, Data Products, Lineage, Master Items, Selections, Visualization & Sheets. These are live Qlik Cloud capabilities, not simulated responses.", "info"),
     dataTable(
       ["MCP Tool Category", "Key Tools", "MCG Demo Use Case"],
       [
@@ -1256,6 +1260,11 @@ function module13() {
         ["Visualization & Sheets",  "qlik_list_sheets, qlik_get_visualization",                    "Navigate Supply Chain Operations app sheets"],
       ]
     ),
+
+    heading("Build-Side: Governance for Coding Agents (Preview)", 3),
+    para("The same Qlik MCP Server is the bridge that carries Qlik governance to any MCP-compatible AI assistant — including the coding agents developers use to author pipelines. Point Claude Code or GitHub Copilot at the MCP server and the agent can read data products, quality metrics, lineage, and the catalog while it works, so a developer editing the declarative pipeline YAML (Module 14) can ask 'what is the current Trust Score on Supply Chain Health?' or 'what lands silver.inventory_reconciled?' without leaving the IDE."),
+    valueChain(["Expose Qlik data products, quality metrics, lineage, and catalog through one MCP server", "let coding agents author pipelines with governance context in view", "keep the build-side and consumption-side AI grounded in the same governed metadata"]),
+    calloutBox("Preview / roadmap: the Qlik MCP Server tooling is a Qlik internal preview (June 2026). Position it as forward-looking. It is the same governance surface Module 14 (declarative pipelines) and the agentic-engineering modules build against — one MCP server serving both the developer in the IDE and the analyst in a chat.", "info"),
 
     heading("MCP Demo Scenario 1: Rotterdam Inventory", 3),
     clarityContext("Project Qlarity Phase 3 MCP querying Phase 1 monitoring outputs — phantom inventory (Nightmare #1) from the Rotterdam silent pipeline failure (Nightmare #4)."),
@@ -1293,13 +1302,384 @@ function module13() {
     talkingPoint("MCP turns Claude into a data analyst that queries real-time Qlik data, not just general knowledge"),
     talkingPoint("Claude combines structured data (Lakehouse queries) with document intelligence (Answers) in one response"),
     talkingPoint("Every MCP response is traceable: which data products were queried, which documents were cited"),
+    talkingPoint("The same MCP server (preview) also serves coding agents — governance in the IDE, not just the chat window (see Modules 14-18)"),
     talkingPoint("This is the vision: AI agents that understand your entire data landscape, not just one dashboard"),
   ];
 }
 
 
 // =============================================================================
-// MAIN — Generate all 13 DOCX files
+// AGENTIC DATA ENGINEERING (BUILD-SIDE) — Modules 14-18
+// -----------------------------------------------------------------------------
+// The build-side counterpart to Modules 1-13. One underlying pipeline YAML,
+// editable visually, programmatically, OR agentically — a path from raw data to
+// a trusted, AI-ready data product that keeps human expertise in the loop at
+// each stage. Verbatim Qlik capability names; grounded in MCG's real assets.
+// =============================================================================
+
+// =============================================================================
+// MODULE 14: Declarative Pipelines in VS Code
+// =============================================================================
+function module14() {
+  return [
+    heading("Module 14: Declarative Pipelines in VS Code"),
+    metadataTable([
+      ["Duration", "12-15 minutes"],
+      ["Checklist Phase", "Phase 3 (Open Lakehouse) — build-side / Agentic Data Engineering"],
+      ["Nightmares", "#4 (Silent Pipeline Failures); foundation for all 7"],
+      ["Components", "Declarative Data Pipelines (QTCP preview), VS Code, AI coding agent, Git, live schema validation, Apply from Remote"],
+    ]),
+
+    clarityContext("Project Qlarity Phase 1 → Phase 2, build-side: the same medallion pipeline that lands and transforms MCG's data is authored as version-controlled YAML — so changing it is a reviewed one-line git commit instead of an untracked console click (the root of Nightmare #4)."),
+
+    heading("Overview", 2),
+    para("Declarative Data Pipelines make the pipeline definition code-first: it is YAML, and the same definition is authorable in the Qlik Talend Cloud UI, in third-party IDEs like VS Code, and by AI coding agents — with Git version control, CI/CD, and schema validation. MCG's two Open Lakehouse projects, mcg-batch-pipeline (4 tasks) and mcg-streaming-pipeline (2 tasks), ship as a VS Code template in deploy/pipelines/."),
+    calloutBox("Key message: ONE underlying pipeline YAML — editable visually (the UI), programmatically (the IDE), or agentically (a coding agent). Same file, same schema, same git history, whichever path you choose.", "info"),
+
+    heading("Prerequisites", 2),
+    numberedItem(1, "VS Code with the pipeline projects open from deploy/pipelines/"),
+    numberedItem(2, "The schema kit + IDE config dropped in locally (one command):"),
+    promptBox("npm run pipeline:template", "Terminal Command"),
+    numberedItem(3, "An AI coding agent available in the IDE (Claude Code or GitHub Copilot)"),
+    numberedItem(4, "Git initialized on the repo so changes produce a reviewable diff"),
+
+    heading("Demo Methodology: Tell → Show → Tell", 2),
+    limbicOpening("MCG's CRM landing task was still polling every 15 minutes months after the business asked for 30 — because changing a pipeline meant clicking through a console nobody owned, with no review and no history. When something broke, there was no diff to look at. What if changing the pipeline were a one-line, reviewed git commit?", "Problem/Consequence"),
+    interactionPrompt("How do you change a production data pipeline today — and who reviews that change before it ships?"),
+
+    heading("Demo Walk-Through", 2),
+
+    tellAnnotation("open", "The pipeline is not clicked together — it is YAML in a repo. I'll open it in VS Code, ask a coding agent to make a change, watch the schema validate it as it types, review the one-line diff, and push it back into the running pipeline."),
+
+    heading("Step 1: Open the Pipeline Project", 3),
+    numberedItem(1, "Open the mcg-batch-pipeline project in VS Code (deploy/pipelines/)"),
+    numberedItem(2, "Show qtcp_project.yaml, one folder per task (folder name = task name), datasets with custom SQL, and one schedule per task"),
+    numberedItem(3, "Point out the template scaffolding: .vscode/settings.json (YAML schema associations), CLAUDE.md, and .github/copilot-instructions.md — this is what makes the IDE and the agent pipeline-aware"),
+
+    heading("Step 2: Prompt the Coding Agent to Change the Schedule", 3),
+    numberedItem(1, "Open the 'MCG CRM Landing' task folder and find its schedule — RRULE FREQ=MINUTELY;INTERVAL=15"),
+    numberedItem(2, "Ask the coding agent, in plain language:"),
+    promptBox("In the MCG CRM Landing task, change the landing schedule from every 15 minutes to every 30 minutes.", "Ask the coding agent (Claude Code / Copilot)"),
+    expectedBox("The agent edits the task YAML, changing RRULE FREQ=MINUTELY;INTERVAL=15 to INTERVAL=30. Because the .vscode schema associations are active, the editor validates the change against the published QTCP schema as the agent types — a bad interval or a misspelled key is flagged inline before anything is saved."),
+
+    heading("Step 3: Live Schema Validation", 3),
+    numberedItem(1, "Hover the RRULE field — the schema describes the allowed values right in the editor"),
+    numberedItem(2, "Type an intentional typo (INTERVEL) to show the red squiggle, then fix it"),
+    calloutBox("Talking point: the schema is the guardrail. Whether a human or an agent makes the change, an invalid pipeline definition is caught in the editor — not at deploy time, and not at 2 a.m. when the task fails.", "info"),
+
+    heading("Step 4: Review the One-Line Git Diff", 3),
+    numberedItem(1, "Show the diff:"),
+    promptBox("git diff", "Terminal Command"),
+    expectedBox("A single changed line:\n- FREQ=MINUTELY;INTERVAL=15\n+ FREQ=MINUTELY;INTERVAL=30\nThe whole change is reviewable at a glance. Commit it with a message and it lives in the pipeline's history forever."),
+    numberedItem(2, "This is the human-in-the-loop coding-agent loop: Developer Prompts → Agent Generates → Schema Validates → Developer Reviews. The developer stays in control at every step."),
+
+    heading("Step 5: Apply from Remote", 3),
+    numberedItem(1, "Commit and push the change"),
+    numberedItem(2, "In Qlik Talend Cloud, use Apply from Remote (or the deploy import) to pull the committed YAML into the project — the CRM landing task now runs every 30 minutes, traceable to the commit"),
+    calloutBox("Preview / roadmap: Declarative Data Pipelines are a Qlik internal preview (June 2026) — position them as forward-looking. The same definition remains fully editable in the Qlik Talend Cloud UI today; the IDE and coding-agent paths are the emerging capability.", "info"),
+
+    tellAnnotation("close", "One YAML file, three ways to edit it — the Qlik Talend Cloud UI, VS Code, or an AI coding agent — and every path lands in the same schema-validated, version-controlled definition. Changing a pipeline stopped being a risky console click and became a reviewed one-line commit."),
+    interactionPrompt("If every pipeline change came with a one-line diff and a reviewer, how many silent failures would you avoid?"),
+    valueChain(["Author the pipeline as version-controlled YAML in the IDE", "let an AI coding agent make the change while the schema validates it live", "ship pipeline changes as reviewed, one-line git commits with full history"]),
+
+    heading("Talking Points", 2),
+    talkingPoint("ONE pipeline definition — editable visually (UI), programmatically (IDE), or agentically (coding agent); same YAML, same schema, same git history"),
+    talkingPoint("Schema validation is live in the editor — the agent's change is checked against the published QTCP schema before it is saved"),
+    talkingPoint("A pipeline change is a one-line git diff — reviewable, revertible, and auditable, unlike an untracked console edit"),
+    talkingPoint("MCG's two pipelines (mcg-batch-pipeline, mcg-streaming-pipeline) ship as a VS Code template with schema kit, CLAUDE.md, and Copilot instructions"),
+    talkingPoint("Apply from Remote pulls the committed YAML back into the running pipeline — the loop from prompt to production stays governed"),
+
+    heading("Troubleshooting", 2),
+    dataTable(
+      ["Issue", "Cause", "Fix"],
+      [
+        ["No schema validation in the editor", "Schema kit / .vscode settings missing", "Run: npm run pipeline:template to drop the schema kit and IDE config locally"],
+        ["Agent edits the wrong task", "Task folder name mismatch", "The folder name must equal the task name — confirm the MCG CRM Landing folder before prompting"],
+        ["git diff shows more than one line", "Editor reformatted the YAML on save", "Disable format-on-save for YAML, or stage only the RRULE line"],
+        ["Apply from Remote does not update the schedule", "Change not committed/pushed", "Commit and push first, then Apply from Remote (or re-run the deploy import)"],
+      ]
+    ),
+  ];
+}
+
+// =============================================================================
+// MODULE 15: Data Product Agent
+// =============================================================================
+function module15() {
+  return [
+    heading("Module 15: Data Product Agent"),
+    metadataTable([
+      ["Duration", "8-10 minutes"],
+      ["Checklist Phase", "Phase 4 (Data Products) — Agentic Data Engineering"],
+      ["Nightmares", "All 7 (data products package the remediated data)"],
+      ["Components", "Data Product Agent (a Qlik Answers capability), the two Gold data products"],
+    ]),
+
+    clarityContext("Project Qlarity Phase 2 (Analytics & Quality): the governed Gold layer, now created and curated by conversation. The two data products the business consumes are packaged and improved through natural language, not a wizard."),
+
+    heading("Overview", 2),
+    para("The Data Product Agent lets you create and manage data products through natural-language interaction: create, update, and retire data products; discover and interact with them conversationally; and review and improve a product's quality and completeness. In the MCG demo it manages the two Gold data products — Supply Chain Health and Last Mile Performance."),
+    calloutBox("This is a Qlik Answers capability, not a separate product. The Data Product Agent is the conversational way to do what the Data Products UI does — same governance model, same two Gold products.", "info"),
+
+    heading("Demo Methodology: Tell → Show → Tell", 2),
+    limbicOpening("MCG's data engineers could build a Gold table in a day, but packaging it as a governed product — description, ownership, tags, quality review — took a week of forms and follow-ups, so most never got packaged. The Data Product Agent turns that week into a conversation.", "Industry Insights"),
+    interactionPrompt("When your team ships a new dataset, how much of the work is the data — and how much is the paperwork to make it discoverable and governed?"),
+
+    heading("Demo Walk-Through", 2),
+
+    tellAnnotation("open", "I'll ask the agent to create and curate a data product in plain language, then watch it review the product's own completeness and tell me what's missing — with a human approving every publish."),
+
+    heading("Step 1: Discover Existing Products", 3),
+    numberedItem(1, "Open the Data Product Agent (Qlik Answers) conversational panel"),
+    promptBox("List our data products and tell me which one has the lowest completeness.", "Ask the Data Product Agent"),
+    expectedBox("Returns Supply Chain Health and Last Mile Performance with a short profile of each (owner, datasets, API sharing, Trust Score context), and flags the one with gaps — e.g. columns without descriptions or an unassigned tag."),
+
+    heading("Step 2: Create & Curate a Product", 3),
+    promptBox("Create a data product called 'Last Mile Performance' from the gold last-mile dataset, owner Sophie Müller, tags carrier, wismo, on-time; then draft a description from the schema.", "Ask the Data Product Agent"),
+    expectedBox("The agent packages the gold dataset as a data product, sets owner and tags, and drafts a product description plus column-level descriptions grounded in the actual schema. It presents the draft for review before publishing."),
+
+    heading("Step 3: Review Quality & Completeness", 3),
+    promptBox("Review Supply Chain Health for completeness and tell me what to fix before I publish it.", "Ask the Data Product Agent"),
+    expectedBox("The agent reports completeness gaps (columns without descriptions, no SLA note, missing steward) and proposes concrete fixes. You accept or edit — the human stays in the loop."),
+    numberedItem(1, "Cross-check against the two products the pipeline attaches (Module 5): same owners (Henrik Jansen, Sophie Müller), same API sharing, same Trust Score SLAs — the agent manages the real products, it does not create shadow copies"),
+
+    tellAnnotation("close", "Two governed data products — created, tagged, described, and quality-reviewed through conversation, with a human approving every publish. The packaging that used to gate every dataset is now a five-minute dialogue."),
+    interactionPrompt("If packaging a dataset as a governed product took five minutes of conversation, how many of your Gold tables would finally become real products?"),
+    valueChain(["Create and manage data products in natural language", "let the agent review each product's own quality and completeness", "publish governed, discoverable products without the packaging tax"]),
+
+    heading("Talking Points", 2),
+    talkingPoint("The Data Product Agent is a Qlik Answers capability, not a standalone SKU"),
+    talkingPoint("CRUD data products conversationally: create, update, tag, describe, retire"),
+    talkingPoint("It reviews a product's own completeness and quality and proposes fixes — a second set of eyes before publish"),
+    talkingPoint("It manages MCG's two real Gold products (Supply Chain Health, Last Mile Performance), not shadow copies"),
+    talkingPoint("Human-in-the-loop: the agent drafts, the owner approves — governance is preserved"),
+
+    heading("Troubleshooting", 2),
+    dataTable(
+      ["Issue", "Cause", "Fix"],
+      [
+        ["Agent can't find the gold dataset", "Pipeline gold datamart not yet run/attached", "Run the batch pipeline gold task first (Module 3), then retry"],
+        ["Draft description looks generic", "Sparse schema metadata / no sample", "Ask the agent to profile the dataset first, then regenerate the description"],
+        ["Duplicate data product created", "Product name differs from the existing one", "Use the exact existing name (Supply Chain Health / Last Mile Performance) so the agent updates rather than creates"],
+        ["Publish blocked", "Missing owner or required tag", "Assign the owner and required tags when prompted, then publish"],
+      ]
+    ),
+  ];
+}
+
+// =============================================================================
+// MODULE 16: Data Quality Agent
+// =============================================================================
+function module16() {
+  return [
+    heading("Module 16: Data Quality Agent"),
+    metadataTable([
+      ["Duration", "8-10 minutes"],
+      ["Checklist Phase", "Phase 3b / Phase 8 (Stewardship) — Agentic Data Engineering"],
+      ["Nightmares", "#1 (Phantom Inventory), #3 (Product Master Mess), #7 (Compliance Traceability Gap)"],
+      ["Components", "Data Quality Agent (a Qlik Answers capability), Silver datasets, Qlik Stewardship"],
+    ]),
+
+    clarityContext("Project Qlarity Phase 2 (Analytics & Quality): data quality as a conversation for the steward. The DQ rules that gate the Silver layer are assessed, authored, and mapped in plain language, then feed the Stewardship campaigns (Module 10)."),
+
+    heading("Overview", 2),
+    para("The Data Quality Agent supports data stewards in assessing, defining, and enforcing data-quality rules conversationally: assess DQ across datasets, create/manage/map DQ rules, and run DQ metric calculations. It bridges business and technical users — a steward describes the rule in business terms, and the agent expresses, maps, and measures it. In the MCG demo the steward works the Silver layer: silver.inventory_reconciled, silver.addresses_standardized, silver.products_harmonized."),
+    calloutBox("This is a Qlik Answers capability, not a separate product. It is the conversational front door to the same DQ rules and metrics — it bridges the business steward and the platform without a hand-off.", "info"),
+
+    heading("Demo Methodology: Tell → Show → Tell", 2),
+    limbicOpening("Sophie Müller knows exactly what a good customer address looks like — but she is not going to write a regex or a SQL constraint, and the engineer who can does not know the business rule. That gap is where bad data slips through. The Data Quality Agent lets the steward state the rule in plain language and turns it into an enforced check.", "Illustrative Analogy"),
+    interactionPrompt("When a business expert spots a data-quality rule, how many hand-offs does it take before that rule is actually enforced?"),
+
+    heading("Demo Walk-Through", 2),
+
+    tellAnnotation("open", "I'll put a steward in front of the Silver layer and let them assess quality, write a rule in business language, and map it across datasets — no SQL, no ticket to engineering."),
+
+    heading("Step 1: Assess Data Quality", 3),
+    numberedItem(1, "Open the Data Quality Agent (Qlik Answers) as the steward (Sophie Müller, Customer Data Team)"),
+    promptBox("Assess the data quality of silver.inventory_reconciled. Where are the biggest gaps?", "Ask the Data Quality Agent"),
+    expectedBox("The agent profiles the dataset and reports issues in business terms — 15% of perishable items have no lot_number, timestamp columns with mixed formats, ira_pct values outside 0-1 — ranked by impact."),
+
+    heading("Step 2: Define a Rule Conversationally", 3),
+    promptBox("Add a rule: every perishable item must have a lot number. Flag any that don't.", "Ask the Data Quality Agent"),
+    expectedBox("The agent expresses the rule (lot_number NOT NULL when perishable = TRUE), names it, and shows how many current records violate it — grounding the abstract rule in a real count before you commit."),
+
+    heading("Step 3: Map & Run Metrics", 3),
+    promptBox("Map that rule to all perishable datasets and run the completeness metric.", "Ask the Data Quality Agent"),
+    expectedBox("The agent maps the rule across the relevant Silver datasets and runs the DQ metric calculation, returning the completeness score and the violating record set."),
+
+    heading("Step 4: Enforce & Route to Stewardship", 3),
+    numberedItem(1, "Send the violations to the Lot Number Compliance campaign (Module 10) — the agent-authored rule becomes the enforced gate, and the human-judgment cases go to warehouse supervisors"),
+    calloutBox("Talking point: the steward wrote a data-quality rule in one sentence, saw exactly how many records break it, and routed the rest to a human-in-the-loop campaign — the closed-loop quality cycle, driven from the steward's own language.", "info"),
+
+    tellAnnotation("close", "A steward assessed a Silver dataset, wrote a rule in plain language, saw the real violation count, mapped it across datasets, and routed the ambiguous cases to a campaign — start to finish, without a hand-off to engineering."),
+    interactionPrompt("Which of your data-quality rules live only in someone's head today — and what would it take to make them enforced instead?"),
+    valueChain(["Let a steward assess data quality across datasets in plain language", "turn a business rule into an enforced, mapped DQ check with live violation counts", "route what's left to human-in-the-loop stewardship"]),
+
+    heading("Talking Points", 2),
+    talkingPoint("The Data Quality Agent is a Qlik Answers capability, not a standalone SKU"),
+    talkingPoint("It bridges business and technical: the steward states the rule, the agent expresses, maps, and measures it"),
+    talkingPoint("Assess, define, map, and run DQ metrics — all conversationally, on the Silver layer"),
+    talkingPoint("Every rule is grounded in a real violation count before it is committed — no abstract rules"),
+    talkingPoint("Agent-authored rules feed the Stewardship campaigns (Module 10) — the closed-loop data quality cycle"),
+
+    heading("Troubleshooting", 2),
+    dataTable(
+      ["Issue", "Cause", "Fix"],
+      [
+        ["Agent returns no issues", "Dataset already clean or wrong name", "Confirm the Silver dataset name; try silver.addresses_standardized or silver.products_harmonized"],
+        ["Rule maps to too many datasets", "Over-broad mapping request", "Ask the agent to list the datasets it will map to and confirm before applying"],
+        ["Violation count looks wrong", "Metric run against a stale snapshot", "Ask the agent to re-run the metric after the latest Silver refresh"],
+        ["Steward can't access the agent", "Space / role permissions", "Grant the steward access to the data space and the Answers assistant"],
+      ]
+    ),
+  ];
+}
+
+// =============================================================================
+// MODULE 17: Catalog and Business Glossary Agent
+// =============================================================================
+function module17() {
+  return [
+    heading("Module 17: Catalog and Business Glossary Agent"),
+    metadataTable([
+      ["Duration", "6-8 minutes"],
+      ["Checklist Phase", "Phase 9 (Business Glossary) — Agentic Data Engineering"],
+      ["Nightmares", "All 7 (shared vocabulary spans every nightmare)"],
+      ["Components", "Catalog and Business Glossary Agent (a Qlik Answers capability), Qlik Cloud Catalog, Business Glossary"],
+    ]),
+
+    clarityContext("Project Qlarity Phase 2 (Analytics & Quality): the shared-vocabulary backbone, generated. The glossary that gives every term one meaning is drafted from the catalog by the agent, then human-reviewed before it becomes canonical."),
+
+    heading("Overview", 2),
+    para("The Catalog and Business Glossary Agent helps you discover data assets, understand their context and relationships, and define consistent business terminology. It runs natural-language queries against Qlik Cloud Catalog metadata and generates glossaries from apps, data products, datasets, or a whole domain, standardizing terms and synonyms. Generated glossary terms are DRAFT status by default and require human review before they are approved."),
+    calloutBox("This is a Qlik Answers capability, not a separate product. Generated terms are DRAFT by default and require human review — the agent accelerates the glossary, it does not get the final say.", "info"),
+
+    heading("Demo Methodology: Tell → Show → Tell", 2),
+    limbicOpening("In one MCG meeting the VP of Warehouse said phantom inventory was down 12% while the CFO said it was up 8% — both right, because they used different definitions. Multiply that across 25 documents and two data products and you have a vocabulary problem no one owns. The agent drafts the glossary from the catalog so there is one definition to agree on, not three.", "Discovery Findings"),
+    interactionPrompt("How many of your key business terms have exactly one agreed definition today — and who would you ask to be sure?"),
+
+    heading("Demo Walk-Through", 2),
+
+    tellAnnotation("open", "I'll point the agent at the catalog, ask it to generate glossary terms from a data product, and watch every term land as a reviewable draft — not an instant fact."),
+
+    heading("Step 1: Discover Assets & Relationships", 3),
+    numberedItem(1, "Open the Catalog and Business Glossary Agent (Qlik Answers)"),
+    promptBox("What datasets and terms relate to phantom inventory across our catalog?", "Ask the Catalog & Glossary Agent"),
+    expectedBox("The agent queries catalog metadata and returns related datasets (silver.inventory_reconciled, gold.supply_chain_health), the owner, and existing terms — surfacing context and relationships, not just a name match."),
+
+    heading("Step 2: Generate a Glossary from a Data Product", 3),
+    promptBox("Generate glossary terms for the Supply Chain Health data product, with synonyms.", "Ask the Catalog & Glossary Agent"),
+    expectedBox("The agent drafts terms (Phantom Inventory, IRA, Trust Score, Lot Number) with definitions and synonyms, standardized against the catalog. Every generated term is created in DRAFT status."),
+
+    heading("Step 3: Standardize Terms & Synonyms", 3),
+    promptBox("Standardize 'WISMO' and merge its synonyms across the glossary.", "Ask the Catalog & Glossary Agent"),
+    expectedBox("The agent proposes a single canonical definition for WISMO and lists the synonyms to merge, flagging conflicts for a human to resolve."),
+
+    heading("Step 4: Human Review Before Approval", 3),
+    numberedItem(1, "Route the DRAFT terms to their owners (e.g. Henrik Jansen for inventory terms) for review"),
+    numberedItem(2, "Nothing becomes canonical until a human approves it — draft-by-default is the guardrail"),
+
+    tellAnnotation("close", "The agent read the catalog, drafted a consistent set of terms with synonyms straight from the data products, and left every one in draft for a human to approve. The glossary that used to be tribal knowledge now has a first draft in minutes — and a reviewer on every term."),
+    interactionPrompt("If the first draft of your business glossary wrote itself from your catalog tonight, whose review would make it official?"),
+    valueChain(["Query the catalog in natural language to discover assets and relationships", "generate a consistent, synonym-aware glossary from your data products", "keep every generated term in draft for human review before it becomes canonical"]),
+
+    heading("Talking Points", 2),
+    talkingPoint("The Catalog and Business Glossary Agent is a Qlik Answers capability, not a standalone SKU"),
+    talkingPoint("NL queries run against Qlik Cloud Catalog metadata — discovery by meaning, not just names"),
+    talkingPoint("Generates glossaries from apps, data products, datasets, or a whole domain, with standardized synonyms"),
+    talkingPoint("Generated terms are DRAFT by default and require human review — accuracy stays with the owner"),
+    talkingPoint("Feeds the Business Glossary (Module 11) — the same connected governance layer, drafted faster"),
+
+    heading("Troubleshooting", 2),
+    dataTable(
+      ["Issue", "Cause", "Fix"],
+      [
+        ["Agent returns few related assets", "Catalog not fully indexed", "Let catalog indexing complete, then re-ask; broaden from a term to a domain"],
+        ["Worried generated terms overwrite existing ones", "They don't — drafts are separate", "Review drafts side by side with existing terms; approve or merge deliberately"],
+        ["Synonyms merged incorrectly", "Ambiguous term", "Ask the agent to show the conflict and choose the canonical definition manually"],
+        ["Terms stuck in draft", "Awaiting human review by design", "Assign each term to an owner for approval — draft-by-default is intended"],
+      ]
+    ),
+  ];
+}
+
+// =============================================================================
+// MODULE 18: Talend Agentic Routes
+// =============================================================================
+function module18() {
+  return [
+    heading("Module 18: Talend Agentic Routes"),
+    metadataTable([
+      ["Duration", "10-12 minutes"],
+      ["Checklist Phase", "Phase 10 (Automations) — Agentic Data Engineering"],
+      ["Nightmares", "#2 (Address Catastrophe), #6 (Carrier Data Black Hole)"],
+      ["Components", "Talend Agentic Routes (LLM integration, RAG, agentic orchestration), the Salesforce address-validation job"],
+    ]),
+
+    clarityContext("Project Qlarity Phase 2 (Analytics & Quality): AI inside the pipeline task itself. The existing Salesforce address-validation job gains an LLM-assisted correction step, so the fix happens inside the route — not in a bolt-on app after it."),
+
+    calloutBox("Preview / roadmap: Talend Agentic Routes are a Qlik internal preview (June 2026) — position as forward-looking, and confirm availability for the customer's edition before committing.", "warning"),
+
+    heading("Overview", 2),
+    para("Talend Agentic Routes extend Qlik Talend Cloud for AI-native workflows in three ways: (a) LLM integration in data tasks — cloud LLMs (OpenAI, Anthropic Claude, Google Gemini, Amazon Bedrock) and on-prem models (Ollama, Mistral, Gemma 3, Phi 4); (b) RAG pipelines writing to vector targets (Pinecone, MongoDB, Snowflake, Databricks, Milvus, Oracle); and (c) agentic orchestration — event-driven agent orchestration, conversational AI, and extensible tool + MCP client support. This puts sentiment analysis, entity extraction, content classification, and AI-assisted data quality inside pipeline tasks. The MCG surface is the existing Talend job: Salesforce address validation + Nominatim geocoding + Qlik Stewardship routing."),
+    calloutBox("The LLM step runs inside the pipeline task, so the AI enrichment inherits the pipeline's scheduling, lineage, and governance — it is a data step, not a separate application. Choose cloud or on-prem models per your data-residency rules.", "info"),
+
+    heading("Demo Methodology: Tell → Show → Tell", 2),
+    limbicOpening("11% of MCG's Salesforce addresses are malformed and a further 6% are truncated by a legacy 30-character field — the root of $3.1M a year in delivery failures. The existing address job validates and geocodes, but the messy, half-truncated records still fall out to a human queue. An LLM step inside the same route can propose the corrected address before it ever reaches that queue.", "Case Study"),
+    interactionPrompt("Where in your pipelines are you routing messy records to a human queue that an in-line AI step could clear first?"),
+
+    heading("Demo Walk-Through", 2),
+
+    tellAnnotation("open", "I'll take the address-validation job MCG already runs and drop an LLM-assisted correction step into the route — an AI enrichment that lives inside the pipeline task, not in a separate app."),
+
+    heading("Step 1: Open the Existing Address Job", 3),
+    numberedItem(1, "Open the Salesforce Address Validation job (Talend) and show the existing flow:"),
+    para("  Salesforce source → address validation → Nominatim geocoding → Qlik Stewardship routing", { indent: true }),
+
+    heading("Step 2: Add an LLM Integration Step", 3),
+    numberedItem(1, "Insert an LLM component before the Stewardship route; configure it against a model — a cloud LLM (Anthropic Claude, OpenAI, Google Gemini, Amazon Bedrock) or an on-prem model (Ollama, Mistral, Gemma 3, Phi 4) if data residency requires it"),
+    promptBox("Given this raw Salesforce address, return the corrected, standardized address and a confidence score. Raw: 'Keizersgr 482 4B, 1017EJ Amsterd'", "LLM step prompt (inside the data task)"),
+    expectedBox("The LLM returns a normalized address (Keizersgracht 482, Apt 4B, 1017 EJ, Amsterdam) with a confidence score. High-confidence corrections flow straight through; low-confidence ones still route to the Address Cleanup stewardship campaign (Module 10)."),
+
+    heading("Step 3: Ground with RAG (Optional)", 3),
+    numberedItem(1, "For records needing reference context, add a RAG lookup against a vector target (Pinecone, MongoDB, Snowflake, Databricks, Milvus, or Oracle) holding known-good postal references — so a correction cites a source instead of guessing"),
+
+    heading("Step 4: Agentic Orchestration", 3),
+    numberedItem(1, "Wire the route into event-driven orchestration — a new or updated Salesforce contact triggers the route automatically"),
+    numberedItem(2, "Extensible tool + MCP client support lets the route call out to other governed tools when a record needs more than a single model call"),
+
+    heading("Step 5: Close the Loop", 3),
+    numberedItem(1, "Corrected addresses land in silver.addresses_standardized and feed the Gold products and the Late Delivery predictor (Module 8)"),
+    numberedItem(2, "The human only sees the genuinely ambiguous cases — the in-line AI clears the rest"),
+    calloutBox("Accuracy note: don't promise a specific correction-accuracy figure — route high-confidence fixes through and escalate the rest. If a number is needed for a given customer, capture it as a [placeholder] and validate before quoting it.", "warning"),
+
+    tellAnnotation("close", "The address job MCG already runs now corrects the messy records in-line with an LLM, grounds them with RAG when needed, and escalates only the truly ambiguous ones. The AI is inside the pipeline — same schedule, same lineage, same governance — not a bolt-on."),
+    interactionPrompt("If your pipelines could clean, classify, and enrich records with AI in-line, which manual data-prep step would you retire first?"),
+    valueChain(["Drop an LLM (or RAG) step into an existing data task", "correct, classify, and enrich records in-line with your choice of cloud or on-prem model", "escalate only the genuinely ambiguous cases to a human"]),
+
+    heading("Talking Points", 2),
+    talkingPoint("Talend Agentic Routes put LLM, RAG, and agentic orchestration inside pipeline tasks — AI as a data step, not a separate app"),
+    talkingPoint("Model choice is yours: cloud (OpenAI, Anthropic Claude, Google Gemini, Amazon Bedrock) or on-prem (Ollama, Mistral, Gemma 3, Phi 4) for data residency"),
+    talkingPoint("RAG targets are open: Pinecone, MongoDB, Snowflake, Databricks, Milvus, Oracle"),
+    talkingPoint("The in-line AI step inherits the pipeline's scheduling, lineage, and governance"),
+    talkingPoint("It extends MCG's real address-validation job — high-confidence fixes flow through, ambiguous ones still go to stewardship"),
+
+    heading("Troubleshooting", 2),
+    dataTable(
+      ["Issue", "Cause", "Fix"],
+      [
+        ["LLM step times out", "Model endpoint/network, or oversized batch", "Reduce batch size; verify the endpoint/credentials; try an on-prem model for latency"],
+        ["Corrections low confidence across the board", "Prompt lacks context", "Add a RAG lookup for postal reference data, or few-shot examples in the prompt"],
+        ["Sensitive data must stay on-prem", "Cloud LLM selected", "Switch to an on-prem model (Ollama, Mistral, Gemma 3, Phi 4)"],
+        ["Route doesn't trigger", "Event orchestration not wired", "Confirm the Salesforce create/update event is bound to the route trigger"],
+      ]
+    ),
+  ];
+}
+
+
+// =============================================================================
+// MAIN — Generate all 18 DOCX files
 // =============================================================================
 async function main() {
   console.log("=".repeat(60));
@@ -1321,11 +1701,19 @@ async function main() {
     { fn: module11, name: "11_Business_Glossary", title: "Project Qlarity Demo Walkthrough — Module 11" },
     { fn: module12, name: "12_Automations", title: "Project Qlarity Demo Walkthrough — Module 12" },
     { fn: module13, name: "13_Discovery_Agent_MCP", title: "Project Qlarity Demo Walkthrough — Module 13" },
+    { fn: module14, name: "14_Declarative_Pipelines_VSCode", title: "Project Qlarity Demo Walkthrough — Module 14" },
+    { fn: module15, name: "15_Data_Product_Agent", title: "Project Qlarity Demo Walkthrough — Module 15" },
+    { fn: module16, name: "16_Data_Quality_Agent", title: "Project Qlarity Demo Walkthrough — Module 16" },
+    { fn: module17, name: "17_Catalog_Glossary_Agent", title: "Project Qlarity Demo Walkthrough — Module 17" },
+    { fn: module18, name: "18_Talend_Agentic_Routes", title: "Project Qlarity Demo Walkthrough — Module 18" },
   ];
+
+  // Rasterize the official Qlik logo once (best-effort; a failure just omits it).
+  await ensureQlikLogo();
 
   for (const mod of modules) {
     const sections = mod.fn();
-    const doc = buildQlikDocument(mod.title, sections);
+    const doc = buildQlikDocument(mod.title, sections, QLIK);
     const outPath = path.join(OUT_DIR, `${mod.name}.docx`);
     await saveDocument(doc, outPath);
   }

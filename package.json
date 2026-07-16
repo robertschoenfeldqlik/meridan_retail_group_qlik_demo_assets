@@ -10,6 +10,7 @@
     "deploy:verbose": "node deploy/deploy-to-qlik.js --verbose",
     "deploy:export-pipeline": "node deploy/deploy-to-qlik.js --export-pipeline",
     "pipeline:zip": "node deploy/build-pipeline-zip.js",
+    "pipeline:template": "node deploy/pipelines/setup-vscode-template.js",
     "build-apps": "node deploy/build-apps.js",
     "build-apps:dry-run": "node deploy/build-apps.js --dry-run",
     "build-automations": "node deploy/build-automations.js",
@@ -31,7 +32,7 @@
     "docker:logs": "cd infrastructure && docker compose -f docker-compose.full-stack.yml logs --tail=50",
     "db:schema": "docker exec -i mcg-postgres psql -U mcg_admin -d mcg_wms < simulators/schema.sql",
     "db:seed": "docker exec mcg-seed-data python seed_data.py --postgres --pg-host postgres --pg-db mcg_wms --pg-user mcg_admin --pg-pass mcg_demo_2025",
-    "lint": "node -c deploy/deploy-to-qlik.js && node -c deploy/deploy-ui.js && node -c deploy/zip-utils.js"
+    "lint": "node -c deploy/deploy-to-qlik.js && node -c deploy/deploy-ui.js && node -c deploy/zip-utils.js && node -c deploy/build-apps.js && node -c deploy/build-automations.js && node -c deploy/build-pipeline-zip.js && node -c deploy/pull-connection-template.js && node -c deploy/marketecture-column-swap.js && node -c deploy/pipelines/setup-vscode-template.js"
   },
   "keywords": ["qlik", "demo", "supply-chain", "data-quality", "analytics"],
   "author": "Robert Schoenfeld",
@@ -41,10 +42,10 @@
     "docx": "^9.6.0",
     "exceljs": "^4.4.0",
     "pptxgenjs": "^4.0.1",
+    "sharp": "^0.34.5",
     "ws": "^8.18.0"
   },
   "devDependencies": {
-    "puppeteer": "^24.37.5",
-    "sharp": "^0.34.5"
+    "puppeteer": "^24.37.5"
   }
 }

@@ -25,8 +25,9 @@ venv/
 .vscode/
 .idea/
 
-# Deploy UI temp config
-deploy/.config-ui-temp.json
+# Deploy UI temp configs — these are written with UNMASKED secrets (API key,
+# OAuth secret, DB passwords) while a child deploy/build process runs.
+deploy/.config-*.json
 
 # Environment
 .env
@@ -36,10 +37,17 @@ deploy/.config-ui-temp.json
 *.bak
 *.bak2
 
-# QTCP declarative pipeline schema kit (Qlik internal preview - not for public repos)
+# QTCP declarative pipeline schema kit (Qlik internal preview — never commit).
+# The ** form covers the per-project install location that setup-vscode-template.js
+# uses (deploy/pipelines/<project>/schema/) as well as the legacy shared location.
+deploy/pipelines/**/schema/
 deploy/pipelines/schema/
-deploy/pipelines/.vscode/
-deploy/pipelines/**/copilot-instructions.md
+
+# VS Code template tooling for the pipeline projects IS committed as a demo asset.
+# Re-include it despite the global .vscode/ ignore above (the schema kit stays ignored).
+!deploy/pipelines/**/.vscode/
+!deploy/pipelines/**/.vscode/settings.json
+!deploy/pipelines/**/.vscode/extensions.json
 
 # Generated pipeline import package
 deploy/pipelines/*.zip

@@ -345,6 +345,47 @@ Bronze (dirty addresses) → Data Flow 3 (standardization) → Silver (quality-s
 
 ---
 
+## Automation 5b: Talend Agentic Route — LLM-Assisted Address Correction (Preview)
+
+> **Preview status:** Talend Agentic Routes and the Declarative Pipeline / MCP tooling they build on are in Qlik internal preview (June 2026). Present this as the roadmap evolution of Automation 5, not a shipping feature. No endpoints, model quotas, or accuracy figures are invented below — where a real value is needed, use the `[placeholder]` markers and fill them in against your own tenant.
+
+**Purpose:** Automation 5 corrects addresses with the deterministic Talend components (`tAddressRowStandardize` → `tAddressRowValidate` → `tGeocode`). A **Talend Agentic Route** extends that same job by running an LLM step *inside the pipeline task* for the records those components leave as `AMBIGUOUS` — the ones that otherwise fall through to a human steward.
+
+**Where it fits the existing loop:**
+
+```
+Automation 5 (deterministic):  approved records → tAddressRowStandardize → tAddressRowValidate → tGeocode → Silver
+Automation 5b (agentic add-on):        AMBIGUOUS records ↑ → LLM reasoning step (RAG-grounded) → proposed correction → human review → Silver
+```
+
+The agentic route does not replace human review. It drafts a proposed correction with its reasoning; a steward still approves before the record is written back.
+
+### What a Talend Agentic Route adds
+
+A Talend Agentic Route brings three AI-native capabilities into a pipeline task:
+
+| Capability | Use in the address-correction step |
+|---|---|
+| **LLM integration** | Reason over a malformed or truncated address (e.g., `Friedrichstraße 123, Hinterh` cut at 30 chars) and propose the most likely complete form. Cloud models: OpenAI, Anthropic Claude, Google Gemini, Amazon Bedrock. On-prem models: Ollama, Mistral, Gemma 3, Phi 4. |
+| **RAG grounding** | Retrieve postal reference context (country postal rules, known street names) from a vector target — Pinecone, MongoDB, Snowflake, Databricks, Milvus, or Oracle — so the LLM proposal is grounded, not guessed. |
+| **Agentic orchestration + MCP client** | Let the step call tools (the deterministic validator, a geocoder) and reach the Qlik MCP Server to check the current `address_quality_score` before deciding. |
+
+Beyond addresses, the same route pattern supports sentiment analysis, entity extraction, content classification, and AI-assisted data quality inside any pipeline task.
+
+### UI Configuration Notes (Preview)
+
+1. Open the **MCG Address Validation Service** job (see `creation_guide.md` — Talend Job) in Qlik Talend Cloud.
+2. Add an **LLM task / agentic route** on the `AMBIGUOUS` branch of `tAddressRowValidate`.
+   - **Model connection:** select a configured LLM connection — `[placeholder — model + connection name]`.
+   - **RAG source (optional):** point at your vector target — `[placeholder — vector target + index]`.
+   - **Prompt:** instruct the model to return a structured correction (`street_clean`, `postal_clean`, `country_iso`, `confidence`, `reasoning`) and to abstain when it is not confident.
+3. Route the model's proposal to the existing **Stewardship** review step rather than writing directly to `silver.addresses_standardized`. The steward approves; Automation 5 then handles the write-back as it does today.
+4. Log the model, prompt version, and reasoning with each proposed correction for auditability.
+
+**Demo talking point:** "The deterministic route fixes what it can prove. The agentic route takes a reasoned pass at what's left — grounded in postal reference data through RAG — and hands a proposed fix to the steward. Same job, same governed write-back, one AI step added inside the pipeline."
+
+---
+
 ## General Automation Tips
 
 ### Available Block Types in Qlik Cloud Automations

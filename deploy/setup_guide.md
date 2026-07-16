@@ -19,6 +19,7 @@ Complete setup guide for deploying the Meridian Commerce Group demo environment 
 11. [Automation — Microsoft Teams](#11-automation--microsoft-teams)
 12. [Discovery Agent](#12-discovery-agent)
 13. [MCP Server](#13-mcp-server)
+14. [Declarative Pipelines & Agentic Data Engineering (Preview)](#14-declarative-pipelines--agentic-data-engineering-preview)
 
 ---
 
@@ -1090,7 +1091,7 @@ The Qlik MCP Server is **cloud-hosted** — there is no npm package to install a
 https://your-tenant.us.qlikcloud.com/api/ai/mcp
 ```
 
-You configure your AI client (Claude Desktop, Claude Code, etc.) to connect to this URL with an API key for authentication. The MCP server exposes **71 tools** across 11 categories:
+You configure your AI client (Claude Desktop, Claude Code, etc.) to connect to this URL with an API key for authentication. The MCP server exposes **71 tools**. Key categories:
 
 | Category | Example Tools |
 |---|---|
@@ -1186,6 +1187,66 @@ claude mcp add --transport sse qlik https://your-tenant.us.qlikcloud.com/api/ai/
 > The pipeline has been recovered, and automated monitoring has been deployed at Rotterdam. However, the remaining 27 DCs still rely on manual daily sync checks (855 person-hours/day total). Project Qlarity Phase 1 will extend automated monitoring to all DCs by Q2 2026."
 
 **Demo talking point:** "Claude didn't just query a number — it combined real-time data from the Lakehouse with operational context from Qlik Answers documents, all through the MCP integration."
+
+---
+
+## 14. Declarative Pipelines & Agentic Data Engineering (Preview)
+
+> **Preview status:** Declarative Data Pipelines and the Qlik MCP Server tooling are in Qlik internal preview (June 2026). Flag them as preview/roadmap when demoing. The three conversational agents below are **Qlik Answers capabilities, not separate products** — do not position them as standalone SKUs. See `creation_guide.md` Section 5 for the full authoring walkthrough.
+
+This section is the build-side companion to everything above. The pipelines that land and transform MCG data (Sections 3-4) can also be authored as code and governed with AI. One underlying pipeline definition (YAML) is editable three ways — visually in the Qlik Talend Cloud UI, programmatically in an IDE, or agentically with an AI coding agent — with a human review step at each stage.
+
+### 14.1 VS Code Template & Schema Kit
+
+The two MCG Open Lakehouse pipeline projects ship as a VS Code template under `deploy/pipelines/`:
+
+| Project | platformType | Tasks |
+|---|---|---|
+| `mcg-batch-pipeline` | `QLIK_OPEN_LAKEHOUSE` | 4 — WMS CDC Landing, CRM Landing, Silver Transform (7 datasets), Gold Datamart (2 datasets) |
+| `mcg-streaming-pipeline` | `QLIK_OPEN_LAKEHOUSE` | 2 — IoT Streaming Landing, IoT Streaming Transform |
+
+**Setup:**
+1. Drop in the schema kit locally. It is Qlik internal-preview material and is **not committed** to this repo, so you must supply your own copy with `--schema`:
+   ```bash
+   npm run pipeline:template                                   # verify tooling + report schema status
+   npm run pipeline:template -- --schema <path-to-schema-kit>  # install the kit
+   ```
+   The bare command only verifies the tooling; it cannot conjure the kit. Once installed, VS Code validates each YAML edit against the schema as you type.
+2. Open `deploy/pipelines/` in VS Code. Each project folder carries its own agent context so any AI coding agent follows the house rules:
+   - `.vscode/settings.json` — editor settings + schema associations
+   - `CLAUDE.md` — conventions for Claude / Claude Code
+   - `.github/copilot-instructions.md` — the same conventions for GitHub Copilot
+3. The authoring loop is human-in-the-loop: **Developer Prompts → Agent Generates → Schema Validates → Developer Reviews.** The definition version-controls in Git and deploys via CI/CD; export/import moves a pipeline between tenants.
+
+**Grounded demo edit:** change the **MCG CRM Landing** task schedule from `RRULE:FREQ=MINUTELY;INTERVAL=15` to `INTERVAL=30`. The result is a one-line git diff that deploys back with **Apply-from-Remote**.
+
+### 14.2 Enabling & Showing the Agentic Capabilities (Preview)
+
+The agentic capabilities are gated behind a preview flag on the tenant.
+1. Confirm the tenant is enrolled in the relevant Qlik preview program (Declarative Pipelines / agentic capabilities). If the feature flag is not visible, it is not yet enabled for the tenant — treat the walkthrough as roadmap and use screenshots.
+2. The three governance agents surface as **Qlik Answers capabilities**, so the Qlik Answers entitlement from Section 1.1 is the prerequisite — there is no separate product to license or install.
+3. Keep a forward-looking disclaimer on any deck slide that shows these capabilities.
+
+### 14.3 The Three Governance Agents (Qlik Answers capabilities)
+
+| Agent | What it does for MCG |
+|---|---|
+| **Data Product Agent** | Create/manage data products conversationally (CRUD). Package **Supply Chain Health** and **Last Mile Performance**; review a product's quality and completeness before publishing (Section 5). |
+| **Data Quality Agent** | Assess data quality, create/map/enforce DQ rules by conversation, run DQ metric calculations. Bridges the steward and the pipeline for tables like `silver.inventory_reconciled`. Violations route to the Stewardship campaigns in Section 9. |
+| **Catalog and Business Glossary Agent** | Query the Qlik Cloud Catalog metadata in natural language; generate glossaries from apps, data products, datasets, or a domain to seed/extend the 25-term glossary in Section 10. Generated terms are **DRAFT by default** and require human review. |
+
+### 14.4 Talend Agentic Routes (Preview)
+
+Talend Agentic Routes extend Qlik Talend Cloud for AI-native work **inside pipeline tasks**:
+- **LLM integration** — call cloud models (OpenAI, Anthropic Claude, Google Gemini, Amazon Bedrock) or on-prem models (Ollama, Mistral, Gemma 3, Phi 4) from a data task
+- **RAG pipelines** — write to vector targets (Pinecone, MongoDB, Snowflake, Databricks, Milvus, Oracle)
+- **Agentic orchestration** — event-driven orchestration, conversational AI, extensible tool + MCP-client support
+
+For MCG, the concrete surface is the existing Salesforce address-validation job: an LLM-assisted correction step is the agentic evolution of that flow. See `automation_guide.md` Automation 5b.
+
+### 14.5 Qlik MCP Server for Data Governance
+
+The Qlik MCP Server (Section 13) also exposes MCG's **data products, quality metrics, lineage, and catalog** to any MCP-compatible assistant (Claude, Copilot). That makes it the bridge from the agent-produced, governed data products back to third-party AI agents — the last step of the raw-to-trusted flow. See `scenarios.md` Scenario 7 for the end-to-end walkthrough.
 
 ---
 

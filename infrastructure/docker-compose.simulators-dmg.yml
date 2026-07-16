@@ -15,6 +15,18 @@
 # Usage (standalone — DMG must already be running):
 #   docker compose -f docker-compose.dmg.yml up -d
 #   docker compose -f docker-compose.simulators-dmg.yml up -d
+#
+#   PREREQUISITE: the "qlik-dmg" container (from docker-compose.dmg.yml /
+#   `npm run docker:up:dmg-only`) must already be up and healthy before
+#   starting this file. This file does NOT define or start "qlik-dmg" itself,
+#   so it cannot depends_on it directly — seed-data and postgres-simulator
+#   reach it purely via the "postgres" network alias qlik-dmg publishes on
+#   mcg-sim-net, not an in-file dependency.
+#
+#   NOTE: qlik-dmg binds host port 5432 by default (same as this project's
+#   non-DMG PostgreSQL service), so do not run the DMG stack and the non-DMG
+#   stack (docker-compose.simulators.yml / `npm run docker:up`) at the same
+#   time — they will collide on host port 5432.
 # =============================================================================
 
 services:
@@ -27,9 +39,12 @@ services:
       context: ../simulators
       dockerfile: Dockerfile
     container_name: mcg-seed-data
-    depends_on:
-      qlik-dmg:
-        condition: service_healthy
+    # No depends_on here: the "qlik-dmg" service is defined in
+    # infrastructure/docker-compose.dmg.yml, not this file, and Compose
+    # rejects a project with a depends_on referencing an undefined service.
+    # Ensure qlik-dmg is already running and healthy (see header usage note
+    # above) before starting this file — seed-data reaches it via the
+    # "postgres" network alias qlik-dmg publishes on mcg-sim-net.
     command: >
       python seed_data.py
         --postgres

@@ -273,7 +273,18 @@ def seed_postgres(host, port, db, user, password, counts, dry_run=False):
         print(f"  Would create 3 tables and ~{inv_count + event_count + ship_count:,} rows.")
         return
 
-    conn = psycopg2.connect(host=host, port=port, dbname=db, user=user, password=password)
+    max_attempts = 10
+    for attempt in range(1, max_attempts + 1):
+        try:
+            conn = psycopg2.connect(host=host, port=port, dbname=db, user=user, password=password)
+            break
+        except psycopg2.OperationalError as e:
+            if attempt == max_attempts:
+                raise
+            wait = min(2 * attempt, 15)
+            print(f"  Postgres not ready yet (attempt {attempt}/{max_attempts}): {e}".strip())
+            print(f"  Retrying in {wait}s — the database container may still be starting up...")
+            time.sleep(wait)
     conn.autocommit = False
 
     # --- Create schema ---
@@ -282,6 +293,19 @@ def seed_postgres(host, port, db, user, password, counts, dry_run=False):
         cur.execute(PG_SCHEMA)
     conn.commit()
     print("        OK — 3 tables + 5 indexes")
+
+    # --- Idempotency guard ---
+    # This seeder is meant to run once. Every re-run (e.g. a restarted
+    # "docker compose up" for the seed container) would otherwise insert
+    # another full batch on top of existing rows, silently duplicating the
+    # dataset. Bail out if the main table is already populated.
+    with conn.cursor() as cur:
+        cur.execute("SELECT COUNT(*) FROM inventory_positions")
+        existing_rows = cur.fetchone()[0]
+    if existing_rows > 0:
+        print(f"\n  Database already seeded ({existing_rows:,} rows found) — skipping to avoid duplicate data.\n")
+        conn.close()
+        return
 
     # --- Seed inventory_positions ---
     print(f"  [2/4] Seeding inventory_positions ({inv_count:,} rows)...")
@@ -681,7 +705,7 @@ Examples:
 
 Environment variables:
   PG_HOST, PG_PORT, PG_DB, PG_USER, PG_PASSWORD
-  SF_USER, SF_PASSWORD, SF_TOKEN, SF_DOMAIN
+  SF_USERNAME, SF_PASSWORD, SF_SECURITY_TOKEN, SF_DOMAIN
         """,
     )
 
@@ -699,11 +723,15 @@ Environment variables:
     pg.add_argument("--pg-pass", default=os.environ.get("PG_PASSWORD", ""))
 
     # Salesforce connection
+    # NOTE: env var names (SF_USERNAME / SF_PASSWORD / SF_SECURITY_TOKEN) and the
+    # "login" domain default are kept in sync with salesforce_simulator.py and
+    # with infrastructure/.env.example + docker-compose*.yml, which are the
+    # naming convention actually wired through the environment.
     sf = parser.add_argument_group("Salesforce connection")
-    sf.add_argument("--sf-user", default=os.environ.get("SF_USER", ""))
+    sf.add_argument("--sf-user", default=os.environ.get("SF_USERNAME", ""))
     sf.add_argument("--sf-pass", default=os.environ.get("SF_PASSWORD", ""))
-    sf.add_argument("--sf-token", default=os.environ.get("SF_TOKEN", ""))
-    sf.add_argument("--sf-domain", default=os.environ.get("SF_DOMAIN", "test"), help="'test' for sandbox, 'login' for production")
+    sf.add_argument("--sf-token", default=os.environ.get("SF_SECURITY_TOKEN", ""))
+    sf.add_argument("--sf-domain", default=os.environ.get("SF_DOMAIN", "login"), help="'login' for production/Developer orgs, 'test' for sandbox")
 
     # Volume controls
     vol = parser.add_argument_group("Data volume")
@@ -729,6 +757,11 @@ Environment variables:
     pg_counts = {"inventory": args.inv_count, "events": args.event_count, "shipments": args.ship_count}
     sf_counts = {"contacts": args.contact_count, "orders": args.order_count, "products": args.product_count}
 
+    # Track failure across ALL requested phases so the exit code reflects
+    # any failure, not just a postgres-only failure (a failing --postgres
+    # phase must not be masked by a subsequent successful --salesforce phase).
+    any_failed = False
+
     if args.postgres:
         try:
             seed_postgres(
@@ -738,24 +771,29 @@ Environment variables:
             )
         except Exception as e:
             print(f"\n  ERROR (PostgreSQL): {e}")
-            if not args.salesforce:
-                sys.exit(1)
+            any_failed = True
 
     if args.salesforce:
         if not args.sf_user and not args.dry_run:
             print("\n  ERROR: --sf-user is required for Salesforce seeding.")
-            sys.exit(1)
-        try:
-            seed_salesforce(
-                sf_user=args.sf_user, sf_pass=args.sf_pass,
-                sf_token=args.sf_token, sf_domain=args.sf_domain,
-                counts=sf_counts, dry_run=args.dry_run,
-            )
-        except Exception as e:
-            print(f"\n  ERROR (Salesforce): {e}")
-            sys.exit(1)
+            any_failed = True
+        else:
+            try:
+                seed_salesforce(
+                    sf_user=args.sf_user, sf_pass=args.sf_pass,
+                    sf_token=args.sf_token, sf_domain=args.sf_domain,
+                    counts=sf_counts, dry_run=args.dry_run,
+                )
+            except Exception as e:
+                print(f"\n  ERROR (Salesforce): {e}")
+                any_failed = True
 
     print("=" * 60)
+    if any_failed:
+        print("  Seeding completed with errors.")
+        print("=" * 60)
+        sys.exit(1)
+
     print("  Seeding complete!")
     print("=" * 60)
 

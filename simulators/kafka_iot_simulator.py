@@ -213,9 +213,14 @@ class ActiveShipment:
         """
         hours_elapsed = elapsed_seconds / 3600.0
         self.progress = min(1.0, self.progress + hours_elapsed / self.duration_hours)
-        # Drain batteries (per tick — proportional to simulated time elapsed)
+        # Drain batteries -- expressed as %/simulated-hour (not a flat per-tick
+        # amount) so it scales correctly regardless of --cold-chain-interval.
+        # Tuned to ~0.7-1.1%/hour so a battery lasts roughly 90-140 simulated
+        # hours from full charge, comfortably covering the 12-72h shipment
+        # duration range with margin instead of bottoming out mid-shipment.
         for sid in self.sensor_ids:
-            drain = random.uniform(0.01, 0.05)
+            hourly_drain_pct = random.uniform(0.7, 1.1)
+            drain = hourly_drain_pct * hours_elapsed
             self.battery_pcts[sid] = max(0, self.battery_pcts[sid] - drain)
         # Occasional door open events
         if random.random() < 0.02:
@@ -444,6 +449,29 @@ def delivery_callback(err, msg):
         _delivery_success += 1
 
 
+def safe_produce(producer, topic, key, value, callback):
+    """Produce a single message, tolerating librdkafka local-queue-full
+    BufferErrors (e.g. during a broker outage combined with a high --speed
+    multiplier) instead of letting them propagate and kill the process.
+
+    On BufferError: log a warning, poll briefly to let the queue drain, and
+    retry once. If it still fails, drop this single message and continue.
+    Returns True if the message was handed to librdkafka, False if dropped.
+    """
+    try:
+        producer.produce(topic, key=key, value=value, callback=callback)
+        return True
+    except BufferError:
+        print(f"\n  [WARN] Kafka local queue full producing to {topic} -- draining...")
+        producer.poll(0.5)
+        try:
+            producer.produce(topic, key=key, value=value, callback=callback)
+            return True
+        except BufferError:
+            print(f"  [WARN] Queue still full after drain -- dropping one message for {topic}.")
+            return False
+
+
 # ---------------------------------------------------------------------------
 # Main loop
 # ---------------------------------------------------------------------------
@@ -594,13 +622,8 @@ def main():
                     for msg in messages:
                         key = (msg.get("sensor_id") or "unknown").encode("utf-8")
                         value = json.dumps(msg).encode("utf-8")
-                        producer.produce(
-                            TOPIC_COLD_CHAIN,
-                            key=key,
-                            value=value,
-                            callback=delivery_callback,
-                        )
-                        stats["cold_chain_produced"] += 1
+                        if safe_produce(producer, TOPIC_COLD_CHAIN, key, value, delivery_callback):
+                            stats["cold_chain_produced"] += 1
 
         # --- Carrier events ---
         if now - last_carrier_time >= effective_carrier_interval:
@@ -615,13 +638,8 @@ def main():
                     continue
                 key = event["shipment_id"].encode("utf-8")
                 value = json.dumps(event).encode("utf-8")
-                producer.produce(
-                    TOPIC_CARRIER_EVENTS,
-                    key=key,
-                    value=value,
-                    callback=delivery_callback,
-                )
-                stats["carrier_events_produced"] += 1
+                if safe_produce(producer, TOPIC_CARRIER_EVENTS, key, value, delivery_callback):
+                    stats["carrier_events_produced"] += 1
 
         # --- Flush pending messages ---
         producer.poll(0)

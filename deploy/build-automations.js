@@ -153,10 +153,17 @@ function stripCommentKeys(obj) {
 }
 
 function applyEnvOverrides(cfg) {
+  cfg.auth = cfg.auth || {};
   if (process.env.QLIK_TENANT_HOST) cfg.tenant.hostname = process.env.QLIK_TENANT_HOST;
   if (process.env.QLIK_REGION)      cfg.tenant.region   = process.env.QLIK_REGION;
   if (process.env.QLIK_API_KEY)     cfg.auth.apiKey     = process.env.QLIK_API_KEY;
   if (process.env.QLIK_AUTH_METHOD) cfg.auth.method     = process.env.QLIK_AUTH_METHOD;
+  if (process.env.QLIK_OAUTH_CLIENT_ID)    cfg.auth.oauth = cfg.auth.oauth || {},
+                                           cfg.auth.oauth.clientId     = process.env.QLIK_OAUTH_CLIENT_ID;
+  if (process.env.QLIK_OAUTH_CLIENT_SECRET) cfg.auth.oauth = cfg.auth.oauth || {},
+                                             cfg.auth.oauth.clientSecret = process.env.QLIK_OAUTH_CLIENT_SECRET;
+  if (process.env.QLIK_OAUTH_TOKEN_URL)    cfg.auth.oauth = cfg.auth.oauth || {},
+                                            cfg.auth.oauth.tokenUrl     = process.env.QLIK_OAUTH_TOKEN_URL;
   return cfg;
 }
 
@@ -273,16 +280,17 @@ class QlikAutomationBuilder {
       this._token = auth.apiKey;
       this.log.success(`Authenticated via API key (last 4: ...${auth.apiKey.slice(-4)})`);
     } else if (method === 'oauth') {
-      if (!auth.oauthClientId || !auth.oauthClientSecret) {
-        throw new Error('auth.oauthClientId and auth.oauthClientSecret are required for oauth method.');
+      const oauth = auth.oauth;
+      if (!oauth || !oauth.clientId || !oauth.clientSecret) {
+        throw new Error('auth.oauth.clientId and auth.oauth.clientSecret are required for oauth method.');
       }
-      const tokenUrl = `${this.baseUrl}/oauth/token`;
+      const tokenUrl = oauth.tokenUrl || `${this.baseUrl}/oauth/token`;
       this.log.debug(`Requesting OAuth token from ${tokenUrl}`);
       const res = await requestOnce('POST', tokenUrl, {
         headers: { 'Content-Type': 'application/json' },
         body: {
-          client_id:     auth.oauthClientId,
-          client_secret: auth.oauthClientSecret,
+          client_id:     oauth.clientId,
+          client_secret: oauth.clientSecret,
           grant_type:    'client_credentials',
         },
       });

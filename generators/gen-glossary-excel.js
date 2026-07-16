@@ -408,7 +408,7 @@ async function generate() {
   });
 
   // Auto-filter
-  ws.autoFilter = { from: "A1", to: "J26" };
+  ws.autoFilter = { from: "A1", to: `J${terms.length + 1}` };
 
   // Borders for all data cells
   for (let r = 1; r <= terms.length + 1; r++) {

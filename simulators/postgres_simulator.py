@@ -635,6 +635,15 @@ def main():
     cycle = 0
     stats = {"inventory": 0, "warehouse_event": 0, "shipment": 0}
 
+    def reconnect():
+        """Re-establish the database connection using the original parameters."""
+        new_conn = psycopg2.connect(
+            host=args.host, port=args.port, dbname=args.db,
+            user=args.user, password=args.password
+        )
+        new_conn.autocommit = False
+        return new_conn
+
     try:
         while True:
             cycle += 1
@@ -644,27 +653,48 @@ def main():
             # Generate 1-4 events per cycle, weighted by time of day and day of week
             num_events = max(1, int(random.uniform(1, 4) * season))
 
-            for _ in range(num_events):
-                event_type = random.choices(
-                    ["inventory", "warehouse", "shipment"],
-                    weights=[0.35, 0.40, 0.25],
-                    k=1
-                )[0]
+            try:
+                for _ in range(num_events):
+                    event_type = random.choices(
+                        ["inventory", "warehouse", "shipment"],
+                        weights=[0.35, 0.40, 0.25],
+                        k=1
+                    )[0]
 
-                result = None
-                if event_type == "inventory":
-                    result = generate_inventory_update(conn)
-                elif event_type == "warehouse":
-                    result = generate_warehouse_event(conn)
-                elif event_type == "shipment":
-                    result = generate_shipment(conn)
+                    result = None
+                    if event_type == "inventory":
+                        result = generate_inventory_update(conn)
+                    elif event_type == "warehouse":
+                        result = generate_warehouse_event(conn)
+                    elif event_type == "shipment":
+                        result = generate_shipment(conn)
 
-                if result:
-                    stats[result["type"]] += 1
-                    events_this_cycle.append(result)
+                    if result:
+                        stats[result["type"]] += 1
+                        events_this_cycle.append(result)
 
-            # Periodic quality degradation injection
-            maybe_inject_silent_failure(conn, cycle)
+                # Periodic quality degradation injection
+                maybe_inject_silent_failure(conn, cycle)
+
+            except psycopg2.Error as db_err:
+                # Transient DB errors (dropped connection, failed statement,
+                # Postgres restart, etc.) should not kill the whole simulator.
+                # Log, clear the failed transaction, back off briefly, and
+                # keep going.
+                print(f"\n  [WARN] Database error on cycle {cycle}: {db_err}")
+                try:
+                    conn.rollback()
+                except psycopg2.Error:
+                    pass
+                if conn.closed:
+                    print("  [WARN] Connection appears closed -- reconnecting...")
+                    try:
+                        conn = reconnect()
+                        print("  [OK] Reconnected to database.")
+                    except psycopg2.Error as reconnect_err:
+                        print(f"  [WARN] Reconnect attempt failed: {reconnect_err}")
+                time.sleep(min(args.interval, 5.0))
+                continue
 
             # Status display
             total = sum(stats.values())

@@ -346,7 +346,7 @@ def main():
     parser.add_argument("--username", default=os.environ.get("SF_USERNAME"), help="Salesforce username")
     parser.add_argument("--password", default=os.environ.get("SF_PASSWORD"), help="Salesforce password")
     parser.add_argument("--token", default=os.environ.get("SF_SECURITY_TOKEN", ""), help="Salesforce security token")
-    parser.add_argument("--domain", default="login", help="Salesforce domain (login or test)")
+    parser.add_argument("--domain", default=os.environ.get("SF_DOMAIN", "login"), help="Salesforce domain (login or test)")
     parser.add_argument("--interval", type=float, default=10.0, help="Seconds between event cycles")
     parser.add_argument("--setup-help", action="store_true", help="Show custom object setup instructions")
     args = parser.parse_args()

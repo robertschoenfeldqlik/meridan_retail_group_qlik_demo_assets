@@ -5,7 +5,7 @@
 // Qlik Colors 2024 palette • Inter font • Presentation-ready sizing
 //
 // Usage:  node generators/gen-architecture.js
-// Output: MCG_Technology_Architecture.pptx + MCG_Technology_Architecture_v2.pptx
+// Output: MCG_Technology_Architecture.pptx
 // =============================================================================
 
 const PptxGenJS = require("pptxgenjs");
@@ -760,6 +760,117 @@ dividerSlide("Analytics &\nAI Layer", "Qlik Analytics  •  Predict  •  Answer
     { x: 9.3,  icon: "automation", label: "Automations", sub: "5 automations\nTeams integration\nTalend job trigger" },
   ];
   aiBoxes.forEach(b => iconCardTop(slide, b.x, 4.6, 2.6, 1.9, b.icon, b.label, b.sub, C.qlikLightGreen, C.white));
+})();
+
+
+// =============================================================================
+// SLIDE 9 — AGENTIC DATA ENGINEERING LAYER  (build-side AI, sits over medallion)
+// =============================================================================
+// Counterpart to the consumption-side AI on the previous slide: here AI helps
+// AUTHOR the pipeline and GOVERN the data, all over the same Bronze/Silver/Gold
+// medallion. Declarative Pipelines + Qlik MCP Server are Qlik internal preview.
+(function slide_agentic_engineering() {
+  const slide = contentSlide("Agentic Data Engineering Layer", C.qlikGreen);
+
+  // Local preview pill (small tag) — scoped to this slide, not a shared helper
+  function pill(x, y, w, text, fill, txt) {
+    slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
+      x, y, w, h: 0.3, fill: { color: fill }, rectRadius: 0.15,
+      line: { color: fill, width: 0.5 },
+    });
+    slide.addText(text, {
+      x, y, w, h: 0.3, fontSize: 9, color: txt, fontFace: FONT, bold: true,
+      align: "center", valign: "middle",
+    });
+  }
+
+  // Top-level Preview tag (near the title)
+  pill(11.35, 0.34, 1.45, "Preview", C.qlikCyan, C.qlikBlue);
+
+  // Intro line
+  slide.addText(
+    "Build-side AI. One declarative pipeline YAML, authored visually, in an IDE, or by an AI agent. " +
+    "A path from raw data to trusted, AI-ready data products that keeps human expertise in the loop at each stage.",
+    { x: 0.6, y: 0.9, w: 10.6, h: 0.4, fontSize: 11.5, color: C.medGray, fontFace: FONT, italic: true, lineSpacingMultiple: 1.02 }
+  );
+
+  // ── AUTHOR THE PIPELINE ──
+  slide.addText("AUTHOR THE PIPELINE", {
+    x: 0.6, y: 1.34, w: 4.5, h: 0.26, fontSize: 11, color: C.qlikGreen, fontFace: FONT, bold: true,
+  });
+  slide.addText("Declarative Data Pipelines are a Qlik internal preview capability", {
+    x: 6.2, y: 1.34, w: 6.5, h: 0.26, fontSize: 9, color: C.qlikGray, fontFace: FONT, italic: true, align: "right",
+  });
+  iconCard(slide, 0.6, 1.64, 3.9, 1.02, "agent",     "AI Coding Agent · VS Code",  "Authors declarative pipeline YAML\nGit version control • CI/CD", C.qlikGreen);
+  iconCard(slide, 4.7, 1.64, 3.9, 1.02, "pipeline",  "Declarative Data Pipelines", "One YAML: landing · transform · datamart\nUI · IDE · AI-agent authorable · Preview", C.qlikGreen);
+  iconCard(slide, 8.8, 1.64, 3.9, 1.02, "transform", "Talend Agentic Routes",      "LLM + RAG inside pipeline tasks\nClaude · Bedrock · Ollama · Pinecone", C.qlikGreen);
+
+  // Human-in-the-loop coding-agent micro-loop
+  slide.addText("Human-in-the-loop coding agent:   Prompt  →  Generate  →  Schema-validate  →  Review", {
+    x: 0.6, y: 2.70, w: 12.1, h: 0.24, fontSize: 10, color: C.qlikTeal, fontFace: FONT, bold: true, align: "center",
+  });
+
+  // ── GOVERN THE DATA ──
+  slide.addText("GOVERN THE DATA", {
+    x: 0.6, y: 3.02, w: 4.5, h: 0.26, fontSize: 11, color: C.qlikTeal, fontFace: FONT, bold: true,
+  });
+  slide.addText("Three conversational agents are Qlik Answers capabilities, not separate products", {
+    x: 5.6, y: 3.02, w: 7.1, h: 0.26, fontSize: 9, color: C.qlikGray, fontFace: FONT, italic: true, align: "right",
+  });
+  iconCard(slide, 0.6,  3.32, 2.9, 1.02, "governance", "Data Product Agent",       "Create & manage data products\nby natural language", C.qlikTeal);
+  iconCard(slide, 3.63, 3.32, 2.9, 1.02, "answers",    "Data Quality Agent",       "Assess, define & enforce\nDQ rules conversationally", C.qlikTeal);
+  iconCard(slide, 6.66, 3.32, 2.9, 1.02, "agent",      "Catalog & Glossary Agent", "Discover assets · draft glossary\nterms (human-reviewed)", C.qlikTeal);
+  iconCard(slide, 9.69, 3.32, 3.0, 1.02, "mcp",        "Qlik MCP Server",          "Exposes governance to external\nAI assistants (Claude) · Preview", C.qlikBlue);
+
+  // ── Connective: the agentic layer sits OVER the medallion ──
+  arrow(slide, 1.7,  4.42, 1.7,  4.72, C.qlikGray);
+  arrow(slide, 11.6, 4.42, 11.6, 4.72, C.qlikGray);
+  slide.addText("The agentic layer sits over the medallion — authoring the YAML and governing the outputs", {
+    x: 2.4, y: 4.42, w: 8.5, h: 0.28, fontSize: 10, color: C.qlikTeal, fontFace: FONT, italic: true, align: "center", valign: "middle",
+  });
+
+  // ── MEDALLION FOUNDATION (the pipeline the agents operate over) ──
+  const mY = 4.74, mH = 2.10;
+  slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
+    x: 0.5, y: mY, w: 12.33, h: mH, fill: { color: C.lightBg }, rectRadius: 0.12,
+    line: { color: C.qlikGray, width: 1 },
+  });
+  iconBadge(slide, "lakehouse", 0.68, mY + 0.04, 0.3, C.qlikGreen);
+  slide.addText("Qlik Open Lakehouse — the declarative pipeline the agents author & govern  (Bronze · Silver · Gold on Apache Iceberg)", {
+    x: 1.08, y: mY + 0.05, w: 11.5, h: 0.32, fontSize: 11, color: C.qlikBlue, fontFace: FONT, bold: true, valign: "middle",
+  });
+
+  const tiers = [
+    { x: 0.75, w: 3.6, color: C.qlikTeal,  label: "BRONZE · Landing",
+      tasks: ["MCG WMS CDC Landing", "MCG CRM Landing", "MCG IoT Streaming Landing"] },
+    { x: 4.65, w: 3.6, color: C.qlikGreen, label: "SILVER · Transform",
+      tasks: ["MCG Silver Transform · 7 datasets", "MCG IoT Streaming Transform"] },
+    { x: 8.55, w: 3.9, color: C.qlikBlue,  label: "GOLD · Datamart",
+      tasks: ["MCG Gold Datamart · 2 datasets", "Supply Chain Health", "Last Mile Performance"] },
+  ];
+  tiers.forEach(t => {
+    slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
+      x: t.x, y: 5.22, w: t.w, h: 0.38, fill: { color: t.color }, rectRadius: 0.06,
+    });
+    slide.addText(t.label, {
+      x: t.x, y: 5.22, w: t.w, h: 0.38, fontSize: 11, color: C.white, fontFace: FONT, bold: true, align: "center", valign: "middle",
+    });
+    slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
+      x: t.x, y: 5.66, w: t.w, h: 1.05, fill: { color: C.white }, rectRadius: 0.06,
+      line: { color: t.color, width: 0.75 },
+    });
+    slide.addText(t.tasks.map(k => "•  " + k).join("\n"), {
+      x: t.x + 0.15, y: 5.72, w: t.w - 0.3, h: 0.93, fontSize: 9.5, color: C.darkText, fontFace: FONT, valign: "middle", lineSpacingMultiple: 1.25,
+    });
+  });
+  // Medallion flow arrows (Bronze → Silver → Gold)
+  arrow(slide, 4.36, 6.18, 4.63, 6.18, C.qlikGreen);
+  arrow(slide, 8.28, 6.18, 8.53, 6.18, C.qlikBlue);
+
+  // Forward-looking disclaimer
+  slide.addText("Preview capabilities (Declarative Pipelines, Qlik MCP Server) reflect Qlik internal preview, June 2026, and are subject to change.", {
+    x: 0.6, y: 6.88, w: 12.1, h: 0.16, fontSize: 8, color: C.qlikGray, fontFace: FONT, italic: true,
+  });
 })();
 
 

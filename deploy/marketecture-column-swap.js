@@ -7,7 +7,7 @@ const path = require('path');
 const os = require('os');
 
 const EMU = 914400;
-const SRC = 'MCG_Marketecture.pptx';
+const SRC = path.resolve(__dirname, '..', 'MCG_Marketecture.pptx');
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'mcg-mkt-'));
 unzipToDirectory(fs.readFileSync(SRC), tmp);

@@ -22,19 +22,40 @@ const CONN_NAME = process.argv[2] || 'MCG WMS Database';
 // Only these vary per environment — everything else in the connect string is fixed.
 const DYNAMIC = ['agentId', 'server', 'port', 'username', 'database', 'sslMode'];
 
-function api(apiPath) {
+function api(pathOrUrl) {
+  const fullUrl = pathOrUrl.startsWith('http') ? pathOrUrl : base + pathOrUrl;
   return new Promise((resolve, reject) => {
-    https.get(new URL(base + apiPath), { headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' } }, (r) => {
+    https.get(new URL(fullUrl), { headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' } }, (r) => {
       let b = '';
       r.on('data', (d) => (b += d));
-      r.on('end', () => { try { resolve(JSON.parse(b || '{}')); } catch (e) { reject(e); } });
+      r.on('end', () => {
+        let body;
+        try { body = JSON.parse(b || '{}'); } catch (e) { reject(e); return; }
+        if (r.statusCode < 200 || r.statusCode >= 300) {
+          reject(new Error(`Qlik API request failed (${r.statusCode}) for ${pathOrUrl} — check that the API key in config.json is valid and not expired: ${JSON.stringify(body).slice(0, 300)}`));
+          return;
+        }
+        resolve(body);
+      });
     }).on('error', reject);
   });
 }
 
+// Paginate via links.next.href — a single capped page could miss the target
+// connection on a tenant with >100 connections.
+async function fetchAllConnections() {
+  const all = [];
+  let next = '/api/v1/data-connections?limit=100';
+  while (next) {
+    const list = await api(next);
+    all.push(...(list.data || []));
+    next = (list.links && list.links.next && list.links.next.href) || null;
+  }
+  return all;
+}
+
 (async () => {
-  const list = await api('/api/v1/data-connections?limit=100');
-  const data = list.data || [];
+  const data = await fetchAllConnections();
   // Prefer an exact (trimmed) name match that is a postgres replication source.
   const x = data.find((o) => (o.qName || '').trim() === CONN_NAME && /repsrc_postgres/i.test(o.datasourceID || ''))
          || data.find((o) => (o.qName || '').trim() === CONN_NAME);
@@ -70,4 +91,7 @@ function api(apiPath) {
   console.log('Wrote', file);
   console.log('datasourceID:', x.datasourceID);
   console.log('template    :', tpl);
-})();
+})().catch((err) => {
+  console.error(err.message);
+  process.exit(1);
+});

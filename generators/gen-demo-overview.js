@@ -95,8 +95,7 @@ function sectionSlide(number, title, subtitle, color) {
   // Dark overlay on left half for text readability
   slide.addShape(pptx.shapes.RECTANGLE, {
     x: 0, y: 0, w: 7.5, h: 7.5,
-    fill: { color: C.qlikBlue, type: "solid" },
-    transparency: 15,
+    fill: { color: C.qlikBlue, type: "solid", transparency: 15 },
   });
   // Number badge
   slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
@@ -122,28 +121,6 @@ function sectionSlide(number, title, subtitle, color) {
   // Qlik logo bottom-right
   slide.addImage({ path: QLIK_LOGO, x: 11.0, y: 6.5, w: 1.5, h: 0.66 });
   return slide;
-}
-
-function metricBoxes(slide, metrics, startY) {
-  const count = metrics.length;
-  const boxW = Math.min(3.8, (12.3 - (count - 1) * 0.3) / count);
-  const gap = (12.3 - count * boxW) / (count - 1 || 1);
-  metrics.forEach((m, i) => {
-    const x = 0.5 + i * (boxW + gap);
-    slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
-      x, y: startY, w: boxW, h: 1.3,
-      fill: { color: C.lightBg }, rectRadius: 0.1,
-      line: { color: m.color || C.qlikTeal, width: 1.5 },
-    });
-    slide.addText(m.val, {
-      x, y: startY + 0.1, w: boxW, h: 0.65,
-      fontSize: 28, color: m.color || C.qlikTeal, fontFace: FONT, bold: true, align: "center",
-    });
-    slide.addText(m.label, {
-      x, y: startY + 0.75, w: boxW, h: 0.4,
-      fontSize: 11, color: C.medGray, fontFace: FONT, align: "center",
-    });
-  });
 }
 
 function bulletList(slide, items, x, y, w, opts = {}) {
@@ -457,8 +434,8 @@ const agendaItems = [
   },
   {
     num: "4", title: "The AI & Outcomes Story", color: C.qlikLightGreen,
-    desc: "Agentic Analytics (unified conversational AI), Qlik Answers (data + documents), Qlik Predict (AutoML), Discovery Agent, MCP Server, Knowledge Mart",
-    components: "Agentic Analytics • Qlik Answers • Predict • Discovery Agent • MCP • Knowledge Mart",
+    desc: "Consumption-side AI (Agentic Analytics, Qlik Answers, Qlik Predict, Discovery Agent, MCP Server) plus build-side agentic engineering — declarative pipelines as code, the governance agents, and Talend agentic routes",
+    components: "Agentic Analytics • Qlik Answers • Predict • Discovery Agent • MCP • Declarative Pipelines • Governance Agents • Talend Agentic Routes",
   },
 ];
 
@@ -1567,6 +1544,252 @@ slide.addText("Both tools integrate with the Agentic Analytics experience (see s
   fontSize: 11, color: C.qlikLightGreen, fontFace: FONT,
 });
 
+// ═══════════════════════════════════════════════════
+//  STORY 4 (build-side): AGENTIC DATA ENGINEERING
+//  The counterpart to the consumption-side AI above —
+//  author the pipeline / govern the data with AI.
+// ═══════════════════════════════════════════════════
+
+// ─── Slide: Declarative Pipelines & the VS Code Template ───
+slide = contentSlide("Declarative Pipelines & the VS Code Template", C.qlikLightGreen);
+
+slide.addText("The build side of AI: one underlying pipeline YAML — editable visually, programmatically, or with an AI coding agent — on a single path from raw data to a trusted, AI-ready data product.", {
+  x: 0.5, y: 0.85, w: 12.3, h: 0.5,
+  fontSize: 13, color: C.medGray, fontFace: FONT, italic: true,
+});
+
+const authorModes = [
+  {
+    title: "Visual (UI)", color: C.qlikTeal, items: [
+      "Qlik Talend Cloud pipeline canvas",
+      "Point-and-click transforms",
+      "Business-user friendly",
+    ],
+  },
+  {
+    title: "Code (IDE)", color: C.qlikBlue, items: [
+      "Declarative YAML definition",
+      "VS Code + third-party IDEs",
+      "Git version control + CI/CD",
+      "Export / import, schema-validated",
+    ],
+  },
+  {
+    title: "Agent (AI)", color: C.qlikLightGreen, items: [
+      "AI coding agent authors the YAML",
+      "\"Agent-friendly\" schema",
+      "Prompt → Generate → Validate → Review",
+      "Developer approves every change",
+    ],
+  },
+];
+
+authorModes.forEach((f, i) => {
+  const x = 0.5 + i * 4.2;
+  slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
+    x, y: 1.45, w: 3.9, h: 2.45,
+    fill: { color: C.lightBg }, rectRadius: 0.12,
+    line: { color: f.color, width: 2 },
+  });
+  slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
+    x: x + 0.1, y: 1.55, w: 3.7, h: 0.55,
+    fill: { color: f.color }, rectRadius: 0.06,
+  });
+  slide.addText(f.title, {
+    x: x + 0.1, y: 1.55, w: 3.7, h: 0.55,
+    fontSize: 15, color: C.white, fontFace: FONT, bold: true, align: "center", valign: "middle",
+  });
+  f.items.forEach((item, j) => {
+    slide.addText(`▸  ${item}`, {
+      x: x + 0.3, y: 2.25 + j * 0.4, w: 3.4, h: 0.36,
+      fontSize: 10.5, color: C.darkText, fontFace: FONT,
+    });
+  });
+});
+
+// MCG grounding — the whole pipeline is code
+slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
+  x: 0.5, y: 4.05, w: 12.3, h: 1.55,
+  fill: { color: C.lightBg }, rectRadius: 0.1, line: { color: C.qlikLightGreen, width: 1.5 },
+});
+slide.addText("MCG today — the whole pipeline is code", {
+  x: 0.7, y: 4.12, w: 11.9, h: 0.35,
+  fontSize: 13, color: C.qlikLightGreen, fontFace: FONT, bold: true,
+});
+bulletList(slide, [
+  "2 QTCP DATA_PIPELINE projects on Open Lakehouse — mcg-batch-pipeline (4 tasks) + mcg-streaming-pipeline (2 tasks) = 6 tasks authored as YAML",
+  "Shipped as a VS Code template: deploy/pipelines/ with .vscode/settings.json, CLAUDE.md, .github/copilot-instructions.md per project (schema kit via \"npm run pipeline:template\")",
+  "Demo edit: change \"MCG CRM Landing\" schedule FREQ=MINUTELY;INTERVAL=15 → INTERVAL=30 — a one-line git diff, then Apply-from-Remote",
+], 0.7, 4.52, 11.9, { fontSize: 10.5, spacing: 0.36 });
+
+// Raw → trusted flow strip
+slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
+  x: 0.5, y: 5.7, w: 12.3, h: 0.5,
+  fill: { color: C.lightGreen }, rectRadius: 0.08,
+});
+slide.addText("Human-in-the-loop from raw → trusted: design in IDE + agent → Git / CI-CD deploy → quality → packaging → catalog & glossary → AI-ready output with trust scores.", {
+  x: 0.7, y: 5.73, w: 11.9, h: 0.44,
+  fontSize: 10.5, color: C.qlikGreen, fontFace: FONT, bold: true,
+});
+
+// Preview disclaimer
+slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
+  x: 0.5, y: 6.3, w: 12.3, h: 0.5,
+  fill: { color: C.lightCyan }, rectRadius: 0.08,
+});
+slide.addText("Preview / roadmap: Qlik declarative-pipeline tooling is a Qlik internal preview (June 2026). Forward-looking — capabilities and timing may change.", {
+  x: 0.7, y: 6.33, w: 11.9, h: 0.44,
+  fontSize: 10, color: C.qlikTeal, fontFace: FONT, bold: true,
+});
+
+// ─── Slide: The Governance Agents ───
+slide = contentSlide("The Governance Agents", C.qlikLightGreen);
+
+slide.addText("Three conversational agents keep human expertise in the loop while packaging, validating, and cataloging data — Qlik frames these as Qlik Answers capabilities, not separate products.", {
+  x: 0.5, y: 0.85, w: 12.3, h: 0.5,
+  fontSize: 13, color: C.medGray, fontFace: FONT, italic: true,
+});
+
+const govAgents = [
+  {
+    title: "Data Product Agent", color: C.qlikLightGreen, items: [
+      "Create & manage data products by chat",
+      "CRUD + conversational discovery",
+      "Review & improve quality / completeness",
+      "MCG: package Supply Chain Health & Last Mile Performance",
+    ],
+  },
+  {
+    title: "Data Quality Agent", color: C.qlikTeal, items: [
+      "Helps stewards define & enforce DQ rules",
+      "Assess quality across datasets by chat",
+      "Create / map rules, run DQ metrics",
+      "MCG: rules on silver.addresses_standardized",
+    ],
+  },
+  {
+    title: "Catalog & Business Glossary Agent", color: C.qlikBlue, items: [
+      "NL queries over Qlik Cloud Catalog metadata",
+      "Generate glossaries from apps, data products, a domain",
+      "Standardize terms & synonyms",
+      "MCG: extend the 25-term business glossary",
+    ],
+  },
+];
+
+govAgents.forEach((f, i) => {
+  const x = 0.5 + i * 4.2;
+  slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
+    x, y: 1.45, w: 3.9, h: 3.7,
+    fill: { color: C.lightBg }, rectRadius: 0.12,
+    line: { color: f.color, width: 2 },
+  });
+  slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
+    x: x + 0.1, y: 1.55, w: 3.7, h: 0.75,
+    fill: { color: f.color }, rectRadius: 0.06,
+  });
+  slide.addText(f.title, {
+    x: x + 0.2, y: 1.55, w: 3.5, h: 0.75,
+    fontSize: 13, color: C.white, fontFace: FONT, bold: true, align: "center", valign: "middle",
+  });
+  f.items.forEach((item, j) => {
+    slide.addText(`▸  ${item}`, {
+      x: x + 0.3, y: 2.5 + j * 0.62, w: 3.4, h: 0.58,
+      fontSize: 11, color: C.darkText, fontFace: FONT,
+    });
+  });
+});
+
+// Human-in-the-loop callout
+slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
+  x: 0.5, y: 5.35, w: 12.3, h: 0.95,
+  fill: { color: C.lightGreen }, rectRadius: 0.08,
+});
+slide.addText("Human-in-the-loop by design: agent-generated glossary terms land as DRAFT and require human review before they become official. These are Qlik Answers capabilities, not standalone products — they bridge business and technical users.", {
+  x: 0.7, y: 5.42, w: 11.9, h: 0.82,
+  fontSize: 11, color: C.qlikGreen, fontFace: FONT, bold: true,
+});
+
+// ─── Slide: Talend Agentic Routes ───
+slide = contentSlide("Talend Agentic Routes", C.qlikLightGreen);
+
+slide.addText("AI-native workflows inside pipeline tasks — call LLMs, build RAG pipelines, and orchestrate agents, with MCP client support.", {
+  x: 0.5, y: 0.85, w: 12.3, h: 0.4,
+  fontSize: 13, color: C.medGray, fontFace: FONT, italic: true,
+});
+
+const talendRoutes = [
+  {
+    title: "LLM integration", color: C.qlikTeal, items: [
+      "Call LLMs from data tasks",
+      "Cloud: OpenAI, Anthropic Claude, Google Gemini, Amazon Bedrock",
+      "On-prem: Ollama, Mistral, Gemma 3, Phi 4",
+      "Sentiment, entity extraction, classification",
+    ],
+  },
+  {
+    title: "RAG pipelines", color: C.qlikBlue, items: [
+      "Build retrieval-augmented pipelines",
+      "Vector targets: Pinecone, MongoDB, Snowflake, Databricks, Milvus, Oracle",
+      "AI-assisted data quality in-task",
+    ],
+  },
+  {
+    title: "Agentic orchestration", color: C.qlikLightGreen, items: [
+      "Event-driven agent orchestration",
+      "Conversational AI",
+      "Extensible tools + MCP client",
+    ],
+  },
+];
+
+talendRoutes.forEach((f, i) => {
+  const x = 0.5 + i * 4.2;
+  slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
+    x, y: 1.35, w: 3.9, h: 3.3,
+    fill: { color: C.lightBg }, rectRadius: 0.12,
+    line: { color: f.color, width: 2 },
+  });
+  slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
+    x: x + 0.1, y: 1.45, w: 3.7, h: 0.55,
+    fill: { color: f.color }, rectRadius: 0.06,
+  });
+  slide.addText(f.title, {
+    x: x + 0.1, y: 1.45, w: 3.7, h: 0.55,
+    fontSize: 14, color: C.white, fontFace: FONT, bold: true, align: "center", valign: "middle",
+  });
+  f.items.forEach((item, j) => {
+    slide.addText(`▸  ${item}`, {
+      x: x + 0.3, y: 2.15 + j * 0.6, w: 3.4, h: 0.56,
+      fontSize: 10.5, color: C.darkText, fontFace: FONT,
+    });
+  });
+});
+
+// MCG grounding — the Salesforce address job
+slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
+  x: 0.5, y: 4.8, w: 12.3, h: 1.0,
+  fill: { color: C.lightBg }, rectRadius: 0.1, line: { color: C.qlikLightGreen, width: 1.5 },
+});
+slide.addText("MCG surface — the Salesforce address job", {
+  x: 0.7, y: 4.87, w: 11.9, h: 0.32,
+  fontSize: 13, color: C.qlikLightGreen, fontFace: FONT, bold: true,
+});
+slide.addText("Today's Talend job validates Salesforce addresses, geocodes via Nominatim, and routes exceptions to Qlik Stewardship. An agentic route adds an LLM-assisted address-correction step inside the same job — the model proposes a fix, a steward approves it.", {
+  x: 0.7, y: 5.2, w: 11.9, h: 0.55,
+  fontSize: 11, color: C.darkText, fontFace: FONT,
+});
+
+// Forward-looking note
+slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
+  x: 0.5, y: 5.95, w: 12.3, h: 0.5,
+  fill: { color: C.lightCyan }, rectRadius: 0.08,
+});
+slide.addText("Forward-looking: agentic-engineering capabilities are emerging across Qlik Talend Cloud; MCP-server tooling is in Qlik preview (June 2026). Timing and scope may change.", {
+  x: 0.7, y: 5.98, w: 11.9, h: 0.44,
+  fontSize: 10, color: C.qlikTeal, fontFace: FONT, bold: true,
+});
+
 // ─── Slide: AI — What to Show ───
 slide = contentSlide("AI & Outcomes Story — What to Show in the Demo", C.qlikLightGreen);
 
@@ -1684,6 +1907,11 @@ closingMetrics.forEach((m, i) => {
     x, y: y + 0.65, w: 1.8, h: 0.35,
     fontSize: 10, color: C.darkText, fontFace: FONT, align: "center",
   });
+});
+
+slide.addText("Plus build-side AI — pipelines as code, governance agents, and agentic data engineering (preview)", {
+  x: 0.5, y: 5.45, w: 11.5, h: 0.3,
+  fontSize: 11, color: C.qlikGreen, fontFace: FONT, bold: true,
 });
 
 slide.addText("Qlik Cloud  •  End-to-End Demo  •  Integrations  •  Governance  •  Analytics  •  AI & Outcomes", {

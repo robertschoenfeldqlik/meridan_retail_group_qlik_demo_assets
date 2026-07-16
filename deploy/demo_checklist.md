@@ -385,6 +385,37 @@ Master checklist of everything required to stand up the full Meridian Commerce G
 
 ---
 
+## Phase 12b: Agentic Data Engineering — Build-Side AI (Preview)
+
+> **Preview status:** Declarative Data Pipelines and the Qlik MCP Server tooling are in Qlik internal preview (June 2026) — mark these items as preview/roadmap on the demo. The three governance agents are **Qlik Answers capabilities, not separate products.** This phase is the build-side counterpart to the consumption-side AI in Phases 6, 11, and 12.
+
+### Declarative Data Pipelines in VS Code (Preview)
+- [ ] Install the schema kit: `npm run pipeline:template -- --schema <path-to-schema-kit>` (internal-preview, not in the repo — the bare command only verifies tooling)
+- [ ] Open `deploy/pipelines/` in VS Code — confirm each project has `.vscode/settings.json`, `CLAUDE.md`, `.github/copilot-instructions.md`
+- [ ] Confirm both projects load: `mcg-batch-pipeline` (4 tasks) and `mcg-streaming-pipeline` (2 tasks), both `platformType QLIK_OPEN_LAKEHOUSE`
+- [ ] Verify schema validation: introduce an invalid YAML value → VS Code flags it before commit
+- [ ] Walk the AI coding-agent loop: Developer Prompts → Agent Generates → Schema Validates → Developer Reviews
+- [ ] Demo edit: change **MCG CRM Landing** schedule `RRULE:FREQ=MINUTELY;INTERVAL=15` → `INTERVAL=30` → show the one-line git diff → **Apply-from-Remote** back to the tenant
+- [ ] Show the same task open in the Qlik Talend Cloud UI to prove there is one underlying definition, edited visually or as code
+
+### Governance Agents (Qlik Answers capabilities — not separate products)
+- [ ] **Data Product Agent** — conversationally review/package the Supply Chain Health and Last Mile Performance data products (owner, tags, description, SLA, Trust Score)
+- [ ] **Data Quality Agent** — conversationally assess `silver.inventory_reconciled` or `silver.addresses_standardized` and create/map a DQ rule; confirm violations route to Stewardship campaigns
+- [ ] **Catalog and Business Glossary Agent** — generate draft glossary terms for the supply-chain domain to seed/extend the 25-term MCG Supply Chain Glossary
+- [ ] Confirm generated glossary terms land in **DRAFT** status and require a term owner's approval before publishing
+
+### Talend Agentic Routes (Preview)
+- [ ] Show an LLM-assisted step inside a pipeline task — the address-correction evolution of the Salesforce flow (see `automation_guide.md` Automation 5b)
+- [ ] Note supported LLMs — cloud: OpenAI, Anthropic Claude, Google Gemini, Amazon Bedrock; on-prem: Ollama, Mistral, Gemma 3, Phi 4
+- [ ] Note RAG vector targets available — Pinecone, MongoDB, Snowflake, Databricks, Milvus, Oracle (demo against `[placeholder — target you have provisioned]`)
+- [ ] Confirm agentic orchestration inside pipeline tasks: event-driven orchestration, conversational AI, extensible tool + MCP-client support
+
+### Qlik MCP Server for Data Governance (Preview)
+- [ ] Confirm the Qlik MCP Server exposes data products, quality metrics, lineage, and catalog to an MCP-compatible assistant (see Phase 12 for connection setup)
+- [ ] Test: from Claude, ask a question that reads a data product produced/repackaged by the agents above (see `scenarios.md` Scenario 7)
+
+---
+
 ## Phase 13: Pre-Demo Verification
 
 ### Data Flow Health Check

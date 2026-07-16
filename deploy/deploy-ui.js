@@ -20,10 +20,32 @@ const PROJECT_DIR = path.resolve(SCRIPT_DIR, '..');
 
 const DEFAULT_PORT = 3939;
 
-let port = parseInt(process.env.PORT, 10) || DEFAULT_PORT;
+// Parse a port value strictly (digits only, positive) — returns null if invalid,
+// so an invalid PORT/--port value can be diagnosed instead of silently ignored.
+function parsePortValue(raw) {
+  if (raw === undefined || raw === null || !/^\d+$/.test(String(raw).trim())) return null;
+  const n = parseInt(raw, 10);
+  return (Number.isInteger(n) && n > 0) ? n : null;
+}
+
+let port = DEFAULT_PORT;
+if (process.env.PORT !== undefined && process.env.PORT !== '') {
+  const envPort = parsePortValue(process.env.PORT);
+  if (envPort !== null) {
+    port = envPort;
+  } else {
+    console.error(`Warning: PORT env var "${process.env.PORT}" is not a valid positive integer — using default port ${DEFAULT_PORT}.`);
+  }
+}
 for (let i = 2; i < process.argv.length; i++) {
   if (process.argv[i] === '--port' && process.argv[i + 1]) {
-    port = parseInt(process.argv[i + 1], 10) || DEFAULT_PORT;
+    const argPort = parsePortValue(process.argv[i + 1]);
+    if (argPort !== null) {
+      port = argPort;
+    } else {
+      console.error(`Warning: --port value "${process.argv[i + 1]}" is not a valid positive integer — using default port ${DEFAULT_PORT}.`);
+      port = DEFAULT_PORT;
+    }
   }
 }
 
@@ -447,6 +469,9 @@ function runBuildApps(res, options) {
 
   child.on('error', (err) => {
     activeBuildProcess = null;
+    if (tempConfig && fs.existsSync(tempConfig)) {
+      try { fs.unlinkSync(tempConfig); } catch (_) {}
+    }
     send('log', { level: 'error', text: `Process error: ${err.message}` });
     send('status', { state: 'error', message: err.message });
     res.end();
@@ -561,6 +586,9 @@ function runBuildAutomations(res, options) {
 
   child.on('error', (err) => {
     activeBuildAutoProcess = null;
+    if (tempConfig && fs.existsSync(tempConfig)) {
+      try { fs.unlinkSync(tempConfig); } catch (_) {}
+    }
     send('log', { level: 'error', text: `Process error: ${err.message}` });
     send('status', { state: 'error', message: err.message });
     res.end();
@@ -661,7 +689,10 @@ function saveEnvFile(vars) {
     '',
   ];
   for (const [k, v] of Object.entries(merged)) {
-    lines.push(`${k}=${v}`);
+    // Strip CR/LF from values so a newline-containing value can't inject bogus
+    // extra KEY=VALUE lines into the .env file.
+    const safeV = String(v).replace(/[\r\n]+/g, '');
+    lines.push(`${k}=${safeV}`);
   }
   fs.writeFileSync(path.join(INFRA_DIR, '.env'), lines.join('\n') + '\n', 'utf-8');
 }
@@ -675,11 +706,21 @@ function saveEnvFile(vars) {
 // the client misses a poll and catches up on the next one. The only way to
 // cancel is the explicit Stop button (POST /api/docker/stop).
 let activeDockerProcess = null;
-let dockerJob = null; // { running, action, code, error, lines:[{level,text}], startedAt }
+let dockerJob = null; // { running, action, code, error, lines:[{level,text}], droppedCount, startedAt }
+
+// Cap the in-memory log buffer so a very long-running job can't grow it without
+// bound. Older lines are dropped; droppedCount lets /api/docker/status keep its
+// offset-based polling protocol correct (see below) even after a drop.
+const DOCKER_LOG_CAP = 5000;
 
 function pushDockerLog(level, text) {
   if (!dockerJob) return;
   dockerJob.lines.push({ level: level, text: text });
+  if (dockerJob.lines.length > DOCKER_LOG_CAP) {
+    const excess = dockerJob.lines.length - DOCKER_LOG_CAP;
+    dockerJob.lines.splice(0, excess);
+    dockerJob.droppedCount = (dockerJob.droppedCount || 0) + excess;
+  }
   dockerJob.lastOutputAt = Date.now();  // for the client keepalive / "waiting for update" indicator
 }
 
@@ -818,8 +859,11 @@ async function dockerGatewayLifecycle(action, containerName) {
   return 0;
 }
 
+// Idempotent — the natural-completion path and the explicit Stop route can both
+// race to finalize the same job; only the first call should take effect.
 function finishDockerJob(code, error) {
-  if (!dockerJob) return;
+  if (!dockerJob || dockerJob.finalized) return;
+  dockerJob.finalized = true;
   dockerJob.running = false;
   dockerJob.code = (typeof code === 'number') ? code : null;
   dockerJob.error = error || null;
@@ -832,7 +876,7 @@ function startDockerJob(options) {
   if (dockerJob && dockerJob.running) {
     return { started: false, error: 'A Docker operation is already running. Please wait for it to finish.' };
   }
-  dockerJob = { running: true, action: options.action, code: null, error: null, lines: [], startedAt: Date.now(), lastOutputAt: Date.now() };
+  dockerJob = { running: true, finalized: false, action: options.action, code: null, error: null, lines: [], droppedCount: 0, startedAt: Date.now(), lastOutputAt: Date.now() };
   runDockerJob(options).catch((err) => {
     const msg = (err && err.message) ? err.message : String(err);
     pushDockerLog('error', 'Internal error: ' + msg);
@@ -874,6 +918,11 @@ async function runDockerJob(options) {
     if (options.rpmPath) {
       // Local file path — copy into build context
       pushDockerLog('info', `Resolving RPM from local path: ${options.rpmPath}`);
+      if (!/\.rpm$/i.test(options.rpmPath)) {
+        pushDockerLog('error', `Path does not end in .rpm: ${options.rpmPath}`);
+        finishDockerJob(null, 'RPM path must end in .rpm.');
+        return;
+      }
       if (!fs.existsSync(options.rpmPath)) {
         pushDockerLog('error', `RPM file not found at: ${options.rpmPath}`);
         finishDockerJob(null, 'RPM file not found at the specified path.');
@@ -904,7 +953,11 @@ async function runDockerJob(options) {
       const rpmPart = rpmDest + '.part';
       try {
         await new Promise((resolve, reject) => {
-          const dl = spawn('curl', ['-L', '--max-redirs', '3', '--proto', '=http,https', '-f', '-o', rpmPart, '--progress-bar', options.rpmUrl], {
+          // -L is required: release assets (e.g. GitHub) 302 to a CDN, and without
+          // it curl writes the redirect body to gateway.rpm and exits 0. --proto-redir
+          // constrains where a redirect may land; the initial URL is vetted by
+          // validateRpmUrl() above.
+          const dl = spawn('curl', ['-L', '--max-redirs', '3', '--proto', '=http,https', '--proto-redir', '=https', '-f', '-o', rpmPart, '--progress-bar', options.rpmUrl], {
             cwd: INFRA_DIR, stdio: ['ignore', 'pipe', 'pipe'],
           });
           activeDockerProcess = dl;
@@ -1190,6 +1243,9 @@ function runDeploy(res, options) {
   child.on('error', (err) => {
     clearInterval(heartbeat);
     activeProcess = null;
+    if (tempConfig && fs.existsSync(tempConfig)) {
+      try { fs.unlinkSync(tempConfig); } catch (_) {}
+    }
     send('log', { level: 'error', text: `Process error: ${err.message}` });
     send('status', { state: 'error', message: err.message });
     if (clientOpen) { try { res.end(); } catch (_) {} }
@@ -2035,10 +2091,10 @@ function getHTML() {
       <button onclick="showPage(2)"><span class="step-num">2</span>Spaces<span class="step-check" id="check-2"></span></button>
       <button onclick="showPage(3)"><span class="step-num">3</span>Data Connections<span class="step-check" id="check-3"></span></button>
       <button onclick="showPage(4)"><span class="step-num">4</span>Pipelines<span class="step-check" id="check-4"></span></button>
-      <button onclick="showPage(5)"><span class="step-num">5</span>Build Apps & Theme<span class="step-check" id="check-5"></span></button>
-      <button onclick="showPage(6)"><span class="step-num">6</span>Knowledge Base & Docs<span class="step-check" id="check-6"></span></button>
-      <button onclick="showPage(7)"><span class="step-num">7</span>Automations<span class="step-check" id="check-7"></span></button>
-      <button onclick="showPage(8)"><span class="step-num">8</span>Data Products<span class="step-check" id="check-8"></span></button>
+      <button onclick="showPage(5)"><span class="step-num">5</span>Data Products<span class="step-check" id="check-8"></span></button>
+      <button onclick="showPage(6)"><span class="step-num">6</span>Build Apps & Theme<span class="step-check" id="check-5"></span></button>
+      <button onclick="showPage(7)"><span class="step-num">7</span>Knowledge Base & Docs<span class="step-check" id="check-6"></span></button>
+      <button onclick="showPage(8)"><span class="step-num">8</span>Automations<span class="step-check" id="check-7"></span></button>
       <button onclick="showPage(9)"><span class="step-num">9</span>Qlik Predict<span class="step-check" id="check-predict"></span></button>
       <button onclick="showPage(10)"><span class="step-num">10</span>Glossary<span class="step-check" id="check-9"></span></button>
       <button onclick="showPage(11)"><span class="step-num">&#9654;</span>Deploy<span class="step-check" id="check-10"></span></button>
@@ -2469,6 +2525,32 @@ function getHTML() {
         <div class="hint">Schedules are declared in each project's YAML (one per task): the silver transform is event-triggered by its landings, the gold datamart runs daily at 06:00 UTC, and CDC/streaming landings run continuously once started. Dataset attachment to Data Products is configured on the Data Products page. Round-trip UI edits back into the repo with <code>npm run deploy:export-pipeline</code>; build credential-free import packages with <code>npm run pipeline:zip</code>.</div>
       </div>
 
+      <!-- Page (index 5): Data Products (immediately after Pipelines) -->
+      <div class="wizard-page" id="page-dataproducts">
+        <div class="page-title">Data Products</div>
+        <div class="page-desc">Gold-layer data product definitions to register in the Qlik Cloud catalog.</div>
+
+        <div class="toggle-row">
+          <label>Enable Data Products</label>
+          <label class="switch"><input type="checkbox" id="f-en-dataproducts" checked><span class="slider"></span></label>
+        </div>
+
+        <div class="section-divider">Products from data_products.json</div>
+        <div id="dp-list"><!-- populated by JS --></div>
+
+        <div class="section-divider">Dataset Attachment (from the pipeline)</div>
+        <div class="toggle-row">
+          <label>Attach gold datasets to Data Products</label>
+          <label class="switch"><input type="checkbox" id="f-pipelines-attach" checked><span class="slider"></span></label>
+        </div>
+        <div class="toggle-row">
+          <label>Publish (activate) Data Products to the marketplace</label>
+          <label class="switch"><input type="checkbox" id="f-pipelines-publish"><span class="slider"></span></label>
+        </div>
+        <div class="hint">Each product above shows the gold dataset the pipeline creates for it. Attachment happens via the Data Products API (JSON-Patch datasetIds) after the pipeline has run; tables not in the catalog yet are skipped with a warning — re-deploy after the first run to attach them.</div>
+
+      </div>
+
       <!-- Page: Build Apps & Theme -->
       <div class="wizard-page" id="page-4">
         <div class="page-title">Build Apps & Theme</div>
@@ -2618,32 +2700,6 @@ function getHTML() {
         <div class="field" style="margin-top:8px">
           <div class="hint">Automations are created in DISABLED state. Configure block details and triggers in the Qlik Cloud Automation Designer.</div>
         </div>
-      </div>
-
-      <!-- Page (index 8): Data Products -->
-      <div class="wizard-page" id="page-7">
-        <div class="page-title">Data Products</div>
-        <div class="page-desc">Gold-layer data product definitions to register in the Qlik Cloud catalog.</div>
-
-        <div class="toggle-row">
-          <label>Enable Data Products</label>
-          <label class="switch"><input type="checkbox" id="f-en-dataproducts" checked><span class="slider"></span></label>
-        </div>
-
-        <div class="section-divider">Products from data_products.json</div>
-        <div id="dp-list"><!-- populated by JS --></div>
-
-        <div class="section-divider">Dataset Attachment (from the pipeline)</div>
-        <div class="toggle-row">
-          <label>Attach gold datasets to Data Products</label>
-          <label class="switch"><input type="checkbox" id="f-pipelines-attach" checked><span class="slider"></span></label>
-        </div>
-        <div class="toggle-row">
-          <label>Publish (activate) Data Products to the marketplace</label>
-          <label class="switch"><input type="checkbox" id="f-pipelines-publish"><span class="slider"></span></label>
-        </div>
-        <div class="hint">Each product above shows the gold dataset the pipeline creates for it. Attachment happens via the Data Products API (JSON-Patch datasetIds) after the pipeline has run; tables not in the catalog yet are skipped with a warning — re-deploy after the first run to attach them.</div>
-
       </div>
 
       <!-- Page (index 9): Qlik Predict -->
@@ -3008,8 +3064,8 @@ function getHTML() {
     if (idx === 11) renderSummary();
     if (idx === 3) prefillFromDocker();
     if (idx === 4) renderPipelinesPage();
-    if (idx === 5) renderBuildAppsPage();
-    if (idx === 7) renderBuildAutomationsPage();
+    if (idx === 6) renderBuildAppsPage();
+    if (idx === 8) renderBuildAutomationsPage();
     updateRailProgress(idx);
     var wc = document.querySelector('.wizard-content');
     if (wc) wc.scrollTop = 0;  // start each page/mode at the top, not mid-scroll
@@ -3591,7 +3647,8 @@ function getHTML() {
       var gStatusEl = logStatusEl();
       gStatusEl.style.color = 'var(--text-dim)';
       gStatusEl.textContent = gMsg;
-      fetch('/api/docker/run?action=' + action, { cache: 'no-store' })
+      var gMethod = (action === 'gateway-start' || action === 'gateway-stop') ? 'POST' : 'GET';
+      fetch('/api/docker/run?action=' + action, { method: gMethod, cache: 'no-store' })
         .then(function(r) { return r.json(); })
         .then(function(d) {
           if (!d || !d.started) {
@@ -3668,7 +3725,8 @@ function getHTML() {
 
     // Kick off the job (tiny JSON ack), then switch to polling. We never hold a
     // long-lived stream, so a dropped console can't interrupt or lose the build.
-    fetch('/api/docker/run?' + params.toString(), { cache: 'no-store' })
+    var runMethod = (action === 'status') ? 'GET' : 'POST';
+    fetch('/api/docker/run?' + params.toString(), { method: runMethod, cache: 'no-store' })
       .then(function(r) { return r.json(); })
       .then(function(d) {
         if (!d || !d.started) {
@@ -4342,10 +4400,10 @@ function getHTML() {
       ['knowledge', 'Knowledge Base & Docs'],
       ['assistant', 'Qlik Answers Assistant'],
       ['automations', 'Automations'],
-      ['dataproducts', 'Data Products'],
       ['predict', 'Qlik Predict (ML)'],
       ['glossary', 'Business Glossary'],
       ['pipelines', 'Declarative Pipeline'],
+      ['dataproducts', 'Data Products'],
     ];
 
     html += '<table style="width:100%;font-size:12px;border-collapse:collapse">';
@@ -4577,16 +4635,65 @@ let pendingDeployConfig = null;
 let pendingBuildConfig = null;
 let pendingBuildAutoConfig = null;
 
+// Bind to loopback only by default — this console serves the live tenant API
+// key and can trigger real deploys, so it must not be reachable from the LAN.
+// Set MCG_UI_HOST=0.0.0.0 to deliberately expose it on the network.
+const HOST = process.env.MCG_UI_HOST || '127.0.0.1';
+
+// Cap request bodies so a POST handler never buffers an unbounded string.
+const MAX_BODY_BYTES = 10 * 1024 * 1024; // 10MB
+
+// Accumulate a request body up to MAX_BODY_BYTES, then invoke onBody(body).
+// If the cap is exceeded, respond 413 and stop reading/processing further data.
+function readRequestBody(req, res, onBody) {
+  let body = '';
+  let rejected = false;
+  req.on('data', (chunk) => {
+    if (rejected) return;
+    body += chunk;
+    if (Buffer.byteLength(body) > MAX_BODY_BYTES) {
+      rejected = true;
+      res.writeHead(413, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Request body too large.' }));
+      req.destroy();
+    }
+  });
+  req.on('end', () => {
+    if (rejected) return;
+    onBody(body);
+  });
+}
+
 const server = http.createServer((req, res) => {
   const parsed = new URL(req.url, `http://localhost:${port}`);
 
-  // CSRF / cross-origin defense: modern browsers stamp Sec-Fetch-Site on every
-  // request (including <img>/<script> and fetch) and JS cannot forge it. Reject
-  // any cross-site/same-site request to an API route so a malicious page the
-  // operator visits cannot read config or trigger deploys. Same-origin requests
-  // (our own UI) send 'same-origin'/'none' and pass through untouched.
+  // Anti-DNS-rebinding: reject any request whose Host header doesn't match this
+  // server's own bind address:port. A page on the public internet that DNS-binds
+  // a hostname to 127.0.0.1 could otherwise reach this loopback-only server.
+  // Skipped only when the operator has deliberately exposed the server on the
+  // network (MCG_UI_HOST override) — in that case we can't know every valid
+  // hostname/IP the machine may be reached by, and Sec-Fetch-Site below still applies.
+  if (HOST === '127.0.0.1') {
+    const hostHeader = String(req.headers['host'] || '').toLowerCase();
+    const allowedHosts = new Set(['127.0.0.1:' + port, 'localhost:' + port, '[::1]:' + port]);
+    if (!allowedHosts.has(hostHeader)) {
+      res.writeHead(403, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Invalid Host header.' }));
+      return;
+    }
+  }
+
+  // CSRF / cross-origin defense: browsers stamp Sec-Fetch-Site on every request
+  // (including <img>/<script> and fetch) and page JS cannot forge it, so an
+  // explicit 'cross-site' / 'same-site' value is a reliable signal to reject.
+  //
+  // A MISSING header is deliberately allowed. Safari before 16.4 and other
+  // non-Chromium clients omit Fetch Metadata entirely, and rejecting them would
+  // 403 every button in the console while buying no security: any local process
+  // can simply set the header itself. The real defenses are the Host check above
+  // (anti-DNS-rebinding) and the loopback bind.
   const sfs = req.headers['sec-fetch-site'];
-  if ((sfs === 'cross-site' || sfs === 'same-site') && parsed.pathname.startsWith('/api/')) {
+  if (parsed.pathname.startsWith('/api/') && (sfs === 'cross-site' || sfs === 'same-site')) {
     res.writeHead(403, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ error: 'Cross-site request blocked.' }));
     return;
@@ -4613,9 +4720,7 @@ const server = http.createServer((req, res) => {
   }
 
   if (req.method === 'POST' && parsed.pathname === '/api/config') {
-    let body = '';
-    req.on('data', chunk => body += chunk);
-    req.on('end', () => {
+    readRequestBody(req, res, (body) => {
       try {
         // Restore any masked secrets from the stored config before saving, so an
         // untouched (masked) field is never persisted over a real secret.
@@ -4633,16 +4738,47 @@ const server = http.createServer((req, res) => {
 
   // Test connection to Qlik Cloud
   if (req.method === 'POST' && parsed.pathname === '/api/test-connection') {
-    let body = '';
-    req.on('data', chunk => body += chunk);
-    req.on('end', async () => {
+    readRequestBody(req, res, async (body) => {
       try {
         const params = JSON.parse(body);
         // Restore masked secrets from the stored config (the form may submit the
-        // redacted sentinel if the user did not retype the key).
+        // redacted sentinel if the user did not retype the key). Whenever a real
+        // stored secret is restored this way, the destination (host/region, and
+        // tokenUrl for oauth) MUST also come from the stored config — never from
+        // the request body — so a caller can't pair a real secret with an
+        // attacker-controlled host by sending {apiKey:"__MCG_REDACTED__", host:"evil"}.
         const stored = loadConfig() || {};
-        if (params.apiKey === SECRET_MASK) params.apiKey = (stored.auth && stored.auth.apiKey) || '';
-        if (params.clientSecret === SECRET_MASK) params.clientSecret = (stored.auth && stored.auth.oauth && stored.auth.oauth.clientSecret) || '';
+        const storedHost = (stored.tenant && stored.tenant.hostname) || '';
+        const storedRegion = (stored.tenant && stored.tenant.region) || '';
+
+        // The stored secret belongs to the STORED tenant, and the form prefills the
+        // mask on every page load. So an operator who types a new hostname without
+        // retyping the key would otherwise silently probe the OLD tenant and be told
+        // "Connected" for a tenant they aren't even looking at. Make them retype it.
+        const usingStoredSecret = params.apiKey === SECRET_MASK || params.clientSecret === SECRET_MASK;
+        if (usingStoredSecret &&
+            ((params.host && params.host !== storedHost) ||
+             (params.region && params.region !== storedRegion))) {
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({
+            success: false,
+            error: 'Tenant changed to ' + params.host + '.' + params.region +
+                   ' — re-enter the API key for that tenant before testing.',
+          }));
+          return;
+        }
+
+        if (params.apiKey === SECRET_MASK) {
+          params.apiKey = (stored.auth && stored.auth.apiKey) || '';
+          params.host = storedHost;
+          params.region = storedRegion;
+        }
+        if (params.clientSecret === SECRET_MASK) {
+          params.clientSecret = (stored.auth && stored.auth.oauth && stored.auth.oauth.clientSecret) || '';
+          params.host = (stored.tenant && stored.tenant.hostname) || '';
+          params.region = (stored.tenant && stored.tenant.region) || '';
+          params.tokenUrl = (stored.auth && stored.auth.oauth && stored.auth.oauth.tokenUrl) || '';
+        }
         const baseUrl = 'https://' + params.host + '.' + params.region;
         let headers = {};
 
@@ -4691,9 +4827,12 @@ const server = http.createServer((req, res) => {
 
   // Store config for upcoming deploy
   if (req.method === 'POST' && parsed.pathname === '/api/deploy-config') {
-    let body = '';
-    req.on('data', chunk => body += chunk);
-    req.on('end', () => {
+    if (activeProcess) {
+      res.writeHead(409, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'A deployment is already running.' }));
+      return;
+    }
+    readRequestBody(req, res, (body) => {
       try {
         pendingDeployConfig = JSON.parse(body);
         res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -4736,9 +4875,12 @@ const server = http.createServer((req, res) => {
 
   // Build apps APIs
   if (req.method === 'POST' && parsed.pathname === '/api/build-config') {
-    let body = '';
-    req.on('data', chunk => body += chunk);
-    req.on('end', () => {
+    if (activeBuildProcess) {
+      res.writeHead(409, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'A build is already running.' }));
+      return;
+    }
+    readRequestBody(req, res, (body) => {
       try {
         pendingBuildConfig = JSON.parse(body);
         res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -4782,9 +4924,12 @@ const server = http.createServer((req, res) => {
 
   // Build automations APIs
   if (req.method === 'POST' && parsed.pathname === '/api/build-auto-config') {
-    let body = '';
-    req.on('data', chunk => body += chunk);
-    req.on('end', () => {
+    if (activeBuildAutoProcess) {
+      res.writeHead(409, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'An automation build is already running.' }));
+      return;
+    }
+    readRequestBody(req, res, (body) => {
       try {
         pendingBuildAutoConfig = JSON.parse(body);
         res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -4828,8 +4973,20 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  if (req.method === 'GET' && parsed.pathname === '/api/docker/run') {
+  if ((req.method === 'GET' || req.method === 'POST') && parsed.pathname === '/api/docker/run') {
     const action = parsed.searchParams.get('action') || 'status';
+
+    // Actions that mutate Docker/container state must be POST — a GET (e.g. an
+    // <img>/<script> tag on a page the operator merely visits) must never be
+    // able to trigger prune/build/start/stop. Read-only status/token lookups
+    // may remain GET.
+    const MUTATING_DOCKER_ACTIONS = new Set(['up', 'down', 'prune', 'gateway-start', 'gateway-stop']);
+    if (MUTATING_DOCKER_ACTIONS.has(action) && req.method !== 'POST') {
+      res.writeHead(405, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Method not allowed — use POST for this action.' }));
+      return;
+    }
+
     const composeFile = parsed.searchParams.get('composeFile');
     const build = parsed.searchParams.get('build') === '1';
     let envVars = null;
@@ -4867,8 +5024,12 @@ const server = http.createServer((req, res) => {
       res.end(JSON.stringify({ idle: true, running: false, code: null, error: null, lines: [], total: 0 }));
       return;
     }
-    const total = dockerJob.lines.length;
-    const lines = offset < total ? dockerJob.lines.slice(offset) : [];
+    // `total` is a monotonically increasing logical count across the job's
+    // lifetime even though `lines` may have had its oldest entries dropped
+    // (DOCKER_LOG_CAP) — droppedCount keeps the offset math correct.
+    const dropped = dockerJob.droppedCount || 0;
+    const total = dropped + dockerJob.lines.length;
+    const lines = offset < total ? dockerJob.lines.slice(Math.max(0, offset - dropped)) : [];
     const now = Date.now();
     res.end(JSON.stringify({
       idle: false,
@@ -4912,10 +5073,6 @@ const server = http.createServer((req, res) => {
   res.end('Not found');
 });
 
-// Bind to loopback only by default — this console serves the live tenant API
-// key and can trigger real deploys, so it must not be reachable from the LAN.
-// Set MCG_UI_HOST=0.0.0.0 to deliberately expose it on the network.
-const HOST = process.env.MCG_UI_HOST || '127.0.0.1';
 server.listen(port, HOST, () => {
   console.log(`\n  MCG Deploy UI running at:\n`);
   console.log(`    http://localhost:${port}\n`);

@@ -26,7 +26,7 @@
   },
 
   "enabledComponents": {
-    "infrastructure": true,
+    "docker": true,
     "spaces": true,
     "connections": true,
     "apps": true,
@@ -39,14 +39,15 @@
     "webhooks": true,
     "reloadtasks": true,
     "pipelines": true,
-    "comment_components": "Toggle individual deployment steps on/off. 'infrastructure' controls Kafka Docker/topic setup. 'predict' creates the Qlik Predict (ML) experiment/deployment. 'pipelines' imports the declarative QTCP pipeline project (Step 13)."
+    "comment_components": "Toggle individual deployment steps on/off. 'docker' controls the Docker Compose stack (Kafka, simulators, and/or DMG gateway per 'docker.profile'). 'predict' creates the Qlik Predict (ML) experiment/deployment. 'pipelines' imports the declarative QTCP pipeline project (Step 13)."
   },
 
-  "infrastructure": {
-    "useDocker": true,
-    "comment_useDocker": "true = start Confluent Kafka via Docker Compose (infrastructure/kafka/). false = create topics on external broker using bootstrapServers from dataConnections.kafka.",
-    "simulatorInterval": 900,
-    "comment_simulatorInterval": "Seconds between Kafka IoT simulator batches when using --scheduled mode (default 900 = 15 min)"
+  "docker": {
+    "profile": "full-stack",
+    "comment_profile": "Which Docker Compose file to run (infrastructure/): 'full-stack' (Kafka+simulators, docker-compose.full-stack.yml), 'full-stack-dmg' (+ DMG gateway, docker-compose.full-stack-dmg.yml), 'kafka' (Kafka only, kafka/docker-compose.yml), 'simulators' (docker-compose.simulators.yml), 'simulators-dmg' (docker-compose.simulators-dmg.yml), or 'dmg' (DMG gateway only, docker-compose.dmg.yml).",
+    "rpmPath": "",
+    "rpmUrl": "",
+    "comment_rpm": "Only used for the 'dmg'/'full-stack-dmg' profiles: local file path or download URL for the Data Movement Gateway RPM (infrastructure/dmg/gateway/rpmfiles/gateway.rpm). Leave both empty if the RPM is already in place."
   },
 
   "dataGateway": {
@@ -152,7 +153,7 @@
 
   "dataProducts": {
     "sourceFile": "./data_products.json",
-    "comment_sourceFile": "JSON file with Gold-layer data product definitions (7 products). Loaded automatically by deploy script."
+    "comment_sourceFile": "JSON file with Gold-layer data product definitions (2 products). Loaded automatically by deploy script."
   },
 
   "predict": {
@@ -170,11 +171,6 @@
   "glossary": {
     "sourceFile": "./glossary_terms.json",
     "comment_sourceFile": "JSON file with 25 business glossary terms. Loaded automatically by deploy script."
-  },
-
-  "apps": {
-    "sheetsViaMcp": true,
-    "comment_apps": "sheetsViaMcp=true (default): build-apps creates each app EMPTY — load script only, mapped to the gold data products — and sheets are authored via Qlik MCP prompting (deploy/apps/mcp-sheet-prompts.json, surfaced with copy buttons on the deploy UI Build Apps page). Set false (or run build-apps --build-sheets) for the legacy Engine-API sheet builder."
   },
 
   "pipelines": {
@@ -228,6 +224,8 @@
   "apps": {
     "sourceDir": "./apps",
     "comment_sourceDir": "Place .qvf app export files in this directory before running deploy",
+    "sheetsViaMcp": true,
+    "comment_sheetsViaMcp": "sheetsViaMcp=true (default): build-apps creates each app EMPTY — load script only, mapped to the gold data products — and sheets are authored via Qlik MCP prompting (deploy/apps/mcp-sheet-prompts.json, surfaced with copy buttons on the deploy UI Build Apps page). Set false (or run build-apps --build-sheets) for the legacy Engine-API sheet builder.",
     "domainApps": [
       {
         "name": "MCG Supply Chain Operations",

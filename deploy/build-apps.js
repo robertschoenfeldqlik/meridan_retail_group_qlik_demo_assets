@@ -780,11 +780,26 @@ class QlikAppBuilder {
     const filter = spaceId
       ? `name eq "${name}" and spaceId eq "${spaceId}"`
       : `name eq "${name}"`;
-    const res = await this._get('/api/v1/items', { filter, resourceType: 'app', limit: 100 });
-    if (res.statusCode !== 200) return null;
-    const data = res.body.data || res.body;
-    if (Array.isArray(data)) {
-      return data.find((a) => a.name === name) || null;
+    // Paginate via links.next.href — a single capped page could miss the
+    // target on a tenant with >100 items and cause a duplicate app import.
+    let nextLink = null;
+    let first = true;
+    while (first || nextLink) {
+      const res = nextLink
+        ? await request('GET', nextLink, { headers: this._authHeaders() })
+        : await this._get('/api/v1/items', { filter, resourceType: 'app', limit: 100 });
+      first = false;
+      if (res.statusCode !== 200) return null;
+      const data = res.body.data || res.body;
+      if (Array.isArray(data)) {
+        const match = data.find((a) => a.name === name);
+        if (match) return match;
+      }
+      nextLink = null;
+      if (res.body.links && res.body.links.next && res.body.links.next.href) {
+        const href = res.body.links.next.href;
+        nextLink = href.startsWith('http') ? href : `${this.baseUrl}${href}`;
+      }
     }
     return null;
   }

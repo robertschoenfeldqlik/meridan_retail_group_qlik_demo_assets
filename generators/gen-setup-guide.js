@@ -644,7 +644,7 @@ function sectionGlossary() {
 
     heading("11.2 Link Terms to Data Assets", 2),
     para("After importing, link glossary terms to their corresponding data assets:"),
-    para("Link 'Phantom Inventory' to gold.inventory_health data product", { bullet: true }),
+    para("Link 'Phantom Inventory' to gold.supply_chain_health data product", { bullet: true }),
     para("Link 'Cold Chain' to gold.supply_chain_health data product", { bullet: true }),
     para("Link 'WISMO' to gold.last_mile_performance data product", { bullet: true }),
     para("Link 'Trust Score' to all data products (as a governance concept)", { bullet: true }),

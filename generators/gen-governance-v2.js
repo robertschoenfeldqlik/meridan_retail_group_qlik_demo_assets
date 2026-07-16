@@ -59,7 +59,7 @@ function trnWmsSap() {
     dataTable(
       ["System", "Timezone Used", "TZ Indicator?", "Example", "UTC Equivalent"],
       [
-        ["Oracle WMS (EU)", "CET (UTC+1 / +2 DST)", "NO ⚠", "14:32", "12:32 UTC (winter) or 12:32 UTC (summer)"],
+        ["Oracle WMS (EU)", "CET (UTC+1 / +2 DST)", "NO ⚠", "14:32", "13:32 UTC (winter) or 12:32 UTC (summer)"],
         ["Oracle WMS (Americas)", "Local warehouse time", "NO ⚠", "09:15", "Depends on DC location"],
         ["Manhattan WMS (APAC)", "UTC (mostly)", "YES (usually)", "06:32 UTC", "06:32 UTC"],
         ["SAP S/4HANA", "UTC", "YES", "12:02 UTC", "12:02 UTC"],

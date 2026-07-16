@@ -1,0 +1,69 @@
+{
+  "baseline": "manufacturing",
+  "productOverlay": "lakehouse-overlay",
+  "layout": "5col",
+  "accentColor": "TEAL",
+  "trackLength": "60s",
+  "output": "C:\\Claude\\MCG Full Stack\\MCG_Marketecture_Agentic.pptx",
+
+  "slideTitle": "Meridian Commerce Group — Agentic Data Engineering",
+  "slideSubtitle": "INTERNAL — DEMO ENABLEMENT  ·  Pipelines as code, agents that govern, AI in the pipeline — raw feeds to trusted, AI-ready data products",
+  "col1Header": "WHERE COMMERCE HAPPENS",
+  "col3Header": "AGENTIC DATA ENGINEERING",
+  "col5Header": "TRUSTED, AI-READY DATA",
+
+  "sources": [
+    { "t": "PostgreSQL WMS",      "s1": "Warehouse system",     "s2": "Inventory · Shipments",      "tag": "CDC real-time",     "icon": "warehouse" },
+    { "t": "Cold-chain IoT",      "s1": "Tive/Sensitech feeds", "s2": "Temp · GPS · Battery",       "tag": "Kafka streaming",   "icon": "cell-tower" },
+    { "t": "Carrier events",      "s1": "6 carrier webhooks",   "s2": "5 languages, 1 stream",      "tag": "Kafka streaming",   "icon": "data-pipeline" },
+    { "t": "Salesforce CRM",      "s1": "Contacts + orders",    "s2": "Product master",             "tag": "Every 15 min",      "icon": "office" },
+    { "t": "Product master",      "s1": "Salesforce objects",   "s2": "Weights · suppliers",        "tag": "Every 15 min",      "icon": "spec" },
+    { "t": "Operational docs",    "s1": "SOPs + contracts",     "s2": "25 DOCX knowledge base",     "tag": "Qlik Answers",      "icon": "doc" }
+  ],
+
+  "sor": {
+    "name": "LAKE",
+    "subtitle": "OPEN LAKEHOUSE",
+    "badge": "ONE STORE, AUTHORED AS CODE",
+    "capabilities": [
+      { "hd": "Pipelines as code",     "sub": "YAML · VS Code · AI agent" },
+      { "hd": "Agents govern",         "sub": "Product · Quality · Glossary" },
+      { "hd": "Talend Agentic Routes", "sub": "LLM · RAG in-task" },
+      { "hd": "MCP + trust",           "sub": "governance to any AI" }
+    ]
+  },
+
+  "integration": {
+    "sectionSubtitle": "Author declaratively, govern with agents, enrich in the pipeline",
+    "step1Title": "1 · Author as Code",
+    "step1Body1": "Declarative YAML",
+    "step1Body2": "— VS Code + AI agent",
+    "step2Title": "2 · Govern with Agents",
+    "step2Lines": ["Data Product Agent", "Data Quality Agent", "Catalog + Glossary", "Agent (draft, human-", "reviewed)", "Qlik Answers, in NL"],
+    "step3Title": "3 · Enrich + Expose",
+    "step3Lines": ["Talend Agentic Routes", "LLM · RAG in-task", "Qlik MCP Server", " ", "Governance to any AI"]
+  },
+
+  "analytics": {
+    "aiml": {
+      "body":   ["Predict trained on", "governed lakehouse data"],
+      "accent": ["Human-in-the-loop:", "agent drafts, engineer reviews"]
+    }
+  },
+
+  "outcomes": [
+    { "t": "Pipelines as Code", "s": "2 projects · 6 tasks", "tag": "VS Code + AI agent" },
+    { "t": "Governance Agents", "s": "Product · Quality",    "tag": "Qlik Answers, NL" },
+    { "t": "Agentic Routes",    "s": "LLM · RAG in-task",    "tag": "Talend · in-task AI" },
+    { "t": "Qlik MCP Server",   "s": "Products · lineage",   "tag": "Governance to any AI" },
+    { "t": "Trusted Products",  "s": "2 gold products",      "tag": "Trust + provenance" }
+  ],
+
+  "bottomBand": "HIPAA · HITRUST · SOC 2 · ISO 27001",
+  "bottomBuy": "pipelines as code · agents that govern · AI in the pipeline · trusted, AI-ready data products",
+
+  "talkTrack": {
+    "30s": "MCG runs commerce on three disconnected systems. The data lands in the Open Lakehouse through pipelines authored as version-controlled YAML — in the Qlik Talend Cloud UI, in VS Code, or by an AI coding agent, whichever the engineer prefers. Conversational agents then govern it: a Data Product Agent packages the gold products, a Data Quality Agent defines the rules, and a Catalog and Business Glossary Agent generates the vocabulary — all as Qlik Answers capabilities, human-reviewed. Talend Agentic Routes put LLMs and RAG inside the pipeline tasks, and the Qlik MCP Server exposes the governed result to any AI assistant. Pipelines as code, agents that govern, AI that ships. (Declarative pipelines and MCP tooling are Qlik internal preview, June 2026.)",
+    "60s": "TALK TRACK · 60 SECONDS\n\nMeridian Commerce Group runs on three systems that never talked: a PostgreSQL warehouse database, cold-chain IoT through Kafka, and Salesforce. Agentic Data Engineering changes how that data is built and governed.\n\nThe pipeline is code. Two declarative Qlik Talend Cloud projects — six tasks across batch and streaming — are version-controlled YAML that lands and transforms every feed in the Open Lakehouse. The same definition is editable three ways: visually in the UI, programmatically in VS Code, or agentically with an AI coding agent that reads the schema, generates the change, and hands it back for a one-line git review.\n\nOn top of the lakehouse, conversational agents do the governance work — a Data Product Agent to package the two gold products, a Data Quality Agent to define and run rules with a steward, and a Catalog and Business Glossary Agent to generate draft glossary terms for human review. These are Qlik Answers capabilities, not separate products. Inside the pipeline tasks, Talend Agentic Routes add LLM calls and RAG; the Qlik MCP Server then exposes the governed data products, quality, and lineage to any MCP-compatible AI assistant.\n\nThe result is a path from raw data to a trusted, AI-ready data product that keeps human expertise in the loop at every step. (Declarative pipelines and the Qlik MCP Server are Qlik internal preview, June 2026 — positioned as forward-looking.)"
+  }
+}

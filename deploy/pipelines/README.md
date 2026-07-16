@@ -91,9 +91,32 @@ git diff                          # review what the UI changed
 
 Commit the result and the next `npm run deploy` reproduces it on any tenant. This is the recommended workflow for the silver/gold transformation logic, which is easier to author visually than by hand.
 
-## Editing the YAML by hand
+## VS Code template & AI-assisted authoring
 
-Schema-validated editing works in VS Code with the Red Hat YAML extension plus the QTCP schema kit (`schema/` + `.vscode/settings.json`). The kit ships with Qlik's **internal preview** materials (pending legal approval for public hosting) and therefore **must not be committed to this repository** — `.gitignore` blocks `deploy/pipelines/schema/` accordingly. Drop the kit into this folder locally to get hover docs, auto-complete, and validation.
+Each project ships as a ready-to-open VS Code workspace so pipelines can be authored declaratively — by hand or with an AI coding agent (Claude Code, GitHub Copilot) — with live schema validation. The tooling is committed with each project:
+
+- `.vscode/settings.json` — maps every QTCP schema to its file pattern (the Red Hat YAML extension reads this)
+- `.vscode/extensions.json` — recommends `redhat.vscode-yaml`
+- `CLAUDE.md` and `.github/copilot-instructions.md` — point any coding agent at `schema/ai-instructions.md` as its source of truth
+
+One local step activates validation. The Qlik **schema kit** (`schema/`) is internal-preview material pending legal approval for public hosting, so it is **not committed** (`.gitignore` blocks `deploy/pipelines/schema/`). Obtain the kit and drop it in:
+
+```bash
+npm run pipeline:template                                   # verify tooling + report schema status
+npm run pipeline:template -- --schema <path-to-schema-kit>  # install the kit into both projects
+```
+
+Then open a project folder (e.g. `deploy/pipelines/mcg-batch-pipeline`) in VS Code, accept the recommended Red Hat YAML extension, and open `qtcp_project.yaml` — the schema title shows in the status bar, hover gives docs, and Problems = 0.
+
+### Author a change with an AI agent (demo flow)
+
+1. Open `deploy/pipelines/mcg-batch-pipeline` in VS Code with a coding agent (it reads `CLAUDE.md` → `schema/ai-instructions.md`).
+2. Prompt: *"Change the CRM landing to sync every 30 minutes instead of 15."*
+3. The agent edits one line in `qtcp_tasks/MCG CRM Landing/schedule.yaml` — `RRULE:FREQ=MINUTELY;INTERVAL=15` → `INTERVAL=30` — validated live against the schema.
+4. `git diff` shows exactly one changed line; commit it.
+5. Sync to the tenant via **Apply from Remote** (GitHub-connected project), `npm run deploy`, or a manual ZIP import. Rollback = `git revert`.
+
+## Editing the YAML by hand
 
 Format ground rules (from the preview tester's guide):
 

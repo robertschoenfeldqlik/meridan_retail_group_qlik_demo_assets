@@ -37,10 +37,14 @@ npm run ui
 ### Alternative: CLI Deployment
 
 ```bash
-# Preview deployment without making changes
+# 1. Copy the example config and fill in your tenant details
+cp deploy/config.example.json deploy/config.json
+# (Windows PowerShell: Copy-Item deploy\config.example.json deploy\config.json)
+
+# 2. Preview deployment without making changes
 npm run deploy:dry-run
 
-# Run the full deployment
+# 3. Run the full deployment
 npm run deploy
 ```
 
@@ -60,17 +64,17 @@ MCG Full Stack/
 │   ├── data_products.json      # 2 Gold-layer data product definitions
 │   └── glossary_terms.json     # 25 business glossary terms
 │
-├── documents/                  # 25 operational .docx + 13 demo scripts
+├── documents/                  # 25 operational .docx + 18 demo scripts
 │   ├── carrier_contracts/      # DPD, FedEx, NinjaVan agreements
 │   ├── compliance/             # NVWA corrective action plans
-│   ├── demo-scripts/           # 13 guided demo walkthroughs
+│   ├── demo-scripts/           # 18 guided demo walkthroughs (Qlik-branded)
 │   ├── incident_reports/       # Rotterdam, TransFrio incidents
 │   ├── policies/               # Cold chain, data quality, shipping
 │   ├── sops/                   # WISMO, goods receiving, cycle count
 │   └── ...                     # training, purchase orders, recalls
 │
 ├── generators/                 # Content generation scripts
-│   ├── gen-demo-scripts.js     # 13 demo walkthrough documents
+│   ├── gen-demo-scripts.js     # 18 demo walkthrough documents
 │   ├── gen-sops-enriched.js    # Standard operating procedures
 │   ├── gen-carriers-enriched.js # Carrier contracts
 │   ├── gen-architecture.js     # Technology architecture PPTX
@@ -91,6 +95,7 @@ MCG Full Stack/
 │   ├── docker-compose.full-stack.yml
 │   ├── docker-compose.full-stack-dmg.yml
 │   ├── docker-compose.simulators.yml
+│   ├── docker-compose.simulators-dmg.yml
 │   └── docker-compose.dmg.yml
 │
 └── package.json
@@ -102,13 +107,33 @@ MCG Full Stack/
 |---|---|
 | `npm run ui` | Launch the deployment web UI on port 3939 |
 | `npm run deploy` | Run the Node.js deployer (uses `deploy/config.json`) |
-| `npm run deploy:dry-run` | Preview deployment without making API calls |
+| `npm run deploy:dry-run` | Preview deployment without making changes (some read-only checks still occur) |
+| `npm run deploy:verbose` | Run the Node.js deployer with detailed logging |
 | `npm run deploy:export-pipeline` | Export the tenant's declarative pipeline project back into `deploy/pipelines/` |
+| `npm run pipeline:zip` | Zip declarative pipeline project(s) for manual import |
+| `npm run pipeline:template` | Verify the VS Code pipeline tooling; add `-- --schema <path>` to install the schema kit |
+| `npm run build-apps` | Build analytics apps from JSON app definitions (`deploy/build-apps.js`) |
+| `npm run build-apps:dry-run` | Preview app builds without making changes |
+| `npm run build-automations` | Create/update automation scaffolds from templates |
+| `npm run build-automations:dry-run` | Preview automation builds without making changes |
 | `npm run generate` | Run all document/presentation generators |
+| `npm run generate:list` | List available generators without running them |
+| `npm run generate:docs` | Run only the `documents` generator group |
+| `npm run generate:presentations` | Run only the `presentations` generator group |
+| `npm run generate:demos` | Run only the `demos` generator group |
 | `npm run docker:up` | Start full stack (Kafka + simulators) |
 | `npm run docker:up:dmg` | Start full stack with DMG gateway |
-| `npm run docker:down` | Stop all containers |
+| `npm run docker:up:kafka` | Start Kafka only |
+| `npm run docker:up:simulators` | Start simulators only |
+| `npm run docker:up:simulators-dmg` | Start simulators + DMG gateway |
+| `npm run docker:up:dmg-only` | Start DMG gateway only |
+| `npm run docker:down` | Stop the full-stack containers |
+| `npm run docker:down:dmg` | Stop the full-stack + DMG containers |
 | `npm run docker:status` | Show running container status |
+| `npm run docker:logs` | Tail the last 50 lines of container logs |
+| `npm run db:schema` | Load `simulators/schema.sql` into the Postgres container |
+| `npm run db:seed` | Seed the Postgres container via `seed_data.py` |
+| `npm run lint` | Syntax-check (`node -c`) the deploy/ scripts |
 
 ## Docker Infrastructure
 
@@ -149,7 +174,7 @@ All business documents, SOPs, carrier contracts, demo scripts, and presentations
 npm run generate
 
 # Generate specific content
-node generators/gen-demo-scripts.js     # 13 demo walkthroughs
+node generators/gen-demo-scripts.js     # 18 demo walkthroughs
 node generators/gen-sops-enriched.js    # Standard operating procedures
 node generators/gen-architecture.js     # Technology architecture deck
 node generators/gen-glossary-excel.js   # Business glossary Excel

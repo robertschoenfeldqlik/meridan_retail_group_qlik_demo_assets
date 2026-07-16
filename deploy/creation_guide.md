@@ -28,6 +28,11 @@ Step-by-step creation instructions for building Lakehouse tables, Data Products,
    - [4.1 Model 1: Cold Chain Exceedance](#41-model-1-cold-chain-exceedance)
    - [4.2 Model 2: Late Delivery Predictor](#42-model-2-late-delivery-predictor)
    - [4.3 Model API Sharing](#43-model-api-sharing)
+5. [Agentic Data Engineering — Build-Side AI (Preview)](#5-agentic-data-engineering--build-side-ai-preview)
+   - [5.1 Declarative Data Pipelines in VS Code](#51-declarative-data-pipelines-in-vs-code)
+   - [5.2 Data Product Agent](#52-data-product-agent)
+   - [5.3 Data Quality Agent](#53-data-quality-agent)
+   - [5.4 Catalog and Business Glossary Agent](#54-catalog-and-business-glossary-agent)
 
 ---
 
@@ -1192,6 +1197,78 @@ POST https://<tenant>.qlikcloud.com/api/v1/ml/predictions
 - **Automations** call the Predict API to trigger proactive alerts (e.g., "SHP-GRU-BA-20251015 has 78% cold-chain exceedance risk")
 - **MCP Server** allows Claude to query predictions via natural language ("What's the cold-chain exceedance risk for active São Paulo shipments?")
 - **Qlik Analytics** embeds prediction results as calculated fields in the analytics apps
+
+---
+
+## 5. Agentic Data Engineering — Build-Side AI (Preview)
+
+> **Preview status:** Declarative Data Pipelines and the Qlik MCP Server tooling are in Qlik internal preview (June 2026). Treat this section as forward-looking. The three conversational agents below (Data Product, Data Quality, Catalog & Business Glossary) are **Qlik Answers capabilities, not separate products** — do not present them as standalone SKUs.
+
+Sections 1-4 build the MCG environment through the visual UI. The same pipelines, data products, rules, and glossary can also be authored and governed with AI. This is the **build-side** counterpart to the consumption-side AI you already have (Discovery Agent, Qlik Answers, Qlik Predict, MCP-authored app sheets): instead of asking questions *about* trusted data, you use agents to help *produce* it.
+
+The through-line is one artifact. Each MCG pipeline is a single declarative definition (YAML) you can edit three ways — visually in the Qlik Talend Cloud UI, programmatically in an IDE, or agentically with an AI coding agent — with human review at each stage. A path from raw data to a trusted, AI-ready data product that keeps human expertise in the loop.
+
+### 5.1 Declarative Data Pipelines in VS Code
+
+The two MCG Open Lakehouse pipeline projects ship as a VS Code template under `deploy/pipelines/`:
+
+| Project | platformType | Tasks | Task types |
+|---|---|---|---|
+| `mcg-batch-pipeline` | `QLIK_OPEN_LAKEHOUSE` | 4 | MCG WMS CDC Landing (LAKE_LANDING), MCG CRM Landing (LAKE_LANDING), MCG Silver Transform (TRANSFORM, 7 datasets), MCG Gold Datamart (DATAMART, 2 datasets) |
+| `mcg-streaming-pipeline` | `QLIK_OPEN_LAKEHOUSE` | 2 | MCG IoT Streaming Landing (STREAMING_LAKE_LANDING), MCG IoT Streaming Transform (STREAMING_TRANSFORM) |
+
+Each project folder carries its own agent context so any AI coding agent picks up the house rules:
+- `.vscode/settings.json` — editor settings + YAML-to-schema associations
+- `CLAUDE.md` — project conventions for Claude / Claude Code
+- `.github/copilot-instructions.md` — the same conventions for GitHub Copilot
+
+**Drop in the schema kit:**
+```bash
+npm run pipeline:template                                   # verify tooling + report schema status
+npm run pipeline:template -- --schema <path-to-schema-kit>  # install the kit
+```
+The kit is Qlik internal-preview material and is deliberately **not committed** — point `--schema` at your local copy. (The bare command only verifies the tooling and reports whether the kit is present.) Once installed, VS Code validates every YAML edit against the schema as you type, so invalid structure is caught before it ever reaches Git.
+
+**The human-in-the-loop coding-agent loop (4 steps):**
+1. **Developer Prompts** — describe the change in natural language ("run the CRM landing every 30 minutes instead of 15")
+2. **Agent Generates** — the AI coding agent edits the YAML
+3. **Schema Validates** — the local schema kit checks the edit and flags anything out of spec
+4. **Developer Reviews** — you read the diff and commit
+
+Because the definition is code, it version-controls in Git and deploys through CI/CD. Export/import moves a pipeline between tenants.
+
+**Demo edit (grounded, one line):** In `mcg-batch-pipeline`, open the **MCG CRM Landing** task and change its schedule from `RRULE:FREQ=MINUTELY;INTERVAL=15` to `INTERVAL=30`. The result is a one-line git diff — reviewable, reversible, and deployable back to the tenant with **Apply-from-Remote**.
+
+> **Demo tip:** Open the same task in the Qlik Talend Cloud UI and in VS Code side by side. Editing it in either surface changes one underlying definition, not two copies.
+
+### 5.2 Data Product Agent
+
+A **Qlik Answers capability** (not a separate product) for creating and managing data products through natural-language conversation. A steward or engineer can:
+- Create, read, update, and delete data products conversationally (CRUD)
+- Discover and interact with existing products by asking for them
+- Review and improve a product's quality and completeness
+
+**MCG use:** package the Gold outputs — **Supply Chain Health** and **Last Mile Performance** — as governed data products, or ask the agent to check whether either is missing an owner, tag, description, or SLA before publishing. The agent works against the same registration surface as Section 2, so anything it creates carries the same Trust Score, lineage, and API-sharing settings.
+
+### 5.3 Data Quality Agent
+
+A **Qlik Answers capability** that supports data stewards in assessing, defining, and enforcing data-quality rules conversationally. It bridges business and technical users — a steward describes the rule in plain language and the agent maps it to the dataset. It can:
+- Assess data quality across datasets
+- Create, manage, and map DQ rules
+- Run DQ metric calculations
+
+**MCG use:** the Silver tables already carry hand-built rules (`quantity_on_hand >= 0`, lot-number completeness for perishables, `ira_pct` range 0.0–1.0 — see Section 2.2). Use the Data Quality Agent to assess `silver.inventory_reconciled` or `silver.addresses_standardized` and propose or map the equivalent rules by conversation instead of clicking through the schema editor. Violations still route to the Stewardship campaigns from `setup_guide.md` Section 9.
+
+### 5.4 Catalog and Business Glossary Agent
+
+A **Qlik Answers capability** for discovering data assets, understanding their context and relationships, and defining consistent business terminology. It can:
+- Answer natural-language queries against the Qlik Cloud Catalog metadata
+- Generate glossaries from apps, data products, datasets, or a whole domain
+- Standardize terms and synonyms across the catalog
+
+**MCG use:** generate first-draft glossary terms for the supply-chain domain to seed or extend the 25-term MCG Supply Chain Glossary (`setup_guide.md` Section 10).
+
+> **Human review required:** generated glossary terms are **DRAFT status by default**. A term owner (e.g., Henrik Jansen for inventory terms, Sophie Müller for logistics) reviews and approves before the term is published. The agent drafts; a human decides.
 
 ---
 

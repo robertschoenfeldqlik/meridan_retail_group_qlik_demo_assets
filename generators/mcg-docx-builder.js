@@ -60,6 +60,9 @@ let T = MCG;
 
 function useQlikTheme() { T = QLIK; }
 function useMcgTheme() { T = MCG; }
+// Inject an arbitrary theme object (same shape as MCG/QLIK: .colors + .fonts).
+// Used to drop in the Qlik-brand theme from qlik-doc-styles.js. Falls back to MCG.
+function setDocTheme(theme) { T = theme || MCG; }
 
 // ─── LETTERHEAD HEADER (MCG default) ───
 function createHeader(docType) {
@@ -441,6 +444,66 @@ function signatureBlock(name, title, dept) {
   ];
 }
 
+// ─── BRAND HEADER (theme-injected — official Qlik logo, no customer letterhead) ───
+// Used when a theme object is passed to buildQlikDocument(). Renders the real
+// logo raster (theme.logoPath) guarded by fs.existsSync — a missing raster simply
+// omits the mark; the logo is never redrawn.
+function createBrandHeader(docType, theme) {
+  const c = theme.colors, f = theme.fonts;
+  const children = [];
+  if (theme.logoPath && fs.existsSync(theme.logoPath)) {
+    children.push(new Paragraph({
+      spacing: { after: 60 },
+      children: [new ImageRun({
+        data: fs.readFileSync(theme.logoPath),
+        transformation: { width: 118, height: 66 }, // source aspect 900x500
+        type: "png",
+      })],
+    }));
+  }
+  children.push(new Paragraph({
+    spacing: { after: 0 },
+    border: { bottom: { style: BorderStyle.SINGLE, size: 8, color: c.green, space: 4 } },
+    children: [new TextRun({ text: "", size: 4 })],
+  }));
+  if (docType) {
+    children.push(new Paragraph({
+      alignment: AlignmentType.RIGHT,
+      spacing: { before: 60, after: 0 },
+      children: [new TextRun({ text: docType, font: f.heading, size: 18, bold: true, color: c.green, allCaps: true })],
+    }));
+  }
+  return new Header({ children });
+}
+
+// ─── BRAND FOOTER (theme-injected — Qlik green accent) ───
+function createBrandFooter(theme) {
+  const c = theme.colors, f = theme.fonts;
+  return new Footer({
+    children: [
+      new Paragraph({
+        border: { top: { style: BorderStyle.SINGLE, size: 4, color: c.green, space: 4 } },
+        spacing: { before: 0 },
+        children: [new TextRun({ text: "", size: 4 })],
+      }),
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        spacing: { before: 0, after: 0 },
+        children: [new TextRun({ text: theme.footerText || theme.name || "Qlik", font: f.body, size: 14, color: c.medGray })],
+      }),
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        spacing: { before: 40, after: 0 },
+        children: [
+          new TextRun({ text: "CONFIDENTIAL — ", font: f.body, size: 13, bold: true, color: c.green }),
+          new TextRun({ text: "Page ", font: f.body, size: 13, color: c.medGray }),
+          new TextRun({ children: [PageNumber.CURRENT], font: f.body, size: 13, color: c.medGray }),
+        ],
+      }),
+    ],
+  });
+}
+
 // ─── BUILD DOCUMENT (MCG default — Calibri, MCG colors) ───
 function buildDocument(docType, sections) {
   return new Document({
@@ -461,7 +524,24 @@ function buildDocument(docType, sections) {
 }
 
 // ─── BUILD DOCUMENT (Qlik-themed — Inter font, Qlik colors) ───
-function buildQlikDocument(docType, sections) {
+// `theme` is optional and BACKWARD-COMPATIBLE: when omitted, output is identical
+// to before (MERIDIAN letterhead + hardcoded qlikDocStyles). When a theme object
+// is passed (e.g. QLIK from qlik-doc-styles.js), the document is rendered in that
+// brand — the official Qlik logo header/footer and the theme's own style block.
+function buildQlikDocument(docType, sections, theme) {
+  if (theme) {
+    return new Document({
+      styles: theme.styles || qlikDocStyles,
+      sections: [
+        {
+          properties: { page: { margin: theme.margins || margins } },
+          headers: { default: createBrandHeader(docType, theme) },
+          footers: { default: createBrandFooter(theme) },
+          children: sections,
+        },
+      ],
+    });
+  }
   const docOpts = {
     styles: qlikDocStyles,
     sections: [
@@ -491,7 +571,8 @@ async function saveDocument(doc, outputPath) {
 module.exports = {
   MCG, buildDocument, buildQlikDocument, saveDocument,
   createHeader, createQlikHeader, createFooter, createQlikFooter,
+  createBrandHeader, createBrandFooter,
   metadataTable, dataTable,
   heading, para, labelValue, calloutBox, numberedItem, signatureBlock,
-  useQlikTheme, useMcgTheme,
+  useQlikTheme, useMcgTheme, setDocTheme,
 };

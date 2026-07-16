@@ -1,6 +1,6 @@
 # MCG Demo — Scenario Playbook
 
-Six presenter-ready demo scenarios. Each traverses multiple Qlik Cloud components to tell a complete MCG business story.
+Seven presenter-ready demo scenarios. Each traverses multiple Qlik Cloud components to tell a complete MCG business story. Scenarios 1-6 are consumption-side (asking questions of trusted data); Scenario 7 is the build-side, agentic-engineering counterpart (producing the trusted data with agents).
 
 ---
 
@@ -314,6 +314,50 @@ MCG's data quality crisis costs $127M annually. Project Qlarity is a $12.4M Qlik
 
 **Closing talking point:**
 "Every dollar of that $127M in data quality costs is addressable. Project Qlarity's $12.4M investment pays back in under 4 months. What you've seen today is not a concept — it's a working demo using real Qlik Cloud capabilities connected to realistic supply chain data."
+
+---
+
+## Scenario 7: Agentic Data Engineering — From Prompt to Trusted Data Product (Preview)
+
+**Duration:** 8-10 minutes
+**Theme:** Build-side AI — authoring and governing the pipeline, not just querying it
+**Components:** VS Code + AI coding agent → Declarative Pipeline → Data Quality Agent → Data Product Agent → Qlik MCP Server
+
+> **Preview status:** Declarative Data Pipelines and the Qlik MCP Server tooling are in Qlik internal preview (June 2026). The Data Quality and Data Product agents are **Qlik Answers capabilities, not separate products.** Frame this scenario as forward-looking and keep a preview disclaimer on any deck slide.
+
+### The Business Problem
+
+Scenarios 1-6 all ask questions of trusted data. But someone has to *produce* that trust — land the sources, transform them, define the quality rules, and package the products. Traditionally that is click-through work in the UI. This scenario shows the same work done as reviewable code with agents in the loop: one pipeline definition, edited with an AI coding agent, quality-checked, repackaged, and immediately answerable through MCP. The through-line is a single artifact — the pipeline YAML — moving from raw data to a trusted, AI-ready product with a human review at each step.
+
+### Demo Walk-Through
+
+**Step 1 — Author a pipeline change with an AI coding agent (VS Code)**
+- Open `deploy/pipelines/` in VS Code. Show the two projects: `mcg-batch-pipeline` (4 tasks) and `mcg-streaming-pipeline` (2 tasks), each with its own `CLAUDE.md` and `.github/copilot-instructions.md`.
+- Prompt the AI coding agent: "Change the MCG CRM Landing task to run every 30 minutes instead of 15."
+- The agent edits the YAML: `RRULE:FREQ=MINUTELY;INTERVAL=15` → `INTERVAL=30`.
+- The local schema kit (installed via `npm run pipeline:template -- --schema <path>`) validates the edit live. Show the **one-line git diff**.
+- Review and commit, then **Apply-from-Remote** to push the change back to the tenant.
+- Talking point: "This is the coding-agent loop — Developer Prompts, Agent Generates, Schema Validates, Developer Reviews. The human is still the one who commits."
+
+**Step 2 — Validate with the Data Quality Agent**
+- In Qlik Answers, ask the Data Quality Agent to assess the affected landing output — e.g., "Do the quality rules on `silver.inventory_reconciled` still hold after the CRM landing change?"
+- Show it assessing the dataset and confirming (or mapping) rules like `quantity_on_hand >= 0` and lot-number completeness.
+- Talking point: "A steward defines and checks rules in plain language. Any violations route to the same Stewardship campaigns from the other scenarios."
+
+**Step 3 — Package with the Data Product Agent**
+- Ask the Data Product Agent to review and repackage the **Supply Chain Health** data product: confirm owner (Henrik Jansen), tags, description, SLA, and that the Trust Score is populated.
+- Show that it writes to the same governed registration surface — nothing bypasses lineage or API sharing.
+- Talking point: "The agent packages the product *with* its governance metadata, so it ships trusted, not just built."
+
+**Step 4 — Answer over it with the Qlik MCP Server**
+- From Claude (connected to the Qlik MCP Server), ask: "What's the current inventory accuracy at DC-RTD-01?"
+- Claude reads the repackaged **Supply Chain Health** data product through MCP and answers with the governed value and its provenance.
+- Talking point: "The product an agent just packaged is immediately answerable by any MCP-compatible assistant. That closes the loop from a prompt in the IDE to a trusted answer — raw data to AI-ready output, humans in the loop the whole way."
+
+**Talking Points:**
+- "One pipeline definition, three ways to edit it — visual, code, or agentic. This is the same YAML behind the UI, not a parallel system."
+- "Every AI step here has a human checkpoint: the developer commits the diff, the steward approves the rules, the owner signs off on the product."
+- "This is the build-side bookend to the demo. Scenarios 1-6 consume trusted data; Scenario 7 shows agents helping produce it."
 
 ---
 

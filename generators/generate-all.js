@@ -59,12 +59,6 @@ const GENERATORS = [
     group: 'documents',
   },
   {
-    name: 'incidents',
-    script: 'gen-carriers-incidents.js',
-    label: 'Incident Reports',
-    group: 'documents',
-  },
-  {
     name: 'governance',
     script: 'gen-governance-v2.js',
     label: 'Governance & Compliance Documents',
@@ -74,12 +68,6 @@ const GENERATORS = [
     name: 'business',
     script: 'gen-business-v2.js',
     label: 'Business Documents (v2)',
-    group: 'documents',
-  },
-  {
-    name: 'remaining',
-    script: 'gen-remaining-docs.js',
-    label: 'Remaining Documents',
     group: 'documents',
   },
 
@@ -95,7 +83,7 @@ const GENERATORS = [
   {
     name: 'demo-scripts',
     script: 'gen-demo-scripts.js',
-    label: 'Demo Walkthrough Scripts (13 topics)',
+    label: 'Demo Walkthrough Scripts (18 topics)',
     group: 'demos',
   },
   {
@@ -122,6 +110,12 @@ const GENERATORS = [
     name: 'demo-overview',
     script: 'gen-demo-overview.js',
     label: 'Demo Overview Presentation',
+    group: 'presentations',
+  },
+  {
+    name: 'agentic-engineering',
+    script: 'gen-agentic-engineering.js',
+    label: 'Agentic Data Engineering Deck',
     group: 'presentations',
   },
   {
@@ -194,6 +188,16 @@ if (listOnly) {
   log(`Total: ${GENERATORS.length} generators`);
   log(`\nUsage: node generators/generate-all.js --only sops,carriers,demos`);
   process.exit(0);
+}
+
+if (onlyGroups && generators.length === 0) {
+  const validNames = GENERATORS.map(g => g.name).sort();
+  const validGroups = [...new Set(GENERATORS.map(g => g.group))].sort();
+  logFAIL(`--only "${onlyGroups.join(',')}" matched no generators.`);
+  log(`\n  Valid group names: ${validGroups.join(', ')}`);
+  log(`  Valid generator names: ${validNames.join(', ')}`);
+  log('');
+  process.exit(1);
 }
 
 log(`Running ${generators.length} generator(s)...\n`);

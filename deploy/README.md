@@ -119,7 +119,14 @@ Create an OAuth client in Qlik Cloud Management Console > OAuth > Create New > C
 
 ### 2. Analytics Apps
 
-Any `.qvf` files placed in `deploy/apps/` are imported into the shared space and then published to the managed space. Checks for existing apps by name to avoid duplicates.
+Analytics apps are **not** created by the main `deploy-to-qlik.js` run — placing `.qvf` files in `deploy/apps/` does not get them auto-imported/published as part of `npm run deploy`. Apps are built from the JSON app definitions (`domainApps` in `config.json`) by the separate `deploy/build-apps.js` script, run via its own npm script:
+
+```bash
+npm run build-apps
+# or preview first: npm run build-apps:dry-run
+```
+
+This creates each app in the shared space (empty, load-script-only, mapped to the gold data products); sheets are then authored via Qlik MCP prompting (or the legacy Engine-API sheet builder — see `apps.sheetsViaMcp` in `config.example.json`).
 
 ### 3. Data Connections
 
@@ -174,11 +181,16 @@ Creates 25 business glossary terms from `glossary_terms.json`.
 ```
 node deploy/deploy-to-qlik.js [OPTIONS]
 
-  --config <path>   Path to config JSON (default: deploy/config.json)
-  --dry-run         Preview actions without making API calls
-  --verbose         Enable detailed logging
-  --help            Show usage
+  --config <path>           Path to config JSON (default: deploy/config.json)
+  --dry-run                 Preview actions without making changes (see Dry Run note below)
+  --verbose                 Enable detailed logging
+  --cleanup-dataproducts    Delete all data products from tenant, then exit
+  --export-pipeline         Export the tenant's declarative pipeline project (YAML)
+                            into deploy/pipelines/, then exit
+  --help                    Show usage
 ```
+
+**Dry Run note:** `--dry-run` skips all calls that create, modify, or delete resources on your tenant — but some read-only GET calls (existence/idempotency checks, e.g. "does this space/connection/app already exist") still occur.
 
 ## Idempotency
 

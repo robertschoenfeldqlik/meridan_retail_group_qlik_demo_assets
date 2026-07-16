@@ -11,6 +11,14 @@
 # Usage (standalone — simulators only, external Kafka/PG):
 #   docker compose -f docker-compose.simulators.yml up -d
 #
+#   PREREQUISITE: the Kafka stack must already be running and reachable on
+#   the "mcg-kafka-net" external network before starting kafka-iot-simulator
+#   — e.g. via `npm run docker:up:kafka` (infrastructure/kafka/docker-compose.yml)
+#   or the full-stack compose file. This file does NOT define or start the
+#   "kafka" service itself; kafka-iot-simulator connects to it purely via the
+#   KAFKA_BOOTSTRAP environment variable / network alias, not an in-file
+#   depends_on (Compose cannot depend_on a service undefined in this file).
+#
 # Usage (full stack — everything in one command):
 #   docker compose -f docker-compose.full-stack.yml up -d
 #
@@ -43,6 +51,10 @@ services:
       # Logical replication for Qlik CDC is enabled separately via
       # wal_level=logical in the command: block below.
       POSTGRES_INITDB_ARGS: "--data-checksums"
+    # NOTE: binds host port 5432 by default — do not run this stack at the same
+    # time as the DMG-based stack (docker-compose.dmg.yml / docker:up:dmg-only),
+    # whose qlik-dmg container also defaults to host port 5432. Only one can bind
+    # the port at a time; override POSTGRES_PORT if you need both simultaneously.
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
@@ -131,9 +143,11 @@ services:
       context: ../simulators
       dockerfile: Dockerfile
     container_name: mcg-kafka-iot-simulator
-    depends_on:
-      kafka:
-        condition: service_healthy
+    # No depends_on here: the "kafka" service is defined in
+    # infrastructure/kafka/docker-compose.yml, not this file, and Compose
+    # rejects a project with a depends_on referencing an undefined service.
+    # Ensure the Kafka stack is already running (see header usage note above)
+    # before starting this service — it connects via KAFKA_BOOTSTRAP below.
     command: >
       python kafka_iot_simulator.py
         --bootstrap-servers ${KAFKA_BOOTSTRAP:-kafka:9092}
