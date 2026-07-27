@@ -36,6 +36,7 @@ deploy/.config-*.json
 # Backup files
 *.bak
 *.bak2
+*.bak-*
 
 # QTCP declarative pipeline schema kit (Qlik internal preview — never commit).
 # The ** form covers the per-project install location that setup-vscode-template.js
