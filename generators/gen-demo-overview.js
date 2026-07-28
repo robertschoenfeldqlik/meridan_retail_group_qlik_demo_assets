@@ -60,7 +60,7 @@ function footer(slide) {
   slide.addShape(pptx.shapes.RECTANGLE, { x: 0.5, y: 7.0, w: 12.33, h: 0.01, fill: { color: C.qlikGray } });
   // Qlik logo small
   slide.addImage({ path: QLIK_LOGO, x: 0.5, y: 7.1, w: 0.7, h: 0.3 });
-  slide.addText("Project Qlarity  •  MCG End-to-End Demo  •  Qlik Cloud", {
+  slide.addText("Project Qlarity  •  MCG Full Stack  •  Qlik Cloud", {
     x: 1.4, y: 7.1, w: 8, h: 0.3,
     fontSize: 8, color: C.qlikGray, fontFace: FONT,
   });
@@ -169,7 +169,7 @@ slide.addText("Meridian Commerce Group", {
   x: 0.5, y: 1.6, w: 6.5, h: 0.7,
   fontSize: 18, color: C.qlikGray, fontFace: FONT, letterSpacing: 2,
 });
-slide.addText("Qlik Cloud\nEnd-to-End Demo", {
+slide.addText("Qlik Cloud\nFull Stack", {
   x: 0.5, y: 2.3, w: 6.5, h: 1.6,
   fontSize: 38, color: C.qlikBlue, fontFace: FONT, bold: true, lineSpacingMultiple: 1.1,
 });
@@ -1914,7 +1914,7 @@ slide.addText("Plus build-side AI — pipelines as code, governance agents, and 
   fontSize: 11, color: C.qlikGreen, fontFace: FONT, bold: true,
 });
 
-slide.addText("Qlik Cloud  •  End-to-End Demo  •  Integrations  •  Governance  •  Analytics  •  AI & Outcomes", {
+slide.addText("Qlik Cloud  •  Full Stack  •  Integrations  •  Governance  •  Analytics  •  AI & Outcomes", {
   x: 0.5, y: 5.8, w: 11.5, h: 0.4,
   fontSize: 12, color: C.qlikGray, fontFace: FONT,
 });
