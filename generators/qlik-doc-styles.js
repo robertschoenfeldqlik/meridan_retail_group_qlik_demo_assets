@@ -81,7 +81,7 @@ const QLIK = {
     darkText: PALETTE.GRAY,    // body text
     red: PALETTE.DEEP_BLUE,    // no reds in Qlik — emphasis falls back to blue
   },
-  fonts: { heading: FONT, body: FONT, mono: "Consolas" },
+  fonts: { heading: FONT, body: FONT, mono: FONT },
   // Path the builder will use for the header logo (guarded by fs.existsSync,
   // so a missing raster simply omits the mark — the logo is never redrawn).
   logoPath: LOGO_PNG,

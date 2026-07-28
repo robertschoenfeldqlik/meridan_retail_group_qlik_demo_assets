@@ -64,7 +64,7 @@ function promptBox(prompt, label = "Prompt") {
               }),
               new Paragraph({
                 spacing: { after: 0 },
-                children: [new TextRun({ text: prompt, font: "Consolas", size: 20, color: Q.darkText })],
+                children: [new TextRun({ text: prompt, font: "Inter", size: 20, color: Q.darkText })],
               }),
             ],
           }),

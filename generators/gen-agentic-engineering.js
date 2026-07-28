@@ -31,7 +31,7 @@ const DIVIDER_BG = path.join(ASSETS, "qlik_divider_bg.png");
 const QLIK_LOGO = path.join(ASSETS, "qlik_logo.png");
 const ICON_DIR = path.join(ASSETS, "icons");
 const FONT = "Inter";
-const MONO = "Consolas";
+const MONO = "Inter";  // brand: Inter only — no non-brand mono font
 
 // ─── Icon chip: white circle + Qlik line-art icon (legible on any fill) ───
 function iconBadge(slide, name, x, y, d, ring) {
