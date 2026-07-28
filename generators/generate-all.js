@@ -119,6 +119,12 @@ const GENERATORS = [
     group: 'presentations',
   },
   {
+    name: 'project-qlarity',
+    script: 'gen-project-qlarity-summary.js',
+    label: 'Project Qlarity Summary Deck',
+    group: 'presentations',
+  },
+  {
     name: 'company-profile',
     script: 'gen-pptx.js',
     label: 'Company Profile & Data Quality Deck',
