@@ -59,7 +59,7 @@ function footer(slide) {
   // Thin line separator
   slide.addShape(pptx.shapes.RECTANGLE, { x: 0.5, y: 7.0, w: 12.33, h: 0.01, fill: { color: C.qlikGray } });
   // Qlik logo small
-  slide.addImage({ path: QLIK_LOGO, x: 0.5, y: 7.1, w: 0.7, h: 0.3 });
+  slide.addImage({ path: QLIK_LOGO, x: 0.5, y: 7.1, w: 0.54, h: 0.3 });
   slide.addText("Project Qlarity  •  MCG Full Stack  •  Qlik Cloud", {
     x: 1.4, y: 7.1, w: 8, h: 0.3,
     fontSize: 8, color: C.qlikGray, fontFace: FONT,
@@ -119,7 +119,7 @@ function sectionSlide(number, title, subtitle, color) {
     });
   }
   // Qlik logo bottom-right
-  slide.addImage({ path: QLIK_LOGO, x: 11.0, y: 6.5, w: 1.5, h: 0.66 });
+  slide.addImage({ path: QLIK_LOGO, x: 11.0, y: 6.5, w: 1.19, h: 0.66 });
   return slide;
 }
 
@@ -163,7 +163,7 @@ slide.background = { fill: C.white };
 // Contrail background image (streaks on right side)
 slide.addImage({ path: COVER_BG, x: 0, y: 0, w: 13.33, h: 7.5 });
 // Qlik logo top-left
-slide.addImage({ path: QLIK_LOGO, x: 0.5, y: 0.4, w: 1.4, h: 0.62 });
+slide.addImage({ path: QLIK_LOGO, x: 0.5, y: 0.4, w: 1.12, h: 0.62 });
 
 slide.addText("Meridian Commerce Group", {
   x: 0.5, y: 1.6, w: 6.5, h: 0.7,
@@ -1871,7 +1871,7 @@ slide.background = { fill: C.white };
 // Contrail background
 slide.addImage({ path: COVER_BG, x: 0, y: 0, w: 13.33, h: 7.5 });
 // Qlik logo top-left
-slide.addImage({ path: QLIK_LOGO, x: 0.5, y: 0.4, w: 1.4, h: 0.62 });
+slide.addImage({ path: QLIK_LOGO, x: 0.5, y: 0.4, w: 1.12, h: 0.62 });
 
 slide.addText("Meridian Commerce Group", {
   x: 0.5, y: 1.6, w: 6.5, h: 0.5,

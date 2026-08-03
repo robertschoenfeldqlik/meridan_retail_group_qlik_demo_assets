@@ -60,7 +60,7 @@ let slideNum = 0;
 function footer(slide) {
   slideNum++;
   slide.addShape(pptx.shapes.RECTANGLE, { x: 0.5, y: 7.0, w: 12.33, h: 0.01, fill: { color: C.qlikGray } });
-  slide.addImage({ path: QLIK_LOGO, x: 0.5, y: 7.1, w: 0.7, h: 0.3 });
+  slide.addImage({ path: QLIK_LOGO, x: 0.5, y: 7.1, w: 0.54, h: 0.3 });
   slide.addText("Project Qlarity  •  MCG Demo  •  Qlik Cloud", {
     x: 1.4, y: 7.1, w: 8, h: 0.3,
     fontSize: 8, color: C.qlikGray, fontFace: FONT,
@@ -141,10 +141,11 @@ function noteBand(slide, text, y, bg, color) {
 // SLIDE 1: Title (Cover layout — contrail background)
 // ═══════════════════════════════════════════════════
 let slide = pptx.addSlide();
+slide.addNotes("Open here. Project Qlarity — Qlik plus Clarity — is our repeatable framework for demoing the full Qlik Cloud stack end to end. Be clear it is a demo framework, not a product or a customer platform. Set up the arc: a fictional retailer with a messy data estate, walked through four connected acts — Integrations, Governance, Analytics, and AI & Outcomes.");
 slideNum++;
 slide.background = { fill: C.white };
 slide.addImage({ path: COVER_BG, x: 0, y: 0, w: 13.33, h: 7.5 });
-slide.addImage({ path: QLIK_LOGO, x: 0.5, y: 0.4, w: 1.4, h: 0.62 });
+slide.addImage({ path: QLIK_LOGO, x: 0.5, y: 0.4, w: 1.12, h: 0.62 });
 
 slide.addText("Meridian Commerce Group", {
   x: 0.5, y: 1.5, w: 8.0, h: 0.6,
@@ -158,7 +159,7 @@ slide.addText("The end-to-end Qlik Cloud demo", {
   x: 0.5, y: 3.35, w: 9.0, h: 0.55,
   fontSize: 20, color: C.qlikGreen, fontFace: FONT, bold: true,
 });
-slide.addText("Qlik + Clarity:  from 7 data-quality nightmares to a trusted, AI-ready platform.", {
+slide.addText("Qlik + Clarity:  a repeatable framework for demoing the full Qlik Cloud stack, end to end.", {
   x: 0.5, y: 4.0, w: 10.5, h: 0.5,
   fontSize: 14, color: C.darkText, fontFace: FONT,
 });
@@ -186,8 +187,9 @@ storyChips.forEach((c, i) => {
 // SLIDE 2: What is Project Qlarity
 // ═══════════════════════════════════════════════════
 slide = contentSlide("What is Project Qlarity", C.qlikGreen);
+slide.addNotes("Frame it plainly: this is a framework for demoing Qlik Cloud, not a platform we are selling. Meridian Commerce Group is our fictional global retailer with data scattered across 47 systems. The whole demo lives in one git repo and stands up with one command through the MCG Deploy console. Land the phrase: a framework, not a product.");
 
-slide.addText("The initiative in plain terms — one fictional retailer, one messy estate, one unified Qlik platform", {
+slide.addText("The initiative in plain terms — a repeatable framework for demoing the full Qlik Cloud stack, end to end", {
   x: 0.5, y: 0.86, w: 12.3, h: 0.4,
   fontSize: 13, color: C.medGray, fontFace: FONT, italic: true,
 });
@@ -203,7 +205,7 @@ slide.addText([
 ], {
   x: 0.8, y: 1.5, w: 11.7, h: 0.45, fontFace: FONT, valign: "middle",
 });
-slide.addText("Turning a fragmented data mess into a single trusted, AI-ready Qlik data platform.", {
+slide.addText("A repeatable framework for demoing how Qlik Cloud turns fragmented, messy data into trusted, AI-ready data products.", {
   x: 0.8, y: 1.98, w: 11.7, h: 0.45,
   fontSize: 13, color: C.darkText, fontFace: FONT, valign: "middle",
 });
@@ -212,8 +214,8 @@ slide.addText("Turning a fragmented data mess into a single trusted, AI-ready Ql
 panel(slide, 0.5, 2.75, 6.05, 3.35, "What it is", C.qlikTeal, [
   "Meridian Commerce Group (MCG) — a fictional global retail / commerce company",
   "MCG's data estate is scattered across 47 fragmented systems",
-  "Project Qlarity is the transformation of that mess into one Qlik Cloud platform",
-  "A complete, presentable end-to-end Qlik demo environment",
+  "Project Qlarity is the framework for demoing that mess becoming trusted, governed Qlik data",
+  "A complete, presentable end-to-end Qlik demo environment — a framework, not a product",
 ], { icon: "cloud", fs: 11.5, spacing: 0.66 });
 
 panel(slide, 6.75, 2.75, 6.05, 3.35, "How it comes to life", C.qlikGreen, [
@@ -229,6 +231,7 @@ noteBand(slide, "From 7 data-quality nightmares (~$127M/year, 47 systems) to gol
 // SLIDE 3: The problem — 7 data-quality nightmares
 // ═══════════════════════════════════════════════════
 slide = contentSlide("The Problem", C.qlikBlue);
+slide.addNotes("Set the stakes fast: seven recurring data-quality nightmares, roughly 127 million dollars a year, across 47 fragmented systems with no single source of truth. This is the before. Keep it concrete — WISMO calls, cold-chain spoilage, late deliveries, mismatched addresses, duplicate customers — all tracing back to untrusted data.");
 
 slide.addText("Before Qlarity — why MCG's data estate needs a transformation", {
   x: 0.5, y: 0.86, w: 12.3, h: 0.4,
@@ -270,7 +273,7 @@ slide.addText("Project Qlarity's job", {
   x: 0.75, y: 5.55, w: 5.0, h: 0.4,
   fontSize: 13, color: C.qlikBlue, fontFace: FONT, bold: true,
 });
-slide.addText("Consolidate 47 systems into one governed Qlik Cloud platform — so every downstream analytic, document, and AI answer stands on data the business can trust.", {
+slide.addText("Show 47 systems consolidated into one governed Qlik Cloud environment — so every downstream analytic, document, and AI answer stands on data the business can trust.", {
   x: 0.75, y: 5.95, w: 11.8, h: 0.6,
   fontSize: 12, color: C.darkText, fontFace: FONT, valign: "top", lineSpacingMultiple: 1.04,
 });
@@ -279,6 +282,7 @@ slide.addText("Consolidate 47 systems into one governed Qlik Cloud platform — 
 // SLIDE 4: The Four Stories
 // ═══════════════════════════════════════════════════
 slide = contentSlide("The Four Stories", C.qlikGreen);
+slide.addNotes("The spine of every demo, four connected acts. Integrations lands three messy feeds into the Open Lakehouse. Governance turns raw data into trusted data. Analytics publishes gold data products and apps. AI & Outcomes turns trusted data into decisions and action. Each act maps to a live click-path and a Demo2Win script.");
 
 slide.addText("One narrative, told in four connected chapters — the spine of the whole demo", {
   x: 0.5, y: 0.86, w: 12.3, h: 0.4,
@@ -321,6 +325,7 @@ stories.forEach((st, i) => {
 // SLIDE 5: Architecture at a glance
 // ═══════════════════════════════════════════════════
 slide = contentSlide("Architecture at a Glance", C.qlikTeal);
+slide.addNotes("One picture of the whole flow. Three source feeds — PostgreSQL WMS via CDC, Kafka IoT cold-chain streaming, and Salesforce every 15 minutes — land in the Open Lakehouse on Apache Iceberg, flow bronze to silver to gold, and surface as two governed gold data products that feed apps and AI. No copies; everything downstream reads trusted data.");
 
 slide.addText("Three source feeds flow through a medallion lakehouse into gold data products, apps, and AI", {
   x: 0.5, y: 0.86, w: 12.3, h: 0.4,
@@ -437,19 +442,17 @@ noteBand(slide, "One flow, end to end: raw feeds → bronze/silver/gold on the O
 // SLIDE 6: Assets — Presentations & Narrative
 // ═══════════════════════════════════════════════════
 slide = contentSlide("Assets — Presentations & Narrative", C.qlikGreen);
+slide.addNotes("The story-telling layer. Three core decks frame the value and 18 Demo2Win scripts walk it through live. This is what makes the demo repeatable — any SE runs the same narrative the same way, every time.");
 
 slide.addText("The story-telling layer: decks that frame the value and scripts that walk it through live", {
   x: 0.5, y: 0.86, w: 12.3, h: 0.4,
   fontSize: 13, color: C.medGray, fontFace: FONT, italic: true,
 });
 
-panel(slide, 0.5, 1.4, 6.05, 4.75, "6 PowerPoint decks", C.qlikTeal, [
+panel(slide, 0.5, 1.4, 6.05, 4.75, "3 PowerPoint decks", C.qlikTeal, [
   "Demo Overview / Four Stories (35 slides)",
   "Technology Architecture",
   "Company Profile & Data Quality",
-  "Agentic Data Engineering (16 slides)",
-  "Marketecture",
-  "Agentic Marketecture",
 ], { icon: "answers", fs: 12, spacing: 0.66 });
 
 panel(slide, 6.75, 1.4, 6.05, 4.75, "18 demo-script walkthroughs", C.qlikGreen, [
@@ -466,6 +469,7 @@ noteBand(slide, "Decks set the strategic frame; the 18 scripts make every capabi
 // The Demo2Win Scripts — dedicated deep-dive on the 18 walkthroughs
 // ═══════════════════════════════════════════════════
 slide = contentSlide("Assets — The Demo2Win Scripts", C.qlikGreen);
+slide.addNotes("Our flagship enablement asset. Every capability has a script with the same anatomy — a Limbic emotional opening, Tell then Show then Tell, click-by-click steps, a So You Can value chain, and a troubleshooting table. Eighteen modules cover all four acts plus the agentic engineering work.");
 
 slide.addText("18 presenter-ready walkthroughs — every capability has a script, so any SE runs the same winning demo the same way", {
   x: 0.5, y: 0.86, w: 12.3, h: 0.4,
@@ -495,6 +499,7 @@ noteBand(slide, "Every capability in Project Qlarity has a matching Demo2Win scr
 // SLIDE 7: Assets — Data & Pipelines
 // ═══════════════════════════════════════════════════
 slide = contentSlide("Assets — Data & Pipelines", C.qlikTeal);
+slide.addNotes("The build layer. Two declarative QTCP pipeline projects, six tasks total, shipped as a VS Code template you can author by hand or with an AI coding agent. Two governed gold data products, and three simulators that generate the intentionally-messy demo data. Flag that declarative pipelines are a Qlik internal preview.");
 statusPill(slide, "PIPELINES: PREVIEW", C.qlikBlue);
 
 slide.addText("The data foundation: declarative pipelines, the medallion lakehouse, gold products, and messy-data simulators", {
@@ -524,6 +529,7 @@ noteBand(slide, "Declarative Data Pipelines are a Qlik internal preview (June 20
 // SLIDE 8: Assets — Governance & Knowledge
 // ═══════════════════════════════════════════════════
 slide = contentSlide("Assets — Governance & Knowledge", C.qlikGreen);
+slide.addNotes("The trust layer. A 25-document Qlik Answers knowledge base, 25 business glossary terms as one shared vocabulary, and five Teams automations — plus trust scores, lineage, and stewardship. Governance makes the data trustworthy, the knowledge base and glossary make it understandable, and automations keep it that way in the flow of work.");
 
 slide.addText("The trust layer: a document knowledge base, a shared vocabulary, and automations that keep watch", {
   x: 0.5, y: 0.86, w: 12.3, h: 0.4,
@@ -551,6 +557,7 @@ noteBand(slide, "Governance makes the data trustworthy; the knowledge base and g
 // SLIDE 9: Assets — AI & Agentic
 // ═══════════════════════════════════════════════════
 slide = contentSlide("Assets — AI & Agentic", C.qlikGreen);
+slide.addNotes("The intelligence layer. Qlik Predict with two AutoML models, Qlik Answers over the knowledge base, the Discovery Agent, and the Qlik MCP Server, plus the agentic data-engineering capabilities. Two honesty callouts: the MCP Server is a preview, and the three governance agents are Qlik Answers capabilities, not separate products or SKUs.");
 statusPill(slide, "MCP: PREVIEW", C.qlikBlue);
 
 slide.addText("The intelligence layer: prediction, document intelligence, discovery, and the agentic data-engineering stack",  {
@@ -578,6 +585,7 @@ noteBand(slide, "The Qlik MCP Server is a Qlik internal preview (June 2026). The
 // SLIDE 10: How it deploys
 // ═══════════════════════════════════════════════════
 slide = contentSlide("How It Deploys — One Repo, One Command", C.qlikTeal);
+slide.addNotes("The punchline that makes this a framework, not a one-off. One repo, one command — npm run deploy — driven by the MCG Deploy console, a web wizard on port 3939. Always dry-run first: it previews every change before anything is written, then commit for real. The declarative pipelines import via API as part of the same deployment.");
 
 slide.addText("The whole environment stands up from a single repository with a single command",  {
   x: 0.5, y: 0.86, w: 12.3, h: 0.4,
@@ -631,6 +639,7 @@ noteBand(slide, "From clone to a live, presentable Qlik Cloud demo: one reposito
 // SLIDE 11: By the numbers
 // ═══════════════════════════════════════════════════
 slide = contentSlide("Project Qlarity — By the Numbers", C.qlikGreen);
+slide.addNotes("A quick recap of scale, and every figure here ships in the repo — nothing invented. Three decks, 18 scripts, 25 knowledge-base documents, 25 glossary terms, three source feeds, two gold data products, six pipeline tasks, five automations, three simulators, and two Predict models.");
 
 slide.addText("Everything in the demo, counted — the grounded asset inventory at a glance",  {
   x: 0.5, y: 0.86, w: 12.3, h: 0.4,
@@ -638,7 +647,7 @@ slide.addText("Everything in the demo, counted — the grounded asset inventory 
 });
 
 const tiles = [
-  { val: "6", label: "PowerPoint decks", color: C.qlikTeal },
+  { val: "3", label: "PowerPoint decks", color: C.qlikTeal },
   { val: "18", label: "Demo-script walkthroughs", color: C.qlikGreen },
   { val: "25", label: "Knowledge-base documents", color: C.qlikLightGreen },
   { val: "25", label: "Business glossary terms", color: C.qlikTeal },
@@ -681,7 +690,7 @@ slide = pptx.addSlide();
 slideNum++;
 slide.background = { fill: C.white };
 slide.addImage({ path: COVER_BG, x: 0, y: 0, w: 13.33, h: 7.5 });
-slide.addImage({ path: QLIK_LOGO, x: 0.5, y: 0.4, w: 1.4, h: 0.62 });
+slide.addImage({ path: QLIK_LOGO, x: 0.5, y: 0.4, w: 1.12, h: 0.62 });
 
 slide.addText("Meridian Commerce Group", {
   x: 0.5, y: 1.4, w: 8.0, h: 0.5,
@@ -691,18 +700,19 @@ slide.addText("Project Qlarity", {
   x: 0.5, y: 1.95, w: 9.5, h: 1.0,
   fontSize: 46, color: C.qlikBlue, fontFace: FONT, bold: true,
 });
+slide.addNotes("Wrap it. Project Qlarity is one repository, one command, the full Qlik stack — a repeatable framework any SE can stand up and present. Point to the resources link for the repository and the demo guide, and offer to walk any of the four acts live.");
 slide.addText("One repository, one command, the full Qlik stack.", {
   x: 0.5, y: 3.05, w: 10.5, h: 0.5,
   fontSize: 20, color: C.qlikGreen, fontFace: FONT, bold: true,
 });
-slide.addText("Qlik + Clarity: from 7 data-quality nightmares to a trusted, AI-ready platform.", {
+slide.addText("Qlik + Clarity: a repeatable framework for demoing the full Qlik Cloud stack, end to end.", {
   x: 0.5, y: 3.65, w: 10.5, h: 0.5,
   fontSize: 13, color: C.darkText, fontFace: FONT,
 });
 
 const closeTiles = [
   { val: "4", label: "Connected Stories", color: C.qlikTeal },
-  { val: "6", label: "Presentation Decks", color: C.qlikTeal },
+  { val: "3", label: "Presentation Decks", color: C.qlikTeal },
   { val: "2", label: "Gold Data Products", color: C.qlikGreen },
   { val: "1", label: "Repo · One Command", color: C.qlikLightGreen },
 ];

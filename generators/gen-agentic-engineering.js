@@ -59,7 +59,7 @@ let slideNum = 0;
 function footer(slide) {
   slideNum++;
   slide.addShape(pptx.shapes.RECTANGLE, { x: 0.5, y: 7.0, w: 12.33, h: 0.01, fill: { color: C.qlikGray } });
-  slide.addImage({ path: QLIK_LOGO, x: 0.5, y: 7.1, w: 0.7, h: 0.3 });
+  slide.addImage({ path: QLIK_LOGO, x: 0.5, y: 7.1, w: 0.54, h: 0.3 });
   slide.addText("Qlik Agentic Data Engineering  •  MCG Demo  •  Qlik Talend Cloud", {
     x: 1.4, y: 7.1, w: 8, h: 0.3,
     fontSize: 8, color: C.qlikGray, fontFace: FONT,
@@ -157,7 +157,7 @@ let slide = pptx.addSlide();
 slideNum++;
 slide.background = { fill: C.white };
 slide.addImage({ path: COVER_BG, x: 0, y: 0, w: 13.33, h: 7.5 });
-slide.addImage({ path: QLIK_LOGO, x: 0.5, y: 0.4, w: 1.4, h: 0.62 });
+slide.addImage({ path: QLIK_LOGO, x: 0.5, y: 0.4, w: 1.12, h: 0.62 });
 
 slide.addText("Meridian Commerce Group", {
   x: 0.5, y: 1.5, w: 7.0, h: 0.6,
@@ -694,7 +694,7 @@ slide = pptx.addSlide();
 slideNum++;
 slide.background = { fill: C.white };
 slide.addImage({ path: COVER_BG, x: 0, y: 0, w: 13.33, h: 7.5 });
-slide.addImage({ path: QLIK_LOGO, x: 0.5, y: 0.4, w: 1.4, h: 0.62 });
+slide.addImage({ path: QLIK_LOGO, x: 0.5, y: 0.4, w: 1.12, h: 0.62 });
 
 slide.addText("Meridian Commerce Group", {
   x: 0.5, y: 1.5, w: 7.0, h: 0.5,

@@ -51,7 +51,7 @@ function footer(slide) {
   slideNum++;
   slide.addShape(pptx.shapes.RECTANGLE, { x: 0.5, y: 7.05, w: 12.33, h: 0.008, fill: { color: C.qlikGray } });
   if (fs.existsSync(QLIK_LOGO))
-    slide.addImage({ path: QLIK_LOGO, x: 0.5, y: 7.12, w: 0.65, h: 0.28 });
+    slide.addImage({ path: QLIK_LOGO, x: 0.5, y: 7.12, w: 0.5, h: 0.28 });
   slide.addText("Project Qlarity  •  MCG Technology Architecture  •  Qlik Cloud", {
     x: 1.3, y: 7.12, w: 8, h: 0.28, fontSize: 8, color: C.qlikGray, fontFace: FONT,
   });
@@ -220,7 +220,7 @@ function layerBadge(slide, y, label, color) {
   if (fs.existsSync(COVER_BG))
     slide.addImage({ path: COVER_BG, x: 0, y: 0, w: 13.33, h: 7.5 });
   if (fs.existsSync(QLIK_LOGO))
-    slide.addImage({ path: QLIK_LOGO, x: 0.6, y: 0.5, w: 1.5, h: 0.66 });
+    slide.addImage({ path: QLIK_LOGO, x: 0.6, y: 0.5, w: 1.19, h: 0.66 });
 
   slide.addText("Meridian Commerce Group", {
     x: 0.6, y: 1.6, w: 6, h: 0.6,
