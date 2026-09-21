@@ -62,6 +62,13 @@ from mcg_reference_data import (
 )
 
 
+# A carriage return keeps the status line in place on a terminal, but container
+# log drivers only emit on a newline — so under `podman logs` the counters never
+# appear at all and the simulator looks dead. Redraw in place only when stdout
+# really is a TTY.
+STATUS_END = "\r" if sys.stdout.isatty() else "\n"
+
+
 # ---------------------------------------------------------------------------
 #  Organic pattern helpers
 # ---------------------------------------------------------------------------
@@ -89,6 +96,43 @@ def day_of_week_weight():
 # ---------------------------------------------------------------------------
 #  Inserts
 # ---------------------------------------------------------------------------
+
+class Sequence:
+    """Mints record ids that cannot collide with anything already in the table.
+
+    The cycle counter is NOT usable as an id suffix. It restarts at 1 every
+    time the container restarts, and the seeder independently numbers its own
+    600 orders from 0 in the same YYYY-MM namespace -- so a fresh simulator
+    walks straight into "Duplicate entry 'WEB-2026-09-000005' for key
+    crm_orders.PRIMARY" and silently drops those orders on the floor.
+
+    Instead, read the highest suffix already present once at startup and
+    continue above it. Survives restarts, and never overlaps the seeder.
+    """
+
+    def __init__(self, cur):
+        cur.execute(
+            "SELECT COALESCE(MAX(CAST(SUBSTRING_INDEX(order_id, '-', -1) AS UNSIGNED)), 0)"
+            " FROM crm_orders"
+        )
+        self.order_n = int(cur.fetchone()[0])
+
+        # Product SKUs are "<template sku>-<n>"; the template part itself
+        # contains hyphens, so take the trailing numeric segment the same way.
+        cur.execute(
+            "SELECT COALESCE(MAX(CAST(SUBSTRING_INDEX(sku, '-', -1) AS UNSIGNED)), 0)"
+            " FROM crm_products"
+        )
+        self.product_n = int(cur.fetchone()[0])
+
+    def next_order(self):
+        self.order_n += 1
+        return self.order_n
+
+    def next_product(self):
+        self.product_n += 1
+        return self.product_n
+
 
 def create_contact(cur, unique_suffix):
     """Insert a Contact with intentional address quality issues (Nightmare #2)."""
@@ -122,7 +166,7 @@ def create_contact(cur, unique_suffix):
     return contact_id
 
 
-def create_order(cur, contact_id, unique_suffix):
+def create_order(cur, contact_id, seq_n):
     """Insert an order at the START of its lifecycle.
 
     Orders are born PROCESSING and walked forward by advance_orders(). The
@@ -139,7 +183,7 @@ def create_order(cur, contact_id, unique_suffix):
     else:
         promised = now + timedelta(days=random.randint(2, 7))
 
-    order_id = f"WEB-{now.strftime('%Y-%m')}-{unique_suffix}"
+    order_id = f"WEB-{now.strftime('%Y-%m')}-{seq_n:06d}"
 
     cur.execute(
         """
@@ -164,14 +208,14 @@ def create_order(cur, contact_id, unique_suffix):
     return order_id
 
 
-def create_product(cur, unique_suffix):
+def create_product(cur, seq_n):
     """Insert a product-master row with its quality defects intact (Nightmare #3)."""
     t = random.choice(CRM_PRODUCT_TEMPLATES)
     name = t["name"]
     if random.random() < GERMAN_NAME_RATE:
         name = t.get("name_de", t["name"])
 
-    sku = f"{t['sku']}-{unique_suffix}"
+    sku = f"{t['sku']}-{seq_n:04d}"
     cur.execute(
         """
         INSERT INTO crm_products
@@ -377,6 +421,13 @@ def main():
              "updates": 0, "deletes": 0, "errors": 0}
     contact_ids = []
 
+    # Ids continue above whatever is already in the tables, so a restart does
+    # not replay the suffixes it used last time and the seeder's own 600
+    # orders are never re-minted.
+    with conn.cursor() as cur:
+        seq = Sequence(cur)
+    print(f"[OK] Id sequence continues from order #{seq.order_n}, product #{seq.product_n}\n")
+
     try:
         while True:
             cycle += 1
@@ -399,11 +450,11 @@ def main():
                             contact_ids = contact_ids[-200:]
 
                     if random.random() < 0.5 and contact_ids:
-                        create_order(cur, random.choice(contact_ids), suffix)
+                        create_order(cur, random.choice(contact_ids), seq.next_order())
                         stats["orders"] += 1
 
                     if random.random() < 0.15:
-                        create_product(cur, suffix)
+                        create_product(cur, seq.next_product())
                         stats["products"] += 1
 
                     # --- Mutations ---
@@ -445,7 +496,7 @@ def main():
                 f"Updates: {stats['updates']:>5d} | "
                 f"Deletes: {stats['deletes']:>3d} | "
                 f"Errors: {stats['errors']:>3d}",
-                end="\r",
+                end=STATUS_END,
             )
 
             time.sleep(args.interval)
