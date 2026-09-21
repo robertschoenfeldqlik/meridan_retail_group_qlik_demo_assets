@@ -3,32 +3,32 @@ properties:
   id: products_harmonized
   type: CUSTOM
   inputDatasets:
-    - datasetId: sf_products
+    - datasetId: crm_products
       taskId: crm-landing-4102
   customDatasetSettings:
     incremental: false
     customSql:
       expressionStatement: |-
         SELECT
-          SKU__c AS sku,
-          Legacy_SKU_Americas__c AS legacy_sku_americas,
-          Legacy_SKU_EU__c AS legacy_sku_eu,
-          Product_Name__c AS product_name,
-          Category_L1__c AS category_l1,
-          Category_L2__c AS category_l2,
-          COALESCE(Category_L3__c, 'UNCLASSIFIED') AS category_l3,
+          sku AS sku,
+          legacy_sku_americas AS legacy_sku_americas,
+          legacy_sku_eu AS legacy_sku_eu,
+          product_name AS product_name,
+          category_l1 AS category_l1,
+          category_l2 AS category_l2,
+          COALESCE(category_l3, 'UNCLASSIFIED') AS category_l3,
           COALESCE(
-            NULLIF(Weight_KG__c, 0),
-            AVG(NULLIF(Weight_KG__c, 0)) OVER (PARTITION BY Category_L1__c)
+            NULLIF(weight_kg, 0),
+            AVG(NULLIF(weight_kg, 0)) OVER (PARTITION BY category_l1)
           ) AS weight_kg,
-          CASE WHEN Weight_KG__c IS NULL OR Weight_KG__c = 0 THEN TRUE ELSE FALSE END AS weight_imputed,
-          Country_of_Origin__c AS country_of_origin,
-          CASE WHEN Country_of_Origin__c IS NULL AND Category_L1__c = 'Grocery' THEN TRUE ELSE FALSE END AS origin_missing_compliance_risk,
-          Supplier_Name__c AS supplier_name_raw,
+          CASE WHEN weight_kg IS NULL OR weight_kg = 0 THEN TRUE ELSE FALSE END AS weight_imputed,
+          country_of_origin AS country_of_origin,
+          CASE WHEN country_of_origin IS NULL AND category_l1 = 'Grocery' THEN TRUE ELSE FALSE END AS origin_missing_compliance_risk,
+          supplier_name AS supplier_name_raw,
           CASE
-            WHEN UPPER(Supplier_Name__c) LIKE 'SAMSUNG%' THEN 'Samsung Electronics'
-            WHEN UPPER(Supplier_Name__c) LIKE 'FRESHDIRECT%' OR UPPER(Supplier_Name__c) LIKE 'FRESH DIRECT%' THEN 'FreshDirect'
-            WHEN UPPER(Supplier_Name__c) LIKE 'TRANSFRIO%' OR UPPER(Supplier_Name__c) LIKE 'TRANS FRIO%' THEN 'TransFrio'
-            ELSE TRIM(Supplier_Name__c)
+            WHEN UPPER(supplier_name) LIKE 'SAMSUNG%' THEN 'Samsung Electronics'
+            WHEN UPPER(supplier_name) LIKE 'FRESHDIRECT%' OR UPPER(supplier_name) LIKE 'FRESH DIRECT%' THEN 'FreshDirect'
+            WHEN UPPER(supplier_name) LIKE 'TRANSFRIO%' OR UPPER(supplier_name) LIKE 'TRANS FRIO%' THEN 'TransFrio'
+            ELSE TRIM(supplier_name)
           END AS supplier_canonical
-        FROM sf_products
+        FROM crm_products

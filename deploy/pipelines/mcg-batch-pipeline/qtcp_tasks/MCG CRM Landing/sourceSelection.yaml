@@ -2,9 +2,12 @@ sourceConnection: '{{task.crm-landing-4102.sourceConnection}}'
 includePatterns: []
 excludePatterns: []
 explicitlySelected:
-  - name: Contact
+  - name: crm_contacts
+    schema: '{{task.crm-landing-4102:null$_$mcg_crm.schema}}'
     type: TABLE
-  - name: MCG_Order__c
+  - name: crm_orders
+    schema: '{{task.crm-landing-4102:null$_$mcg_crm.schema}}'
     type: TABLE
-  - name: MCG_Product__c
+  - name: crm_products
+    schema: '{{task.crm-landing-4102:null$_$mcg_crm.schema}}'
     type: TABLE

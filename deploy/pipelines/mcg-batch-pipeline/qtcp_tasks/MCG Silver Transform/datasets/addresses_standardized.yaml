@@ -3,40 +3,40 @@ properties:
   id: addresses_standardized
   type: CUSTOM
   inputDatasets:
-    - datasetId: sf_contacts
+    - datasetId: crm_contacts
       taskId: crm-landing-4102
   customDatasetSettings:
     incremental: false
     customSql:
       expressionStatement: |-
         SELECT
-          Id AS contact_id,
-          FirstName AS first_name,
-          LastName AS last_name,
-          Email AS email,
-          Phone AS phone,
-          MailingStreet AS street_raw,
+          contact_id AS contact_id,
+          first_name AS first_name,
+          last_name AS last_name,
+          email AS email,
+          phone AS phone,
+          mailing_street AS street_raw,
           CASE
-            WHEN UPPER(TRIM(MailingCity)) IN ('A''DAM', 'AMSTERDAM') THEN 'AMSTERDAM'
-            WHEN UPPER(TRIM(MailingCity)) IN ('R''DAM', 'ROTTERDAM') THEN 'ROTTERDAM'
-            ELSE UPPER(TRIM(MailingCity))
+            WHEN UPPER(TRIM(mailing_city)) IN ('A''DAM', 'AMSTERDAM') THEN 'AMSTERDAM'
+            WHEN UPPER(TRIM(mailing_city)) IN ('R''DAM', 'ROTTERDAM') THEN 'ROTTERDAM'
+            ELSE UPPER(TRIM(mailing_city))
           END AS city,
           CASE
-            WHEN UPPER(TRIM(MailingState)) IN ('NH', 'NOORD-HOLLAND', 'NORTH HOLLAND') THEN 'NOORD-HOLLAND'
-            WHEN UPPER(TRIM(MailingState)) IN ('ZH', 'ZUID-HOLLAND', 'SOUTH HOLLAND') THEN 'ZUID-HOLLAND'
-            ELSE UPPER(TRIM(MailingState))
+            WHEN UPPER(TRIM(mailing_state)) IN ('NH', 'NOORD-HOLLAND', 'NORTH HOLLAND') THEN 'NOORD-HOLLAND'
+            WHEN UPPER(TRIM(mailing_state)) IN ('ZH', 'ZUID-HOLLAND', 'SOUTH HOLLAND') THEN 'ZUID-HOLLAND'
+            ELSE UPPER(TRIM(mailing_state))
           END AS state_region,
-          UPPER(REPLACE(MailingPostalCode, ' ', '')) AS postal_code,
+          UPPER(REPLACE(mailing_postal_code, ' ', '')) AS postal_code,
           CASE
-            WHEN UPPER(TRIM(MailingCountry)) IN ('NL', 'NETHERLANDS', 'NIEDERLANDE', 'NEDERLAND', 'THE NETHERLANDS') THEN 'NL'
-            WHEN UPPER(TRIM(MailingCountry)) IN ('DE', 'GERMANY', 'DEUTSCHLAND') THEN 'DE'
-            WHEN UPPER(TRIM(MailingCountry)) IN ('GB', 'UK', 'UNITED KINGDOM') THEN 'GB'
-            WHEN UPPER(TRIM(MailingCountry)) IN ('US', 'USA', 'UNITED STATES') THEN 'US'
-            ELSE UPPER(TRIM(MailingCountry))
+            WHEN UPPER(TRIM(mailing_country)) IN ('NL', 'NETHERLANDS', 'NIEDERLANDE', 'NEDERLAND', 'THE NETHERLANDS') THEN 'NL'
+            WHEN UPPER(TRIM(mailing_country)) IN ('DE', 'GERMANY', 'DEUTSCHLAND') THEN 'DE'
+            WHEN UPPER(TRIM(mailing_country)) IN ('GB', 'UK', 'UNITED KINGDOM') THEN 'GB'
+            WHEN UPPER(TRIM(mailing_country)) IN ('US', 'USA', 'UNITED STATES') THEN 'US'
+            ELSE UPPER(TRIM(mailing_country))
           END AS country_iso,
-          (CASE WHEN MailingStreet IS NOT NULL AND TRIM(MailingStreet) <> '' THEN 0.25 ELSE 0.0 END
-           + CASE WHEN MailingCity IS NOT NULL AND TRIM(MailingCity) <> '' THEN 0.25 ELSE 0.0 END
-           + CASE WHEN MailingPostalCode IS NOT NULL AND TRIM(MailingPostalCode) <> '' THEN 0.25 ELSE 0.0 END
-           + CASE WHEN MailingCountry IS NOT NULL AND TRIM(MailingCountry) <> '' THEN 0.25 ELSE 0.0 END
+          (CASE WHEN mailing_street IS NOT NULL AND TRIM(mailing_street) <> '' THEN 0.25 ELSE 0.0 END
+           + CASE WHEN mailing_city IS NOT NULL AND TRIM(mailing_city) <> '' THEN 0.25 ELSE 0.0 END
+           + CASE WHEN mailing_postal_code IS NOT NULL AND TRIM(mailing_postal_code) <> '' THEN 0.25 ELSE 0.0 END
+           + CASE WHEN mailing_country IS NOT NULL AND TRIM(mailing_country) <> '' THEN 0.25 ELSE 0.0 END
           ) AS address_quality_score
-        FROM sf_contacts
+        FROM crm_contacts

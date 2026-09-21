@@ -1,7 +1,7 @@
 scheduling:
   - schedulingType: TIME_BASED
     enabled: true
-    description: Incremental Salesforce sync every 15 minutes
+    description: Incremental Meridian CRM sync every 15 minutes
     timeBasedScheduling:
       schedule:
         - 'RRULE:FREQ=MINUTELY;INTERVAL=15'

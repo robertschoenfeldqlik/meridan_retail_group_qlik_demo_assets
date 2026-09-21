@@ -1,10 +1,11 @@
 # =============================================================================
 # MCG Demo Simulators — Docker Image
 # =============================================================================
-# Multi-purpose image containing all 3 data simulators:
-#   - postgres_simulator.py  : WMS CDC event generation
-#   - kafka_iot_simulator.py : IoT cold-chain sensor data
-#   - salesforce_simulator.py: CRM/order data generation
+# Multi-purpose image containing all 3 data simulators plus the seeder:
+#   - postgres_simulator.py   : WMS CDC event generation
+#   - kafka_iot_simulator.py  : IoT cold-chain sensor data
+#   - mysql_crm_simulator.py  : Meridian CRM inserts, updates and deletes
+#   - seed_data.py            : one-shot initial load for both databases
 #
 # Usage:
 #   docker build -t mcg-simulators .
@@ -33,8 +34,10 @@ RUN apt-get update && \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy all simulator scripts
+# Copy all simulator scripts, the shared reference data module, and the CRM
+# schema the seeder applies.
 COPY *.py .
+COPY *.sql .
 
 # Default: show help
 CMD ["python", "--version"]

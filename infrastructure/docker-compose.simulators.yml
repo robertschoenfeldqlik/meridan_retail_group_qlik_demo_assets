@@ -4,6 +4,10 @@
 # Run alongside the Kafka stack (infrastructure/kafka/docker-compose.yml)
 # or standalone with external infrastructure.
 #
+# Databases in this file:
+#   postgres  — the WMS, on host port 5432, CDC via logical replication
+#   mysql     — Meridian CRM, on host port 3307, CDC via the binary log
+#
 # Usage (with Kafka stack):
 #   cd infrastructure
 #   docker compose -f kafka/docker-compose.yml -f docker-compose.simulators.yml up -d
@@ -27,6 +31,9 @@
 #   - Kafka IoT simulator joins the Kafka network to reach the broker
 #   - All containers can reach host services via host.docker.internal
 #   - PostgreSQL port 5432 is exposed to the host for Qlik Data Gateway
+#   - MySQL is published on host port 3307, not 3306: the Data Movement
+#     Gateway container (docker-compose.dmg.yml) already claims 3306. Inside
+#     the compose network the CRM is plain mysql:3306.
 #   - Kafka ports 9092/29092 are exposed via the Kafka stack
 #
 # Environment variables can be set in .env or passed directly.
@@ -77,7 +84,63 @@ services:
     restart: unless-stopped
 
   # ---------------------------------------------------------------------------
-  # Seed Data — One-shot container to populate PostgreSQL with demo data
+  # MySQL — Meridian CRM database for CDC
+  # ---------------------------------------------------------------------------
+  # The customer system of record: contacts, orders and the product master.
+  # Qlik reads it over log-based CDC through the Data Movement Gateway.
+  #
+  # Published on host port 3307 because the all-in-one gateway container
+  # (docker-compose.dmg.yml) binds 3306. Container-to-container traffic still
+  # uses mysql:3306, so the gateway connection is unaffected by the host port.
+  # ---------------------------------------------------------------------------
+  mysql:
+    image: mysql:8.4
+    container_name: mcg-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-mcg_root_2025}
+      MYSQL_DATABASE: ${MYSQL_DB:-mcg_crm}
+      MYSQL_USER: ${MYSQL_USER:-qlik_cdc}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-mcg_crm_2025}
+    ports:
+      - "${MYSQL_PORT:-3307}:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      # Runs once, as root, on a fresh volume: adds the binlog-reading grants
+      # that CDC needs and that MYSQL_USER alone does not get.
+      - ./mysql-init:/docker-entrypoint-initdb.d:ro
+    networks:
+      - mcg-sim-net
+      - mcg-kafka-net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-mcg_root_2025}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+    # Binlog settings for log-based CDC. MySQL 8.4 already defaults to
+    # log_bin=ON with ROW format and FULL row images; they are stated here so
+    # the CDC contract is visible in the stack definition rather than implied.
+    # binlog-format is deliberately NOT set: it is deprecated in 8.4, emits a
+    # startup warning, and ROW is forced regardless.
+    command: >
+      mysqld
+        --server-id=1
+        --log-bin=mysql-bin
+        --binlog-row-image=FULL
+        --binlog-expire-logs-seconds=604800
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Seed Data — One-shot container to populate both databases with demo data
+  # ---------------------------------------------------------------------------
+  # Seeds the WMS (PostgreSQL) and Meridian CRM (MySQL) in one pass. Both
+  # paths are idempotent: a re-run on a populated database logs "already
+  # seeded" and exits rather than duplicating the dataset.
+  #
+  # It connects to MySQL as root because it creates the database and schema.
+  # The gateway and the CRM simulator use the lower-privileged qlik_cdc user.
   # ---------------------------------------------------------------------------
   seed-data:
     build:
@@ -87,6 +150,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      mysql:
+        condition: service_healthy
     command: >
       python seed_data.py
         --postgres
@@ -95,6 +160,12 @@ services:
         --pg-db ${POSTGRES_DB:-mcg_wms}
         --pg-user ${POSTGRES_USER:-mcg_admin}
         --pg-pass ${POSTGRES_PASSWORD:-mcg_demo_2025}
+        --mysql
+        --my-host mysql
+        --my-port 3306
+        --my-db ${MYSQL_DB:-mcg_crm}
+        --my-user root
+        --my-pass ${MYSQL_ROOT_PASSWORD:-mcg_root_2025}
     networks:
       - mcg-sim-net
     extra_hosts:
@@ -159,39 +230,44 @@ services:
     restart: unless-stopped
 
   # ---------------------------------------------------------------------------
-  # Salesforce Simulator — CRM data generation (requires credentials)
+  # CRM Simulator — Meridian CRM change generation (MySQL)
   # ---------------------------------------------------------------------------
-  # This simulator connects to Salesforce API (external) and requires valid
-  # credentials. It won't start without them.
+  # Inserts contacts, orders and products, AND mutates them: it walks orders
+  # along their lifecycle, repairs dirty addresses in place, and occasionally
+  # purges an old order. Those updates and deletes are what make the binlog a
+  # real change stream rather than an append log.
   #
-  # To start with Salesforce simulator:
-  #   SF_USERNAME=you@dev.org SF_PASSWORD=pass SF_SECURITY_TOKEN=token \
-  #   docker compose --profile salesforce up -d
+  # Unlike the SaaS simulator this replaced, it needs no external account, no
+  # credentials and no compose profile — it is a default service that comes up
+  # with the rest of the stack. (The deploy UI cannot start profile-gated
+  # services: startDockerJob never forwards a profiles option.)
   # ---------------------------------------------------------------------------
-  salesforce-simulator:
+  mysql-crm-simulator:
     build:
       context: ../simulators
       dockerfile: Dockerfile
-    container_name: mcg-salesforce-simulator
+    container_name: mcg-mysql-crm-simulator
+    depends_on:
+      seed-data:
+        condition: service_completed_successfully
     command: >
-      python salesforce_simulator.py
-    environment:
-      SF_USERNAME: ${SF_USERNAME:-}
-      SF_PASSWORD: ${SF_PASSWORD:-}
-      SF_SECURITY_TOKEN: ${SF_SECURITY_TOKEN:-}
-      # sandbox orgs authenticate against test.salesforce.com, not login.
-      SF_DOMAIN: ${SF_DOMAIN:-login}
-      SF_API_VERSION: ${SF_API_VERSION:-61.0}
+      python mysql_crm_simulator.py
+        --host mysql
+        --port 3306
+        --db ${MYSQL_DB:-mcg_crm}
+        --user ${MYSQL_USER:-qlik_cdc}
+        --password ${MYSQL_PASSWORD:-mcg_crm_2025}
+        --interval ${CRM_SIM_INTERVAL:-10}
     networks:
       - mcg-sim-net
     extra_hosts:
       - "host.docker.internal:host-gateway"
-    profiles:
-      - salesforce
     restart: unless-stopped
 
 volumes:
   postgres-data:
+    driver: local
+  mysql-data:
     driver: local
 
 networks:

@@ -37,6 +37,11 @@
 # Default credentials:
 #   PostgreSQL:  postgres / Qlik1234   (port 5432)
 #   MySQL:       root / Qlik1234       (port 3306)
+#
+# NOTE: this container's MySQL is the gateway's own bundled instance. The
+# Meridian CRM database lives in the standalone mysql service in
+# docker-compose.simulators.yml (host port 3307). Only the DMG variant of the
+# simulator stack points the CRM at this container instead.
 #   SQL Server:  sa / Qlik1234!        (port 1433)
 #   SSH:         qlikdmg / Qlik1234    (port 22)
 # =============================================================================
@@ -88,13 +93,18 @@ services:
     volumes:
       - qlik-mysql-data:/var/lib/mysql
       - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    # The "postgres" and "mysql" aliases let the simulators connect to this
+    # all-in-one container with the same hostnames they use against the
+    # standalone database services in docker-compose.simulators.yml.
     networks:
       mcg-sim-net:
         aliases:
           - postgres
+          - mysql
       mcg-kafka-net:
         aliases:
           - postgres
+          - mysql
     extra_hosts:
       - "host.docker.internal:host-gateway"
     healthcheck:

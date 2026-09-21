@@ -102,28 +102,30 @@ services:
     restart: unless-stopped
 
   # ---------------------------------------------------------------------------
-  # Salesforce Simulator (requires credentials)
+  # CRM Simulator — Meridian CRM change generation (MySQL)
   # ---------------------------------------------------------------------------
-  salesforce-simulator:
+  # Identical to the service in docker-compose.simulators.yml except that
+  # "mysql" resolves to the all-in-one gateway container's network alias
+  # rather than to a standalone MySQL service. This file defines no database
+  # of its own, following the same convention as the postgres simulator here.
+  # ---------------------------------------------------------------------------
+  mysql-crm-simulator:
     build:
       context: ../simulators
       dockerfile: Dockerfile
-    container_name: mcg-salesforce-simulator
+    container_name: mcg-mysql-crm-simulator
     command: >
-      python salesforce_simulator.py
-    environment:
-      SF_USERNAME: ${SF_USERNAME:-}
-      SF_PASSWORD: ${SF_PASSWORD:-}
-      SF_SECURITY_TOKEN: ${SF_SECURITY_TOKEN:-}
-      # sandbox orgs authenticate against test.salesforce.com, not login.
-      SF_DOMAIN: ${SF_DOMAIN:-login}
-      SF_API_VERSION: ${SF_API_VERSION:-61.0}
+      python mysql_crm_simulator.py
+        --host mysql
+        --port 3306
+        --db ${MYSQL_DB:-mcg_crm}
+        --user ${MYSQL_USER:-root}
+        --password ${DMG_MYSQL_PASSWORD:-Qlik1234}
+        --interval ${CRM_SIM_INTERVAL:-10}
     networks:
       - mcg-sim-net
     extra_hosts:
       - "host.docker.internal:host-gateway"
-    profiles:
-      - salesforce
     restart: unless-stopped
 
 networks:

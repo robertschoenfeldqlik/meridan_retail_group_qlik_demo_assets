@@ -2,7 +2,7 @@ properties:
   name: MCG CRM Landing
   id: crm-landing-4102
   type: LAKE_LANDING
-  description: Salesforce CRM objects (contacts, orders, product master) landed to the bronze layer on a 15-minute incremental cycle.
+  description: Meridian CRM tables (contacts, orders, product master) landed to the bronze layer from MySQL over log-based CDC, on a 15-minute incremental cycle.
 settings:
   landingDwSettings:
     landingArtifactsLocation:

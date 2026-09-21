@@ -4,7 +4,8 @@
 # Brings up the complete demo infrastructure in one command:
 #   - Kafka broker + ZooKeeper + Schema Registry + Control Center
 #   - PostgreSQL database with WAL logical replication enabled
-#   - All 3 simulators (PG, Kafka IoT, Salesforce)
+#   - MySQL database (Meridian CRM) with the binary log enabled
+#   - All 3 simulators (PG WMS, Kafka IoT, Meridian CRM)
 #
 # Network Architecture:
 #   mcg-kafka-net   — Kafka broker, IoT simulator, PostgreSQL
@@ -13,21 +14,24 @@
 #
 # Exposed Host Ports:
 #   5432  — PostgreSQL (for Qlik Data Movement Gateway CDC)
+#   3307  — MySQL / Meridian CRM (3306 is taken by the DMG container)
 #   9092  — Kafka internal (for local clients)
 #   29092 — Kafka external (for Qlik Data Movement Gateway)
 #   8081  — Schema Registry
 #   9021  — Confluent Control Center UI
 #
 # Usage:
-#   cd infrastructure
-#   docker compose -f docker-compose.full-stack.yml up -d
+#   npm run docker:up
 #
-# For Salesforce simulator (requires credentials):
-#   SF_USERNAME=you@dev.org SF_PASSWORD=pass SF_SECURITY_TOKEN=token \
-#   docker compose -f docker-compose.full-stack.yml --profile salesforce up -d
+# (The npm scripts route through deploy/compose.js, which finds podman or
+# docker automatically. Calling `docker compose` directly only works on a
+# machine that has Docker Desktop installed.)
+#
+# Every simulator is a default service — none needs credentials or a profile.
 #
 # To connect from host to containers:
 #   psql -h localhost -p 5432 -U mcg_admin -d mcg_wms
+#   mysql -h 127.0.0.1 -P 3307 -u qlik_cdc -p mcg_crm
 #   kafka-console-consumer --bootstrap-server localhost:29092 --topic mcg.iot.cold-chain
 #
 # To connect from containers to host services:

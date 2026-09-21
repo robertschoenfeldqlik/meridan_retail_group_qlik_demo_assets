@@ -2,8 +2,9 @@
 """
 seed_data.py — One-Time Data Seeder for MCG Demo
 =================================================
-Creates database schemas and populates PostgreSQL and Salesforce with
-a realistic batch of initial data for the Meridian Commerce Group demo.
+Creates database schemas and populates PostgreSQL (WMS) and MySQL (Meridian
+CRM) with a realistic batch of initial data for the Meridian Commerce Group
+demo.
 
 All 7 data quality nightmares are baked in:
   #1 Phantom Inventory       — Inflated WMS quantities (8% of records)
@@ -15,23 +16,23 @@ All 7 data quality nightmares are baked in:
   #7 Compliance Gap          — Missing lot numbers on 15% of perishables
 
 Usage:
-  pip install psycopg2-binary faker simple-salesforce
+  pip install psycopg2-binary PyMySQL faker
 
   # Seed PostgreSQL only
   python seed_data.py --postgres --pg-host localhost --pg-db mcg_wms
 
-  # Seed Salesforce only
-  python seed_data.py --salesforce --sf-user user@example.com --sf-pass P@ss --sf-token TOKEN
+  # Seed the CRM (MySQL) only
+  python seed_data.py --mysql --my-host localhost --my-port 3307 --my-db mcg_crm
 
   # Seed both
-  python seed_data.py --postgres --salesforce [connection args...]
+  python seed_data.py --postgres --mysql [connection args...]
 
   # Preview mode (no writes)
-  python seed_data.py --postgres --dry-run
+  python seed_data.py --postgres --mysql --dry-run
 
 Volumes (configurable):
   PostgreSQL:  ~2,000 inventory positions, ~5,000 warehouse events, ~3,000 shipments
-  Salesforce:  ~120 contacts, ~600 orders, ~50 products
+  MySQL CRM:   ~120 contacts, ~600 orders, ~50 products
 """
 
 import argparse
@@ -47,6 +48,24 @@ try:
 except ImportError:
     print("Install faker:  pip install faker")
     sys.exit(1)
+
+# CRM reference data is shared with mysql_crm_simulator.py so the seeded
+# population and the live feed cannot drift apart.
+from mcg_reference_data import (
+    ADDRESS_PERSONAS,
+    CRM_CARRIERS,
+    CRM_PRODUCT_TEMPLATES,
+    FULFILLMENT_METHODS,
+    GERMAN_NAME_RATE,
+    LATE_DELIVERY_RATE,
+    MISSING_TRACKING_RATE,
+    NEXT_DAY_PROMISE_RATE,
+    SUPPLIER_VARIANTS,
+    WISMO_RATE,
+    mailing_street,
+    new_id,
+    supplier_spelling,
+)
 
 fake = Faker()
 Faker.seed(42)
@@ -104,55 +123,9 @@ BIN_FMTS = [
     lambda: f"{chr(random.randint(65,70))}.{random.randint(1,12):02d}.{random.randint(1,8):02d}.{chr(random.randint(65,68))}",
 ]
 
-# Salesforce address personas with dirty variants (Nightmare #2)
-ADDRESS_PERSONAS = [
-    {"region": "EU-NL", "variants": [
-        {"first": "Jan", "last": "de Vries", "street": "Keizersgracht 482", "line2": "Apartment 4B", "city": "Amsterdam", "state": "Noord-Holland", "postal": "1017 EJ", "country": "NL", "phone": "+31 20 555 0147", "email": "j.devries@email.nl"},
-        {"first": "Jan", "last": "De Vries", "street": "Keizersgracht 482", "line2": "Apt 4B", "city": "Amsterdam", "state": "Noord-Holland", "postal": "1017EJ", "country": "Netherlands", "phone": "+31205550147", "email": "j.devries@email.nl"},
-        {"first": "Jan", "last": "deVries", "street": "Keizersgracht 482, #4B", "line2": None, "city": "Amsterdam", "state": "NH", "postal": "1017 EJ", "country": "NL", "phone": "020-5550147", "email": "jan.devries@email.nl"},
-    ]},
-    {"region": "EU-DE", "variants": [
-        {"first": "Klaus", "last": "Müller", "street": "Friedrichstraße 123, Hinterhaus", "line2": "3. OG links", "city": "Berlin", "state": "Berlin", "postal": "10117", "country": "DE", "phone": "+49 30 555 0199", "email": "k.mueller@email.de"},
-        {"first": "Klaus", "last": "Mueller", "street": "Friedrichstraße 123, Hinterh", "line2": "3. OG links", "city": "Berlin", "state": "Berlin", "postal": "10117", "country": "Deutschland", "phone": "+4930555 0199", "email": "k.mueller@email.de"},
-        {"first": "Klaus", "last": "MÜLLER", "street": "Friedrichstr. 123", "line2": "Hinterhaus 3.OG", "city": "Berlin", "state": "BE", "postal": "10117", "country": "DE", "phone": "030 5550199", "email": "klaus.mueller@email.de"},
-    ]},
-    {"region": "AMER-US", "variants": [
-        {"first": "Sarah", "last": "Johnson", "street": "4521 Peachtree Rd NE", "line2": "Suite 200", "city": "Atlanta", "state": "GA", "postal": "30319", "country": "US", "phone": "+1 404-555-0188", "email": "s.johnson@email.com"},
-        {"first": "Sarah", "last": "Johnson", "street": "4521 Peachtree Road Northeast", "line2": "Ste 200", "city": "Atlanta, GA", "state": "Georgia", "postal": "30319-3219", "country": "United States", "phone": "4045550188", "email": "sarah.johnson@email.com"},
-        {"first": "Sarah", "last": "Johnson", "street": "4521 Peachtree Rd NE, Ste 200", "line2": None, "city": "Atlanta", "state": "GA", "postal": "30319", "country": "US", "phone": "(404) 555-0188", "email": "s.johnson@email.com"},
-    ]},
-    {"region": "APAC-SG", "variants": [
-        {"first": "Wei Lin", "last": "Tan", "street": "15 Orchard Road", "line2": "#08-01 Wheelock Place", "city": "Singapore", "state": None, "postal": "238862", "country": "SG", "phone": "+65 6555 0142", "email": "wl.tan@email.sg"},
-        {"first": "Wei Lin", "last": "Tan", "street": "15 Orchard Rd, #08-01", "line2": "Wheelock Place", "city": "Singapore", "state": None, "postal": "238862", "country": "Singapore", "phone": "+6565550142", "email": "wltan@email.sg"},
-        {"first": "Weilin", "last": "Tan", "street": "15 Orchard Rd", "line2": None, "city": "Singapore", "state": None, "postal": "238862", "country": "SG", "phone": "6555 0142", "email": "wl.tan@email.sg"},
-    ]},
-    {"region": "LATAM-BR", "variants": [
-        {"first": "Maria", "last": "Silva", "street": "Rua Augusta, 1500", "line2": "Conjunto 42, Cerqueira César", "city": "São Paulo", "state": "SP", "postal": "01304-001", "country": "BR", "phone": "+55 11 5555-0177", "email": "m.silva@email.com.br"},
-        {"first": "Maria", "last": "Silva", "street": "R. Augusta 1500 Cj 42", "line2": None, "city": "Sao Paulo", "state": "SP", "postal": "01304001", "country": "BR", "phone": "1155550177", "email": "maria.silva@email.com.br"},
-        {"first": "Maria", "last": "Da Silva", "street": "Rua Augusta, 1500", "line2": "Cj 42 Cerq. César", "city": "São Paulo", "state": "São Paulo", "postal": "01304-001", "country": "Brasil", "phone": "+55 (11) 5555 0177", "email": "m.silva@email.com.br"},
-    ]},
-    {"region": "AFRICA-NG", "variants": [
-        {"first": "Chidi", "last": "Okafor", "street": "15 Admiralty Way", "line2": "Lekki Phase 1", "city": "Lagos", "state": "Lagos", "postal": "106104", "country": "NG", "phone": "+234 801 555 0166", "email": "c.okafor@email.com.ng"},
-        {"first": "Chidi", "last": "Okafor", "street": "15 Admiralty Wy, Lekki Ph1", "line2": None, "city": "Lagos", "state": "Lagos", "postal": "106104", "country": "Nigeria", "phone": "08015550166", "email": "chidi.okafor@email.ng"},
-    ]},
-]
-
-SUPPLIER_VARIANTS = {
-    "Samsung": ["Samsung Electronics Co.", "Samsung Elec.", "SAMSUNG", "Samsung Corp"],
-    "Unilever": ["Unilever plc", "Unilever", "Unilever PLC", "UNILEVER"],
-    "Philips": ["Philips Domestic Appliances", "Philips DA", "PHILIPS", "Philips Appliances BV"],
-}
-
-SF_PRODUCT_TEMPLATES = [
-    {"sku": "MCG-4420",         "sku_am": "AM-BT-SPKR-001",  "sku_eu": "EU-44200",        "name": "Meridian Bluetooth Speaker",    "name_de": "Tragbarer Bluetooth-Lautsprecher", "cat1": "Electronics", "cat2": "Audio",       "cat3": "Portable Speakers", "weight": 0.45, "origin": "CN", "supplier": "Samsung Electronics Co."},
-    {"sku": "MCG-4421",         "sku_am": "AM-HDPH-002",      "sku_eu": "EU-44210",        "name": "Wireless Headphones",           "name_de": "Kabellose Kopfhörer",              "cat1": "Electronics", "cat2": "Audio",       "cat3": "Headphones",        "weight": 0.32, "origin": "CN", "supplier": "Samsung Elec."},
-    {"sku": "MCG-4430",         "sku_am": "AM-CHRG-010",      "sku_eu": "EU-44300",        "name": "USB-C Charger",                 "name_de": "USB-C Ladegerät",                  "cat1": "Electronics", "cat2": "Accessories", "cat3": None,                "weight": None, "origin": "CN", "supplier": "SAMSUNG"},
-    {"sku": "MCG-HG-1010",     "sku_am": None,               "sku_eu": "EU-HG-1010",      "name": "Kitchen Mixer Pro",             "name_de": "Küchenmixer Pro",                  "cat1": "Home",        "cat2": "Kitchen",     "cat3": "Appliances",        "weight": None, "origin": None, "supplier": "Philips Domestic Appliances"},
-    {"sku": "MCG-GRO-LET-001", "sku_am": None,               "sku_eu": "EU-GRO-LET-001",  "name": "Organic Lettuce",               "name_de": "Bio-Salat",                        "cat1": "Grocery",     "cat2": "Fresh Produce","cat3": "Leafy Greens",     "weight": 0.35, "origin": None, "supplier": "Fresh Direct NL"},
-    {"sku": "MCG-GRO-MIX-015", "sku_am": None,               "sku_eu": None,              "name": "Salad Mix 200g",                "name_de": "Salatmischung 200g",               "cat1": "Grocery",     "cat2": "Fresh Produce","cat3": "Salads",           "weight": 0.22, "origin": None, "supplier": "Fresh Direct NL"},
-    {"sku": "MCG-APP-JKT-881", "sku_am": "AM-APP-JKT-881",   "sku_eu": "EU-APP-JKT-881",  "name": "Winter Jacket L",               "name_de": "Winterjacke L",                    "cat1": "Apparel",     "cat2": "Outerwear",   "cat3": "Jackets",           "weight": 0.0,  "origin": "VN", "supplier": "Samsung Corp"},
-    {"sku": "MCG-HW-VIT-300",  "sku_am": "AM-HW-VIT-300",    "sku_eu": "EU-HW-VIT-300",   "name": "Multivitamin 60ct",             "name_de": "Multivitamin 60 Stk",              "cat1": "Health",      "cat2": "Supplements", "cat3": "Vitamins",          "weight": 0.15, "origin": "US", "supplier": "Unilever plc"},
-]
+# ADDRESS_PERSONAS, SUPPLIER_VARIANTS and CRM_PRODUCT_TEMPLATES used to be
+# duplicated here. They now live in mcg_reference_data.py, shared with
+# mysql_crm_simulator.py, and are imported at the top of this file.
 
 
 # ---------------------------------------------------------------------------
@@ -498,187 +471,242 @@ def seed_postgres(host, port, db, user, password, counts, dry_run=False):
 
 
 # ============================================================================
-#  SALESFORCE SEED
+#  MERIDIAN CRM SEED (MySQL)
 # ============================================================================
 
-def seed_salesforce(sf_user, sf_pass, sf_token, sf_domain, counts, dry_run=False):
-    """Seed Salesforce with Contacts, Orders, and Products."""
-    try:
-        from simple_salesforce import Salesforce
-    except ImportError:
-        print("ERROR: Install simple-salesforce:  pip install simple-salesforce")
-        sys.exit(1)
+def _load_mysql_schema():
+    """Read mysql_schema.sql from beside this file and split it into statements.
 
+    The DDL lives in a .sql file rather than a Python string so it can also be
+    piped straight into a mysql client by hand, and so there is exactly one
+    definition of the CRM schema to keep correct.
+    """
+    here = os.path.dirname(os.path.abspath(__file__))
+    path = os.path.join(here, "mysql_schema.sql")
+    with open(path, encoding="utf-8") as fh:
+        raw = fh.read()
+
+    # Strip full-line and trailing "--" comments. PyMySQL will not run a
+    # multi-statement string, so the file has to be split on ";" and every
+    # comment removed first or a trailing comment swallows the next statement.
+    lines = []
+    for line in raw.splitlines():
+        stripped = line.split("--", 1)[0].rstrip()
+        if stripped:
+            lines.append(stripped)
+    return [stmt.strip() for stmt in "\n".join(lines).split(";") if stmt.strip()]
+
+
+def seed_mysql(host, port, db, user, password, counts, dry_run=False):
+    """Create the CRM schema and seed MySQL with contacts, orders and products."""
     contact_count = counts.get("contacts", 120)
     order_count   = counts.get("orders", 600)
     product_count = counts.get("products", 50)
 
     print(f"\n{'='*60}")
-    print(f"  Salesforce Seed — {sf_user} @ {sf_domain}")
+    print(f"  Meridian CRM Seed (MySQL) — {host}:{port}/{db}")
     print(f"  Target: {contact_count} contacts + {order_count} orders + {product_count} products")
     print(f"{'='*60}")
 
     if dry_run:
-        print("  DRY RUN — no Salesforce changes will be made.")
-        print(f"  Would create ~{contact_count + order_count + product_count:,} records.")
+        print("  DRY RUN — no database changes will be made.")
+        print(f"  Would create 3 tables and ~{contact_count + order_count + product_count:,} rows.")
         return
 
-    sf = Salesforce(username=sf_user, password=sf_pass,
-                    security_token=sf_token, domain=sf_domain)
-    print(f"  Connected to {sf.sf_instance}")
+    # Imported here rather than at module scope so a missing MySQL driver only
+    # breaks the MySQL path, exactly as psycopg2 is handled in seed_postgres().
+    # It sits below the dry-run return so --dry-run works on a bare checkout.
+    import pymysql
 
-    created = {"contacts": 0, "orders": 0, "products": 0}
-    errors = {"contacts": 0, "orders": 0, "products": 0}
-    contact_ids = []
+    # Connect without selecting a database: the schema file creates it.
+    max_attempts = 10
+    for attempt in range(1, max_attempts + 1):
+        try:
+            conn = pymysql.connect(
+                host=host, port=port, user=user, password=password,
+                charset="utf8mb4", autocommit=False,
+            )
+            break
+        except pymysql.err.OperationalError as e:
+            if attempt == max_attempts:
+                raise
+            wait = min(2 * attempt, 15)
+            print(f"  MySQL not ready yet (attempt {attempt}/{max_attempts}): {e}".strip())
+            print(f"  Retrying in {wait}s — the database container may still be starting up...")
+            time.sleep(wait)
 
-    # --- Contacts ---
-    print(f"\n  [1/3] Creating {contact_count} Contacts...")
+    # --- Create schema ---
+    print("\n  [1/4] Creating schema...")
+    with conn.cursor() as cur:
+        for stmt in _load_mysql_schema():
+            cur.execute(stmt)
+        cur.execute(f"USE `{db}`")
+    conn.commit()
+    print("        OK — 3 tables + 8 indexes")
+
+    # --- Idempotency guard ---
+    # This seeder is meant to run once. Every re-run (e.g. a restarted
+    # compose "up" for the seed container) would otherwise insert another
+    # full batch on top of the existing rows, silently duplicating the
+    # dataset. Bail out if the main table is already populated.
+    with conn.cursor() as cur:
+        cur.execute("SELECT COUNT(*) FROM crm_contacts")
+        existing_rows = cur.fetchone()[0]
+    if existing_rows > 0:
+        print(f"\n  CRM already seeded ({existing_rows:,} contacts found) — skipping to avoid duplicate data.\n")
+        conn.close()
+        return
+
+    def bulk(cur, sql, rows, chunk=500):
+        """executemany in chunks, mirroring psycopg2's execute_values page_size."""
+        for i in range(0, len(rows), chunk):
+            cur.executemany(sql, rows[i:i + chunk])
+
+    # --- Seed crm_contacts ---
+    print(f"  [2/4] Seeding crm_contacts ({contact_count:,} rows)...")
     t0 = time.time()
+    contact_ids = []
+    contact_rows = []
+
     for i in range(contact_count):
         persona = random.choice(ADDRESS_PERSONAS)
         v = random.choice(persona["variants"])
-        street = v["street"]
-        if v["line2"]:
-            street = f"{v['street']}\n{v['line2']}"
+        cid = new_id("003")
+        contact_ids.append(cid)
+        contact_rows.append((
+            cid,
+            v["first"],
+            # Suffixed so the near-duplicates stay distinguishable while still
+            # sharing an address — that is the point of Nightmare #2.
+            f"{v['last']}_{i:04d}",
+            v["email"].replace("@", f".{i:04d}@"),
+            v["phone"],
+            mailing_street(v),
+            v["city"],
+            v["state"],      # genuinely None for city-states — keep it None
+            v["postal"],
+            v["country"],
+        ))
 
-        record = {
-            "FirstName": v["first"],
-            "LastName": f"{v['last']}_{i:04d}",
-            "Email": v["email"].replace("@", f".{i:04d}@"),
-            "Phone": v["phone"],
-            "MailingStreet": street,
-            "MailingCity": v["city"],
-            "MailingState": v["state"],
-            "MailingPostalCode": v["postal"],
-            "MailingCountry": v["country"],
-        }
-        record = {k: val for k, val in record.items() if val is not None}
+    with conn.cursor() as cur:
+        bulk(cur, """
+            INSERT INTO crm_contacts
+              (contact_id, first_name, last_name, email, phone,
+               mailing_street, mailing_city, mailing_state,
+               mailing_postal_code, mailing_country)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """, contact_rows)
+    conn.commit()
+    print(f"        OK — {len(contact_rows):,} contacts in {time.time()-t0:.1f}s")
 
-        try:
-            result = sf.Contact.create(record)
-            if result["success"]:
-                contact_ids.append(result["id"])
-                created["contacts"] += 1
-        except Exception as e:
-            errors["contacts"] += 1
-            if errors["contacts"] <= 3:
-                print(f"        WARN: Contact #{i} failed: {e}")
-
-    print(f"        OK — {created['contacts']}/{contact_count} contacts in {time.time()-t0:.1f}s")
-
-    # --- Orders (MCG_Order__c) ---
-    print(f"\n  [2/3] Creating {order_count} Orders (MCG_Order__c)...")
+    # --- Seed crm_orders ---
+    print(f"  [3/4] Seeding crm_orders ({order_count:,} rows)...")
     t0 = time.time()
-    carriers_list = list(CARRIERS.keys())
-    fulfillment_methods = ["SHIP_TO_HOME", "SHIP_TO_HOME", "SHIP_TO_HOME", "BOPIS", "CURBSIDE"]
+    order_rows = []
+    seen_order_ids = set()
 
     for i in range(order_count):
-        if not contact_ids:
-            print("        WARN: No contacts available — skipping orders.")
-            break
-
         now = datetime.now(timezone.utc) - timedelta(days=random.randint(0, 90))
-        product = random.choice(SF_PRODUCT_TEMPLATES)
-        carrier = random.choice(carriers_list)
-        method = random.choice(fulfillment_methods)
+        product = random.choice(CRM_PRODUCT_TEMPLATES)
+        carrier = random.choice(CRM_CARRIERS)
+        method  = random.choice(FULFILLMENT_METHODS)
 
-        if random.random() < 0.3:
-            promised = (now + timedelta(days=1)).strftime("%Y-%m-%d")
+        # Some promises are unrealistically optimistic (next-day).
+        if random.random() < NEXT_DAY_PROMISE_RATE:
+            promised = now + timedelta(days=1)
         else:
-            promised = (now + timedelta(days=random.randint(2, 7))).strftime("%Y-%m-%d")
+            promised = now + timedelta(days=random.randint(2, 7))
 
+        # Seeded orders are history, so they carry a spread of terminal and
+        # in-flight states. Orders the simulator creates later start at
+        # PROCESSING and are walked forward, which is what produces the
+        # UPDATE traffic in the change stream.
         status = random.choices(
             ["PROCESSING", "SHIPPED", "IN_TRANSIT", "DELIVERED", "DELIVERY_FAILED"],
-            weights=[0.15, 0.10, 0.25, 0.35, 0.15], k=1
+            weights=[0.15, 0.10, 0.25, 0.35, 0.15], k=1,
         )[0]
 
         actual = None
         if status == "DELIVERED":
-            if random.random() > 0.22:
-                actual = (now - timedelta(days=random.randint(0, 2))).strftime("%Y-%m-%d")
+            if random.random() > LATE_DELIVERY_RATE:
+                actual = promised - timedelta(days=random.randint(0, 2))
             else:
-                actual = (now + timedelta(days=random.randint(1, 5))).strftime("%Y-%m-%d")
+                actual = promised + timedelta(days=random.randint(1, 5))  # SLA breach
 
         tracking = None
-        if random.random() > 0.42:
+        if random.random() > MISSING_TRACKING_RATE:
             tracking = f"{carrier[:3]}-{random.randint(1000000, 9999999)}"
 
-        wismo = random.random() < 0.41
+        order_id = f"WEB-{now.strftime('%Y-%m')}-{i:06d}"
+        if order_id in seen_order_ids:
+            continue
+        seen_order_ids.add(order_id)
 
-        record = {
-            "Order_ID__c": f"WEB-{now.strftime('%Y-%m')}-{i:06d}",
-            "Contact__c": random.choice(contact_ids),
-            "Order_Date__c": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
-            "SKU__c": product["sku"],
-            "Product_Name__c": product["name"],
-            "Fulfillment_Method__c": method,
-            "Promised_Delivery__c": promised,
-            "Carrier__c": carrier,
-            "Tracking_Number__c": tracking,
-            "Order_Status__c": status,
-            "WISMO_Flag__c": wismo,
-        }
-        if actual:
-            record["Actual_Delivery__c"] = actual
-        record = {k: val for k, val in record.items() if val is not None}
+        order_rows.append((
+            order_id,
+            random.choice(contact_ids),
+            now.strftime("%Y-%m-%d %H:%M:%S"),
+            product["sku"],
+            product["name"],
+            method,
+            promised.strftime("%Y-%m-%d"),
+            actual.strftime("%Y-%m-%d") if actual else None,
+            carrier,
+            tracking,
+            status,
+            1 if random.random() < WISMO_RATE else 0,
+        ))
 
-        try:
-            result = sf.MCG_Order__c.create(record)
-            if result["success"]:
-                created["orders"] += 1
-        except Exception as e:
-            errors["orders"] += 1
-            if errors["orders"] <= 3:
-                print(f"        WARN: Order #{i} failed: {e}")
+    with conn.cursor() as cur:
+        bulk(cur, """
+            INSERT INTO crm_orders
+              (order_id, contact_id, order_date, sku, product_name,
+               fulfillment_method, promised_delivery, actual_delivery,
+               carrier, tracking_number, order_status, wismo_flag)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """, order_rows)
+    conn.commit()
+    print(f"        OK — {len(order_rows):,} orders in {time.time()-t0:.1f}s")
 
-    print(f"        OK — {created['orders']}/{order_count} orders in {time.time()-t0:.1f}s")
-
-    # --- Products (MCG_Product__c) ---
-    print(f"\n  [3/3] Creating {product_count} Products (MCG_Product__c)...")
+    # --- Seed crm_products ---
+    print(f"  [4/4] Seeding crm_products ({product_count:,} rows)...")
     t0 = time.time()
+    product_rows = []
+
     for i in range(product_count):
-        template = random.choice(SF_PRODUCT_TEMPLATES)
-
-        supplier = template["supplier"]
-        for base, variants in SUPPLIER_VARIANTS.items():
-            if base.lower() in supplier.lower():
-                supplier = random.choice(variants)
-                break
-
+        template = random.choice(CRM_PRODUCT_TEMPLATES)
         name = template["name"]
-        if random.random() < 0.15:
+        if random.random() < GERMAN_NAME_RATE:
             name = template.get("name_de", template["name"])
 
-        record = {
-            "SKU__c": f"{template['sku']}-{i:04d}",
-            "Legacy_SKU_Americas__c": template.get("sku_am"),
-            "Legacy_SKU_EU__c": template.get("sku_eu"),
-            "Product_Name__c": name,
-            "Category_L1__c": template["cat1"],
-            "Category_L2__c": template["cat2"],
-            "Category_L3__c": template.get("cat3"),
-            "Supplier_Name__c": supplier,
-            "Country_of_Origin__c": template.get("origin"),
-        }
-        if template["weight"] is not None:
-            record["Weight_KG__c"] = template["weight"]
+        product_rows.append((
+            f"{template['sku']}-{i:04d}",
+            template.get("sku_am"),
+            template.get("sku_eu"),
+            name,
+            template["cat1"],
+            template["cat2"],
+            template.get("cat3"),
+            # None stays None and 0.0 stays 0.0 — they are different defects.
+            template["weight"],
+            template.get("origin"),
+            supplier_spelling(template["supplier"]),
+        ))
 
-        record = {k: val for k, val in record.items() if val is not None}
+    with conn.cursor() as cur:
+        bulk(cur, """
+            INSERT INTO crm_products
+              (sku, legacy_sku_americas, legacy_sku_eu, product_name,
+               category_l1, category_l2, category_l3, weight_kg,
+               country_of_origin, supplier_name)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """, product_rows)
+    conn.commit()
+    print(f"        OK — {len(product_rows):,} products in {time.time()-t0:.1f}s")
 
-        try:
-            result = sf.MCG_Product__c.create(record)
-            if result["success"]:
-                created["products"] += 1
-        except Exception as e:
-            errors["products"] += 1
-            if errors["products"] <= 3:
-                print(f"        WARN: Product #{i} failed: {e}")
-
-    print(f"        OK — {created['products']}/{product_count} products in {time.time()-t0:.1f}s")
-
-    total_created = sum(created.values())
-    total_errors = sum(errors.values())
-    print(f"\n  Salesforce seed complete: {total_created:,} records created, {total_errors} errors.\n")
+    total = len(contact_rows) + len(order_rows) + len(product_rows)
+    print(f"\n  Meridian CRM seed complete: {total:,} rows.\n")
+    conn.close()
 
 
 # ============================================================================
@@ -687,31 +715,31 @@ def seed_salesforce(sf_user, sf_pass, sf_token, sf_domain, counts, dry_run=False
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Seed MCG demo data into PostgreSQL and/or Salesforce.",
+        description="Seed MCG demo data into PostgreSQL (WMS) and/or MySQL (Meridian CRM).",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
   # Seed PostgreSQL only
   python seed_data.py --postgres --pg-host localhost --pg-db mcg_wms --pg-user postgres --pg-pass secret
 
-  # Seed Salesforce only
-  python seed_data.py --salesforce --sf-user admin@mcg.com --sf-pass P@ss --sf-token ABCDEF
+  # Seed the CRM only
+  python seed_data.py --mysql --my-host localhost --my-port 3307 --my-user qlik_cdc --my-pass secret
 
   # Seed both with custom volumes
-  python seed_data.py --postgres --salesforce --inv-count 5000 --event-count 10000
+  python seed_data.py --postgres --mysql --inv-count 5000 --event-count 10000
 
   # Dry run (preview)
-  python seed_data.py --postgres --salesforce --dry-run
+  python seed_data.py --postgres --mysql --dry-run
 
 Environment variables:
   PG_HOST, PG_PORT, PG_DB, PG_USER, PG_PASSWORD
-  SF_USERNAME, SF_PASSWORD, SF_SECURITY_TOKEN, SF_DOMAIN
+  MYSQL_HOST, MYSQL_PORT, MYSQL_DB, MYSQL_USER, MYSQL_PASSWORD
         """,
     )
 
     # Mode
     parser.add_argument("--postgres", action="store_true", help="Seed PostgreSQL database")
-    parser.add_argument("--salesforce", action="store_true", help="Seed Salesforce org")
+    parser.add_argument("--mysql", action="store_true", help="Seed the Meridian CRM MySQL database")
     parser.add_argument("--dry-run", action="store_true", help="Preview without making changes")
 
     # PostgreSQL connection
@@ -722,30 +750,34 @@ Environment variables:
     pg.add_argument("--pg-user", default=os.environ.get("PG_USER", "postgres"))
     pg.add_argument("--pg-pass", default=os.environ.get("PG_PASSWORD", ""))
 
-    # Salesforce connection
-    # NOTE: env var names (SF_USERNAME / SF_PASSWORD / SF_SECURITY_TOKEN) and the
-    # "login" domain default are kept in sync with salesforce_simulator.py and
-    # with infrastructure/.env.example + docker-compose*.yml, which are the
-    # naming convention actually wired through the environment.
-    sf = parser.add_argument_group("Salesforce connection")
-    sf.add_argument("--sf-user", default=os.environ.get("SF_USERNAME", ""))
-    sf.add_argument("--sf-pass", default=os.environ.get("SF_PASSWORD", ""))
-    sf.add_argument("--sf-token", default=os.environ.get("SF_SECURITY_TOKEN", ""))
-    sf.add_argument("--sf-domain", default=os.environ.get("SF_DOMAIN", "login"), help="'login' for production/Developer orgs, 'test' for sandbox")
+    # MySQL (Meridian CRM) connection
+    # NOTE: the env var names below are the ones wired through
+    # infrastructure/.env.example and docker-compose*.yml, and they are shared
+    # with mysql_crm_simulator.py. Change them in all three or none.
+    #
+    # The default port is 3307, not 3306: the Data Movement Gateway container
+    # already binds 3306 on this host, so the CRM database is published one
+    # port up. Inside the compose network it is still plain mysql:3306.
+    my = parser.add_argument_group("MySQL (Meridian CRM) connection")
+    my.add_argument("--my-host", default=os.environ.get("MYSQL_HOST", "localhost"))
+    my.add_argument("--my-port", type=int, default=int(os.environ.get("MYSQL_PORT", "3307")))
+    my.add_argument("--my-db", default=os.environ.get("MYSQL_DB", "mcg_crm"))
+    my.add_argument("--my-user", default=os.environ.get("MYSQL_USER", "root"))
+    my.add_argument("--my-pass", default=os.environ.get("MYSQL_PASSWORD", ""))
 
     # Volume controls
     vol = parser.add_argument_group("Data volume")
     vol.add_argument("--inv-count", type=int, default=2000, help="Inventory positions (default: 2000)")
     vol.add_argument("--event-count", type=int, default=5000, help="Warehouse events (default: 5000)")
     vol.add_argument("--ship-count", type=int, default=3000, help="Shipments (default: 3000)")
-    vol.add_argument("--contact-count", type=int, default=120, help="SF Contacts (default: 120)")
-    vol.add_argument("--order-count", type=int, default=600, help="SF Orders (default: 600)")
-    vol.add_argument("--product-count", type=int, default=50, help="SF Products (default: 50)")
+    vol.add_argument("--contact-count", type=int, default=120, help="CRM contacts (default: 120)")
+    vol.add_argument("--order-count", type=int, default=600, help="CRM orders (default: 600)")
+    vol.add_argument("--product-count", type=int, default=50, help="CRM products (default: 50)")
 
     args = parser.parse_args()
 
-    if not args.postgres and not args.salesforce:
-        print("ERROR: Specify --postgres, --salesforce, or both.")
+    if not args.postgres and not args.mysql:
+        print("ERROR: Specify --postgres, --mysql, or both.")
         parser.print_help()
         sys.exit(1)
 
@@ -755,11 +787,11 @@ Environment variables:
     print("=" * 60)
 
     pg_counts = {"inventory": args.inv_count, "events": args.event_count, "shipments": args.ship_count}
-    sf_counts = {"contacts": args.contact_count, "orders": args.order_count, "products": args.product_count}
+    crm_counts = {"contacts": args.contact_count, "orders": args.order_count, "products": args.product_count}
 
     # Track failure across ALL requested phases so the exit code reflects
     # any failure, not just a postgres-only failure (a failing --postgres
-    # phase must not be masked by a subsequent successful --salesforce phase).
+    # phase must not be masked by a subsequent successful --mysql phase).
     any_failed = False
 
     if args.postgres:
@@ -773,20 +805,16 @@ Environment variables:
             print(f"\n  ERROR (PostgreSQL): {e}")
             any_failed = True
 
-    if args.salesforce:
-        if not args.sf_user and not args.dry_run:
-            print("\n  ERROR: --sf-user is required for Salesforce seeding.")
+    if args.mysql:
+        try:
+            seed_mysql(
+                host=args.my_host, port=args.my_port, db=args.my_db,
+                user=args.my_user, password=args.my_pass,
+                counts=crm_counts, dry_run=args.dry_run,
+            )
+        except Exception as e:
+            print(f"\n  ERROR (MySQL CRM): {e}")
             any_failed = True
-        else:
-            try:
-                seed_salesforce(
-                    sf_user=args.sf_user, sf_pass=args.sf_pass,
-                    sf_token=args.sf_token, sf_domain=args.sf_domain,
-                    counts=sf_counts, dry_run=args.dry_run,
-                )
-            except Exception as e:
-                print(f"\n  ERROR (Salesforce): {e}")
-                any_failed = True
 
     print("=" * 60)
     if any_failed:
