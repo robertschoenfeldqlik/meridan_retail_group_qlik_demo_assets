@@ -135,11 +135,17 @@ To build it by hand instead — Data Integration → Create connection → MySQL
 | Username | `qlik_cdc` |
 | Password | `MYSQL_PASSWORD` in `infrastructure/.env` |
 
-`qlik_cdc` is created by `infrastructure/mysql-init/01-cdc-user.sql` on the
-database's first boot. It holds `REPLICATION SLAVE`, `REPLICATION CLIENT`,
-`RELOAD` and `SHOW DATABASES` globally plus `SELECT` on `mcg_crm` — enough to read
-the binary log, and nothing more. The gateway's own bundled MySQL has no such
-account and connects as root; this one does not.
+`qlik_cdc` is the `MYSQL_USER` account: the MySQL image creates it with full
+rights on `mcg_crm` (the CRM simulator writes through it), and
+`infrastructure/mysql-init/01-cdc-grants.sh` adds the global grants CDC needs —
+`REPLICATION SLAVE`, `REPLICATION CLIENT`, `RELOAD`, `SHOW DATABASES`. Those four
+cannot be scoped to one database, which is why they are on `*.*`.
+
+It is not a read-only account, then — but it is not root either, and the
+gateway's own bundled MySQL has no dedicated CDC account at all and connects as
+root. If you want the gateway strictly read-only, create a second account with
+`SELECT` on `mcg_crm` plus the same four global grants and point the Qlik
+connection at that instead; the simulator keeps using `MYSQL_USER`.
 
 After creating it by hand, capture the connect string so the deploy can rebuild
 it anywhere:

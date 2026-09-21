@@ -63,8 +63,8 @@
     },
     "mysql": {
       "name": "MCG CRM Database",
-      "host": "localhost",
-      "port": 3307,
+      "host": "your-mysql-host.example.com",
+      "port": 3306,
       "database": "mcg_crm",
       "username": "qlik_cdc",
       "password": "mcg_crm_2025",

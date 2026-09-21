@@ -12,7 +12,7 @@
 -- appear, just without coordinates.
 
 SELECT
-  c.Id AS contact_id,
+  c.contact_id AS contact_id,
   c.first_name AS first_name,
   c.last_name AS last_name,
   c.email AS email,

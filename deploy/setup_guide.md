@@ -224,9 +224,10 @@ to create, no OAuth application, and no credential that expires.
    carries real UPDATE and DELETE events, not just appends. That is what makes
    the CDC story worth showing.
 
-> Qlik connects as `qlik_cdc`, a least-privilege account created by
-> `infrastructure/mysql-init/01-cdc-user.sql` with the binlog-reading grants
-> CDC needs and no root access.
+> Qlik connects as `qlik_cdc`, not root. The MySQL image creates it with rights
+> on `mcg_crm` and `infrastructure/mysql-init/01-cdc-grants.sh` adds the four
+> global replication grants CDC needs (they cannot be scoped to one database).
+> See `deploy/mysql_crm_setup.md` §5 if you want the gateway strictly read-only.
 
 ### 1.6 Data Gateway - Streaming (for Kafka)
 

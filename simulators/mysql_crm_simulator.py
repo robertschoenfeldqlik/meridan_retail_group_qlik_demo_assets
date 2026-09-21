@@ -312,13 +312,22 @@ def correct_address(cur):
 
     # Match on the dirty street text: it is the field that differs most
     # reliably between variants of the same address.
+    # The second predicate is not redundant. For three of the six personas the
+    # dirty street is a PREFIX of the clean one ("Keizersgracht 482" vs the same
+    # plus a newline and "Apartment 4B"), so the LIKE alone also matches rows
+    # that are already canonical. Updating one of those writes identical values:
+    # MySQL changes no row, ON UPDATE CURRENT_TIMESTAMP does not fire, nothing
+    # reaches the binlog - and the stats would still count a repair that never
+    # happened.
+    clean_street = mailing_street(clean)
     cur.execute(
         """
         SELECT contact_id FROM crm_contacts
         WHERE mailing_street LIKE %s
+          AND mailing_street <> %s
         ORDER BY RAND() LIMIT 1
         """,
-        (f"{dirty['street']}%",),
+        (f"{dirty['street']}%", clean_street),
     )
     row = cur.fetchone()
     if not row:
@@ -335,7 +344,7 @@ def correct_address(cur):
         WHERE contact_id = %s
         """,
         (
-            mailing_street(clean),
+            clean_street,
             clean["city"],
             clean["state"],
             clean["postal"],
@@ -469,12 +478,22 @@ def main():
                         if random.random() < 0.005:
                             stats["deletes"] += delete_stale_order(cur)
 
-            except pymysql.err.OperationalError as e:
+            except (pymysql.err.OperationalError, pymysql.err.InterfaceError) as e:
                 # Connection dropped (container restart, idle timeout). Rebuild
                 # it rather than dying — the simulator is meant to outlive a
                 # database bounce during a long demo.
+                #
+                # InterfaceError is NOT a subclass of OperationalError in
+                # PyMySQL. A server-side idle close surfaces as OperationalError
+                # the first time and as InterfaceError on every attempt after,
+                # so catching only the former left the simulator spinning on a
+                # dead socket forever, printing errors and doing nothing.
                 stats["errors"] += 1
                 print(f"\n  [WARN] Lost connection on cycle {cycle}: {e} — reconnecting...")
+                try:
+                    conn.close()   # release the dead socket before replacing it
+                except Exception:
+                    pass
                 try:
                     conn = connect(args)
                 except Exception as reconnect_error:

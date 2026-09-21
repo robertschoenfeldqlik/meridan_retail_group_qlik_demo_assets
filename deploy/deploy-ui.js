@@ -2440,9 +2440,10 @@ function getHTML() {
           <strong>Port 3307</strong> is the host-side port: the gateway container already binds 3306, so the CRM is
           published one port up. Inside the compose network it is still <code>mysql:3306</code>.
           <br><br>
-          <code>qlik_cdc</code> is the least-privilege account created by
-          <code>infrastructure/mysql-init/01-cdc-user.sql</code>; it holds the binlog-reading grants CDC needs without
-          being root. The connection name must match <code>MCG CRM Database</code> or the pipeline binding in
+<code>qlik_cdc</code> owns the <code>mcg_crm</code> database and additionally holds the global
+          replication grants CDC needs — applied by
+          <code>infrastructure/mysql-init/01-cdc-grants.sh</code>, so the gateway never connects as root. The
+          connection name must match <code>MCG CRM Database</code> or the pipeline binding in
           <code>bindings.json</code> will not resolve.
         </div>
 

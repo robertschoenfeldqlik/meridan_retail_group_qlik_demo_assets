@@ -53,6 +53,12 @@ services:
         --pg-db ${POSTGRES_DB:-mcg_wms}
         --pg-user ${DMG_PG_USER:-postgres}
         --pg-pass ${DMG_POSTGRES_PASSWORD:-Qlik1234}
+        --mysql
+        --my-host mysql
+        --my-port 3306
+        --my-db ${MYSQL_DB:-mcg_crm}
+        --my-user root
+        --my-pass ${DMG_MYSQL_PASSWORD:-Qlik1234}
     networks:
       - mcg-sim-net
     extra_hosts:
@@ -114,12 +120,21 @@ services:
       context: ../simulators
       dockerfile: Dockerfile
     container_name: mcg-mysql-crm-simulator
+    # Without this gate the simulator races the seeder, finds no mcg_crm
+    # database, exhausts its 10 connection retries and crash-loops forever.
+    depends_on:
+      seed-data:
+        condition: service_completed_successfully
+    # Connects as root, not ${MYSQL_USER}. The gateway container's bundled
+    # MySQL has only root — the qlik_cdc account is created by the standalone
+    # service's init script, which does not run here. Pairing MYSQL_USER with
+    # DMG_MYSQL_PASSWORD would produce a credential that exists nowhere.
     command: >
       python mysql_crm_simulator.py
         --host mysql
         --port 3306
         --db ${MYSQL_DB:-mcg_crm}
-        --user ${MYSQL_USER:-root}
+        --user root
         --password ${DMG_MYSQL_PASSWORD:-Qlik1234}
         --interval ${CRM_SIM_INTERVAL:-10}
     networks:

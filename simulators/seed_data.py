@@ -596,7 +596,6 @@ def seed_mysql(host, port, db, user, password, counts, dry_run=False):
                mailing_postal_code, mailing_country)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """, contact_rows)
-    conn.commit()
     print(f"        OK — {len(contact_rows):,} contacts in {time.time()-t0:.1f}s")
 
     # --- Seed crm_orders ---
@@ -665,7 +664,6 @@ def seed_mysql(host, port, db, user, password, counts, dry_run=False):
                carrier, tracking_number, order_status, wismo_flag)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """, order_rows)
-    conn.commit()
     print(f"        OK — {len(order_rows):,} orders in {time.time()-t0:.1f}s")
 
     # --- Seed crm_products ---
@@ -701,6 +699,12 @@ def seed_mysql(host, port, db, user, password, counts, dry_run=False):
                country_of_origin, supplier_name)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """, product_rows)
+    # ONE commit for all three tables. The idempotency guard above keys on
+    # crm_contacts, so committing per-table left a hole: if the orders insert
+    # failed, contacts were already durable, every later run reported "already
+    # seeded" and exited 0, and the CRM stayed permanently at 120 contacts with
+    # zero orders and zero products — while compose's
+    # service_completed_successfully gate let the simulator start on top of it.
     conn.commit()
     print(f"        OK — {len(product_rows):,} products in {time.time()-t0:.1f}s")
 
