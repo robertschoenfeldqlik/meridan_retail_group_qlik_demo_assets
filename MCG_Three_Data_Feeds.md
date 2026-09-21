@@ -1,5 +1,5 @@
 # Meridian Commerce Group -- Three Data Feed Demo Plan
-## Relational Database + Kafka Streaming + SaaS Application
+## PostgreSQL WMS + Kafka Streaming + MySQL CRM
 
 ---
 
@@ -9,7 +9,7 @@
 |---|---|---|---|---|
 | 1 | **Relational Database** | PostgreSQL | Warehouse / Inventory data (simulates Oracle WMS) | Native CDC via Data Movement Gateway |
 | 2 | **Streaming** | Apache Kafka | Cold-chain IoT telemetry (Tive / Sensitech sensors) | Native Kafka connector |
-| 3 | **SaaS Application** | Salesforce | E-commerce orders + Customer data (simulates SFCC + CRM) | Native Standard connector |
+| 3 | **Second Relational Engine** | MySQL (Meridian CRM) | E-commerce orders + customer data | Gateway-bound CDC off the binary log |
 
 ---
 
@@ -370,50 +370,58 @@ Engine:           Data Gateway - Streaming (recommended)
 
 ---
 
-## Feed 3: SaaS Application -- Salesforce
+## Feed 3: Second Relational Engine -- MySQL (Meridian CRM)
 
-### Why Salesforce
+### Why MySQL
 
 | Consideration | Detail |
 |---|---|
-| **Qlik support level** | **Standard** connector (highest tier) -- most mature, extensively tested |
-| **Demo ease** | Free MySQL 8.4 available at developer.salesforce.com |
-| **MCG story fit** | Simulates SFCC e-commerce orders + CRM customer data -- the address nightmare |
-| **CDC support** | Yes -- incremental/full data landing from CRM tables |
-| **Alternatives** | ServiceNow (Lite), Jira Cloud (supported), Shopify (check current list) |
+| **Qlik support level** | Gateway-bound replication **source** (`repsrc_mysql`) -- log-based CDC off the binary log, the same class of capture as PostgreSQL |
+| **Demo ease** | A container in this repo. No external account, no OAuth app, no security token, nothing to expire mid-demo |
+| **MCG story fit** | Meridian CRM holds customer profiles, e-commerce orders and the product master -- the address nightmare and WISMO both start here |
+| **CDC support** | Yes -- `binlog_format=ROW`, `binlog_row_image=FULL`, watermark on `last_modified_date` |
+| **Deployability** | The connection is API-creatable, so `npm run deploy` builds it unattended |
 
-### Why Salesforce Over Alternatives
+### Why a Second Database Rather Than a SaaS Source
 
-| SaaS Option | Connector Tier | Free Dev/Demo Tier? | MCG Story Fit | Recommendation |
-|---|---|---|---|---|
-| **Salesforce** | Standard | Yes (Developer Edition) | E-commerce orders, customer data, address nightmare | **RECOMMENDED** |
-| ServiceNow | Lite | Yes (Developer Instance) | Could model incident mgmt for pipeline failures | Good alternative |
-| Jira Cloud | Supported | Yes (Free tier) | Could model data quality issue tracking | Weaker story fit |
-| SAP | Standard | No free tier | Most realistic for MCG's ERP story | Best for enterprise demo, harder to set up |
-| HubSpot | Not confirmed | Yes (Free CRM) | Marketing/CRM data | May not be supported yet |
+The CRM used to be a hosted SaaS CRM org. It made a worse demo for
+four concrete reasons, all of which the move fixes:
 
-**Salesforce wins because:** Standard-tier connector (most reliable), free developer org, and maps directly to MCG's two biggest customer-facing nightmares (addresses and WISMO).
+| Problem with the SaaS source | With MySQL |
+|---|---|
+| Needed an external org, an External Client App and an interactive OAuth login, so the connection could not be created headlessly -- it was the one step `npm run deploy` always skipped | Gateway-bound source; the deploy creates it |
+| Credentials lived in `.env` and expired | No credentials leave the stack |
+| The feed was **insert-only**, so its change stream was indistinguishable from an append -- a CDC demo with no change data | Orders advance through their lifecycle, addresses are corrected in place, old orders are purged. The binary log carries `Update_rows` and `Delete_rows` events |
+| API quotas and rate limits shaped the demo | A local database, no quota |
+
+It also makes a sharper technical point on camera: **two CDC sources on two
+different engines** -- PostgreSQL's write-ahead log and MySQL's binary log --
+landing through one gateway into one lakehouse. That is a more interesting
+architecture slide than "and here is a SaaS connector".
 
 ### MCG Story Role
 
-Salesforce acts as **MCG's CRM and e-commerce order system** -- the source of customer profiles, delivery addresses, and online orders. This is ground zero for Nightmare #2 (Address Catastrophe) and the WISMO problem.
+Meridian CRM is **MCG's customer and e-commerce order system** -- the source of
+customer profiles, delivery addresses, and online orders. This is ground zero
+for Nightmare #2 (Address Catastrophe) and the WISMO problem.
 
-### CRM table Design -- Three Custom Objects + Standard Objects
+### Schema Design -- Three Tables
 
-#### Object 1: Standard `Contact` / `Account` (Nightmare #2: Address Catastrophe)
+#### Table 1: `crm_contacts` (Nightmare #2: Address Catastrophe)
 
-Use Salesforce's standard Contact and Account objects, populated with MCG customer data:
+One row per customer contact. The same real person appears several times with
+inconsistent spellings of the same address:
 
-| Salesforce Field | MCG Mapping | Quality Issue to Inject |
+| Column | MCG Mapping | Quality Issue to Inject |
 |---|---|---|
-| `Contact.MailingStreet` | `address_line_1` | Truncated for 6% of records (force long addresses) |
-| `Contact.MailingCity` | `city` | Spelling variants: 'São Paulo' vs 'Sao Paulo' |
-| `Contact.MailingState` | `state_province` | Sometimes full name, sometimes abbreviation |
-| `Contact.MailingPostalCode` | `postal_code` | Format varies: '1017 EJ' vs '1017EJ', '01304-001' vs '01304001' |
-| `Contact.MailingCountry` | `country` | 'NL' vs 'Netherlands' vs 'Niederlande' |
-| `Contact.Phone` | `phone` | No standard format: '+31205550147' vs '+31 20 555 0147' |
-| `Contact.Email` | `email` | Duplicate contacts with typo email variants |
-| `Account.Name` | `customer_name` | Prefix handling: 'de Vries' vs 'De Vries' vs 'DeVries' |
+| `mailing_street` | `address_line_1` | Truncated for 6% of records (force long addresses) |
+| `mailing_city` | `city` | Spelling variants: 'São Paulo' vs 'Sao Paulo' |
+| `mailing_state` | `state_province` | Sometimes full name, sometimes abbreviation |
+| `mailing_postal_code` | `postal_code` | Format varies: '1017 EJ' vs '1017EJ', '01304-001' vs '01304001' |
+| `mailing_country` | `country` | 'NL' vs 'Netherlands' vs 'Niederlande' |
+| `phone` | `phone` | No standard format: '+31205550147' vs '+31 20 555 0147' |
+| `email` | `email` | Duplicate contacts with typo email variants |
+| `last_name` | `customer_name` | Prefix handling: 'de Vries' vs 'De Vries' vs 'DeVries' |
 
 **Sample records to load (demonstrating Nightmare #2):**
 
@@ -456,66 +464,77 @@ Contact 5 (Singapore format):
   MailingCountry: Singapore                      <-- full name instead of code
 ```
 
-#### Object 2: Custom `crm_orders` (E-Commerce Orders)
+#### Table 2: `crm_orders` (E-Commerce Orders)
 
-| Salesforce Field | Type | MCG Mapping | Quality Issue |
+| Column | Type | MCG Mapping | Quality Issue |
 |---|---|---|---|
-| `Order_ID__c` | Text | `order_id` | Unique per order |
-| `Order_Date__c` | DateTime | `order_datetime` | UTC (clean) |
-| `Contact__c` | Lookup | Link to Contact | Cross-system ID matching needed |
-| `Shipping_Street__c` | TextArea | `address_line_1 + 2` | Inherits Contact address issues |
-| `Shipping_City__c` | Text | `city` | |
-| `Shipping_PostalCode__c` | Text | `postal_code` | |
-| `Shipping_Country__c` | Text | `country_code` | Code vs name inconsistency |
-| `Fulfillment_Method__c` | Picklist | `SHIP_TO_HOME`, `BOPIS`, `CURBSIDE` | |
-| `Promised_Delivery__c` | Date | `promised_delivery_date` | Often overly optimistic |
-| `Actual_Delivery__c` | Date | `actual_delivery_date` | NULL for 22% of APAC orders (SLA breach) |
-| `Carrier__c` | Text | `carrier_code` | Non-standard carrier codes |
-| `Tracking_Number__c` | Text | `tracking_number` | NULL for 42% (no tracking from some carriers) |
-| `Order_Status__c` | Picklist | `order_status` | Status codes don't match carrier statuses |
-| `WISMO_Flag__c` | Checkbox | Has customer called about this order? | 41% of online orders |
+| `order_id` | Text | `order_id` | Unique per order |
+| `order_date` | DATETIME | `order_datetime` | UTC (clean) |
+| `contact_id` | FK | Link to Contact | Cross-system ID matching needed |
+| `mailing_street` | TEXT | `address_line_1 + 2` | Inherits Contact address issues |
+| `mailing_city` | Text | `city` | |
+| `mailing_postal_code` | Text | `postal_code` | |
+| `mailing_country` | Text | `country_code` | Code vs name inconsistency |
+| `fulfillment_method` | VARCHAR | `SHIP_TO_HOME`, `BOPIS`, `CURBSIDE` | |
+| `promised_delivery` | Date | `promised_delivery_date` | Often overly optimistic |
+| `actual_delivery` | Date | `actual_delivery_date` | NULL for 22% of APAC orders (SLA breach) |
+| `carrier` | Text | `carrier_code` | Non-standard carrier codes |
+| `tracking_number` | Text | `tracking_number` | NULL for 42% (no tracking from some carriers) |
+| `order_status` | VARCHAR | `order_status` | Status codes don't match carrier statuses |
+| `wismo_flag` | BOOLEAN | Has customer called about this order? | 41% of online orders |
 
 #### Object 3: Custom `crm_products` (Nightmare #3: Product Master Mess)
 
-| Salesforce Field | Type | MCG Mapping | Quality Issue |
+| Column | Type | MCG Mapping | Quality Issue |
 |---|---|---|---|
-| `SKU__c` | Text | `sku` | Three numbering schemes coexist |
-| `Legacy_SKU_Americas__c` | Text | `legacy_sku_1` | 'AM-BT-SPKR-001' |
-| `Legacy_SKU_EU__c` | Text | `legacy_sku_2` | 'EU-44200' |
-| `Product_Name__c` | Text | `product_name` | Different names per region |
-| `Category_L1__c` | Text | `category_l1` | |
-| `Category_L2__c` | Text | `category_l2` | |
-| `Category_L3__c` | Text | `category_l3` | NULL for Americas (only 3 levels) |
-| `Weight_KG__c` | Number | `weight_kg` | NULL for 8,200 products |
-| `Country_of_Origin__c` | Text | `country_of_origin` | Missing for 12% of food SKUs |
-| `Supplier_Name__c` | Text | `supplier_name` | 'Samsung Elec.' / 'SAMSUNG' / etc. |
+| `sku` | Text | `sku` | Three numbering schemes coexist |
+| `legacy_sku_americas` | Text | `legacy_sku_1` | 'AM-BT-SPKR-001' |
+| `legacy_sku_eu` | Text | `legacy_sku_2` | 'EU-44200' |
+| `product_name` | Text | `product_name` | Different names per region |
+| `category_l1` | Text | `category_l1` | |
+| `category_l2` | Text | `category_l2` | |
+| `category_l3` | Text | `category_l3` | NULL for Americas (only 3 levels) |
+| `weight_kg` | DECIMAL(8,2) | `weight_kg` | NULL for 8,200 products |
+| `country_of_origin` | Text | `country_of_origin` | Missing for 12% of food SKUs |
+| `supplier_name` | Text | `supplier_name` | 'Samsung Elec.' / 'SAMSUNG' / etc. |
 
 ### Qlik Talend Cloud Connection Setup
 
 ```
-Connection Type:  Salesforce
-Authentication:   OAuth 2.0 (recommended) or Username + Password + Security Token
-Instance URL:     https://your-dev-org.my.salesforce.com
-API Version:      v59.0 (or latest)
-Objects:          Contact, Account, crm_orders, crm_products
-Replication Mode: Full + Incremental (based on last_modified_date)
+Connection Type:  MySQL (replication source, repsrc_mysql)
+Data gateway:     MCG_DATA_MOVEMENT
+Host:             mysql            (compose service name, as seen FROM the gateway)
+Port:             3306 inside the network / 3307 on the host
+Database:         mcg_crm
+Credentials:      qlik_cdc / MYSQL_PASSWORD from infrastructure/.env
+Tables:           crm_contacts, crm_orders, crm_products
+Replication Mode: Full + Incremental (watermark: last_modified_date)
 ```
 
+`npm run deploy` creates this connection itself once `dataGateway.id` is set.
+The name must be exactly `MCG CRM Database` or the pipeline binding will not
+resolve.
+
 **Prerequisites:**
-- MySQL 8.4 org (free at developer.salesforce.com)
-- Connected App configured for OAuth (or security token for password auth)
-- Custom objects created via Salesforce Setup or deployed via metadata API
-- Sample data loaded (can use Salesforce Data Loader or Workbench)
+- `npm run docker:up:simulators` -- starts MySQL, seeds it, and starts the CRM simulator
+- A registered Data Movement gateway that can reach the database
+- Nothing else. There is no account to create and no token to rotate
 
 **Demo flow:**
-1. Connect to Salesforce in Qlik Talend Cloud
-2. Browse available objects -- show Contact, crm_orders, crm_products
-3. Set up landing task (full initial load + incremental)
-4. Run initial data landing
-5. Show Data Quality profiling: discovers address formatting issues, duplicate contacts, missing product weights
+1. Connect to Meridian CRM in Qlik Talend Cloud
+2. Browse the `mcg_crm` schema -- show `crm_contacts`, `crm_orders`, `crm_products`
+3. Set up the landing task (full initial load + incremental). No rename rule is
+   needed: the source tables are already named `crm_*`
+4. Run the initial data landing
+5. Show Data Quality profiling: address formatting issues, duplicate contacts,
+   missing product weights -- and note that a missing weight and a zero weight
+   are different defects, both present
 6. Apply standardization rules and fuzzy matching
 7. Show Trust Score before (low) and after (high) cleansing
-8. Create or update a Contact in Meridian CRM → show incremental change captured
+8. **Show the change stream.** Re-run
+   `SELECT order_status, COUNT(*) FROM crm_orders GROUP BY order_status;`
+   a minute apart and watch orders move. The simulator is not only inserting --
+   it is updating and deleting, so incremental capture has something to capture
 
 ---
 
@@ -527,7 +546,7 @@ Replication Mode: Full + Incremental (based on last_modified_date)
 |---|---|---|
 | 1 | Provision PostgreSQL (Docker or RDS) and load 3 tables with dirty data | 30 min |
 | 2 | Set up Kafka (Confluent Cloud free tier or Docker) and create 2 topics | 15 min |
-| 3 | Create Salesforce Developer org and load custom objects + sample data | 45 min |
+| 3 | `npm run docker:up:simulators` -- MySQL comes up seeded and mutating | 3 min |
 | 4 | Configure all 3 connections in Qlik Talend Cloud | 20 min |
 | 5 | Test connectivity and run initial loads | 15 min |
 | **Total setup** | | **~2 hours** |
@@ -539,7 +558,7 @@ Replication Mode: Full + Incremental (based on last_modified_date)
 | 0:00 | **The problem** -- Show MCG's system landscape and nightmare overview | -- | Slides | Set the stage |
 | 3:00 | **Connect PostgreSQL** -- Show CDC pipeline from WMS database | Relational | Qlik Talend Cloud | Real-time inventory changes flowing. Insert a row in PG → appears in target within seconds. |
 | 6:00 | **Profile PostgreSQL data** -- Run data profiling on inventory_positions | Relational | Data Quality | Discover: negative quantities, NULL lot numbers, UoM inconsistencies, timestamp format issues |
-| 9:00 | **Connect Salesforce** -- Show SaaS connector, browse objects | SaaS | Qlik Talend Cloud | Land Contact and Order data. Show the address formatting chaos discovered by profiling. |
+| 9:00 | **Connect Meridian CRM** -- Show the MySQL source, browse tables | MySQL CDC | Qlik Talend Cloud | Land Contact and Order data. Show the address formatting chaos discovered by profiling. |
 | 12:00 | **Clean the data** -- Apply standardization and matching rules | SaaS + Relational | Data Quality | Address normalization, supplier dedup ("Samsung" x4 → 1), Trust Score before/after |
 | 15:00 | **Connect Kafka** -- Show streaming IoT telemetry | Streaming | Qlik Talend Cloud | Live sensor readings flowing in real-time. Show temperature unit mismatch, timestamp normalization. |
 | 18:00 | **Analyze in Qlik Analytics** -- Open the Supply Chain Command Center | All 3 | Qlik Analytics | Inventory health (from PG), delivery SLAs (from SF), cold-chain monitor (from Kafka) -- all in one dashboard |
@@ -556,14 +575,14 @@ Replication Mode: Full + Incremental (based on last_modified_date)
 │                         SOURCE SYSTEMS                                    │
 │                                                                          │
 │  ┌──────────────┐   ┌──────────────────┐   ┌─────────────────────────┐  │
-│  │ PostgreSQL   │   │ Apache Kafka     │   │ Salesforce              │  │
-│  │ (WMS DB)     │   │ (IoT Telemetry)  │   │ (CRM + Orders)         │  │
+│  │ PostgreSQL   │   │ Apache Kafka     │   │ MySQL                   │  │
+│  │ (WMS DB)     │   │ (IoT Telemetry)  │   │ (Meridian CRM)          │  │
 │  │              │   │                  │   │                         │  │
-│  │ • inventory  │   │ • cold-chain     │   │ • Contact/Account      │  │
-│  │ • wh_events  │   │   topic          │   │ • crm_orders         │  │
-│  │ • shipments  │   │ • carrier-events │   │ • crm_products       │  │
+│  │ • inventory  │   │ • cold-chain     │   │ • crm_contacts          │  │
+│  │ • wh_events  │   │   topic          │   │ • crm_orders            │  │
+│  │ • shipments  │   │ • carrier-events │   │ • crm_products          │  │
 │  │              │   │   topic          │   │                         │  │
-│  │ CDC (WAL)    │   │ Streaming        │   │ Full + Incremental     │  │
+│  │ CDC (WAL)    │   │ Streaming        │   │ CDC (binlog)            │  │
 │  └──────┬───────┘   └────────┬─────────┘   └───────────┬─────────────┘  │
 │         │                    │                          │                │
 └─────────┼────────────────────┼──────────────────────────┼────────────────┘
@@ -576,7 +595,7 @@ Replication Mode: Full + Incremental (based on last_modified_date)
 │  │ DATA INTEGRATION LAYER                                              │  │
 │  │  • PostgreSQL CDC connector (Data Movement Gateway)                 │  │
 │  │  • Kafka streaming connector (Data Gateway - Streaming)                   │  │
-│  │  • Salesforce SaaS connector (Standard)                             │  │
+│  │  • MySQL CDC connector (Data Movement Gateway)                      │  │
 │  │  • Pipeline orchestration + monitoring + alerting                   │  │
 │  └────────────────────────────────────────────────────────────────────┘  │
 │                              │                                           │
@@ -615,7 +634,7 @@ Replication Mode: Full + Incremental (based on last_modified_date)
 
 ## Quick Reference: Nightmare-to-Feed Mapping
 
-| Nightmare | PostgreSQL (Relational) | Kafka (Streaming) | Salesforce (SaaS) |
+| Nightmare | PostgreSQL (WMS) | Kafka (Streaming) | MySQL (Meridian CRM) |
 |---|---|---|---|
 | #1 Phantom Inventory | **PRIMARY** -- ERP/WMS qty mismatch | | |
 | #2 Address Catastrophe | | | **PRIMARY** -- Contact address chaos |
@@ -637,7 +656,7 @@ Replication Mode: Full + Incremental (based on last_modified_date)
 - [Qlik Talend Cloud Connector Factory](https://www.qlik.com/us/products/data-sources)
 - [Supported Source Databases and Versions](https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/DataIntegration/SourcesConnections/supported-sources.htm)
 - [Kafka Connector Setup](https://help.qlik.com/talend/en-US/connectors-guide/Cloud/kafka)
-- [Salesforce Connector](https://help.qlik.com/talend/en-US/connectors-guide/Cloud/connector-salesforce)
+- [MySQL source (Data Movement)](https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/DataIntegration/Connectors/MySQL/MySQL-source.htm)
 - [Supported SaaS Applications](https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/DataIntegration/Landing/supported-saas-applications.htm)
 - [100 New Qlik Talend Cloud Connectors](https://community.qlik.com/t5/Product-Innovation/From-A-to-Z-100-new-Qlik-Talend-Cloud-connectors/ba-p/2470982)
 - [Connector Factory Q3 2025 Releases](https://community.qlik.com/t5/Product-Innovation/Connector-Factory-July-August-amp-September-2025-releases/ba-p/2532267)

@@ -36,15 +36,15 @@
       "t": "Meridian CRM",
       "s1": "Contacts + orders",
       "s2": "Product master",
-      "tag": "Every 15 min",
-      "icon": "office"
+      "tag": "MySQL CDC",
+      "icon": "database"
     },
     {
       "t": "Product master",
       "s1": "CRM tables",
       "s2": "Weights · suppliers",
-      "tag": "Every 15 min",
-      "icon": "spec"
+      "tag": "MySQL CDC",
+      "icon": "database"
     },
     {
       "t": "Operational docs",
@@ -107,8 +107,8 @@
         "lakehouse datasets"
       ],
       "accent": [
-        "Exceedance + late-delivery",
-        "models on governed data"
+        "Exceedance + late risk",
+        "on governed lakehouse"
       ]
     }
   },

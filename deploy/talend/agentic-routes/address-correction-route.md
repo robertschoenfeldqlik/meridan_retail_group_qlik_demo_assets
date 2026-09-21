@@ -159,7 +159,7 @@ LLM output slots into the same downstream shape the rest of the pipeline expects
 | Output | Goes to | Contents |
 |---|---|---|
 | `out_corrected` | Existing Nominatim branch → `staging (validated)` → JOB 2 QVD | Corrected, structured address; `validation_status = "LLM_CORRECTED"`; `llm_confidence`, `llm_model`, `correction_notes` for provenance |
-| `out_stewardship_llm` | Existing stewardship route (`sf_addresses_stewardship.csv` + Address Cleanup webhook) | Original address **plus** the LLM's suggested correction and notes, so the steward accepts/edits instead of retyping; `validation_status = "LLM_LOW_CONFIDENCE"` |
+| `out_stewardship_llm` | Existing stewardship route (`crm_addresses_stewardship.csv` + Address Cleanup webhook) | Original address **plus** the LLM's suggested correction and notes, so the steward accepts/edits instead of retyping; `validation_status = "LLM_LOW_CONFIDENCE"` |
 | Provenance columns | Carried to `silver.addresses_geocoded` | `llm_model`, `llm_confidence`, `correction_notes` alongside `validated_at_utc` — visible in the *Address Quality Impact* sheet as a drill dimension |
 
 **Net effect for the demo:** more malformed multilingual addresses are

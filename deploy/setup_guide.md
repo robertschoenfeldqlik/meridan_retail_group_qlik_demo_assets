@@ -69,7 +69,7 @@ The database source connections are created **inside a Qlik Talend Data Integrat
 4. Enter host/port/database/credentials (see [1.4 Default Credentials](#)). Inside the gateway container the databases are on `localhost` at their standard ports (PostgreSQL 5432, MySQL 3306, SQL Server 1433).
 5. **Test**, then **Save**. Repeat per source.
 
-> **Kafka** as a source needs a **Data Gateway - Streaming** (a different gateway type) — register one, then create the Kafka source in the DI project. **Salesforce / S3 / Athena** are credentialed connectors created in **Data → Create connection** with their own OAuth/IAM credentials.
+> **Kafka** as a source needs a **Data Gateway - Streaming** (a different gateway type) — register one, then create the Kafka source in the DI project. **S3 / Athena** are credentialed connectors created in **Data → Create connection** with their own OAuth/IAM credentials.
 
 **Network requirements:**
 - Outbound HTTPS (443) to `*.qlikcloud.com`
@@ -191,20 +191,42 @@ python simulators/kafka_iot_simulator.py --bootstrap-servers localhost:9092 \
 
 > **Note:** The simulator intentionally injects data quality issues (mixed Fahrenheit readings, bare timestamps, GPS blackouts, carrier vocabulary inconsistencies) to demonstrate Qlik Talend Cloud profiling and Trust Score.
 
-### 1.5 MySQL 8.4
+### 1.5 Meridian CRM (MySQL 8.4)
 
-1. Sign up at [developer.salesforce.com](https://developer.salesforce.com/signup)
-2. Create custom objects:
-   - `crm_orders` (12 fields — see `MCG_Three_Data_Feeds.md`)
-   - `crm_products` (10 fields)
-3. Create a Connected App for OAuth:
-   - Setup → App Manager → New Connected App
-   - Enable OAuth: `api`, `refresh_token`, `full`
-   - Callback URL: `https://login.salesforce.com/services/oauth2/callback`
-4. Load demo data:
+The CRM is a container in this repo's own stack — there is no external account
+to create, no OAuth app, and no security token.
+
+1. Bring it up with the rest of the simulators:
    ```bash
-   python simulators/mysql_crm_simulator.py --instance https://your-dev-org.my.salesforce.com
+   npm run docker:up:simulators
    ```
+   That starts `mcg-mysql` on **host port 3307** (the Data Movement gateway
+   container already binds 3306) with the binary log enabled for CDC, runs the
+   one-shot seeder, and starts the CRM simulator.
+
+2. The seeder creates the schema and loads the demo population — roughly 120
+   contacts, 600 orders and 50 products — from `simulators/mysql_schema.sql`.
+   It is idempotent: a second run logs "already seeded" and changes nothing.
+
+3. Confirm it is live:
+   ```bash
+   npm run db:crm
+   ```
+   ```sql
+   SELECT COUNT(*) FROM crm_contacts;
+   SHOW VARIABLES LIKE 'log_bin';        -- must be ON
+   SHOW VARIABLES LIKE 'binlog_row_image';  -- must be FULL
+   ```
+
+4. The simulator (`simulators/mysql_crm_simulator.py`) keeps running. It does
+   not only insert: it walks orders along their lifecycle, repairs dirty
+   addresses in place, and occasionally purges an old order — so the binary log
+   carries real UPDATE and DELETE events, not just appends. That is what makes
+   the CDC story worth showing.
+
+> Qlik connects as `qlik_cdc`, a least-privilege account created by
+> `infrastructure/mysql-init/01-cdc-user.sql` with the binlog-reading grants
+> CDC needs and no root access.
 
 ### 1.6 Data Gateway - Streaming (for Kafka)
 
@@ -275,32 +297,44 @@ python simulators/kafka_iot_simulator.py --bootstrap-servers localhost:9092 \
 3. JSON message parsing with schema inference
 4. Target: `bronze.iot_cold_chain`, `bronze.iot_carrier_events`
 
-### 2.3 Salesforce (CRM + Orders)
+### 2.3 Meridian CRM (MySQL — Contacts, Orders, Products)
 
-**In Qlik Talend Cloud → Connections → Add Connection:**
+**Created automatically by `npm run deploy`** once `dataGateway.id` is set in
+`deploy/config.json`. It is a gateway-bound replication source, exactly like the
+WMS — unlike the SaaS CRM connector it replaced, which needed an interactive
+login and so had to be built by hand every time.
+
+To create it manually instead (Qlik Talend Cloud → Connections → Add Connection):
 
 | Setting | Value |
 |---|---|
-| Connector type | Salesforce (Standard) |
+| Connector type | MySQL (replication source) |
 | Connection name | `MCG CRM Database` |
-| Authentication | OAuth 2.0 (or Username + Password + Security Token) |
-| Instance URL | `https://your-dev-org.my.salesforce.com` |
-| API version | v59.0+ |
+| Data gateway | `MCG_DATA_MOVEMENT` |
+| Host | reachable **from the gateway container** — `mysql` on the compose network, or the host IP |
+| Port | `3307` on the host, `3306` inside the compose network |
+| Database | `mcg_crm` |
+| Username / Password | `qlik_cdc` / the `MYSQL_PASSWORD` value in `infrastructure/.env` |
 
-**Objects captured (4):**
+The name must be exactly `MCG CRM Database` or the pipeline binding in
+`deploy/pipelines/mcg-batch-pipeline/bindings.json` will not resolve.
 
-| Object | Records | Nightmares | Key Quality Issues |
+**Tables captured (3):**
+
+| Table | Rows | Nightmares | Key Quality Issues |
 |---|---|---|---|
-| `Contact` (standard) | ~2,000 | #2 | Address truncation (6%), formatting chaos (11%), duplicates (3.2%) |
-| `Account` (standard) | ~500 | #2 | Name variants ("de Vries" vs "De Vries" vs "DeVries") |
-| `crm_orders` | ~5,000 | #2, #6 | 42% missing tracking numbers, WISMO flags on 41% |
-| `crm_products` | ~1,200 | #3, #7 | 3 SKU schemes, 8,200 missing weights, supplier name variants |
+| `crm_contacts` | ~2,000 | #2 | Address truncation (6%), formatting chaos (11%), duplicates (3.2%); one person, six spellings of the same address |
+| `crm_orders` | ~5,000 | #2, #6 | 42% missing tracking numbers, WISMO flags on 41%, 22% of deliveries late |
+| `crm_products` | ~1,200 | #3, #7 | 3 SKU schemes, missing **and** zero weights (different defects), absent country of origin on perishables |
 
 **Data landing task:**
-1. Create SaaS landing task: **Salesforce → Open Lakehouse (Bronze)**
-2. Select all 4 objects
-3. Mode: Full + Incremental (last_modified_date)
-4. Target: `bronze.crm_contacts`, `bronze.sf_accounts`, `bronze.crm_orders`, `bronze.crm_products`
+1. Create a landing task: **Meridian CRM → Open Lakehouse (Bronze)**
+2. Select all 3 tables from the `mcg_crm` schema
+3. Mode: Full + Incremental. The watermark is `last_modified_date`, which the
+   schema maintains with `ON UPDATE CURRENT_TIMESTAMP(3)` — without it the
+   15-minute incremental cycle silently degrades into a full reload.
+4. Target: `bronze.crm_contacts`, `bronze.crm_orders`, `bronze.crm_products`.
+   No rename rule is needed: the source tables are already named `crm_*`.
 
 ---
 
@@ -324,9 +358,9 @@ Data arrives here first — dirty, as-is, preserving the original for lineage an
 | `bronze.shipments` | PostgreSQL CDC | Iceberg |
 | `bronze.iot_cold_chain` | Kafka streaming | Iceberg (append) |
 | `bronze.iot_carrier_events` | Kafka streaming | Iceberg (append) |
-| `bronze.crm_contacts` | Salesforce | Iceberg |
-| `bronze.crm_orders` | Salesforce | Iceberg |
-| `bronze.crm_products` | Salesforce | Iceberg |
+| `bronze.crm_contacts` | Meridian CRM (MySQL) | Iceberg |
+| `bronze.crm_orders` | Meridian CRM (MySQL) | Iceberg |
+| `bronze.crm_products` | Meridian CRM (MySQL) | Iceberg |
 
 **Total: 8 Bronze tables**
 
@@ -1265,7 +1299,7 @@ The Qlik MCP Server (Section 13) also exposes MCG's **data products, quality met
 |---|---|---|---|---|---|---|---|
 | PostgreSQL Source | ★ | | ● | ★ | ★ | ★ | ● |
 | Kafka Source | | | | ★ | ★ | ★ | |
-| Salesforce Source | | ★ | ★ | | | ● | ● |
+| MySQL CDC Source | | ★ | ★ | | | ● | ● |
 | Open Lakehouse | ★ | ★ | ★ | ★ | ★ | ★ | ★ |
 | Data Flow Route 1 | | | | | ★ | | |
 | Data Flow Route 2 | ★ | | ● | | | | ● |

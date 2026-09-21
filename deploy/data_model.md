@@ -170,7 +170,7 @@ Standard CRM contact with address quality issues.
 | `LastName` | Text | Suffixed with unique ID to prevent duplication |
 | `Email` | Email | |
 | `Phone` | Phone | |
-| `MailingStreet` | TextArea | **Nightmare #2**: Multi-line, inconsistent formats |
+| `MailingStreet` | TEXT | **Nightmare #2**: Multi-line, inconsistent formats |
 | `MailingCity` | Text | **Nightmare #2**: Amsterdam vs AMSTERDAM vs A'dam |
 | `MailingState` | Text | **Nightmare #2**: Noord-Holland vs NH vs North Holland |
 | `MailingPostalCode` | Text | **Nightmare #2**: Space/no-space variants (1012 AB vs 1012AB) |
@@ -182,18 +182,18 @@ Customer orders linked to Contact records.
 
 | Field | Type | Notes |
 |-------|------|-------|
-| `Order_ID__c` | Text(30) | External ID, format: `WEB-YYYY-MM-NNNNN` |
-| `Contact__c` | Lookup(Contact) | FK to Contact |
-| `Order_Date__c` | DateTime | UTC |
-| `SKU__c` | Text(30) | Global MCG SKU |
-| `Product_Name__c` | Text(100) | |
-| `Fulfillment_Method__c` | Picklist | SHIP_TO_HOME, BOPIS, CURBSIDE |
-| `Promised_Delivery__c` | Date | ~30% unrealistically optimistic (next-day) |
-| `Actual_Delivery__c` | Date | NULL for undelivered; 22% late (APAC SLA breaches) |
-| `Carrier__c` | Text(20) | One of 6 carrier codes |
-| `Tracking_Number__c` | Text(40) | **42% NULL** (carriers without tracking) |
-| `Order_Status__c` | Picklist | PROCESSING, SHIPPED, IN_TRANSIT, DELIVERED, DELIVERY_FAILED |
-| `WISMO_Flag__c` | Checkbox | **41%** of orders trigger customer inquiry |
+| `order_id` | Text(30) | External ID, format: `WEB-YYYY-MM-NNNNN` |
+| `contact_id` | Lookup(Contact) | FK to Contact |
+| `order_date` | DATETIME | UTC |
+| `sku` | Text(30) | Global MCG SKU |
+| `product_name` | Text(100) | |
+| `fulfillment_method` | VARCHAR | SHIP_TO_HOME, BOPIS, CURBSIDE |
+| `promised_delivery` | Date | ~30% unrealistically optimistic (next-day) |
+| `actual_delivery` | Date | NULL for undelivered; 22% late (APAC SLA breaches) |
+| `carrier` | Text(20) | One of 6 carrier codes |
+| `tracking_number` | Text(40) | **42% NULL** (carriers without tracking) |
+| `order_status` | VARCHAR | PROCESSING, SHIPPED, IN_TRANSIT, DELIVERED, DELIVERY_FAILED |
+| `wismo_flag` | BOOLEAN | **41%** of orders trigger customer inquiry |
 
 ### 3.3 `crm_products` (Custom Object)
 
@@ -201,16 +201,16 @@ Product master with intentional data quality issues.
 
 | Field | Type | Notes |
 |-------|------|-------|
-| `SKU__c` | Text(40) | External ID, global MCG SKU |
-| `Legacy_SKU_Americas__c` | Text(30) | NULL if product not sold in Americas |
-| `Legacy_SKU_EU__c` | Text(30) | NULL if product not sold in EU |
-| `Product_Name__c` | Text(100) | **Nightmare #3**: 15% use German names (`Kabellose Kopfhörer`) |
-| `Category_L1__c` | Text(30) | Top-level: Electronics, Home, Grocery, Apparel, Health |
-| `Category_L2__c` | Text(30) | Sub-category |
-| `Category_L3__c` | Text(30) | Leaf category (sometimes NULL) |
-| `Weight_KG__c` | Number(8,2) | **Nightmare #3**: NULL for 3 products, ZERO for 1 (invalid) |
-| `Country_of_Origin__c` | Text(5) | **Nightmare #7**: NULL for some grocery items (compliance risk) |
-| `Supplier_Name__c` | Text(80) | **Nightmare #3**: Inconsistent variants (Samsung Electronics Co. vs SAMSUNG vs Samsung Corp) |
+| `sku` | Text(40) | External ID, global MCG SKU |
+| `legacy_sku_americas` | Text(30) | NULL if product not sold in Americas |
+| `legacy_sku_eu` | Text(30) | NULL if product not sold in EU |
+| `product_name` | Text(100) | **Nightmare #3**: 15% use German names (`Kabellose Kopfhörer`) |
+| `category_l1` | Text(30) | Top-level: Electronics, Home, Grocery, Apparel, Health |
+| `category_l2` | Text(30) | Sub-category |
+| `category_l3` | Text(30) | Leaf category (sometimes NULL) |
+| `weight_kg` | Number(8,2) | **Nightmare #3**: NULL for 3 products, ZERO for 1 (invalid) |
+| `country_of_origin` | Text(5) | **Nightmare #7**: NULL for some grocery items (compliance risk) |
+| `supplier_name` | Text(80) | **Nightmare #3**: Inconsistent variants (Samsung Electronics Co. vs SAMSUNG vs Samsung Corp) |
 
 ---
 
@@ -267,20 +267,20 @@ PostgreSQL (WMS)                    Meridian CRM (MySQL)
 | - sku (product)      |            | - MailingAddress  |
 +----------+-----------+            +--------+---------+
            |                                 |
-     (sku) |                      (Contact__c)
+     (sku) |                      (contact_id)
            |                                 |
 +----------+-----------+            +--------+---------+
 | warehouse_events     |            | crm_orders     |
-| - warehouse_id (DC)  +--order_id--+ - Order_ID__c    |
-| - sku (product)      |            | - SKU__c         |
-| - order_id           |            | - Carrier__c     |
+| - warehouse_id (DC)  +--order_id--+ - order_id    |
+| - sku (product)      |            | - sku         |
+| - order_id           |            | - carrier     |
 +----------+-----------+            +--------+---------+
            |                                 |
-     (order_id, carrier)              (SKU__c)
+     (order_id, carrier)              (sku)
            |                                 |
 +----------+-----------+            +--------+---------+
 | shipments            |            | crm_products   |
-| - order_id           |            | - SKU__c         |
+| - order_id           |            | - sku         |
 | - carrier_code       |            | - Supplier_Name  |
 | - tracking_number    |            +------------------+
 +----------+-----------+
@@ -306,8 +306,8 @@ Kafka (IoT Telemetry)
 
 | Join | Left | Right | Key(s) | Notes |
 |------|------|-------|--------|-------|
-| Orders to Shipments | crm_orders | shipments | `Order_ID__c = order_id` | ~80% match rate (20% missing order_id) |
-| Products to Inventory | crm_products | inventory_positions | `SKU__c ~ sku` | Requires SKU harmonization (3 formats) |
+| Orders to Shipments | crm_orders | shipments | `order_id = order_id` | ~80% match rate (20% missing order_id) |
+| Products to Inventory | crm_products | inventory_positions | `sku ~ sku` | Requires SKU harmonization (3 formats) |
 | Shipments to Carrier Events | shipments | iot.carrier-events | `tracking_number + carrier_code` | 58% have tracking; rest unlinked |
 | IoT to Shipments | iot.cold-chain | shipments | `shipment_id` | 88% match (12% NULL shipment_id) |
 | Contacts to Addresses | Contact.MailingAddress | shipments.destination_address | Fuzzy match | Requires address standardization |

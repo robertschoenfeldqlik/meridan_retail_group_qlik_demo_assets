@@ -275,7 +275,7 @@ Create 8 data flows (plus 1 Talend job) in the Pipeline Designer that transform 
 
 **Pipeline Designer Steps:**
 
-1. **Sources** — `bronze.crm_contacts` joined with `bronze.crm_orders` on `Contact__c`
+1. **Sources** — `bronze.crm_contacts` joined with `bronze.crm_orders` on `contact_id`
 2. **Country Normalize** — Map variants to ISO 3166 codes:
    - `Netherlands`, `Niederlande`, `Nederland`, `NL` → `NL`
    - `Singapore`, `SG` → `SG`
@@ -375,20 +375,20 @@ Source (dirty) → Data Flow 3 (standardize) → Stewardship (human review)
 
 1. **Source** — `bronze.crm_products`
 2. **SKU Resolution** — Create canonical mapping:
-   - If `SKU__c` starts with `MCG-` → use as canonical
-   - If only `Legacy_SKU_Americas__c` (`AM-*`) or `Legacy_SKU_EU__c` (`EU-*`) → create MCG mapping
+   - If `sku` starts with `MCG-` → use as canonical
+   - If only `legacy_sku_americas` (`AM-*`) or `legacy_sku_eu` (`EU-*`) → create MCG mapping
    - Triple-SKU products: merge attributes, prefer MCG values
    - Output column: `canonical_sku`
 3. **Weight Validation** — Flag issues:
-   - `weight_missing = TRUE` where `Weight_KG__c IS NULL`
-   - `weight_invalid = TRUE` where `Weight_KG__c = 0` or `> 100`
+   - `weight_missing = TRUE` where `weight_kg IS NULL`
+   - `weight_invalid = TRUE` where `weight_kg = 0` or `> 100`
 4. **Category Harmonize** — Map German/Dutch category names to English:
    - `Kabellose Kopfhörer` → `Wireless Headphones`
    - Product names: preserve original in `product_name_original`, add `product_name_en`
 5. **Supplier Name Normalize** — First-pass grouping:
    - Strip suffixes: `Ltd`, `PLC`, `Corp`, `S.A.`, `Co.`, `Inc.`
    - Lowercase for matching
-6. **Country of Origin** — Flag `origin_missing = TRUE` for food SKUs where `Country_of_Origin__c IS NULL`
+6. **Country of Origin** — Flag `origin_missing = TRUE` for food SKUs where `country_of_origin IS NULL`
 7. **Output** → `silver.products_harmonized`
 
 #### Data Flow 5: Carrier Status Canonicalization
@@ -461,7 +461,7 @@ Source (dirty) → Data Flow 3 (standardize) → Stewardship (human review)
 
 **Pipeline Designer Steps:**
 
-1. **Source** — Extract unique supplier records from `bronze.crm_products` (`Supplier_Name__c`)
+1. **Source** — Extract unique supplier records from `bronze.crm_products` (`supplier_name`)
 2. **Normalize** — Lowercase, strip legal suffixes (`Ltd`, `PLC`, `Corp`, `S.A.`, `Co.`, `Inc.`)
 3. **Accent Normalize** — `Nestlé` → `nestle` for matching purposes
 4. **Fuzzy Match** — Jaro-Winkler similarity on normalized names:
@@ -489,7 +489,7 @@ Source (dirty) → Data Flow 3 (standardize) → Stewardship (human review)
 
 1. **Join** — Link orders → shipments via `order_id`
 2. **Timeline Build** — For each order, extract milestone timestamps:
-   - `order_placed_utc` (from Meridian CRM `Order_Date__c`)
+   - `order_placed_utc` (from Meridian CRM `order_date`)
    - `picked_utc` (from `warehouse_events` via inventory)
    - `shipped_utc` (from `shipments_canonical`)
    - `delivered_utc` (from `shipments_canonical`)
@@ -919,10 +919,10 @@ Configure Business Logic in each app to enable Qlik Answers conversational analy
 | Expression | Label | Format |
 |---|---|---|
 | `Avg(ira_pct)` | Inventory Record Accuracy | Percentage |
-| `Sum(phantom_count)` | Phantom Inventory Count | Number |
+| `Sum(phantom_count)` | Phantom Inventory Count | DECIMAL(8,2) |
 | `Avg(trust_score)` | Trust Score | 0.00 |
 | `Avg(exceedance_probability)` | Cold Chain Exceedance Risk | 0.00 |
-| `Sum(exceedance_minutes)` | Exceedance Duration (min) | Number |
+| `Sum(exceedance_minutes)` | Exceedance Duration (min) | DECIMAL(8,2) |
 | `Sum(annual_projected)` | Annual Cost Impact | Currency |
 | `Avg(recall_readiness_score)` | Recall Readiness | 0.00 |
 

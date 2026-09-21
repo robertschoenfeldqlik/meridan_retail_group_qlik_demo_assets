@@ -100,10 +100,14 @@ System.out.println("=== MCG address validation — batch limit " + context.crm_b
 
 ### 3.2 `tMysqlInput` — `crm_contacts`
 
-- Connection: `context.sf_login_url` / `sf_username` / `sf_password` + `sf_security_token`
-- Module: **Contact**
-- Columns: `Id, FirstName, LastName, Email, MailingStreet, MailingCity, MailingState, MailingPostalCode, MailingCountry, last_modified_date`
-- Condition: `last_modified_date > ${context.sf_watermark} LIMIT ${context.crm_batch_limit}`
+- Connection: `context.crm_host` / `crm_port` / `crm_database` / `crm_user` / `crm_password`
+- Table: **`crm_contacts`** (schema `mcg_crm`)
+- Columns: `contact_id, first_name, last_name, email, mailing_street, mailing_city, mailing_state, mailing_postal_code, mailing_country, last_modified_date`
+- Condition: `WHERE last_modified_date > '${context.crm_watermark}' ORDER BY last_modified_date LIMIT ${context.crm_batch_limit}`
+
+> The built job does not actually do this — it reads a CSV extract at
+> `context.address_extract_path`. This section describes the live-read variant
+> for anyone who wants to wire it up in Studio.
 
 ### 3.3 `tLogRow` ① — `log_raw`
 

@@ -267,7 +267,7 @@ function module01() {
     numberedItem(1, "Docker Desktop installed and running (for Kafka and PostgreSQL containers)"),
     numberedItem(2, "Python 3.9+ with pip installed"),
     numberedItem(3, "Node.js 18+ (for deploy scripts)"),
-    numberedItem(4, "A MySQL 8.4 org (free at developer.salesforce.com)"),
+    numberedItem(4, "Nothing external — the CRM is a MySQL container in this repo's own stack"),
     numberedItem(5, "Network access to your Qlik Cloud tenant"),
 
     heading("Demo Methodology: Tell → Show → Tell", 2),
@@ -300,13 +300,16 @@ function module01() {
     numberedItem(5, "Verify messages flowing: check Control Center > Topics > mcg.iot.cold-chain > Messages"),
     calloutBox("Talking point: The IoT simulator intentionally mixes Fahrenheit and Celsius readings (8% of sensors), sends bare timestamps without timezone info (3%), and creates GPS blackouts for Lagos shipments (2%). These are the real data quality nightmares IoT teams face.", "warning"),
 
-    heading("Step 3: Configure Salesforce", 3),
-    numberedItem(1, "Log into your MySQL 8.4 org"),
-    numberedItem(2, "Create custom objects crm_orders and crm_products (see data_model.md Section 3)"),
-    numberedItem(3, "Create API user and generate security token"),
-    numberedItem(4, "Run the CRM simulator:"),
-    promptBox("python simulators/mysql_crm_simulator.py --instance https://your-dev-org.my.salesforce.com", "Terminal Command"),
+    heading("Step 3: Start the Meridian CRM", 3),
+    numberedItem(1, "Bring up the CRM database and its simulator (the same compose command also starts the WMS and IoT feeds):"),
+    promptBox("npm run docker:up:simulators", "Terminal Command"),
+    numberedItem(2, "The seeder creates crm_contacts, crm_orders and crm_products and loads the demo population. It is idempotent, so re-running changes nothing."),
+    numberedItem(3, "Open a SQL prompt against it and show live rows:"),
+    promptBox("npm run db:crm", "Terminal Command"),
+    numberedItem(4, "Prove the change stream is real, not an append log:"),
+    promptBox("SELECT order_status, COUNT(*) FROM crm_orders GROUP BY order_status;", "SQL — re-run after a minute and watch orders move along the lifecycle"),
     calloutBox("Talking point: Meridian CRM data has 11% address formatting inconsistencies and a legacy 30-character field limit that truncates addresses. These feed directly into Nightmare #2 (Address Catastrophe).", "warning"),
+    calloutBox("Talking point: this source is not just growing, it is CHANGING. Orders advance through their lifecycle, addresses get corrected in place, old orders get purged. The MySQL binary log carries UPDATE and DELETE events, which is what log-based CDC exists to capture — a source that only ever inserts would make CDC indistinguishable from an append.", "info"),
 
     tellAnnotation("close", "So what you just saw are three real data sources — a warehouse database, IoT cold-chain sensors, and a CRM — all generating data with real-world quality problems baked in. This is not sanitized demo data. This is how supply chain data actually looks."),
     interactionPrompt("Does this feel familiar? How many disconnected data sources does your team deal with today?"),
@@ -325,7 +328,7 @@ function module01() {
         ["Docker compose fails", "Docker Desktop not running", "Start Docker Desktop, wait 30s, retry"],
         ["PostgreSQL connection refused", "Wrong host/port or database not created", "Verify with: psql -h localhost -U mcg_admin -d mcg_wms"],
         ["Kafka topics not created", "Init container failed", "Run: docker compose exec kafka kafka-topics --bootstrap-server kafka:9092 --list"],
-        ["Salesforce auth error", "Expired security token", "Settings > Reset My Security Token in Meridian CRM"],
+        ["CRM connection refused", "MySQL container still starting", "Wait for the healthcheck: podman ps shows mcg-mysql (healthy)"],
       ]
     ),
   ];
@@ -424,7 +427,7 @@ function module02() {
     valueChain(["Connect all three data source types from one platform", "eliminate the middleware and custom integration layer", "give your data team back the 40% of time they currently spend on plumbing"]),
 
     heading("Talking Points", 2),
-    talkingPoint("Three different connector types: CDC (PostgreSQL), streaming (Kafka), standard API (Salesforce)"),
+    talkingPoint("Two CDC sources on different engines (PostgreSQL WAL, MySQL binlog) plus a streaming source (Kafka) - one gateway, three capture mechanisms"),
     talkingPoint("Each connector type handles change tracking differently — CDC captures row-level changes, streaming is continuous, API is polling-based"),
     talkingPoint("Data Movement Gateway runs on-premises for secure PostgreSQL access without opening firewall ports"),
     talkingPoint("Space architecture follows Qlik best practices: dev/prod separation with governed publishing"),
@@ -435,7 +438,7 @@ function module02() {
       [
         ["Connection test fails", "Firewall blocking port", "Ensure outbound access to data source from Gateway/Engine"],
         ["Gateway not paired", "Pairing token expired", "Generate new token in Administration > Gateways"],
-        ["Salesforce auth fails", "IP restriction", "Add Qlik Cloud IP ranges to Salesforce trusted IPs"],
+        ["CRM connection fails from the gateway", "Host resolves on your laptop but not inside the gateway container", "Use the compose service name (mysql) or the host IP, and port 3306 inside the network"],
         ["Topics not visible", "Wrong bootstrap server", "Verify broker address and port; check Data Gateway - Streaming logs"],
       ]
     ),
@@ -471,9 +474,9 @@ function module03() {
         ["PostgreSQL", "CDC (real-time)", "bronze.inventory_positions", "Real-time"],
         ["PostgreSQL", "CDC (real-time)", "bronze.warehouse_events", "Real-time"],
         ["PostgreSQL", "CDC (real-time)", "bronze.shipments", "Real-time"],
-        ["Salesforce", "Standard connector", "bronze.crm_contacts", "15 min"],
-        ["Salesforce", "Standard connector", "bronze.crm_orders", "15 min"],
-        ["Salesforce", "Standard connector", "bronze.crm_products", "15 min"],
+        ["Meridian CRM", "MySQL CDC", "bronze.crm_contacts", "15 min"],
+        ["Meridian CRM", "MySQL CDC", "bronze.crm_orders", "15 min"],
+        ["Meridian CRM", "MySQL CDC", "bronze.crm_products", "15 min"],
         ["Kafka", "Streaming", "bronze.iot_cold_chain", "Real-time"],
         ["Kafka", "Streaming", "bronze.iot_carrier_events", "Real-time"],
       ]
@@ -1657,7 +1660,7 @@ function module18() {
     tellAnnotation("open", "I'll take the address-validation job MCG already runs and drop an LLM-assisted correction step into the route — an AI enrichment that lives inside the pipeline task, not in a separate app."),
 
     heading("Step 1: Open the Existing Address Job", 3),
-    numberedItem(1, "Open the Salesforce Address Validation job (Talend) and show the existing flow:"),
+    numberedItem(1, "Open the CRM Address Validation job (Talend) and show the existing flow:"),
     para("  CRM contacts > AddressStandardizer (repair + score) > BulkGeocoder (one bulk OSM Nominatim call for the whole batch) > routing gate on GPS > S3/Iceberg silver.addresses_geocoded, or the Address Cleanup stewardship sprint", { indent: true }),
     calloutBox("Five subjobs, all free: the AddressStandardizer and BulkGeocoder custom Java routines replace the subscription-only tAddressRowStandardize / tAddressRowValidate / tGeocode chain — no Talend Data Quality subscription, no licensed postal reference data, no API key. Full build spec: deploy/talend/BUILD_BULK_ADDRESS_JOB.md; run npm run talend:zip for the Studio import bundle.", "success"),
 
@@ -1696,7 +1699,7 @@ function module18() {
         ["LLM step times out", "Model endpoint/network, or oversized batch", "Reduce batch size; verify the endpoint/credentials; try an on-prem model for latency"],
         ["Corrections low confidence across the board", "Prompt lacks context", "Add a RAG lookup for postal reference data, or few-shot examples in the prompt"],
         ["Sensitive data must stay on-prem", "Cloud LLM selected", "Switch to an on-prem model (Ollama, Mistral, Gemma 3, Phi 4)"],
-        ["Route doesn't trigger", "Event orchestration not wired", "Confirm the Salesforce create/update event is bound to the route trigger"],
+        ["Route doesn't trigger", "Event orchestration not wired", "Confirm the CRM insert/update event is bound to the route trigger"],
       ]
     ),
   ];
