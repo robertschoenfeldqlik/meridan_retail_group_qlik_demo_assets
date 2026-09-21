@@ -433,8 +433,8 @@ function sectionDataConnections() {
     ),
     numberedItem(4, "After connecting, select these CRM tables:"),
     para("Contact", { bullet: true, indent: true }),
-    para("crm_orders (custom object)", { bullet: true, indent: true }),
-    para("crm_products (custom object)", { bullet: true, indent: true }),
+    para("crm_orders (table)", { bullet: true, indent: true }),
+    para("crm_products (table)", { bullet: true, indent: true }),
     screenshot("MySQL CDC connector configuration in Qlik Cloud showing the table selection screen with Contact, crm_orders, and crm_products selected"),
     calloutBox("The crm_contacts, crm_orders and crm_products tables must exist in the Meridian CRM database. The seeder creates them and loads the demo population: npm run db:seed", "info"),
 

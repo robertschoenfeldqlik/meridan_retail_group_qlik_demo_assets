@@ -377,7 +377,7 @@ Engine:           Data Gateway - Streaming (recommended)
 | Consideration | Detail |
 |---|---|
 | **Qlik support level** | Gateway-bound replication **source** (`repsrc_mysql`) -- log-based CDC off the binary log, the same class of capture as PostgreSQL |
-| **Demo ease** | A container in this repo. No external account, no OAuth app, no security token, nothing to expire mid-demo |
+| **Demo ease** | A container in this repo. No external account, no OAuth application, no credential that expires mid-demo |
 | **MCG story fit** | Meridian CRM holds customer profiles, e-commerce orders and the product master -- the address nightmare and WISMO both start here |
 | **CDC support** | Yes -- `binlog_format=ROW`, `binlog_row_image=FULL`, watermark on `last_modified_date` |
 | **Deployability** | The connection is API-creatable, so `npm run deploy` builds it unattended |
@@ -389,7 +389,7 @@ four concrete reasons, all of which the move fixes:
 
 | Problem with the SaaS source | With MySQL |
 |---|---|
-| Needed an external org, an External Client App and an interactive OAuth login, so the connection could not be created headlessly -- it was the one step `npm run deploy` always skipped | Gateway-bound source; the deploy creates it |
+| Needed an external org, a registered OAuth application and an interactive login, so the connection could not be created headlessly -- it was the one step `npm run deploy` always skipped | Gateway-bound source; the deploy creates it |
 | Credentials lived in `.env` and expired | No credentials leave the stack |
 | The feed was **insert-only**, so its change stream was indistinguishable from an append -- a CDC demo with no change data | Orders advance through their lifecycle, addresses are corrected in place, old orders are purged. The binary log carries `Update_rows` and `Delete_rows` events |
 | API quotas and rate limits shaped the demo | A local database, no quota |
@@ -428,40 +428,40 @@ inconsistent spellings of the same address:
 ```
 Contact 1 (clean):
   Name: Jan de Vries
-  MailingStreet: Keizersgracht 482, Apartment 4B
-  MailingCity: Amsterdam
-  MailingPostalCode: 1017 EJ
-  MailingCountry: NL
+  mailing_street: Keizersgracht 482, Apartment 4B
+  mailing_city: Amsterdam
+  mailing_postal_code: 1017 EJ
+  mailing_country: NL
   Phone: +31 20 555 0147
 
 Contact 2 (same person, duplicate with variations):
   Name: Jan De Vries
-  MailingStreet: Keizersgracht 482, Apt 4B
-  MailingCity: Amsterdam
-  MailingPostalCode: 1017EJ
-  MailingCountry: Netherlands
+  mailing_street: Keizersgracht 482, Apt 4B
+  mailing_city: Amsterdam
+  mailing_postal_code: 1017EJ
+  mailing_country: Netherlands
   Phone: +31205550147
 
 Contact 3 (truncated address):
   Name: Klaus Müller
-  MailingStreet: Friedrichstraße 123, Hinterh   <-- truncated at 30 chars
-  MailingCity: Berlin
-  MailingPostalCode: 10117
-  MailingCountry: DE
+  mailing_street: Friedrichstraße 123, Hinterh   <-- truncated at 30 chars
+  mailing_city: Berlin
+  mailing_postal_code: 10117
+  mailing_country: DE
 
 Contact 4 (Brazilian format):
   Name: Maria Silva
-  MailingStreet: Av. Presidente Juscelino Kub   <-- truncated
-  MailingCity: Sao Paulo                         <-- accent stripped
-  MailingPostalCode: 01304001                    <-- no hyphen
-  MailingCountry: BR
+  mailing_street: Av. Presidente Juscelino Kub   <-- truncated
+  mailing_city: Sao Paulo                         <-- accent stripped
+  mailing_postal_code: 01304001                    <-- no hyphen
+  mailing_country: BR
 
 Contact 5 (Singapore format):
   Name: Wei Lin Tan
-  MailingStreet: 15 Orchard Rd, #08-01
-  MailingCity: Singapore
-  MailingPostalCode: 238862
-  MailingCountry: Singapore                      <-- full name instead of code
+  mailing_street: 15 Orchard Rd, #08-01
+  mailing_city: Singapore
+  mailing_postal_code: 238862
+  mailing_country: Singapore                      <-- full name instead of code
 ```
 
 #### Table 2: `crm_orders` (E-Commerce Orders)

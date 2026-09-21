@@ -157,60 +157,61 @@ Carrier webhook pushes forwarded to Kafka.
 
 ## 3. Source: Meridian CRM (MySQL)
 
-Standard + custom objects in a MySQL 8.4 org.
+Three tables in the `mcg_crm` database on MySQL 8.4. Authoritative DDL:
+`simulators/mysql_schema.sql`.
 
-### 3.1 `Contact` (Standard Object)
+### 3.1 `crm_contacts`
 
-Standard CRM contact with address quality issues.
-
-| Field | Type | Notes |
-|-------|------|-------|
-| `contact_id` | VARCHAR(18) | CRM-assigned key |
-| `FirstName` | Text | |
-| `LastName` | Text | Suffixed with unique ID to prevent duplication |
-| `Email` | Email | |
-| `Phone` | Phone | |
-| `MailingStreet` | TEXT | **Nightmare #2**: Multi-line, inconsistent formats |
-| `MailingCity` | Text | **Nightmare #2**: Amsterdam vs AMSTERDAM vs A'dam |
-| `MailingState` | Text | **Nightmare #2**: Noord-Holland vs NH vs North Holland |
-| `MailingPostalCode` | Text | **Nightmare #2**: Space/no-space variants (1012 AB vs 1012AB) |
-| `MailingCountry` | Text | **Nightmare #2**: NL vs Netherlands vs Niederlande |
-
-### 3.2 `crm_orders` (Custom Object)
-
-Customer orders linked to Contact records.
+Customer contacts, carrying the address quality issues.
 
 | Field | Type | Notes |
 |-------|------|-------|
-| `order_id` | Text(30) | External ID, format: `WEB-YYYY-MM-NNNNN` |
-| `contact_id` | Lookup(Contact) | FK to Contact |
+| `contact_id` | VARCHAR(18) | PK — CRM-assigned key |
+| `first_name` | VARCHAR(40) | |
+| `last_name` | VARCHAR(80) | NOT NULL. Suffixed with a counter so near-duplicates stay distinguishable |
+| `email` | VARCHAR(80) | |
+| `phone` | VARCHAR(40) | Six formats across the personas |
+| `mailing_street` | TEXT | **Nightmare #2**: Multi-line, inconsistent formats |
+| `mailing_city` | VARCHAR(40) | **Nightmare #2**: Amsterdam vs AMSTERDAM vs A'dam |
+| `mailing_state` | VARCHAR(80) | **Nightmare #2**: Noord-Holland vs NH vs North Holland |
+| `mailing_postal_code` | VARCHAR(20) | **Nightmare #2**: Space/no-space variants (1012 AB vs 1012AB) |
+| `mailing_country` | VARCHAR(80) | **Nightmare #2**: NL vs Netherlands vs Niederlande |
+
+### 3.2 `crm_orders`
+
+Customer orders, FK to `crm_contacts`.
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `order_id` | VARCHAR(30) | PK — business key, format `WEB-YYYY-MM-NNNNNN` |
+| `contact_id` | VARCHAR(18) | FK to `crm_contacts`, `ON DELETE SET NULL` |
 | `order_date` | DATETIME | UTC |
-| `sku` | Text(30) | Global MCG SKU |
-| `product_name` | Text(100) | |
+| `sku` | VARCHAR(30) | Global MCG SKU |
+| `product_name` | VARCHAR(100) | |
 | `fulfillment_method` | VARCHAR | SHIP_TO_HOME, BOPIS, CURBSIDE |
-| `promised_delivery` | Date | ~30% unrealistically optimistic (next-day) |
-| `actual_delivery` | Date | NULL for undelivered; 22% late (APAC SLA breaches) |
-| `carrier` | Text(20) | One of 6 carrier codes |
-| `tracking_number` | Text(40) | **42% NULL** (carriers without tracking) |
+| `promised_delivery` | DATE | ~30% unrealistically optimistic (next-day) |
+| `actual_delivery` | DATE | NULL for undelivered; 22% late (APAC SLA breaches) |
+| `carrier` | VARCHAR(20) | One of 6 carrier codes |
+| `tracking_number` | VARCHAR(40) | **42% NULL** (carriers without tracking) |
 | `order_status` | VARCHAR | PROCESSING, SHIPPED, IN_TRANSIT, DELIVERED, DELIVERY_FAILED |
-| `wismo_flag` | BOOLEAN | **41%** of orders trigger customer inquiry |
+| `wismo_flag` | TINYINT(1) NOT NULL | **41%** of orders trigger customer inquiry |
 
-### 3.3 `crm_products` (Custom Object)
+### 3.3 `crm_products`
 
 Product master with intentional data quality issues.
 
 | Field | Type | Notes |
 |-------|------|-------|
-| `sku` | Text(40) | External ID, global MCG SKU |
-| `legacy_sku_americas` | Text(30) | NULL if product not sold in Americas |
-| `legacy_sku_eu` | Text(30) | NULL if product not sold in EU |
-| `product_name` | Text(100) | **Nightmare #3**: 15% use German names (`Kabellose Kopfhörer`) |
-| `category_l1` | Text(30) | Top-level: Electronics, Home, Grocery, Apparel, Health |
-| `category_l2` | Text(30) | Sub-category |
-| `category_l3` | Text(30) | Leaf category (sometimes NULL) |
-| `weight_kg` | Number(8,2) | **Nightmare #3**: NULL for 3 products, ZERO for 1 (invalid) |
-| `country_of_origin` | Text(5) | **Nightmare #7**: NULL for some grocery items (compliance risk) |
-| `supplier_name` | Text(80) | **Nightmare #3**: Inconsistent variants (Samsung Electronics Co. vs SAMSUNG vs Samsung Corp) |
+| `sku` | VARCHAR(40) | PK — global MCG SKU |
+| `legacy_sku_americas` | VARCHAR(30) | NULL if product not sold in Americas |
+| `legacy_sku_eu` | VARCHAR(30) | NULL if product not sold in EU |
+| `product_name` | VARCHAR(100) | **Nightmare #3**: 15% use German names (`Kabellose Kopfhörer`) |
+| `category_l1` | VARCHAR(30) | Top-level: Electronics, Home, Grocery, Apparel, Health |
+| `category_l2` | VARCHAR(30) | Sub-category |
+| `category_l3` | VARCHAR(30) | Leaf category (sometimes NULL) |
+| `weight_kg` | DECIMAL(8,2) | **Nightmare #3**: NULL for 3 products, ZERO for 1 (invalid) |
+| `country_of_origin` | VARCHAR(5) | **Nightmare #7**: NULL for some grocery items (compliance risk) |
+| `supplier_name` | VARCHAR(80) | **Nightmare #3**: Inconsistent variants (Samsung Electronics Co. vs SAMSUNG vs Samsung Corp) |
 
 ---
 

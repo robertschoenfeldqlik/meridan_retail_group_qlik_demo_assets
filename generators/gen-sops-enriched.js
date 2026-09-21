@@ -629,7 +629,7 @@ function sopSC001() {
     para("Known limitation: 42% of shipments have missing tracking numbers (Nightmare #6). For these, carrier contact is required for manual verification.", { bullet: true }),
 
     numberedItem(4, "Meridian Storefront — Customer Orders with Affected SKUs:"),
-    para("SOQL query on crm_orders: Filter by product SKU and order date range.", { bullet: true }),
+    para("SQL query on crm_orders: filter by product SKU and order date range.", { bullet: true }),
     para("Output: All customer orders containing the affected product, with delivery address, order status, and tracking information.", { bullet: true }),
     para("Known limitation: Meridian CRM order records do not contain lot-level information. The link between customer order → specific lot requires cross-referencing order date + fulfillment DC + lot availability at time of pick.", { bullet: true }),
 
@@ -661,7 +661,7 @@ function sopSC001() {
 
     heading("8. Customer Notification (E-Commerce)"),
     para("For e-commerce orders containing recalled products:"),
-    numberedItem(1, "Customer Service team generates the affected customer list from Meridian CRM (SOQL query by product SKU + order date range + delivery status)."),
+    numberedItem(1, "Customer Service team generates the affected customer list from Meridian CRM (SQL query by product SKU + order date range + delivery status)."),
     numberedItem(2, "Customer segmentation for notification:"),
     para("Delivered orders: Full recall notification with return/refund instructions", { bullet: true }),
     para("In-transit orders: Carrier intercept attempted. If intercept fails, customer notified upon delivery.", { bullet: true }),

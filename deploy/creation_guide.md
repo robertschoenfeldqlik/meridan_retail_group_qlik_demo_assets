@@ -147,7 +147,7 @@ Create 8 landing pipelines that replicate source data into the Bronze layer with
 
 | CRM table | Target Table | Refresh |
 |---|---|---|
-| `Contact` | `bronze.crm_contacts` | Every 15 min |
+| `crm_contacts` | `bronze.crm_contacts` | Every 15 min |
 | `crm_orders` | `bronze.crm_orders` | Every 15 min |
 | `crm_products` | `bronze.crm_products` | Every 15 min |
 

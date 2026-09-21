@@ -1,9 +1,9 @@
 # Meridian CRM (MySQL) — setup and verification
 
-Replaces `salesforce_v2_setup.md`. That runbook documented an external SaaS org,
-an External Client App, an OAuth callback and a permission set — about forty
-minutes of clicking, all of it expiring eventually. The CRM is now a container in
-this repo, so the whole thing is one command.
+Replaces the old SaaS-CRM runbook, which documented an external org, an OAuth
+application, a callback URL and a permission set — about forty minutes of
+clicking, all of it expiring eventually. The CRM is now a container in this
+repo, so the whole thing is one command.
 
 ---
 
@@ -165,9 +165,9 @@ replaced:
   not. The variable `task.crm-landing-4102:null$_$mcg_crm.schema` is declared in
   both `bindings.json` and `qtcp_bindings_definition.json`, mirroring the WMS
   task's `…:null$_$public.schema`.
-- **`transformationRules.yaml` is gone.** It existed only to rename the SaaS
-  objects to `sf_contacts` / `sf_orders` / `sf_products`. The MySQL tables are
-  named `crm_*` at source, so bronze gets the right names with no rule at all.
+- **`transformationRules.yaml` is gone.** It existed only to rename the old
+  source's objects into the bronze table names. The MySQL tables are named
+  `crm_*` at source, so bronze gets the right names with no rule at all.
 
 > Declarative pipeline import still fails on this tenant with
 > `MISSING-CONNECTION-ID` — there is no platform or staging connection, which is

@@ -194,7 +194,7 @@ python simulators/kafka_iot_simulator.py --bootstrap-servers localhost:9092 \
 ### 1.5 Meridian CRM (MySQL 8.4)
 
 The CRM is a container in this repo's own stack — there is no external account
-to create, no OAuth app, and no security token.
+to create, no OAuth application, and no credential that expires.
 
 1. Bring it up with the rest of the simulators:
    ```bash

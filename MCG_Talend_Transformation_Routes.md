@@ -398,7 +398,7 @@ Step 1: INGEST (Bronze)
 
 Step 2: ADDRESS PARSING
   ┌─────────────────────────────────────────────────────────────────────────┐
-  │ Parse MailingStreet into structured components:                         │
+  │ Parse mailing_street into structured components:                         │
   │   - street_number                                                      │
   │   - street_name                                                        │
   │   - unit_type ('Apt', 'Suite', '#', 'Conjunto')                       │

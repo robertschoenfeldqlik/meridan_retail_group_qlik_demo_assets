@@ -233,7 +233,7 @@ function buildCreationGuide() {
     para("These pipelines use the MySQL CDC connector to poll data every 15 minutes using last_modified_date for incremental sync."),
 
     heading("Prerequisites", 3),
-    para("MySQL 8.4 account with MCG custom objects created", { bullet: true }),
+    para("MySQL 8.4 running with the crm_* tables created and seeded (npm run docker:up:simulators)", { bullet: true }),
     para("Meridian CRM connection created (see Setup Guide Section 7.3)", { bullet: true }),
 
     heading("Pipeline 6: Contacts (crm_contacts)", 3),
@@ -758,7 +758,7 @@ function buildCreationGuide() {
         ["CDC not capturing changes", "WAL level not set to logical", "Set wal_level=logical in PostgreSQL config; restart container"],
         ["Replication slot not active", "Gateway not connected", "Check DMG agent status; re-register if needed"],
         ["Kafka messages not flowing", "Consumer group offset issue", "Reset consumer group offset to earliest; check topic permissions"],
-        ["Meridian CRM sync fails", "Token expired", "Regenerate security token in Meridian CRM settings"],
+        ["Meridian CRM sync fails", "Gateway cannot reach the database", "Check the host resolves FROM the gateway container, and that qlik_cdc still has REPLICATION CLIENT"],
         ["Teams card not posting", "Webhook URL invalid", "Recreate webhook connector in Teams channel"],
         ["Automation times out", "Query too slow", "Increase timeout in block settings; optimize Gold table query"],
         ["Talend job fails", "Wrong job ID or credentials", "Verify Talend API endpoint and job ID in automation block"],

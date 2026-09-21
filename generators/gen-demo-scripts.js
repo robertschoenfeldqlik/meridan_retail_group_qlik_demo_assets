@@ -412,7 +412,7 @@ function module02() {
 
     heading("Step 4: Meridian CRM Connection", 3),
     numberedItem(1, "Select MySQL CDC connector"),
-    numberedItem(2, "Authenticate via OAuth or username/password + security token"),
+    numberedItem(2, "Point it at the gateway and supply host, port, database, username and password"),
     numberedItem(3, "Test connection — should show Contact, crm_orders, crm_products"),
 
     heading("Step 5: Amazon Athena Connection (Analytics Reads)", 3),

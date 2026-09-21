@@ -45,10 +45,10 @@ Master checklist of everything required to stand up the full Meridian Commerce G
 
 ### Meridian CRM (MySQL)
 - [ ] MySQL 8.4 container running (`npm run docker:up:simulators`) and healthy on port 3307
-- [ ] Custom object `crm_orders` created with all fields (see `data_model.md` Section 3.2)
-- [ ] Custom object `crm_products` created with all fields (see `data_model.md` Section 3.3)
+- [ ] Table `crm_orders` created with all columns (see `data_model.md` Section 3.2)
+- [ ] Table `crm_products` created with all columns (see `data_model.md` Section 3.3)
 - [ ] API user created with API Enabled permission
-- [ ] Security token generated (Settings > Reset My Security Token)
+- [ ] `qlik_cdc` user present with the binlog grants (`SHOW GRANTS FOR 'qlik_cdc'@'%'`)
 - [ ] Run simulator: `python simulators/mysql_crm_simulator.py` — verify Contacts, Orders, Products populating
 - [ ] Let simulator run for 10 minutes to seed initial records
 
