@@ -14,6 +14,8 @@
       "tokenUrl": "https://your-tenant.us.qlikcloud.com/oauth/token"
     }
   },
+  "deployMode": "qvd",
+  "comment_deployMode": "How data reaches the apps. 'gateway' reads the source databases over CDC through a registered Data Movement gateway and lands them with the declarative pipelines. 'qvd' needs no gateway at all: generated CSVs are uploaded to the space's DataFiles and staged to QVD, and the apps read those. Everything above storage - catalog, profiling, trust scores, data products, the apps - is identical either way. A gateway is not always possible (no host to run it on, no inbound path to the databases, a locked-down tenant), and pipelines cannot run without one, so qvd mode skips both the gateway-bound connections and the pipeline import. Override for one run with: node deploy/deploy-to-qlik.js --mode qvd",
   "spaces": {
     "shared": "MCG Demo - Development",
     "managed": "MCG Demo - Published",

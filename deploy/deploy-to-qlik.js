@@ -60,6 +60,14 @@ function parseArgs(argv) {
         if (i + 1 >= argv.length) { console.error('--config requires a path argument'); process.exit(EXIT_FAILURE); }
         args.configPath = path.resolve(argv[++i]);
         break;
+      case '--mode':
+        if (i + 1 >= argv.length) { console.error('--mode requires qvd or gateway'); process.exit(EXIT_FAILURE); }
+        args.mode = String(argv[++i]).toLowerCase();
+        if (!['qvd', 'gateway'].includes(args.mode)) {
+          console.error(`--mode must be qvd or gateway, got "${args.mode}"`);
+          process.exit(EXIT_FAILURE);
+        }
+        break;
       case '--dry-run':
         args.dryRun = true;
         break;
@@ -91,6 +99,11 @@ Usage: node deploy-to-qlik.js [OPTIONS]
 
 Options:
   --config <path>           Path to config JSON (default: deploy/config.json)
+  --mode <qvd|gateway>      Data path for this run, overriding config.deployMode.
+                            qvd     = upload CSVs and stage to QVD; no gateway,
+                                      and the pipeline import is skipped.
+                            gateway = read the sources over CDC through the
+                                      registered Data Movement gateway.
   --dry-run                 Preview actions without making API calls
   --verbose                 Enable detailed logging
   --cleanup-dataproducts    Delete all data products from tenant, then exit
@@ -1802,6 +1815,32 @@ const PG_SOURCE_INLINE =
   'heartbeatSchema=public;heartbeatFrequency=5;captureDDLs=true;ddlArtifactsSchema=public;' +
   'useNativeBooleanDataType=false;starterMode=false';
 
+// Which data path this deployment uses. Explicit cfg.deployMode wins; otherwise
+// infer it, because the presence of a gateway id is a reliable signal and an
+// unset mode should never surprise someone with a pile of connection failures.
+// --mode on the command line beats both, for a one-off run.
+function resolveDeployMode(cfg, log) {
+  const VALID = ['qvd', 'gateway'];
+  const argIdx = process.argv.indexOf('--mode');
+  const fromArg = argIdx !== -1 ? String(process.argv[argIdx + 1] || '').toLowerCase() : '';
+  const fromCfg = String(cfg.deployMode || '').toLowerCase();
+
+  let mode;
+  let why;
+  if (VALID.includes(fromArg)) { mode = fromArg; why = '--mode on the command line'; }
+  else if (VALID.includes(fromCfg)) { mode = fromCfg; why = 'deployMode in config'; }
+  else {
+    const gw = (cfg.dataGateway && cfg.dataGateway.id) || process.env.QLIK_DATA_GATEWAY_ID || '';
+    mode = gw ? 'gateway' : 'qvd';
+    why = gw ? 'inferred — a dataGateway.id is set' : 'inferred — no dataGateway.id, so no gateway to use';
+  }
+  if (fromArg && !VALID.includes(fromArg)) {
+    log.warn(`Unknown --mode "${fromArg}" — expected qvd or gateway. Falling back to ${mode}.`);
+  }
+  log.info(`Data path: ${mode.toUpperCase()} (${why})`);
+  return mode;
+}
+
 function buildPostgresGatewaySource(cfg, gatewayId) {
   const vals = {
     agentId: gatewayId,
@@ -2450,6 +2489,11 @@ async function main() {
     report.record('Spaces', 'SKIP', 'disabled');
   }
 
+  // Set by the connections step, read by the pipelines step: which data
+  // path this run uses. Declared here so both steps see the same value.
+  let deployMode = 'qvd';
+
+
   // ---- Create Data Connections --------------------------------------------
   if (enabled.connections !== false) {
     log.section('Step 4: Create Data Connections');
@@ -2469,6 +2513,23 @@ async function main() {
     //     so they're created in the Qlik Cloud UI.
     const GW = 'mcg-qlik-dmg';
     const gatewayId = (cfg.dataGateway && cfg.dataGateway.id) || process.env.QLIK_DATA_GATEWAY_ID || '';
+
+    // Two ways to get data in front of the apps, chosen by cfg.deployMode:
+    //
+    //   gateway — the real story. Source databases are read over CDC through a
+    //             registered Data Movement gateway, landed to bronze by the
+    //             pipeline. Needs a gateway that can reach those databases.
+    //   qvd     — no gateway anywhere. Generated CSVs are uploaded to the
+    //             space's DataFiles and staged to QVD, and the apps read those.
+    //             Every layer above storage — catalog, profiling, trust scores,
+    //             data products, the apps — behaves identically.
+    //
+    // A gateway is not always possible: no host to run it on, no inbound path
+    // to the databases, a locked-down tenant, or a laptop demo on a plane. QVD
+    // mode is the honest fallback, so it is the default. In qvd mode the
+    // gateway-bound connections are not attempted at all — reporting them as
+    // failures would be noise, since nothing in that mode reads them.
+    deployMode = resolveDeployMode(cfg, log);
     const connectionDefs = [
       { key: 'postgresql', label: 'PostgreSQL (MCG WMS)', gatewaySource: true,
         dataSourceId: 'repsrc_postgresql', buildGateway: buildPostgresGatewaySource,
@@ -2490,6 +2551,11 @@ async function main() {
       if (def.gatewaySource) {
         const connCfg = (cfg.dataConnections && cfg.dataConnections[def.key]) || {};
         const connName = connCfg.name || `MCG ${def.label}`;
+        if (deployMode === 'qvd') {
+          log.info(`${def.label}: not needed in QVD mode — the apps read staged QVDs, not this source.`);
+          report.record(`Connection: ${def.label}`, 'SKIP', 'QVD mode — no gateway required');
+          continue;
+        }
         if (!gatewayId) {
           log.warn(`${def.label}: ${def.uiHint}`);
           report.record(`Connection: ${def.label}`, 'SKIP', 'No dataGateway.id configured — set it or create in the DI project UI');
@@ -3013,7 +3079,16 @@ async function main() {
   }
 
   // ---- Step 13: Declarative Data Pipeline -----------------------------------
-  if (enabled.pipelines !== false) {
+  // Pipelines read their sources through the gateway, so they are meaningless
+  // without one. In QVD mode there is no gateway and no source connection for a
+  // landing task to bind to, so importing the projects would only create two
+  // broken shells. Skip them and say why.
+  if (deployMode === 'qvd' && enabled.pipelines !== false) {
+    log.section('Step 13: Import Declarative Data Pipelines');
+    log.info('Skipped: pipelines land data through the gateway, and QVD mode has no gateway.');
+    log.info('The staged QVDs already carry bronze/silver/gold, so everything above storage still demos.');
+    report.record('Declarative Pipelines', 'SKIP', 'QVD mode — pipelines require a gateway');
+  } else if (enabled.pipelines !== false) {
     log.section('Step 13: Import Declarative Data Pipelines');
     const pCfg = cfg.pipelines || {};
 

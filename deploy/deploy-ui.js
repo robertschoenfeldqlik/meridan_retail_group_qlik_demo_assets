@@ -2358,6 +2358,29 @@ function getHTML() {
           &#9432; Docker containers are enabled — PostgreSQL and Kafka fields have been pre-filled with Docker-local values. You can override them if connecting to external services.
         </div>
 
+        <div class="section-divider">Data Path</div>
+        <div class="field">
+          <label>How data reaches the apps</label>
+          <select id="f-deploy-mode">
+            <option value="qvd">QVD staging — no gateway required</option>
+            <option value="gateway">Gateway CDC — read the source databases live</option>
+          </select>
+          <div class="hint">
+            <strong>QVD staging</strong> uploads generated CSVs to the space's DataFiles and stages them to QVD.
+            No gateway, no inbound path to your databases, nothing to register — it works on a laptop on a plane.
+            <br><br>
+            <strong>Gateway CDC</strong> reads the source databases over change data capture through a registered
+            Data Movement gateway and lands them with the declarative pipelines. This is the full story, and it
+            needs a gateway that can actually reach those databases.
+            <br><br>
+            Everything above storage is identical either way — catalog, profiling, trust scores, data products,
+            the glossary, the apps. <strong>Pipelines land through the gateway, so QVD mode skips them</strong>
+            along with the gateway-bound connections; reporting those as failures would just be noise.
+            <br><br>
+            Leave the Data Gateway ID below blank and the deploy infers QVD mode on its own.
+          </div>
+        </div>
+
         <div class="section-divider">Data Gateway</div>
         <div class="field">
           <label>Data Gateway ID <span style="color:var(--text-dim);font-weight:400">(Data Movement)</span></label>
@@ -3321,6 +3344,9 @@ function getHTML() {
       setVal('f-pg-username', pg.username);
       setVal('f-pg-password', pg.password);
       setVal('f-data-gateway-id', (cfg.dataGateway && cfg.dataGateway.id) || '');
+      // No stored mode means an older config: infer it the same way the deploy
+      // does, so the UI shows what a run would actually pick.
+      setSelVal('f-deploy-mode', cfg.deployMode || ((cfg.dataGateway && cfg.dataGateway.id) ? 'gateway' : 'qvd'));
 
       const crm = cfg.dataConnections.mysql || {};
       setVal('f-crm-name', crm.name);
@@ -4248,6 +4274,9 @@ function getHTML() {
           tokenUrl: getVal('f-oauth-token-url'),
         },
       },
+      // Which data path the deploy takes. Sits next to auth because it is a
+      // top-level decision, not a property of any one connection.
+      deployMode: getVal('f-deploy-mode') || 'qvd',
       spaces: {
         shared: getVal('f-space-shared') || 'MCG Demo - Development',
         managed: getVal('f-space-managed') || 'MCG Demo - Published',
