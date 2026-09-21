@@ -7,6 +7,14 @@ repo, so the whole thing is one command.
 
 ---
 
+## 0. Do you even need this?
+
+Only in **gateway mode**. If `deployMode` is `qvd` the apps read staged QVDs and
+never touch this database — no container, no gateway, no CDC. `npm run data:qvd`
+is the whole data path in that case.
+
+Everything below is the gateway path.
+
 ## 1. Bring it up
 
 ```bash

@@ -25,6 +25,38 @@ Complete setup guide for deploying the Meridian Commerce Group demo environment 
 
 ## 1. Prerequisites & Infrastructure
 
+### 1.0 Pick a data path first
+
+Everything below depends on one choice, and it is the choice that decides how
+much infrastructure you need.
+
+| | **QVD staging** | **Gateway CDC** |
+|---|---|---|
+| Config | `deployMode: "qvd"` | `deployMode: "gateway"` |
+| Command | `npm run deploy:qvd` | `npm run deploy:gateway` |
+| Data Movement Gateway | not needed | required, registered and connected |
+| Inbound path to your databases | not needed | required — the gateway must reach them |
+| Source databases running | not needed | required |
+| Declarative pipelines | **skipped** | imported and bound |
+| How data reaches the apps | CSVs uploaded to the space's DataFiles, staged to QVD | CDC through the gateway, landed to bronze by the pipelines |
+| Everything above storage | identical | identical |
+
+**A gateway is not always possible.** There may be no host to run it on, no
+inbound route from Qlik Cloud to your databases, a tenant that forbids it, or
+you may be demoing on a laptop with no network back to the source systems. QVD
+mode is the honest fallback, and the catalog, profiling, trust scores, data
+products, glossary and both analytics apps behave exactly the same.
+
+**Pipelines land data through the gateway**, so they cannot run without one.
+QVD mode skips the pipeline import along with the gateway-bound connections,
+and reports both as explicit SKIPs naming the mode rather than as failures.
+
+Leave `dataGateway.id` blank and the deploy infers QVD mode by itself. Override
+either way for a single run with `--mode qvd` or `--mode gateway`.
+
+In QVD mode, sections 1.2 (gateway), 1.3 (PostgreSQL) and 1.5 (MySQL) are
+optional — read them when you move to the gateway path.
+
 ### 1.1 Qlik Cloud Tenant
 
 | Requirement | Detail |

@@ -83,6 +83,26 @@ function sectionPrerequisites() {
     pageBreak(),
     heading("1. Prerequisites"),
 
+    heading("1.0 Pick a data path first", 2),
+    para("Everything in this section depends on one choice, and it is the choice that decides how much infrastructure you actually need."),
+    dataTable(
+      ["", "QVD staging", "Gateway CDC"],
+      [
+        ["Config", "deployMode: \"qvd\"", "deployMode: \"gateway\""],
+        ["Command", "npm run deploy:qvd", "npm run deploy:gateway"],
+        ["Data Movement Gateway", "not needed", "required, registered and connected"],
+        ["Inbound path to your databases", "not needed", "required — the gateway must reach them"],
+        ["Source databases running", "not needed", "required"],
+        ["Declarative pipelines", "skipped", "imported and bound"],
+        ["How data reaches the apps", "CSVs uploaded to DataFiles, staged to QVD", "CDC through the gateway, landed to bronze"],
+        ["Everything above storage", "identical", "identical"],
+      ]
+    ),
+    calloutBox("A gateway is not always possible — no host to run it on, no inbound route from Qlik Cloud to your databases, a tenant that forbids it, or a laptop demo with no network back to the source systems. QVD mode is the honest fallback: the catalog, profiling, trust scores, data products, glossary and both analytics apps behave exactly the same.", "info"),
+    calloutBox("Pipelines land data THROUGH the gateway, so they cannot run without one. QVD mode skips the pipeline import along with the gateway-bound connections, and reports both as explicit SKIPs naming the mode rather than as failures.", "warning"),
+    para("Leave dataGateway.id blank and the deploy infers QVD mode by itself. Override either way for a single run with --mode qvd or --mode gateway."),
+    para("In QVD mode the gateway, PostgreSQL and MySQL sections below are optional — read them when you move to the gateway path."),
+
     heading("1.1 Qlik Cloud Tenant", 2),
     para("You need access to a Qlik Cloud tenant with one of the following license types:"),
     para("Qlik Cloud Analytics (Enterprise edition)", { bullet: true }),
