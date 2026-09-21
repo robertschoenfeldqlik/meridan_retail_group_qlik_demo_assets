@@ -1074,7 +1074,10 @@ async function runDockerJob(options) {
   } else {
     // up. `--profile` is a ROOT compose flag, not a flag of `up`, so it has to
     // precede the subcommand — appending it after `up -d` makes compose reject
-    // the whole invocation (this is what enables the salesforce simulator).
+    // the whole invocation. Nothing in the stack is profile-gated today (every
+    // simulator is a default service), but the plumbing is kept because
+    // startDockerJob's only caller never passes options.profiles, so a
+    // profile-gated service would be unreachable from this UI if one is added.
     const profileArgs = [];
     for (const p of (options.profiles || [])) profileArgs.push('--profile', p);
     ({ cmd, args } = composeCmd(ENGINE, ...profileArgs, '-f', composeFile, 'up', '-d'));
@@ -2332,7 +2335,7 @@ function getHTML() {
           </div>
         </div>
         <div class="hint" style="margin-top:4px;padding-left:2px">
-          <strong>Shared</strong> = where you build (analytics dev). <strong>Managed</strong> = governed / published content. <strong>Data</strong> = Data Integration source connections (gateway-bound DB sources, Kafka, Salesforce).
+          <strong>Shared</strong> = where you build (analytics dev). <strong>Managed</strong> = governed / published content. <strong>Data</strong> = Data Integration source connections (gateway-bound DB sources, Kafka).
         </div>
 
         <div class="hint" style="margin-top:12px">
@@ -2344,7 +2347,7 @@ function getHTML() {
       <!-- Page 3: Data Connections -->
       <div class="wizard-page" id="page-3">
         <div class="page-title">Data Connections</div>
-        <div class="page-desc">Configure source system connections for PostgreSQL, Salesforce, Kafka, and S3.</div>
+        <div class="page-desc">Configure source system connections for PostgreSQL, MySQL, Kafka, and S3.</div>
 
         <div class="toggle-row">
           <label>Enable Data Connections</label>
@@ -2397,57 +2400,50 @@ function getHTML() {
           </div>
         </div>
 
-        <div class="section-divider">Salesforce (CRM)</div>
+        <div class="section-divider">Meridian CRM (MySQL)</div>
         <div class="field">
           <label>Connection Name</label>
-          <input type="text" id="f-sf-name" placeholder="MCG Salesforce CRM">
+          <input type="text" id="f-crm-name" placeholder="MCG CRM Database">
         </div>
-        <div class="field-row-3">
+        <div class="field-row">
           <div class="field">
-            <label>Client Id</label>
-            <input type="text" id="f-sf-client-id" placeholder="External Client App consumer key">
+            <label>Host</label>
+            <input type="text" id="f-crm-host" placeholder="your-mysql-host.example.com">
           </div>
           <div class="field">
-            <label>Client Secret</label>
-            <input type="password" id="f-sf-client-secret" placeholder="External Client App consumer secret">
-          </div>
-          <div class="field">
-            <label>API Type</label>
-            <input type="text" id="f-sf-api-type" placeholder="REST or Bulk">
+            <label>Port</label>
+            <input type="number" id="f-crm-port" value="3307">
           </div>
         </div>
         <div class="field-row-3">
           <div class="field">
-            <label>Environment</label>
-            <select id="f-sf-environment">
-              <option value="sandbox">Sandbox</option>
-              <option value="production">Production</option>
-            </select>
+            <label>Database</label>
+            <input type="text" id="f-crm-database" placeholder="mcg_crm">
           </div>
           <div class="field">
-            <label>Data Gateway</label>
-            <input type="text" id="f-sf-gateway" placeholder="None">
+            <label>Username</label>
+            <input type="text" id="f-crm-username" placeholder="qlik_cdc">
           </div>
           <div class="field">
-            <label>Start Date (MM/DD/YYYY)</label>
-            <input type="text" id="f-sf-start-date" placeholder="optional">
+            <label>Password</label>
+            <input type="password" id="f-crm-password" placeholder="password">
           </div>
-        </div>
-        <div class="toggle-row" style="margin-top:4px">
-          <label>Replicate new fields automatically</label>
-          <label class="switch"><input type="checkbox" id="f-sf-replicate-new-fields" checked><span class="slider"></span></label>
         </div>
         <div class="hint">
-          Salesforce <strong>V2</strong> authenticates via OAuth 2.0 against a Salesforce
-          <strong>External Client App</strong> — <em>not</em> the Connected App the V1 connector used, and there is
-          no Instance / Login Domain field any more. In Salesforce, create the External Client App with callback URL
-          <code>https://connector.qlik.com/auth/oauth/v3.htm</code>, distribution state <strong>Local</strong>, scopes
-          <code>api</code>, <code>refresh_token,offline_access</code>, <code>openid</code>, <code>full</code>, and
-          "All users can self-authorize". <strong>Data gateway is optional for V2</strong> (leave as <code>None</code>
-          unless you need egress through the Data Movement gateway). Because the OAuth step requires logging into
-          Salesforce and pasting an authentication code back, create the connection in the Qlik Cloud UI
-          (Data Integration → Create connection → Salesforce) in the <strong>MCG Demo - DI</strong> space —
-          the name must match <code>MCG Salesforce CRM</code> or the pipeline binding will not resolve.
+          The CRM is a <strong>MySQL replication source</strong> bound to the Data Movement gateway, exactly like the
+          WMS above — so the deploy creates it for you as long as <strong>Data Gateway ID</strong> is set on the
+          Connection page. It replaces a SaaS CRM connector that needed an interactive OAuth login and therefore could
+          never be created headlessly.
+          <br><br>
+          <strong>Host</strong> must be reachable <em>from the gateway container</em>, not from your laptop — use the
+          compose service name (<code>mysql</code>) when the gateway runs in the same stack, or the host IP otherwise.
+          <strong>Port 3307</strong> is the host-side port: the gateway container already binds 3306, so the CRM is
+          published one port up. Inside the compose network it is still <code>mysql:3306</code>.
+          <br><br>
+          <code>qlik_cdc</code> is the least-privilege account created by
+          <code>infrastructure/mysql-init/01-cdc-user.sql</code>; it holds the binlog-reading grants CDC needs without
+          being root. The connection name must match <code>MCG CRM Database</code> or the pipeline binding in
+          <code>bindings.json</code> will not resolve.
         </div>
 
         <div class="section-divider">Kafka (IoT Telemetry)</div>
@@ -2941,7 +2937,7 @@ function getHTML() {
       <tr><td>Local stack (Docker)</td><td>Kafka + simulators + the DMG container, started from <em>Local Stack &amp; Gateway</em></td><td>Generates realistic, intentionally-flawed source data on your machine</td></tr>
       <tr><td>Data Movement gateway</td><td>The <code>mcg-qlik-dmg</code> container (PostgreSQL/MySQL/SQL Server + the gateway agent)</td><td>Lets Qlik Cloud reach the local databases for log-based CDC</td></tr>
       <tr><td>Spaces</td><td>Development (shared), Published (managed), MCG Demo - DI (data)</td><td>Separate where you build, where governed content is published, and where DI source connections live</td></tr>
-      <tr><td>Data connections</td><td>PostgreSQL, Kafka, Salesforce sources + Amazon Athena read-back</td><td>The inputs to the pipeline and the read path analytics uses</td></tr>
+      <tr><td>Data connections</td><td>PostgreSQL, Kafka, MySQL sources + Amazon Athena read-back</td><td>The inputs to the pipeline and the read path analytics uses</td></tr>
       <tr><td>Pipelines (QTCP)</td><td>Landing &rarr; transform &rarr; datamart tasks</td><td>Bronze &rarr; Silver &rarr; Gold medallion transforms with data-quality fixes</td></tr>
       <tr><td>Data products</td><td>Gold-layer tables registered as products</td><td>Governed, shareable, analytics-ready datasets with trust scores</td></tr>
       <tr><td>Apps</td><td>Supply Chain Operations + Delivery &amp; Customer Experience</td><td>Demonstrate analytics over the governed gold products</td></tr>
@@ -2952,13 +2948,13 @@ function getHTML() {
     </table>
 
     <h2>3 · Architecture at a glance</h2>
-    <p><strong>Sources</strong> (PostgreSQL WMS · Kafka IoT · Salesforce CRM) &rarr; <strong>gateway / connectivity</strong> &rarr; <strong>Data Integration project</strong> (landing &rarr; transform &rarr; datamart) &rarr; <strong>Open Lakehouse</strong> (Apache Iceberg on S3 — bronze/silver/gold) &rarr; <strong>Amazon Athena</strong> &rarr; <strong>analytics apps + AI</strong>.</p>
+    <p><strong>Sources</strong> (PostgreSQL WMS · Kafka IoT · Meridian CRM) &rarr; <strong>gateway / connectivity</strong> &rarr; <strong>Data Integration project</strong> (landing &rarr; transform &rarr; datamart) &rarr; <strong>Open Lakehouse</strong> (Apache Iceberg on S3 — bronze/silver/gold) &rarr; <strong>Amazon Athena</strong> &rarr; <strong>analytics apps + AI</strong>.</p>
     <p>Each source uses the right gateway type:</p>
     <table>
       <tr><th>Gateway</th><th>Used for</th><th>In this demo</th></tr>
       <tr><td>Data Movement gateway</td><td>Database CDC sources (Postgres/MySQL/SQL Server)</td><td>The on-prem <code>mcg-qlik-dmg</code> container — PostgreSQL source</td></tr>
       <tr><td>Streaming (network integration)</td><td>Kafka / streaming sources</td><td>The Kafka IoT source (<code>external_data_provider</code>)</td></tr>
-      <tr><td>Qlik-hosted egress</td><td>SaaS sources reachable from Qlik Cloud</td><td>Salesforce V2 (data gateway optional — <code>None</code> by default)</td></tr>
+      <tr><td>Qlik-hosted egress</td><td>SaaS sources reachable from Qlik Cloud</td><td>Amazon S3, Amazon Athena (credentialed, no gateway)</td></tr>
       <tr><td>Direct Access gateway</td><td>Analytics data loads via a gateway</td><td>Not used here</td></tr>
     </table>
 
@@ -2967,7 +2963,7 @@ function getHTML() {
       <li><strong>Deploy the local stack</strong> — <em>Local Stack &amp; Gateway</em> &rarr; pick a profile (Full Stack + DMG) &rarr; <strong>Deploy Local Stack</strong>.</li>
       <li><strong>Register the Data Movement gateway</strong> — <strong>Register Gateway / Get Token</strong> prints the token &rarr; Qlik Cloud &rarr; <strong>Administration &rarr; Data Gateways &rarr; Register</strong> &rarr; wait for <strong>Connected</strong>.</li>
       <li><strong>Copy the Data gateway ID</strong> into <em>Tenant Deployment &rarr; Data Connections &rarr; Data Gateway ID</em> (see §5).</li>
-      <li><strong>Create the source connections</strong> in the <strong>MCG Demo - DI</strong> data space — PostgreSQL is auto-created by the deploy; Kafka &amp; Salesforce are created in the Data Integration UI.</li>
+      <li><strong>Create the source connections</strong> in the <strong>MCG Demo - DI</strong> data space — PostgreSQL <em>and MySQL</em> are auto-created by the deploy once a Data Gateway ID is set; Kafka is created in the Data Integration UI.</li>
       <li><strong>Run the tenant deploy</strong> — spaces, pipelines, data products, apps, knowledge base, automations, glossary.</li>
     </ol>
 
@@ -2980,7 +2976,7 @@ function getHTML() {
     <ul>
       <li><strong>PostgreSQL</strong> — created by the deploy as a gateway-bound replication source (<code>repsrc_postgresql</code>) in MCG Demo - DI. Needs the Data Gateway ID.</li>
       <li><strong>Kafka (IoT)</strong> — a streaming source (<code>external_data_provider</code>) over a network integration, <em>not</em> the Data Movement gateway. Created in the DI UI.</li>
-      <li><strong>Salesforce (V2)</strong> — OAuth 2.0 against a Salesforce <em>External Client App</em> (callback <code>https://connector.qlik.com/auth/oauth/v3.htm</code>); created in the DI UI with an interactive Salesforce login. Needs Client Id, Client Secret, Environment and API Type. A data gateway is optional. Name it <code>MCG Salesforce CRM</code> in <strong>MCG Demo - DI</strong> so the pipeline binding resolves.</li>
+      <li><strong>Meridian CRM (MySQL)</strong> — a gateway-bound replication source (<code>repsrc_mysql</code>), created automatically by the deploy just like the WMS. Needs Host, Port, Database, Username and Password; the host must resolve <em>from the gateway container</em>, and the port is <code>3307</code> because the gateway itself binds 3306. Name it <code>MCG CRM Database</code> in <strong>MCG Demo - DI</strong> so the pipeline binding resolves.</li>
       <li><strong>Amazon S3 / Athena</strong> — credentialed connectors created in the UI (IAM keys).</li>
     </ul>
 
@@ -3028,7 +3024,7 @@ function getHTML() {
     <p>In <code>documents/demo-scripts/</code> — each is a Tell → Show → Tell walkthrough of one topic:</p>
     <table>
       <tr><th>#</th><th>Demo script</th><th>What it covers</th></tr>
-      <tr><td>01</td><td>Infrastructure &amp; Data Sources</td><td>Stand up the local stack and the three intentionally-messy sources: PostgreSQL WMS, Kafka IoT, Salesforce CRM.</td></tr>
+      <tr><td>01</td><td>Infrastructure &amp; Data Sources</td><td>Stand up the local stack and the three intentionally-messy sources: PostgreSQL WMS, Kafka IoT, Meridian CRM.</td></tr>
       <tr><td>02</td><td>Connections &amp; Spaces</td><td>Create the Qlik Cloud spaces and the gateway-bound source connections.</td></tr>
       <tr><td>03</td><td>Open Lakehouse</td><td>Land the sources into the Open Lakehouse (bronze → silver → gold, Apache Iceberg on S3); analytics reads it back via <strong>Amazon Athena</strong>.</td></tr>
       <tr><td>04</td><td>Lineage / Profiling / Trust</td><td>End-to-end lineage, data profiling, and trust scores across the medallion layers.</td></tr>
@@ -3200,7 +3196,7 @@ function getHTML() {
     if (!el) return;
     const rows = [
       ['MCG WMS CDC Landing (PostgreSQL)', getVal('f-pg-name') || 'MCG WMS Database'],
-      ['MCG CRM Landing (Salesforce)', getVal('f-sf-name') || 'MCG Salesforce CRM'],
+      ['MCG CRM Landing (MySQL CDC)', getVal('f-crm-name') || 'MCG CRM Database'],
       ['MCG IoT Streaming Landing (Kafka)', getVal('f-kafka-name') || 'MCG IoT Telemetry'],
       ['Analytics Apps (Athena over Open Lakehouse)', getVal('f-athena-name') || 'MCG Lakehouse (Athena)'],
     ];
@@ -3325,16 +3321,13 @@ function getHTML() {
       setVal('f-pg-password', pg.password);
       setVal('f-data-gateway-id', (cfg.dataGateway && cfg.dataGateway.id) || '');
 
-      const sf = cfg.dataConnections.salesforce || {};
-      setVal('f-sf-name', sf.name);
-      setVal('f-sf-client-id', sf.clientId);
-      setVal('f-sf-client-secret', sf.clientSecret);
-      setVal('f-sf-api-type', sf.apiType);
-      // Fall back to the V1 isSandbox boolean so an older config still populates.
-      setSelVal('f-sf-environment', sf.environment || (sf.isSandbox === false ? 'production' : 'sandbox'));
-      setVal('f-sf-gateway', sf.dataGateway || 'None');
-      setVal('f-sf-start-date', sf.startDate);
-      setCheck('f-sf-replicate-new-fields', sf.replicateNewFieldsAutomatically !== false);
+      const crm = cfg.dataConnections.mysql || {};
+      setVal('f-crm-name', crm.name);
+      setVal('f-crm-host', crm.host);
+      setVal('f-crm-port', crm.port || 3307);
+      setVal('f-crm-database', crm.database);
+      setVal('f-crm-username', crm.username);
+      setVal('f-crm-password', crm.password);
 
       const kf = cfg.dataConnections.kafka || {};
       setVal('f-kafka-name', kf.name);
@@ -4311,16 +4304,17 @@ function getHTML() {
           password: getVal('f-pg-password'),
           schema: 'public',
         },
-        salesforce: {
-          name: getVal('f-sf-name') || 'MCG Salesforce CRM',
-          connectorVersion: 'v2',
-          clientId: getVal('f-sf-client-id'),
-          clientSecret: getVal('f-sf-client-secret'),
-          apiType: getVal('f-sf-api-type'),
-          environment: getVal('f-sf-environment') || 'sandbox',
-          dataGateway: getVal('f-sf-gateway') || 'None',
-          startDate: getVal('f-sf-start-date'),
-          replicateNewFieldsAutomatically: isChecked('f-sf-replicate-new-fields'),
+        mysql: {
+          name: getVal('f-crm-name') || 'MCG CRM Database',
+          host: getVal('f-crm-host'),
+          // 3307 on the host: the gateway container already binds 3306.
+          port: parseInt(getVal('f-crm-port')) || 3307,
+          database: getVal('f-crm-database') || 'mcg_crm',
+          username: getVal('f-crm-username') || 'qlik_cdc',
+          password: getVal('f-crm-password'),
+          // MySQL's database IS its schema, so the two always match.
+          schema: getVal('f-crm-database') || 'mcg_crm',
+          sslMode: 'PREFERRED',
         },
         kafka: {
           name: getVal('f-kafka-name') || 'MCG IoT Telemetry',
@@ -4372,7 +4366,7 @@ function getHTML() {
       // Preserve reload-task definitions across UI saves; default to the
       // appName-resolved pair (deploy Step 12 looks the IDs up by name).
       // The Delivery app reloads at :05/:20/:35/:50 — 5 min after each
-      // Talend Salesforce QVD drop (deploy/talend).
+      // Talend CRM QVD drop (deploy/talend).
       reloadtasks: (loadedConfig && loadedConfig.reloadtasks) || {
         definitions: [
           { name: 'MCG Supply Chain Operations — Reload', appName: 'MCG Supply Chain Operations', cronExpression: '0 0 * * * *', timeZone: 'UTC' },

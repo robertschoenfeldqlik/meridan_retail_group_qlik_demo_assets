@@ -1,5 +1,5 @@
 # Agentic Route: LLM-Assisted Address Correction
-## Upgrading the Salesforce address-validation job with an in-task LLM step
+## Upgrading the CRM address-validation job with an in-task LLM step
 
 ---
 
@@ -14,7 +14,7 @@
 
 ## Problem this route solves
 
-The existing `mcg_sf_address_validate` job runs a Java format check
+The existing `mcg_crm_address_validate` job runs a Java format check
 (`routines.AddressValidator`) and sends anything that fails straight to Nominatim
 geocoding. Malformed **multilingual** addresses — a Brazilian `Conjunto`
 abbreviated three ways, a German `3. OG` floor marker, a truncated street, a
@@ -57,7 +57,7 @@ with the stewardship team]`.
 
 Same cadence as the host job — **no new schedule.**
 
-- **Primary:** runs in line inside JOB 1 (`mcg_sf_address_validate`) on its
+- **Primary:** runs in line inside JOB 1 (`mcg_crm_address_validate`) on its
   existing **TMC 15-minute** schedule (`*/15 * * * *`, UTC). The route only
   processes the `out_invalid` branch, so the per-run volume is bounded the same
   way Nominatim throttling already bounds it (~700 invalid rows/run; backlog
@@ -184,5 +184,5 @@ any throughput/accuracy/cost figures.
 ---
 
 *LLM-assisted address-correction Agentic Route for Meridian Commerce Group*
-*Tier-1 (LLM-in-task), additive to `mcg_sf_address_validate` — see `../README.md`*
+*Tier-1 (LLM-in-task), additive to `mcg_crm_address_validate` — see `../README.md`*
 *Qlik internal preview / roadmap (June 2026) — forward-looking; specifics subject to change*

@@ -38,7 +38,7 @@ import java.util.regex.Pattern;
  * rows finish in roughly 2-18 minutes, and the cache usually cuts that sharply
  * because MCG contacts cluster in a handful of cities.
  *
- * Used by mcg_sf_address_validate, tJava "bulk_geocode":
+ * Used by mcg_crm_address_validate, tJava "bulk_geocode":
  *   BulkGeocoder.geocodeAll(batch, context.nominatim_base_url,
  *                           context.nominatim_user_agent,
  *                           context.nominatim_throttle_ms,

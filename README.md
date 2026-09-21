@@ -6,7 +6,7 @@ A complete, deployable demo environment showcasing the full Qlik platform — fr
 
 | Layer | Components |
 |---|---|
-| **Data Sources** | PostgreSQL WMS simulator, Kafka IoT sensors, Salesforce CRM simulator |
+| **Data Sources** | PostgreSQL WMS simulator, Kafka IoT sensors, Meridian CRM simulator |
 | **Infrastructure** | Docker Compose stacks for Kafka (Confluent 7.7), PostgreSQL, and the Qlik Data Movement Gateway |
 | **Deployment** | Automated scripts (Python + Node.js + Web UI) to provision a full Qlik Cloud tenant |
 | **Analytics** | Dashboard mockups, Qlik theme, app definitions for Supply Chain & Delivery |
@@ -86,7 +86,7 @@ MCG Full Stack/
 ├── simulators/                 # Python data simulators
 │   ├── postgres_simulator.py   # WMS inventory events
 │   ├── kafka_iot_simulator.py  # Cold-chain sensors + carrier events
-│   ├── salesforce_simulator.py # CRM data generation
+│   ├── mysql_crm_simulator.py # CRM data generation
 │   └── seed_data.py            # Initial database population
 │
 ├── infrastructure/             # Docker Compose configurations

@@ -117,7 +117,7 @@ function sopWH001() {
     heading("6.2 Arrival and Unloading", 2),
     numberedItem(1, "Upon carrier arrival, verify carrier documentation against the Purchase Order. The following must match EXACTLY:"),
     para("PO number on delivery note matches SAP PO number", { bullet: true }),
-    para("Supplier name matches (NOTE: supplier names may vary between systems due to the Product Master Data issue — refer to the Supplier Cross-Reference Guide SOP-DATA-003 if the name does not match exactly. Common example: Samsung appears as 'Samsung Electronics Co., Ltd.' in SAP, 'Samsung Elec.' in WMS, 'SAMSUNG' in Salesforce, and 'Samsung Corp' in the procurement spreadsheet. All four refer to the same supplier.)", { bullet: true }),
+    para("Supplier name matches (NOTE: supplier names may vary between systems due to the Product Master Data issue — refer to the Supplier Cross-Reference Guide SOP-DATA-003 if the name does not match exactly. Common example: Samsung appears as 'Samsung Electronics Co., Ltd.' in SAP, 'Samsung Elec.' in WMS, 'SAMSUNG' in Meridian CRM, and 'Samsung Corp' in the procurement spreadsheet. All four refer to the same supplier.)", { bullet: true }),
     para("SKU codes and quantities on the delivery note match PO line items", { bullet: true }),
     para("Carrier name matches the expected carrier in Descartes TMS (check the Daily Expected Receipts Report)", { bullet: true }),
     numberedItem(2, "Perform visual inspection of all pallets and cartons for transit damage before unloading begins. Inspect: pallet wrap integrity, carton condition (crushing, water damage, punctures), temperature indicator strips on perishable shipments (if present), and seal integrity on containers/trailers."),
@@ -628,10 +628,10 @@ function sopSC001() {
     para("Output: All in-transit shipments containing the affected product. Includes: carrier, tracking number, destination, expected delivery date.", { bullet: true }),
     para("Known limitation: 42% of shipments have missing tracking numbers (Nightmare #6). For these, carrier contact is required for manual verification.", { bullet: true }),
 
-    numberedItem(4, "Salesforce Commerce Cloud — Customer Orders with Affected SKUs:"),
-    para("SOQL query on MCG_Order__c: Filter by product SKU and order date range.", { bullet: true }),
+    numberedItem(4, "Meridian Storefront — Customer Orders with Affected SKUs:"),
+    para("SOQL query on crm_orders: Filter by product SKU and order date range.", { bullet: true }),
     para("Output: All customer orders containing the affected product, with delivery address, order status, and tracking information.", { bullet: true }),
-    para("Known limitation: Salesforce order records do not contain lot-level information. The link between customer order → specific lot requires cross-referencing order date + fulfillment DC + lot availability at time of pick.", { bullet: true }),
+    para("Known limitation: Meridian CRM order records do not contain lot-level information. The link between customer order → specific lot requires cross-referencing order date + fulfillment DC + lot availability at time of pick.", { bullet: true }),
 
     calloutBox("CURRENT GAP — NO UNIFIED TRACEABILITY KEY: These four systems are not linked by a common lot-level traceability key. During the June 2025 lettuce recall, this required 65 person-hours of manual cross-referencing involving 28 hours in SAP, 15 hours in WMS, 18 hours on physical store audits, and 4 hours of IT data extraction support. Project Qlarity Phase 1 will create a unified data layer connecting all 4 systems with a common traceability key. Until then, the manual process described above is the ONLY reliable method.", "critical"),
 
@@ -642,11 +642,11 @@ function sopSC001() {
       [
         ["In DC (on-hand)", "WMS", "Lot-level inventory search", "93% lot-tracked"],
         ["In transit (DC to store)", "Descartes TMS", "Shipment search by product", "58% have tracking data"],
-        ["In transit (DC to customer - e-com)", "Descartes + Salesforce", "Order + shipment cross-reference", "Variable by carrier"],
+        ["In transit (DC to customer - e-com)", "Descartes + Meridian CRM", "Order + shipment cross-reference", "Variable by carrier"],
         ["On store shelves", "POS / store inventory system", "Store-level lot search OR physical audit", "32% stores have lot tracking ⚠"],
-        ["In customer hands (delivered)", "Salesforce", "Customer order history", "Lot link indirect (date/DC match)"],
+        ["In customer hands (delivered)", "Meridian CRM", "Customer order history", "Lot link indirect (date/DC match)"],
         ["At supplier (unshipped)", "SAP + Supplier contact", "Open PO check + supplier verification", "Manual process"],
-        ["Returns in process", "WMS + Salesforce", "Return receipt search by SKU", "No lot link on returns ⚠"],
+        ["Returns in process", "WMS + Meridian CRM", "Return receipt search by SKU", "No lot link on returns ⚠"],
       ]
     ),
 
@@ -661,7 +661,7 @@ function sopSC001() {
 
     heading("8. Customer Notification (E-Commerce)"),
     para("For e-commerce orders containing recalled products:"),
-    numberedItem(1, "Customer Service team generates the affected customer list from Salesforce (SOQL query by product SKU + order date range + delivery status)."),
+    numberedItem(1, "Customer Service team generates the affected customer list from Meridian CRM (SOQL query by product SKU + order date range + delivery status)."),
     numberedItem(2, "Customer segmentation for notification:"),
     para("Delivered orders: Full recall notification with return/refund instructions", { bullet: true }),
     para("In-transit orders: Carrier intercept attempted. If intercept fails, customer notified upon delivery.", { bullet: true }),
@@ -913,7 +913,7 @@ function sopCS001() {
     dataTable(
       ["Step", "System", "Access Method", "What to Check", "Typical Resolution", "Avg. Time"],
       [
-        ["1", "Salesforce Commerce Cloud", "CRM tab (SSO)", "Order status, payment confirmation, fulfillment assignment, delivery promise date", "Order confirmed/processing — give estimated ship date", "45 sec"],
+        ["1", "Meridian Storefront", "CRM tab (SSO)", "Order status, payment confirmation, fulfillment assignment, delivery promise date", "Order confirmed/processing — give estimated ship date", "45 sec"],
         ["2", "SAP ERP (view-only)", "SAP GUI / Fiori (CS read-only role)", "Warehouse allocation, pick status, stock availability, fulfillment DC location", "Allocated to DC — give estimated ship date from DC", "30 sec"],
         ["3", "WMS (Oracle/Manhattan)", "WMS Web Portal (CS read-only role)", "Pick confirmed, pack confirmed, ship confirmed, tracking number assignment", "Shipped — provide tracking number", "60 sec"],
         ["4", "Descartes TMS", "TMS Portal (CS read-only role)", "Carrier assignment, shipment tracking events, delivery status, POD (proof of delivery)", "In transit — provide last tracking event and ETA", "45 sec"],
@@ -969,7 +969,7 @@ function sopCS001() {
     numberedItem(1, "Verify delivery address matches order address. Check for address quality issues (truncated street name, misspelling — common per Nightmare #2)."),
     numberedItem(2, "Check if carrier has proof of delivery (POD): photo, signature, GPS coordinates."),
     numberedItem(3, "If POD available: Share with customer (if photo available). Ask if a neighbor or building manager may have accepted the delivery."),
-    numberedItem(4, "If no POD: Open carrier investigation. Create case in Salesforce with type 'NON-DELIVERY-INVESTIGATION'. SLA: carrier must respond within 24 hours."),
+    numberedItem(4, "If no POD: Open carrier investigation. Create case in Meridian CRM with type 'NON-DELIVERY-INVESTIGATION'. SLA: carrier must respond within 24 hours."),
     numberedItem(5, "If investigation inconclusive after 48 hours: Issue replacement or full refund at customer's choice. The cost is charged back to the carrier per MSA terms."),
 
     heading("4. Regional Considerations"),

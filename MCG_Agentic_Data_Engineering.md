@@ -49,7 +49,7 @@ engineering is how MCG would **build and evolve** that pipeline going forward.
 | 2 | **Data Product Agent** | Create and manage data products through natural-language interaction — CRUD, conversational discovery, review and improve product quality/completeness | The **two gold data products**: *Supply Chain Health* and *Last Mile Performance* | Qlik Answers capability |
 | 3 | **Data Quality Agent** | Helps data stewards assess, define, and enforce data-quality rules conversationally — assess DQ across datasets, create/manage/map DQ rules, run DQ metric calculations | The **silver transform DQ logic** (UoM/zone standardization, phantom-inventory flags, trust scores) across the 7 silver datasets | Qlik Answers capability |
 | 4 | **Catalog and Business Glossary Agent** | Discover assets, understand context and relationships, define consistent terminology — NL queries against the Qlik Cloud Catalog, generate glossaries, standardize terms and synonyms | The **MCG Business Glossary** plus the catalog metadata behind the **25-document Qlik Answers knowledge base** | Qlik Answers capability |
-| 5 | **Talend Agentic Routes** | Extends Qlik Talend Cloud for AI-native workflows: LLM integration in data tasks, RAG pipelines, and agentic orchestration (incl. MCP client) | The existing **Salesforce address-validation Talend job** — the concrete surface for an LLM-assisted address-correction route | See `deploy/talend/MCG_Talend_Agentic_Routes.md` |
+| 5 | **Talend Agentic Routes** | Extends Qlik Talend Cloud for AI-native workflows: LLM integration in data tasks, RAG pipelines, and agentic orchestration (incl. MCP client) | The existing **CRM address-validation Talend job** — the concrete surface for an LLM-assisted address-correction route | See `deploy/talend/MCG_Talend_Agentic_Routes.md` |
 | 6 | **Qlik MCP Server** | An MCP-compliant server exposing Qlik Cloud's analytical and data-governance capabilities (data products, quality metrics, lineage, catalog) to any MCP-compatible AI assistant | MCG's governance surface — the two data products, their trust-score SLAs, lineage, and catalog — exposed to Claude, Copilot, or any MCP client | **Preview** |
 
 **A note on framing.** Capabilities 2, 3, and 4 are conversational agents that
@@ -103,7 +103,7 @@ what connects them into one governed path.
   ┌──────────────────────────────────────────────────────────────────────────┐
   │  6. AI ENHANCEMENT                                                         │
   │     Talend Agentic Routes inject LLM / RAG / orchestration into tasks.     │
-  │     MCG: the Salesforce address-validation job gains an LLM-assisted       │
+  │     MCG: the CRM address-validation job gains an LLM-assisted       │
   │          address-correction route.                                        │
   └───────────────────────────────┬──────────────────────────────────────────┘
                                   ▼
@@ -182,8 +182,8 @@ for MCG's purposes.
 | Declarative pipeline template | `deploy/pipelines/` | The two QTCP projects as a VS Code + AI-agent workspace (capability 1) |
 | Pipeline template guide | `deploy/pipelines/README.md` | Setup, schema kit, round-trip export, the demo edit |
 | Talend Agentic Routes | `deploy/talend/MCG_Talend_Agentic_Routes.md` | Positioning for capability 5 |
-| Grounded route example | `deploy/talend/agentic-routes/address-correction-route.md` | LLM-assisted address correction on the Salesforce job |
-| Existing Talend job | `deploy/talend/README.md` | `mcg_sf_address_validate_bulk` — standardize, bulk-geocode, then route on GPS to Iceberg or the Address Cleanup sprint. The route upgrades the unresolved branch. |
+| Grounded route example | `deploy/talend/agentic-routes/address-correction-route.md` | LLM-assisted address correction on the CRM address job |
+| Existing Talend job | `deploy/talend/README.md` | `mcg_crm_address_validate_bulk` — standardize, bulk-geocode, then route on GPS to Iceberg or the Address Cleanup sprint. The route upgrades the unresolved branch. |
 
 ---
 

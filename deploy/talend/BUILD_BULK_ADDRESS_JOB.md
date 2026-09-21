@@ -1,4 +1,4 @@
-# Build: `mcg_sf_address_validate_bulk`
+# Build: `mcg_crm_address_validate_bulk`
 
 Free address ingestion → validation → **bulk** geocoding → GPS-based routing.
 No Talend Data Quality subscription, no licensed postal reference data, no API key.
@@ -8,7 +8,7 @@ No Talend Data Quality subscription, no licensed postal reference data, no API k
 
 ```
                         ┌──────────────────────────────────────┐
-Salesforce Contacts ───► │ standardize (repair + score)         │
+CRM contacts ───► │ standardize (repair + score)         │
    (100–1000 rows)      │ ONE bulk call → GPS for the batch    │
                         └────────────────┬─────────────────────┘
                                          │
@@ -52,7 +52,7 @@ Key values for a demo run:
 
 | Variable | Value | Why |
 |---|---|---|
-| `sf_batch_limit` | `500` | Demo scale. 100 rows ≈ 2 min, 1000 ≈ 18 min |
+| `crm_batch_limit` | `500` | Demo scale. 100 rows ≈ 2 min, 1000 ≈ 18 min |
 | `nominatim_throttle_ms` | `1100` | OSM policy floor — **do not lower** |
 | `geocode_max_concurrent` | `1` | Public Nominatim caps you at 1 req/s regardless |
 | `geocode_budget_ms` | `900000` | 15-min ceiling; leftovers go to stewardship, job never stalls |
@@ -69,7 +69,7 @@ Five subjobs, linked **OnSubjobOk**. `tLogRow` after every stage so the data is 
 [tJava init_batch]
       │ OnSubjobOk
       ▼
-[tSalesforceInput] ─► [tLogRow ① RAW] ─► [tJavaRow standardize] ─► [tLogRow ② STANDARDIZED]
+[tMysqlInput] ─► [tLogRow ① RAW] ─► [tJavaRow standardize] ─► [tLogRow ② STANDARDIZED]
       │ OnSubjobOk
       ▼
 [tJava bulk_geocode]                    ◄── the single bulk API call
@@ -95,19 +95,19 @@ Set every `tLogRow` to **Table (print values in cells of a table)** and tick **P
 ```java
 routines.AddressBatch.reset();
 routines.BulkGeocoder.clearCache();
-System.out.println("=== MCG address validation — batch limit " + context.sf_batch_limit + " ===");
+System.out.println("=== MCG address validation — batch limit " + context.crm_batch_limit + " ===");
 ```
 
-### 3.2 `tSalesforceInput` — `sf_contacts`
+### 3.2 `tMysqlInput` — `crm_contacts`
 
 - Connection: `context.sf_login_url` / `sf_username` / `sf_password` + `sf_security_token`
 - Module: **Contact**
-- Columns: `Id, FirstName, LastName, Email, MailingStreet, MailingCity, MailingState, MailingPostalCode, MailingCountry, LastModifiedDate`
-- Condition: `LastModifiedDate > ${context.sf_watermark} LIMIT ${context.sf_batch_limit}`
+- Columns: `Id, FirstName, LastName, Email, MailingStreet, MailingCity, MailingState, MailingPostalCode, MailingCountry, last_modified_date`
+- Condition: `last_modified_date > ${context.sf_watermark} LIMIT ${context.crm_batch_limit}`
 
 ### 3.3 `tLogRow` ① — `log_raw`
 
-Shows what Salesforce actually holds — the dirty input. This is the "before" in the demo.
+Shows what Meridian CRM actually holds — the dirty input. This is the "before" in the demo.
 
 ### 3.4 `tJavaRow` — `standardize`
 
@@ -423,7 +423,7 @@ Verified behaviour from the live test (3 addresses, real Nominatim):
    "sprint" throughout (104 replacements). Fixes went into the **generators** as well as the
    checked-in markdown, so a regenerate does not undo them.
 4. **An import bundle exists.** `npm run talend:zip` produces
-   `deploy/talend/mcg_sf_address_validate_bulk.zip` — deterministic, with the four routines as
+   `deploy/talend/mcg_crm_address_validate_bulk.zip` — deterministic, with the four routines as
    raw `.java` *and* as a synthesized Studio project tree, the context group, this spec and the
    Iceberg DDL.
 

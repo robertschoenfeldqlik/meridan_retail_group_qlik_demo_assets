@@ -3,7 +3,7 @@ properties:
   id: address-geo-landing-4103
   type: LAKE_LANDING
   description: >-
-    Timestamped CSV written to S3 by the Talend job mcg_sf_address_validate_bulk
+    Timestamped CSV written to S3 by the Talend job mcg_crm_address_validate_bulk
     (GPS-resolved branch), landed to bronze so the silver transform can join real
     latitude/longitude onto addresses_standardized.
 settings:

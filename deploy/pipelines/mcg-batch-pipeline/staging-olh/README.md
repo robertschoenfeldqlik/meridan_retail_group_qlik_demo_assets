@@ -5,7 +5,7 @@ excluded from `npm run pipeline:zip`, so importing the project today is unaffect
 
 ## Why it is staged rather than wired
 
-The GPS-resolved branch of `mcg_sf_address_validate_bulk` writes timestamped CSV to
+The GPS-resolved branch of `mcg_crm_address_validate_bulk` writes timestamped CSV to
 `s3://mcg-open-lakehouse/talend/addresses/`. Landing that into the lakehouse needs three things
 that do not exist yet:
 
@@ -50,7 +50,7 @@ is up.
    in this directory for the exact SQL to paste into the dataset's `expressionStatement`.
 
 6. **Create the Iceberg target** if you are loading through Athena rather than a landing task —
-   `bundle/sql/create_silver_addresses_geocoded.sql` inside `mcg_sf_address_validate_bulk.zip`
+   `bundle/sql/create_silver_addresses_geocoded.sql` inside `mcg_crm_address_validate_bulk.zip`
    has the DDL, and §4 of `deploy/talend/BUILD_BULK_ADDRESS_JOB.md` has the `MERGE`.
 
    `MERGE`, not `INSERT`: stewardship-corrected records get reprocessed, so the same

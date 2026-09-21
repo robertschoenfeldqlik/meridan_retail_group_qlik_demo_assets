@@ -314,7 +314,7 @@ function layerBadge(slide, y, label, color) {
   // ── ROW 1: DATA SOURCES ──
   iconCard(slide, LX, R1, 3.1, RH, "database", "PostgreSQL (WMS)", "CDC • 3 tables • Real-time", C.qlikTeal);
   iconCard(slide, LX + 3.3, R1, 3.1, RH, "stream", "Apache Kafka", "Streaming • 2 IoT topics", C.qlikTeal);
-  iconCard(slide, LX + 6.6, R1, 3.1, RH, "cloud", "Salesforce CRM", "Connector • 3 objects • 15 min", C.qlikTeal);
+  iconCard(slide, LX + 6.6, R1, 3.1, RH, "cloud", "Meridian CRM", "Connector • 3 objects • 15 min", C.qlikTeal);
 
   // Arrows → row 2
   [LX + 1.55, LX + 4.85, LX + 8.15].forEach(ax => arrow(slide, ax, R1 + RH, ax, R2, C.qlikTeal));
@@ -426,11 +426,11 @@ function layerBadge(slide, y, label, color) {
     },
     {
       x: 8.7, color: C.qlikGreen, bg: C.lightGreen,
-      title: "Salesforce CRM", subtitle: "Standard Connector • 15-min polling",
+      title: "Meridian CRM", subtitle: "Standard Connector • 15-min polling",
       tables: [
         ["Contact", "18.4M records", "Customer addresses"],
-        ["MCG_Order__c", "~12,000", "Order details + SLAs"],
-        ["MCG_Product__c", "~5,000", "Product catalog"],
+        ["crm_orders", "~12,000", "Order details + SLAs"],
+        ["crm_products", "~5,000", "Product catalog"],
       ],
       issues: [
         "11% address format inconsistencies",
@@ -536,7 +536,7 @@ function layerBadge(slide, y, label, color) {
   slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
     x: 0.6, y: 6.15, w: 12.1, h: 0.8, fill: { color: C.lightBg }, rectRadius: 0.08, line: { color: C.qlikGray, width: 0.5 },
   });
-  slide.addText("Data Movement gateway connections are created in the Data Integration UI (the public REST API cannot bind them) — the deploy script skips them with guidance. Kafka sources need a Data Gateway - Streaming; Salesforce/S3/Athena are credentialed connectors.", {
+  slide.addText("Data Movement gateway connections are created in the Data Integration UI (the public REST API cannot bind them) — the deploy script skips them with guidance. Kafka sources need a Data Gateway - Streaming; S3/Athena are credentialed connectors.", {
     x: 0.8, y: 6.22, w: 11.7, h: 0.68, fontSize: 10.5, color: C.darkText, fontFace: FONT, lineSpacingMultiple: 1.1,
   });
 })();
@@ -552,7 +552,7 @@ function layerBadge(slide, y, label, color) {
     { x: 0.5, w: 3.6, label: "BRONZE", sub: "Raw Ingestion", color: C.qlikTeal, bg: C.lightTeal,
       items: [
         "inventory_positions (CDC)", "warehouse_events (CDC)", "shipments (CDC)",
-        "sf_contacts (API)", "sf_orders (API)", "sf_products (API)",
+        "crm_contacts (API)", "crm_orders (API)", "crm_products (API)",
         "iot_cold_chain (Stream)", "iot_carrier_events (Stream)",
       ]},
     { x: 4.6, w: 3.7, label: "SILVER", sub: "Transformation Routes", color: C.qlikGreen, bg: C.lightGreen,
@@ -970,7 +970,7 @@ dividerSlide("The 7 Nightmares", "$127M in annual data quality costs");
     x: 0.5, y: 1.12, w: 6.0, h: 0.42,
     fontSize: 16, color: C.qlikTeal, fontFace: FONT, bold: true, align: "center",
   });
-  slide.addText("PostgreSQL CDC + Salesforce incremental sync", {
+  slide.addText("PostgreSQL CDC + Meridian CRM incremental sync", {
     x: 0.5, y: 1.52, w: 6.0, h: 0.3,
     fontSize: 10, color: C.medGray, fontFace: FONT, align: "center",
   });
@@ -978,9 +978,9 @@ dividerSlide("The 7 Nightmares", "$127M in annual data quality costs");
     "Pipeline 1: inventory_positions (CDC, real-time)",
     "Pipeline 2: warehouse_events (CDC, real-time)",
     "Pipeline 3: shipments (CDC, real-time)",
-    "Pipeline 6: sf_contacts (API, 15 min)",
-    "Pipeline 7: sf_orders (API, 15 min)",
-    "Pipeline 8: sf_products (API, 15 min)",
+    "Pipeline 6: crm_contacts (API, 15 min)",
+    "Pipeline 7: crm_orders (API, 15 min)",
+    "Pipeline 8: crm_products (API, 15 min)",
   ];
   cdcPipes.forEach((p, i) => {
     slide.addText(p, {
@@ -1055,7 +1055,7 @@ dividerSlide("The 7 Nightmares", "$127M in annual data quality costs");
   const slide = contentSlide("Full Stack Component Summary");
 
   const components = [
-    { category: "Data Sources (3)", items: "PostgreSQL WMS (CDC)  •  Apache Kafka 2 topics (streaming)  •  Salesforce CRM (API)", color: C.qlikTeal },
+    { category: "Data Sources (3)", items: "PostgreSQL WMS (CDC)  •  Apache Kafka 2 topics (streaming)  •  Meridian CRM (API)", color: C.qlikTeal },
     { category: "Open Lakehouse", items: "2 declarative pipeline projects (batch + streaming)  •  8 Bronze tables  •  8 Silver transforms  •  2 Gold products", color: C.qlikGreen },
     { category: "Governance", items: "Trust Score  •  Data Lineage  •  Impact Analysis  •  Profiling  •  25-term Glossary  •  4 Stewardship sprints", color: C.qlikTeal },
     { category: "Analytics", items: "2 Qlik Analytics apps (10 sheets)  •  MCG Dark Theme  •  Streaming IoT  •  Alerts  •  Reports", color: C.qlikBlue },

@@ -62,7 +62,7 @@
     {
       "slug": "connections",
       "url": "/data-integration/connections/all",
-      "caption": "Data connections \u2014 PostgreSQL, Salesforce, Kafka, S3, Athena",
+      "caption": "Data connections \u2014 PostgreSQL, MySQL, Kafka, S3, Athena",
       "placeholder": "Data Integration \u2192 Create connection dialog with PostgreSQL selected"
     },
     {
@@ -72,10 +72,10 @@
       "placeholder": "PostgreSQL connection dialog in Qlik Cloud with the connection settings filled in"
     },
     {
-      "slug": "connection-salesforce",
+      "slug": "connection-mysql-crm",
       "url": "/data-integration/connections/all",
-      "caption": "Salesforce CRM connection \u2014 Contact, MCG_Order__c, MCG_Product__c",
-      "placeholder": "Salesforce connector configuration in Qlik Cloud showing the object selection screen"
+      "caption": "Meridian CRM connection \u2014 Contact, crm_orders, crm_products",
+      "placeholder": "MySQL CDC connector configuration in Qlik Cloud showing the table selection screen"
     },
     {
       "slug": "connection-kafka",
@@ -129,7 +129,7 @@
       "slug": "data-marketplace",
       "url": "/data-integration/marketplace/consumer",
       "caption": "The data marketplace \u2014 how consumers discover governed products",
-      "placeholder": "Salesforce pipeline showing Contact object selection and incremental sync settings"
+      "placeholder": "Meridian CRM pipeline showing Contact object selection and incremental sync settings"
     },
     {
       "slug": "console-api-keys",

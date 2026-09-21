@@ -126,7 +126,7 @@
 
 **Why it matters:** $3.8B online channel. Every order is a promise to deliver -- and a promise MCG is currently breaking 22% of the time in APAC.
 
-**Typical source:** Salesforce Commerce Cloud
+**Typical source:** Meridian Storefront
 
 ### Common Fields
 
@@ -259,7 +259,7 @@
 
 ## 8. Customer & Address Data
 
-**Typical sources:** Salesforce CRM, Commerce Cloud, POS loyalty systems
+**Typical sources:** Meridian CRM, Commerce Cloud, POS loyalty systems
 
 ### Common Fields
 

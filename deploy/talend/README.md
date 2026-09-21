@@ -1,7 +1,7 @@
-# MCG Salesforce Pipeline via Talend — Address Standardization, Bulk Geocoding & Stewardship
+# MCG Meridian CRM Pipeline via Talend — Address Standardization, Bulk Geocoding & Stewardship
 
-A Talend Studio job (`mcg_sf_address_validate_bulk`, orchestrated in Talend Management Console)
-that pulls Salesforce Contacts, repairs and scores every address, geocodes the batch in **one
+A Talend Studio job (`mcg_crm_address_validate_bulk`, orchestrated in Talend Management Console)
+that pulls CRM contacts, repairs and scores every address, geocodes the batch in **one
 bulk call**, and routes each row on a single gate — **did we get GPS?**
 
 - **GPS resolved** → timestamped CSV to **S3**, loaded downstream into the Apache Iceberg table
@@ -9,13 +9,13 @@ bulk call**, and routes each row on a single gate — **did we get GPS?**
 - **GPS unresolved** → the **Address Cleanup** stewardship **sprint** for a human
 
 This complements (does not replace) the declarative batch pipeline's CRM landing: the QTCP
-pipeline lands raw Salesforce objects to bronze for the lakehouse story; this Talend leg produces
+pipeline lands raw CRM tables to bronze for the lakehouse story; this Talend leg produces
 the *validated + geocoded* address dataset. It is also the job behind automation #5
 (**MCG Address Correction Loop — Talend**), which re-runs it for stewardship-approved corrections.
 
 ```
                         ┌──────────────────────────────────────┐
-Salesforce Contacts ───► │ standardize (repair + score)         │
+CRM contacts ───► │ standardize (repair + score)         │
    (100–1000 rows)      │ ONE bulk call → GPS for the batch    │
                         └────────────────┬─────────────────────┘
                                          │
@@ -40,7 +40,7 @@ The routing gate is **GPS resolution**, nothing else: `latitude != null && longi
 | **[BUILD_BULK_ADDRESS_JOB.md](BUILD_BULK_ADDRESS_JOB.md)** | The build spec — five subjobs, component by component, plus the S3 → Iceberg load options and the Iceberg component reference |
 | **[STEWARDSHIP_API_FINDINGS.md](STEWARDSHIP_API_FINDINGS.md)** | The sprint API: how it was found, the full route table, the create payload, and why it must be a **data** space |
 | `routines/*.java` | The four custom routines, compiled and unit-tested |
-| `contexts/mcg_talend_demo.properties` | Context group `MCG_Demo` — Salesforce, Nominatim, S3/AWS, Iceberg, Qlik |
+| `contexts/mcg_talend_demo.properties` | Context group `MCG_Demo` — CRM extract, Nominatim, S3/AWS, Iceberg, Qlik |
 
 ## The routines — free replacements for the paid components
 
@@ -65,7 +65,7 @@ pass, live geocode confirmed against public Nominatim.
 npm run talend:zip
 ```
 
-Produces `deploy/talend/mcg_sf_address_validate_bulk.zip` (deterministic — same inputs, same
+Produces `deploy/talend/mcg_crm_address_validate_bulk.zip` (deterministic — same inputs, same
 bytes). Three layers, described in the `IMPORT.md` inside it:
 
 1. **`bundle/`** — the raw `.java` routines, the context group, the build spec and the Iceberg
@@ -119,6 +119,6 @@ the same copy — the point of the Open Lakehouse story.
 
 ## Context variables (`contexts/mcg_talend_demo.properties`)
 
-See the file for the full list: Salesforce credentials, batch limit, Nominatim base URL +
+See the file for the full list: batch limit, Nominatim base URL +
 User-Agent + throttle + budget, staging directories, S3 bucket/prefix/region, the downstream
 Iceberg coordinates, and the Qlik tenant/API key/data-space id.

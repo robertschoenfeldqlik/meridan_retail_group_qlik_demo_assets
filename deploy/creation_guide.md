@@ -63,7 +63,7 @@ Step-by-step creation instructions for building Lakehouse tables, Data Products,
 Create 8 landing pipelines that replicate source data into the Bronze layer without transformation.
 
 > **Cluster Architecture:** MCG uses two separate Qlik data pipeline clusters:
-> - **CDC Cluster** — Handles PostgreSQL change data capture (Pipelines 1-3) and Salesforce incremental sync (Pipelines 6-8)
+> - **CDC Cluster** — Handles PostgreSQL change data capture (Pipelines 1-3) and Meridian CRM incremental sync (Pipelines 6-8)
 > - **Streaming Cluster** — Handles real-time Kafka ingestion from IoT topics `mcg.iot.cold-chain` and `mcg.iot.carrier-events` (Pipelines 4-5)
 
 #### Pipeline 1-3: PostgreSQL CDC → Bronze (CDC Cluster)
@@ -127,7 +127,7 @@ Create 8 landing pipelines that replicate source data into the Bronze layer with
 5. Click **Save & Run**
 6. Verify messages are flowing by checking the target table row count
 
-#### Pipeline 6-8: Salesforce Connector → Bronze (CDC Cluster)
+#### Pipeline 6-8: Meridian CRM (MySQL CDC) → Bronze (CDC Cluster)
 
 **Navigate to:** Data Integration → Data Pipelines → Create Landing Pipeline
 
@@ -135,24 +135,24 @@ Create 8 landing pipelines that replicate source data into the Bronze layer with
 |---|---|
 | **Pipeline type** | SaaS Landing |
 | **Cluster** | CDC Cluster |
-| **Source connection** | `MCG Salesforce CRM` (Salesforce) |
+| **Source connection** | `MCG CRM Database` (MySQL, gateway-bound) |
 | **Target** | `MCG Demo Lakehouse` → Schema: `bronze` |
-| **Mode** | Full + Incremental (based on `SystemModstamp`) |
+| **Mode** | Full + Incremental (based on `last_modified_date`) |
 
 **Step-by-step:**
 
-1. Click **Create Pipeline** → Select source: `MCG Salesforce CRM`
+1. Click **Create Pipeline** → Select source: `MCG CRM Database`
 2. Select target: `MCG Demo Lakehouse`
 3. Select objects to land:
 
-| Salesforce Object | Target Table | Refresh |
+| CRM table | Target Table | Refresh |
 |---|---|---|
-| `Contact` | `bronze.sf_contacts` | Every 15 min |
-| `MCG_Order__c` | `bronze.sf_orders` | Every 15 min |
-| `MCG_Product__c` | `bronze.sf_products` | Every 15 min |
+| `Contact` | `bronze.crm_contacts` | Every 15 min |
+| `crm_orders` | `bronze.crm_orders` | Every 15 min |
+| `crm_products` | `bronze.crm_products` | Every 15 min |
 
 4. Under **Scheduling**:
-   - Mode: Incremental (use `SystemModstamp` for change detection)
+   - Mode: Incremental (use `last_modified_date` for change detection)
    - Interval: 15 minutes
    - Initial load: Full snapshot first, then incremental
 5. Click **Save & Run**
@@ -167,9 +167,9 @@ Create 8 landing pipelines that replicate source data into the Bronze layer with
 | `bronze.shipments` | ~8,000 | Row count |
 | `bronze.iot_cold_chain` | Growing (streaming) | New rows arriving |
 | `bronze.iot_carrier_events` | Growing (streaming) | New rows arriving |
-| `bronze.sf_contacts` | ~2,000 | Row count |
-| `bronze.sf_orders` | ~5,000 | Row count |
-| `bronze.sf_products` | ~1,200 | Row count |
+| `bronze.crm_contacts` | ~2,000 | Row count |
+| `bronze.crm_orders` | ~5,000 | Row count |
+| `bronze.crm_products` | ~1,200 | Row count |
 
 **Total: 8 Bronze tables**
 
@@ -269,13 +269,13 @@ Create 8 data flows (plus 1 Talend job) in the Pipeline Designer that transform 
 | Setting | Value |
 |---|---|
 | **Name** | `MCG - Address Standardization` |
-| **Input** | `bronze.sf_contacts`, `bronze.sf_orders` |
+| **Input** | `bronze.crm_contacts`, `bronze.crm_orders` |
 | **Output** | `silver.addresses_standardized` |
 | **Nightmare** | #2 (Address Catastrophe) |
 
 **Pipeline Designer Steps:**
 
-1. **Sources** — `bronze.sf_contacts` joined with `bronze.sf_orders` on `Contact__c`
+1. **Sources** — `bronze.crm_contacts` joined with `bronze.crm_orders` on `Contact__c`
 2. **Country Normalize** — Map variants to ISO 3166 codes:
    - `Netherlands`, `Niederlande`, `Nederland`, `NL` → `NL`
    - `Singapore`, `SG` → `SG`
@@ -314,7 +314,7 @@ Create 8 data flows (plus 1 Talend job) in the Pipeline Designer that transform 
 
 **Talend Job Design:**
 
-1. **tSalesforceInput** — pull Contact records (incremental on `LastModifiedDate`, batch-limited)
+1. **tMysqlInput** — pull Contact records (incremental on `last_modified_date`, batch-limited)
 2. **`AddressStandardizer`** (custom Java routine, `tJavaRow`):
    - Parse free-text address into structured components
    - Repair country names to ISO 3166
@@ -339,7 +339,7 @@ Create 8 data flows (plus 1 Talend job) in the Pipeline Designer that transform 
 
 **Deployment:**
 - `npm run talend:zip` packages the routines, the context group, the build spec and the Iceberg
-  DDL into `deploy/talend/mcg_sf_address_validate_bulk.zip`
+  DDL into `deploy/talend/mcg_crm_address_validate_bulk.zip`
 - Import in Studio: **File → Import items → Select archive file** (see `IMPORT.md` in the zip)
 - Build the five-subjob canvas from `deploy/talend/BUILD_BULK_ADDRESS_JOB.md` §3
 - Schedule in TMC; can be reused by any future flow that processes addresses
@@ -367,13 +367,13 @@ Source (dirty) → Data Flow 3 (standardize) → Stewardship (human review)
 | Setting | Value |
 |---|---|
 | **Name** | `MCG - Product Master Harmonization` |
-| **Input** | `bronze.sf_products` |
+| **Input** | `bronze.crm_products` |
 | **Output** | `silver.products_harmonized` |
 | **Nightmare** | #3 (Product Master Mess) |
 
 **Pipeline Designer Steps:**
 
-1. **Source** — `bronze.sf_products`
+1. **Source** — `bronze.crm_products`
 2. **SKU Resolution** — Create canonical mapping:
    - If `SKU__c` starts with `MCG-` → use as canonical
    - If only `Legacy_SKU_Americas__c` (`AM-*`) or `Legacy_SKU_EU__c` (`EU-*`) → create MCG mapping
@@ -455,13 +455,13 @@ Source (dirty) → Data Flow 3 (standardize) → Stewardship (human review)
 | Setting | Value |
 |---|---|
 | **Name** | `MCG - Supplier Master Dedup` |
-| **Input** | `bronze.sf_products` (supplier fields) |
+| **Input** | `bronze.crm_products` (supplier fields) |
 | **Output** | `silver.suppliers_deduped` |
 | **Nightmare** | #3 (Product Master Mess) |
 
 **Pipeline Designer Steps:**
 
-1. **Source** — Extract unique supplier records from `bronze.sf_products` (`Supplier_Name__c`)
+1. **Source** — Extract unique supplier records from `bronze.crm_products` (`Supplier_Name__c`)
 2. **Normalize** — Lowercase, strip legal suffixes (`Ltd`, `PLC`, `Corp`, `S.A.`, `Co.`, `Inc.`)
 3. **Accent Normalize** — `Nestlé` → `nestle` for matching purposes
 4. **Fuzzy Match** — Jaro-Winkler similarity on normalized names:
@@ -481,7 +481,7 @@ Source (dirty) → Data Flow 3 (standardize) → Stewardship (human review)
 | Setting | Value |
 |---|---|
 | **Name** | `MCG - Order to Delivery Timeline` |
-| **Input** | `bronze.sf_orders`, `silver.shipments_canonical`, `silver.iot_normalized`, `silver.inventory_reconciled` |
+| **Input** | `bronze.crm_orders`, `silver.shipments_canonical`, `silver.iot_normalized`, `silver.inventory_reconciled` |
 | **Output** | `silver.order_delivery_timeline` |
 | **Nightmares** | #5 (Timestamps), #6 (Carrier Black Hole) |
 
@@ -489,7 +489,7 @@ Source (dirty) → Data Flow 3 (standardize) → Stewardship (human review)
 
 1. **Join** — Link orders → shipments via `order_id`
 2. **Timeline Build** — For each order, extract milestone timestamps:
-   - `order_placed_utc` (from Salesforce `Order_Date__c`)
+   - `order_placed_utc` (from Meridian CRM `Order_Date__c`)
    - `picked_utc` (from `warehouse_events` via inventory)
    - `shipped_utc` (from `shipments_canonical`)
    - `delivered_utc` (from `shipments_canonical`)

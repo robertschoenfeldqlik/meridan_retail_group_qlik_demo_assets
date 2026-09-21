@@ -57,7 +57,7 @@ MCG adopts six standard data quality dimensions, aligned with Qlik's Trust Score
 ### 3.5 Uniqueness
 - **Definition**: The degree to which each entity appears only once in the dataset
 - **Target**: < 0.1% duplicate rate for master data
-- **Current State**: Estimated 340 duplicate supplier records across Salesforce, SAP, and procurement system. Customer duplicate rate estimated at 8%.
+- **Current State**: Estimated 340 duplicate supplier records across Meridian CRM, SAP, and the procurement system. Customer duplicate rate estimated at 8%.
 
 ### 3.6 Validity
 - **Definition**: The degree to which data conforms to defined formats, ranges, and business rules
@@ -75,7 +75,7 @@ The following data elements are classified as **Critical** and subject to the hi
 | Inventory position (qty on hand) | VP Warehouse Ops | Oracle WMS / Manhattan WMS | 99% accuracy | **74%** |
 | Product lot/batch number | Chief Compliance Officer | Supplier → WMS | 100% completeness | **85%** |
 | Shipment tracking number | VP Supply Chain | Descartes TMS | 100% completeness | **58%** |
-| Customer delivery address | VP E-Commerce | Salesforce Commerce Cloud | 95% deliverability | **82%** |
+| Customer delivery address | VP E-Commerce | Meridian Storefront | 95% deliverability | **82%** |
 | Cold chain temperature reading | Cold Chain Manager | Tive / DC sensors | 99% availability | **72%** |
 | Supplier identity | VP Procurement | SAP MM | 100% uniqueness | **91%** |
 | Product master (weight, dims) | Category Management | SAP MDG | 99% consistency | **87%** |

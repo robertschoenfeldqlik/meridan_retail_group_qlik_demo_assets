@@ -148,7 +148,7 @@ function sectionQuickStart() {
         ["1", "Connection & Auth", "Tenant URL, API key or OAuth, connection test"],
         ["—", "Local Stack & Gateway", "Off-rail, its own mode: start the local Kafka/PostgreSQL/simulator containers and the optional Data Movement Gateway"],
         ["2", "Spaces", "Create the shared, managed and data spaces"],
-        ["3", "Data Connections", "PostgreSQL, Salesforce, Kafka, S3 and Athena"],
+        ["3", "Data Connections", "PostgreSQL, MySQL, Kafka, S3 and Athena"],
         ["4", "Pipelines", "Both declarative pipeline projects (batch + streaming): tasks, connection bindings, prepare, start"],
         ["5", "Data Products", "The two gold data products with dataset attachment and marketplace publish toggles"],
         ["6", "Build Apps & Theme", "Build the analytics apps and apply the MCG theme"],
@@ -286,7 +286,7 @@ function sectionInfrastructure() {
     screenshot("Data Integration → Create connection dialog with PostgreSQL selected and the mcg-qlik-dmg Data Movement gateway chosen in the Data gateway dropdown"),
     para("Kafka and credentialed cloud connectors are set up separately:"),
     numberedItem(1, "Kafka (IoT telemetry) as a source requires a Data Gateway - Streaming — a different gateway type from Data Movement. Register a Streaming gateway, then create the Kafka source in the Data Integration project."),
-    numberedItem(2, "Salesforce, Amazon S3, and Amazon Athena are credentialed connectors — create them in Qlik Cloud (Data → Create connection) and supply their OAuth/IAM credentials."),
+    numberedItem(2, "Amazon S3 and Amazon Athena are credentialed connectors — create them in Qlik Cloud (Data → Create connection) and supply their OAuth/IAM credentials."),
     calloutBox("Gateway types overview (Direct Access vs. Data Movement vs. Streaming): https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/Gateways/setting-up-gateways.htm", "info"),
   ];
 }
@@ -417,26 +417,26 @@ function sectionDataConnections() {
     screenshot("Kafka connection settings in Qlik Cloud with bootstrap servers and topic configuration"),
     calloutBox("Kafka connections from Qlik Cloud to an on-premises Kafka cluster require Data Gateway - Streaming. For cloud-hosted Kafka (e.g., Confluent Cloud), a direct connection is possible with SASL authentication.", "info"),
 
-    heading("7.3 Salesforce Connection (CRM)", 2),
-    para("This connection provides customer and order data from Salesforce CRM."),
+    heading("7.3 Meridian CRM Connection (CRM)", 2),
+    para("This connection provides customer and order data from Meridian CRM."),
     numberedItem(1, "Click Add new \u2192 Data connection"),
-    numberedItem(2, "Select Salesforce as the connection type"),
+    numberedItem(2, "Select MySQL as the connection type (a replication source, bound to the Data Movement gateway)"),
     numberedItem(3, "Configure the connection:"),
     dataTable(
       ["Setting", "Value"],
       [
-        ["Connection name", "MCG-Salesforce-CRM"],
-        ["Username", "your-salesforce-username"],
+        ["Connection name", "MCG-CRM-Database"],
+        ["Username", "qlik_cdc"],
         ["Password", "your-password + security-token"],
-        ["Security token", "From Salesforce: Settings \u2192 Personal \u2192 Reset Security Token"],
+        ["Password", "The MYSQL_PASSWORD value from infrastructure/.env"],
       ]
     ),
-    numberedItem(4, "After connecting, select these Salesforce objects:"),
+    numberedItem(4, "After connecting, select these CRM tables:"),
     para("Contact", { bullet: true, indent: true }),
-    para("MCG_Order__c (custom object)", { bullet: true, indent: true }),
-    para("MCG_Product__c (custom object)", { bullet: true, indent: true }),
-    screenshot("Salesforce connector configuration in Qlik Cloud showing the object selection screen with Contact, MCG_Order__c, and MCG_Product__c selected"),
-    calloutBox("The MCG_Order__c and MCG_Product__c custom objects must exist in your Salesforce org. If you are using a fresh Developer Edition, run the Salesforce setup script first: npm run sf:setup", "info"),
+    para("crm_orders (custom object)", { bullet: true, indent: true }),
+    para("crm_products (custom object)", { bullet: true, indent: true }),
+    screenshot("MySQL CDC connector configuration in Qlik Cloud showing the table selection screen with Contact, crm_orders, and crm_products selected"),
+    calloutBox("The crm_contacts, crm_orders and crm_products tables must exist in the Meridian CRM database. The seeder creates them and loads the demo population: npm run db:seed", "info"),
 
     heading("7.4 Amazon Athena Connection (Analytics Reads — Open Lakehouse)", 2),
     para("The Open Lakehouse is the destination for all pipeline data; the analytics apps read it back through Amazon Athena. Athena queries the lakehouse's Iceberg tables via the AWS Glue catalog, exposed as databases bronze, silver, and gold. Both app load scripts LIB CONNECT TO this connection by name."),
@@ -480,7 +480,7 @@ function sectionLakehouse() {
     ),
 
     heading("8.2 Deploy the Pipelines (Declarative Import — Primary Method)", 2),
-    para("This is the primary way to deploy the MCG pipelines. Two Open Lakehouse projects are defined as version-controlled YAML under deploy/pipelines/ (QTCP declarative pipelines preview): mcg-batch-pipeline (WMS CDC + Salesforce CRM → silver → gold) and mcg-streaming-pipeline (Kafka IoT → silver). Both import as Step 13 of npm run deploy."),
+    para("This is the primary way to deploy the MCG pipelines. Two Open Lakehouse projects are defined as version-controlled YAML under deploy/pipelines/ (QTCP declarative pipelines preview): mcg-batch-pipeline (WMS CDC + Meridian CRM → silver → gold) and mcg-streaming-pipeline (Kafka IoT → silver). Both import as Step 13 of npm run deploy."),
     para("The deploy drives the full chain over REST APIs: create connections → validate definitions → create the DI project → import the YAML → resolve bindings → prepare → start every task in dependency order (landing → transform → datamart) → attach the gold datasets to their Data Products. Control it with four config.json flags (also exposed as toggles on the wizard's Data Products page):"),
     dataTable(
       ["Flag (config.json pipelines.*)", "Default", "Effect"],
@@ -513,14 +513,14 @@ function sectionLakehouse() {
       ]
     ),
 
-    heading("API Pipelines (Salesforce \u2192 Bronze)", 3),
-    para("These pipelines use REST API extraction to pull Salesforce data on a schedule. A rename rule maps the Salesforce objects to the bronze table names:"),
+    heading("CRM Pipelines (MySQL \u2192 Bronze)", 3),
+    para("These pipelines use REST API extraction to pull Meridian CRM data on a schedule. A rename rule maps the CRM tables to the bronze table names:"),
     dataTable(
       ["Pipeline Name", "Source Object", "Target Table", "Sync Method"],
       [
-        ["SF-Contacts", "Contact", "bronze.sf_contacts", "API (every 15 min)"],
-        ["SF-Orders", "MCG_Order__c", "bronze.sf_orders", "API (every 15 min)"],
-        ["SF-Products", "MCG_Product__c", "bronze.sf_products", "API (every 15 min)"],
+        ["SF-Contacts", "Contact", "bronze.crm_contacts", "API (every 15 min)"],
+        ["SF-Orders", "crm_orders", "bronze.crm_orders", "API (every 15 min)"],
+        ["SF-Products", "crm_products", "bronze.crm_products", "API (every 15 min)"],
       ]
     ),
 
@@ -542,10 +542,10 @@ function sectionLakehouse() {
         ["silver.inventory_reconciled", "bronze.inventory_positions", "UoM + storage-zone standardization, phantom/negative-qty flags, lot compliance, trust score"],
         ["silver.warehouse_events_clean", "bronze.warehouse_events", "Event-type canonicalization, bin normalization, per-DC timezone to UTC"],
         ["silver.shipments_canonical", "bronze.shipments", "6-carrier multilingual status mapping, ISO countries, lbs-to-kg"],
-        ["silver.addresses_standardized", "bronze.sf_contacts", "City/state/postal/country normalization, address quality score"],
-        ["silver.products_harmonized", "bronze.sf_products", "Legacy SKU resolution, weight imputation, supplier canonicalization"],
-        ["silver.suppliers_deduped", "bronze.sf_products", "Canonical supplier rollup with variant counts"],
-        ["silver.order_delivery_timeline", "bronze.sf_orders + bronze.shipments", "Order lifecycle join, late-delivery/days-late/WISMO metrics"],
+        ["silver.addresses_standardized", "bronze.crm_contacts", "City/state/postal/country normalization, address quality score"],
+        ["silver.products_harmonized", "bronze.crm_products", "Legacy SKU resolution, weight imputation, supplier canonicalization"],
+        ["silver.suppliers_deduped", "bronze.crm_products", "Canonical supplier rollup with variant counts"],
+        ["silver.order_delivery_timeline", "bronze.crm_orders + bronze.shipments", "Order lifecycle join, late-delivery/days-late/WISMO metrics"],
         ["silver.iot_normalized", "bronze.iot_cold_chain", "Fahrenheit-to-Celsius, GPS-gap / unregistered-sensor / low-battery flags"],
       ]
     ),
@@ -811,7 +811,7 @@ function sectionVerification() {
         ["8", "MCG Dark Theme", "Check app appearance", "Dark navy background with branded colors"],
         ["9", "PostgreSQL Connection", "Test connection in Qlik Cloud", "Connection test succeeds"],
         ["10", "Kafka Connection", "Test connection in Qlik Cloud", "Connection test succeeds"],
-        ["11", "Salesforce Connection", "Test connection in Qlik Cloud", "Connection test succeeds"],
+        ["11", "Meridian CRM Connection", "Test connection in Qlik Cloud", "Connection test succeeds"],
         ["12", "Lakehouse (Bronze)", "Check Data Integration \u2192 Lakehouse", "8 pipelines running, data flowing"],
         ["13", "Lakehouse (Silver)", "Check silver schema tables", "8 tables with transformed data"],
         ["14", "Lakehouse (Gold)", "Check gold schema tables", "2 data products with data"],

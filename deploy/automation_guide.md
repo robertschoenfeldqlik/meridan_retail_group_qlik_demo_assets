@@ -9,7 +9,7 @@ Step-by-step instructions for configuring each automation in the Qlik Cloud UI a
 1. **Qlik Cloud tenant** with Automations entitlement enabled
 2. **Microsoft Teams** channel with an Incoming Webhook connector configured
 3. **Qlik Answers assistant** and knowledge base deployed (for the Answers-based automation)
-4. **Data connections** active and refreshing (PostgreSQL, Kafka, Salesforce)
+4. **Data connections** active and refreshing (PostgreSQL, Kafka, MySQL)
 
 ### Getting a Teams Incoming Webhook URL
 
@@ -222,7 +222,7 @@ Bronze (dirty addresses) → Data Flow 3 (standardization) → Silver (quality-s
     → Silver updated (corrected addresses flow to Gold → Analytics → Predict)
 ```
 
-**Nightmare tie-in:** #2 (Address Catastrophe) — 11% formatting issues, 6% truncation, 3.2% duplicates in Salesforce addresses. This automation reduces the manual effort of correcting ~8,500 flagged address records.
+**Nightmare tie-in:** #2 (Address Catastrophe) — 11% formatting issues, 6% truncation, 3.2% duplicates in CRM addresses. This automation reduces the manual effort of correcting ~8,500 flagged address records.
 
 ### UI Configuration Steps
 
@@ -331,7 +331,7 @@ Bronze (dirty addresses) → Data Flow 3 (standardization) → Silver (quality-s
 ### End-to-End Data Quality Loop
 
 ```
-1. Source: Salesforce addresses arrive with 11% formatting issues
+1. Source: CRM addresses arrive with 11% formatting issues
 2. Pipeline: Data Flow 3 standardizes + scores (Bronze → Silver)
 3. Governance: Semantic Types + AI Validation Rules flag quality issues
 4. Stewardship: Address Cleanup sprint routes ambiguous records to stewards

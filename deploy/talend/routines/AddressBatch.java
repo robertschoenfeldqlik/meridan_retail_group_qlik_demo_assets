@@ -13,7 +13,7 @@ import java.util.List;
  *
  *   routines.AddressBatch.contactId((Integer) globalMap.get("tLoop_1_CURRENT_VALUE"))
  *
- * Lifecycle inside mcg_sf_address_validate_bulk:
+ * Lifecycle inside mcg_crm_address_validate_bulk:
  *   1. tJava      "init_batch"     -> AddressBatch.reset()
  *   2. tJavaRow   "standardize"    -> AddressBatch.add(AddressStandardizer.standardize(...))
  *   3. tJava      "bulk_geocode"   -> BulkGeocoder.geocodeAll(AddressBatch.all(), ...)

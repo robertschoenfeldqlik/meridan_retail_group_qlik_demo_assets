@@ -16,7 +16,7 @@
 //   - bronze.iot_carrier_events
 //
 // Talend output (refreshed every 15 min by deploy/talend jobs):
-//   - MCG_SF_Addresses_Validated.qvd   (validated + geocoded addresses)
+//   - MCG_CRM_Addresses_Validated.qvd   (validated + geocoded addresses)
 //
 // The connection name matches the deploy config (dataConnections.athena) —
 // an Amazon Athena connection reading the Open Lakehouse on AWS.
@@ -158,14 +158,14 @@ FROM [lib://MCG Demo - Development:MCG Open Lakehouse/silver_addresses_standardi
 // =============================================================================
 // 5. VALIDATED ADDRESSES + GEO — Talend QVD (refreshed every 15 minutes)
 // =============================================================================
-// Produced by the Talend jobs in deploy/talend/ (mcg_sf_address_validate →
-// mcg_sf_address_to_qvd): Salesforce pull every 15 min, AddressValidator tMap
+// Produced by the Talend jobs in deploy/talend/ (mcg_crm_address_validate →
+// mcg_crm_address_to_qvd): MySQL CDC read every 15 min, AddressValidator tMap
 // format check, Nominatim geocoding for bad addresses, unresolved rows routed
 // to the Address Cleanup stewardship sprint. Linked via [Contact ID].
 // FileSize() guard: the app reloads cleanly before the first Talend run.
 // =============================================================================
 
-IF NOT IsNull(FileSize('lib://MCG Demo - Development:MCG Open Lakehouse/MCG_SF_Addresses_Validated.qvd')) THEN
+IF NOT IsNull(FileSize('lib://MCG Demo - Development:MCG Open Lakehouse/MCG_CRM_Addresses_Validated.qvd')) THEN
 
 CustomerGeo:
 LOAD
@@ -179,7 +179,7 @@ LOAD
     geo_confidence          AS [Geo Confidence],
     validation_status       AS [Address Validation Status],
     validated_at_utc        AS [Validated At]
-FROM [lib://MCG Demo - Development:MCG Open Lakehouse/MCG_SF_Addresses_Validated.qvd]
+FROM [lib://MCG Demo - Development:MCG Open Lakehouse/MCG_CRM_Addresses_Validated.qvd]
 (qvd);
 
 END IF

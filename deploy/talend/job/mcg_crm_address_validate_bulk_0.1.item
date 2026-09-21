@@ -4,7 +4,7 @@
     defaultContext="Default" jobType="Standard">
   <context confirmationNeeded="false" name="Default">
     <contextParameter comment="" name="address_extract_path" prompt="address_extract_path?" promptNeeded="false" type="id_String" value="&quot;deploy/mockdata/out/silver_addresses_standardized.csv&quot;"/>
-    <contextParameter comment="" name="sf_batch_limit" prompt="sf_batch_limit?" promptNeeded="false" type="id_String" value="500"/>
+    <contextParameter comment="" name="crm_batch_limit" prompt="crm_batch_limit?" promptNeeded="false" type="id_String" value="500"/>
     <contextParameter comment="" name="nominatim_throttle_ms" prompt="nominatim_throttle_ms?" promptNeeded="false" type="id_String" value="1100"/>
     <contextParameter comment="" name="nominatim_base_url" prompt="nominatim_base_url?" promptNeeded="false" type="id_String" value="&quot;https://nominatim.openstreetmap.org/search&quot;"/>
     <contextParameter comment="" name="nominatim_user_agent" prompt="nominatim_user_agent?" promptNeeded="false" type="id_String" value="&quot;MCG-Demo-AddressValidation/1.0 (Qlik demo dataset)&quot;"/>
@@ -23,7 +23,7 @@
     <elementParameter field="TEXT" name="FIELDSEPARATOR" value="&quot;,&quot;"/>
     <elementParameter field="CHECK" name="CSV_OPTION" value="true"/>
     <elementParameter field="TEXT" name="HEADER" value="1"/>
-    <elementParameter field="TEXT" name="LIMIT" value="context.sf_batch_limit"/>
+    <elementParameter field="TEXT" name="LIMIT" value="context.crm_batch_limit"/>
     <elementParameter field="CHECK" name="REMOVE_EMPTY_ROW" value="true"/>
     <elementParameter field="TEXT" name="ENCODING" value="&quot;UTF-8&quot;"/>
     <metadata connector="FLOW" label="tFileInputDelimited_1" name="tFileInputDelimited_1">

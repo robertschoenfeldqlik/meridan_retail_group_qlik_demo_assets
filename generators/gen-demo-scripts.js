@@ -252,7 +252,7 @@ function module01() {
       ["Duration", "15-20 minutes (setup) / 5 minutes (demo walkthrough)"],
       ["Checklist Phase", "Phase 1"],
       ["Nightmares", "All 7 (data sources feed all nightmare scenarios)"],
-      ["Components", "PostgreSQL, Apache Kafka (Confluent), Salesforce, Docker"],
+      ["Components", "PostgreSQL, Apache Kafka (Confluent), MySQL, Docker"],
     ]),
 
     para("This is Module 1 of the Project Qlarity demo walkthrough — the end-to-end story of MCG's unified Qlik data-platform initiative (Connected Logistics, Analytics, and Real-time Intelligence Technology). Each module maps to a Project Qlarity phase and to the data-quality nightmares it eliminates.", { italics: true, color: Q.teal }),
@@ -267,7 +267,7 @@ function module01() {
     numberedItem(1, "Docker Desktop installed and running (for Kafka and PostgreSQL containers)"),
     numberedItem(2, "Python 3.9+ with pip installed"),
     numberedItem(3, "Node.js 18+ (for deploy scripts)"),
-    numberedItem(4, "A Salesforce Developer Edition org (free at developer.salesforce.com)"),
+    numberedItem(4, "A MySQL 8.4 org (free at developer.salesforce.com)"),
     numberedItem(5, "Network access to your Qlik Cloud tenant"),
 
     heading("Demo Methodology: Tell → Show → Tell", 2),
@@ -301,12 +301,12 @@ function module01() {
     calloutBox("Talking point: The IoT simulator intentionally mixes Fahrenheit and Celsius readings (8% of sensors), sends bare timestamps without timezone info (3%), and creates GPS blackouts for Lagos shipments (2%). These are the real data quality nightmares IoT teams face.", "warning"),
 
     heading("Step 3: Configure Salesforce", 3),
-    numberedItem(1, "Log into your Salesforce Developer Edition org"),
-    numberedItem(2, "Create custom objects MCG_Order__c and MCG_Product__c (see data_model.md Section 3)"),
+    numberedItem(1, "Log into your MySQL 8.4 org"),
+    numberedItem(2, "Create custom objects crm_orders and crm_products (see data_model.md Section 3)"),
     numberedItem(3, "Create API user and generate security token"),
-    numberedItem(4, "Run the Salesforce simulator:"),
-    promptBox("python simulators/salesforce_simulator.py --instance https://your-dev-org.my.salesforce.com", "Terminal Command"),
-    calloutBox("Talking point: Salesforce data has 11% address formatting inconsistencies and a legacy 30-character field limit that truncates addresses. These feed directly into Nightmare #2 (Address Catastrophe).", "warning"),
+    numberedItem(4, "Run the CRM simulator:"),
+    promptBox("python simulators/mysql_crm_simulator.py --instance https://your-dev-org.my.salesforce.com", "Terminal Command"),
+    calloutBox("Talking point: Meridian CRM data has 11% address formatting inconsistencies and a legacy 30-character field limit that truncates addresses. These feed directly into Nightmare #2 (Address Catastrophe).", "warning"),
 
     tellAnnotation("close", "So what you just saw are three real data sources — a warehouse database, IoT cold-chain sensors, and a CRM — all generating data with real-world quality problems baked in. This is not sanitized demo data. This is how supply chain data actually looks."),
     interactionPrompt("Does this feel familiar? How many disconnected data sources does your team deal with today?"),
@@ -325,7 +325,7 @@ function module01() {
         ["Docker compose fails", "Docker Desktop not running", "Start Docker Desktop, wait 30s, retry"],
         ["PostgreSQL connection refused", "Wrong host/port or database not created", "Verify with: psql -h localhost -U mcg_admin -d mcg_wms"],
         ["Kafka topics not created", "Init container failed", "Run: docker compose exec kafka kafka-topics --bootstrap-server kafka:9092 --list"],
-        ["Salesforce auth error", "Expired security token", "Settings > Reset My Security Token in Salesforce"],
+        ["Salesforce auth error", "Expired security token", "Settings > Reset My Security Token in Meridian CRM"],
       ]
     ),
   ];
@@ -364,7 +364,7 @@ function module02() {
     para("Create the source connections (in a Data Integration project):"),
     numberedItem(1, "Data Integration → your project → Create connection → PostgreSQL / MySQL / SQL Server."),
     numberedItem(2, "Select the mcg-qlik-dmg gateway, enter host/port/database/credentials, then test and save."),
-    calloutBox("A Data Movement gateway connection is created in the Data Integration UI by selecting the gateway — the public REST API cannot create it, so the deploy script skips these sources and prints this same guidance instead of a non-functional connection. Kafka as a source needs a Data Gateway - Streaming; Salesforce/S3/Athena are credentialed UI connectors. Full guide: https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/Gateways/dm-gateway-setting-up.htm", "info"),
+    calloutBox("A Data Movement gateway connection is created in the Data Integration UI by selecting the gateway — the public REST API cannot create it, so the deploy script skips these sources and prints this same guidance instead of a non-functional connection. Kafka as a source needs a Data Gateway - Streaming; S3/Athena are credentialed UI connectors. Full guide: https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/Gateways/dm-gateway-setting-up.htm", "info"),
 
     heading("Demo Methodology: Tell → Show → Tell", 2),
     limbicOpening("MCG had a data engineer who spent 3 days debugging a broken pipeline — only to discover it was feeding the wrong Kafka topic to the wrong team's dashboard. No governance, no separation, no audit trail. That single incident delayed a product launch by two weeks.", "Case Study"),
@@ -407,10 +407,10 @@ function module02() {
     numberedItem(3, "Test connection — should show 2 topics: mcg.iot.cold-chain, mcg.iot.carrier-events"),
     calloutBox("Talking point: Kafka streaming data flows continuously — no batch windows, no stale data. Temperature readings arrive every 5 seconds. This is how you catch a cold chain exceedance before product spoils."),
 
-    heading("Step 4: Salesforce Connection", 3),
-    numberedItem(1, "Select Salesforce Standard connector"),
+    heading("Step 4: Meridian CRM Connection", 3),
+    numberedItem(1, "Select MySQL CDC connector"),
     numberedItem(2, "Authenticate via OAuth or username/password + security token"),
-    numberedItem(3, "Test connection — should show Contact, MCG_Order__c, MCG_Product__c"),
+    numberedItem(3, "Test connection — should show Contact, crm_orders, crm_products"),
 
     heading("Step 5: Amazon Athena Connection (Analytics Reads)", 3),
     numberedItem(1, "Select Amazon Athena connector — this is how the analytics apps read the Open Lakehouse"),
@@ -471,9 +471,9 @@ function module03() {
         ["PostgreSQL", "CDC (real-time)", "bronze.inventory_positions", "Real-time"],
         ["PostgreSQL", "CDC (real-time)", "bronze.warehouse_events", "Real-time"],
         ["PostgreSQL", "CDC (real-time)", "bronze.shipments", "Real-time"],
-        ["Salesforce", "Standard connector", "bronze.sf_contacts", "15 min"],
-        ["Salesforce", "Standard connector", "bronze.sf_orders", "15 min"],
-        ["Salesforce", "Standard connector", "bronze.sf_products", "15 min"],
+        ["Salesforce", "Standard connector", "bronze.crm_contacts", "15 min"],
+        ["Salesforce", "Standard connector", "bronze.crm_orders", "15 min"],
+        ["Salesforce", "Standard connector", "bronze.crm_products", "15 min"],
         ["Kafka", "Streaming", "bronze.iot_cold_chain", "Real-time"],
         ["Kafka", "Streaming", "bronze.iot_carrier_events", "Real-time"],
       ]
@@ -516,7 +516,7 @@ function module03() {
     numberedItem(1, "Navigate to Data Integration > Lakehouse > Show Bronze tables receiving data"),
     numberedItem(2, 'Open bronze.inventory_positions — show raw data with quality issues visible (null lot numbers, timestamp mismatches)'),
     numberedItem(3, 'Navigate to a Silver transformation route — show the Pipeline Designer visual flow'),
-    numberedItem(4, 'Show before/after: bronze.sf_contacts (messy addresses) vs silver.addresses_standardized (standardized)'),
+    numberedItem(4, 'Show before/after: bronze.crm_contacts (messy addresses) vs silver.addresses_standardized (standardized)'),
     numberedItem(5, 'Open a Gold table recipe — show how Silver tables combine into business-ready products'),
     numberedItem(6, 'Highlight refresh schedules: real-time CDC, continuous streaming, 15-min CRM sync, event-triggered silver, plus the daily gold full refresh (06:00 UTC)'),
 
@@ -585,7 +585,7 @@ function module04() {
     calloutBox("Talking point: Impact analysis answers the question every data engineer dreads: 'If I change this table, what breaks?' Before Qlik, MCG had no way to know."),
 
     heading("Step 3: Data Profiling", 3),
-    numberedItem(1, "Run profiling on bronze.sf_contacts"),
+    numberedItem(1, "Run profiling on bronze.crm_contacts"),
     expectedBox("Profiling should detect: 11% address format inconsistencies, 6% truncated fields (>30 chars), null patterns in postal_code column"),
     numberedItem(2, "Run profiling on bronze.inventory_positions"),
     expectedBox("Should flag: 15% of perishable items have NULL lot_number, timestamp columns have mixed timezone formats"),
@@ -1018,7 +1018,7 @@ function module10() {
 
     heading("Sprint 1: Address Cleanup", 3),
     metadataTable([
-      ["Source", "The UNRESOLVED branch of mcg_sf_address_validate_bulk — rows the bulk geocoder could not resolve to GPS"],
+      ["Source", "The UNRESOLVED branch of mcg_crm_address_validate_bulk — rows the bulk geocoder could not resolve to GPS"],
       ["Records", "~640 addresses (3.2% of 20,000 customer records)"],
       ["Assignee", "Customer Data Team (Sophie Muller)"],
       ["Task Type", "Correct the address so it can be geocoded"],
@@ -1078,7 +1078,7 @@ function module10() {
     numberedItem(4, "Correct the address and submit"),
     numberedItem(5, "Show the sprint dashboard: tasks completed, pending, accuracy trend"),
     numberedItem(6, "Open Missing Weights sprint — show the bulk review interface"),
-    numberedItem(7, "Explain: corrections are picked up by MCG Address Correction — Talend Job Trigger (Module 12), which hands them to mcg_sf_address_validate_bulk to re-process"),
+    numberedItem(7, "Explain: corrections are picked up by MCG Address Correction — Talend Job Trigger (Module 12), which hands them to mcg_crm_address_validate_bulk to re-process"),
 
     heading("Talking Points", 2),
     tellAnnotation("close", "Four sprints, four different domain teams, one unified workflow. The key: corrections approved in Stewardship flow back through the Lakehouse automatically. This is a closed-loop data quality cycle — not a one-time cleanup but a continuous improvement process."),
@@ -1169,7 +1169,7 @@ function module12() {
         ["Cold Chain Alert", "Every 5 min: temp > 8 C for 15+ min", "Post Adaptive Card to Teams", "#mcg-cold-chain-alerts"],
         ["Pipeline Health Summary", "Schedule: 07:00 UTC daily", "Post health summary to Teams", "#mcg-data-engineering"],
         ["Stewardship Sprint Summary", "Schedule: 07:00 UTC daily", "Read the Address Cleanup sprint summary", "Run title / digest"],
-        ["Address Correction — Talend Job Trigger", "Schedule (every 30 min)", "Read steward-corrected records from the Address Cleanup sprint", "Hand-off to mcg_sf_address_validate_bulk"],
+        ["Address Correction — Talend Job Trigger", "Schedule (every 30 min)", "Read steward-corrected records from the Address Cleanup sprint", "Hand-off to mcg_crm_address_validate_bulk"],
       ]
     ),
 
@@ -1196,7 +1196,7 @@ function module12() {
     heading("Address Correction Loop (Advanced)", 3),
     ...shot("automation-address-correction"),
     numberedItem(1, "Show the Stewardship-to-Talend-to-Lakehouse loop:"),
-    para("  Steward corrects an address in the Address Cleanup sprint > the automation reads the corrected records > mcg_sf_address_validate_bulk re-runs them and writes the GPS-resolved rows to S3 > they land in the Iceberg table silver.addresses_geocoded > the silver transform joins them onto silver.addresses_standardized > Gold refreshes > the Predict model improves", { indent: true }),
+    para("  Steward corrects an address in the Address Cleanup sprint > the automation reads the corrected records > mcg_crm_address_validate_bulk re-runs them and writes the GPS-resolved rows to S3 > they land in the Iceberg table silver.addresses_geocoded > the silver transform joins them onto silver.addresses_standardized > Gold refreshes > the Predict model improves", { indent: true }),
     calloutBox("Why the automation surfaces records rather than consuming them: consuming a record means ‘this correction is handled’, and at that point in the flow Talend has not applied it yet. Acknowledging first would let a Talend failure silently lose a steward’s work, so the Talend job owns the consume call. The block is present in the graph but deliberately disabled.", "info"),
     calloutBox("Talking point: This is the closed-loop data quality cycle. Detection (profiling) > Notification (alert) > Review (stewardship) > Correction (Talend job) > Validation (Trust Score). Fully automated except the human judgment step."),
 
@@ -1637,19 +1637,19 @@ function module18() {
       ["Duration", "10-12 minutes"],
       ["Checklist Phase", "Phase 10 (Automations) — Agentic Data Engineering"],
       ["Nightmares", "#2 (Address Catastrophe), #6 (Carrier Data Black Hole)"],
-      ["Components", "Talend Agentic Routes (LLM integration, RAG, agentic orchestration), the Salesforce address job mcg_sf_address_validate_bulk"],
+      ["Components", "Talend Agentic Routes (LLM integration, RAG, agentic orchestration), the CRM address job mcg_crm_address_validate_bulk"],
     ]),
 
-    clarityContext("Project Qlarity Phase 2 (Analytics & Quality): AI inside the pipeline task itself. The existing Salesforce address-validation job gains an LLM-assisted correction step, so the fix happens inside the route — not in a bolt-on app after it."),
+    clarityContext("Project Qlarity Phase 2 (Analytics & Quality): AI inside the pipeline task itself. The existing CRM address-validation job gains an LLM-assisted correction step, so the fix happens inside the route — not in a bolt-on app after it."),
 
     calloutBox("Preview / roadmap: Talend Agentic Routes are a Qlik internal preview (June 2026) — position as forward-looking, and confirm availability for the customer's edition before committing.", "warning"),
 
     heading("Overview", 2),
-    para("Talend Agentic Routes extend Qlik Talend Cloud for AI-native workflows in three ways: (a) LLM integration in data tasks — cloud LLMs (OpenAI, Anthropic Claude, Google Gemini, Amazon Bedrock) and on-prem models (Ollama, Mistral, Gemma 3, Phi 4); (b) RAG pipelines writing to vector targets (Pinecone, MongoDB, Snowflake, Databricks, Milvus, Oracle); and (c) agentic orchestration — event-driven agent orchestration, conversational AI, and extensible tool + MCP client support. This puts sentiment analysis, entity extraction, content classification, and AI-assisted data quality inside pipeline tasks. The MCG surface is the existing Talend job mcg_sf_address_validate_bulk: address standardization, bulk geocoding, and a GPS routing gate that sends unresolved rows to a Qlik Stewardship sprint."),
+    para("Talend Agentic Routes extend Qlik Talend Cloud for AI-native workflows in three ways: (a) LLM integration in data tasks — cloud LLMs (OpenAI, Anthropic Claude, Google Gemini, Amazon Bedrock) and on-prem models (Ollama, Mistral, Gemma 3, Phi 4); (b) RAG pipelines writing to vector targets (Pinecone, MongoDB, Snowflake, Databricks, Milvus, Oracle); and (c) agentic orchestration — event-driven agent orchestration, conversational AI, and extensible tool + MCP client support. This puts sentiment analysis, entity extraction, content classification, and AI-assisted data quality inside pipeline tasks. The MCG surface is the existing Talend job mcg_crm_address_validate_bulk: address standardization, bulk geocoding, and a GPS routing gate that sends unresolved rows to a Qlik Stewardship sprint."),
     calloutBox("The LLM step runs inside the pipeline task, so the AI enrichment inherits the pipeline's scheduling, lineage, and governance — it is a data step, not a separate application. Choose cloud or on-prem models per your data-residency rules.", "info"),
 
     heading("Demo Methodology: Tell → Show → Tell", 2),
-    limbicOpening("11% of MCG's Salesforce addresses are malformed and a further 6% are truncated by a legacy 30-character field — the root of $3.1M a year in delivery failures. The existing address job repairs what it can and bulk-geocodes the batch, but whatever it cannot resolve to GPS still falls out to a human queue. An LLM step inside the same route can propose the corrected address before it ever reaches that queue.", "Case Study"),
+    limbicOpening("11% of MCG's CRM addresses are malformed and a further 6% are truncated by a legacy 30-character field — the root of $3.1M a year in delivery failures. The existing address job repairs what it can and bulk-geocodes the batch, but whatever it cannot resolve to GPS still falls out to a human queue. An LLM step inside the same route can propose the corrected address before it ever reaches that queue.", "Case Study"),
     interactionPrompt("Where in your pipelines are you routing messy records to a human queue that an in-line AI step could clear first?"),
 
     heading("Demo Walk-Through", 2),
@@ -1658,19 +1658,19 @@ function module18() {
 
     heading("Step 1: Open the Existing Address Job", 3),
     numberedItem(1, "Open the Salesforce Address Validation job (Talend) and show the existing flow:"),
-    para("  Salesforce Contacts > AddressStandardizer (repair + score) > BulkGeocoder (one bulk OSM Nominatim call for the whole batch) > routing gate on GPS > S3/Iceberg silver.addresses_geocoded, or the Address Cleanup stewardship sprint", { indent: true }),
+    para("  CRM contacts > AddressStandardizer (repair + score) > BulkGeocoder (one bulk OSM Nominatim call for the whole batch) > routing gate on GPS > S3/Iceberg silver.addresses_geocoded, or the Address Cleanup stewardship sprint", { indent: true }),
     calloutBox("Five subjobs, all free: the AddressStandardizer and BulkGeocoder custom Java routines replace the subscription-only tAddressRowStandardize / tAddressRowValidate / tGeocode chain — no Talend Data Quality subscription, no licensed postal reference data, no API key. Full build spec: deploy/talend/BUILD_BULK_ADDRESS_JOB.md; run npm run talend:zip for the Studio import bundle.", "success"),
 
     heading("Step 2: Add an LLM Integration Step", 3),
     numberedItem(1, "Insert an LLM component before the Stewardship route; configure it against a model — a cloud LLM (Anthropic Claude, OpenAI, Google Gemini, Amazon Bedrock) or an on-prem model (Ollama, Mistral, Gemma 3, Phi 4) if data residency requires it"),
-    promptBox("Given this raw Salesforce address, return the corrected, standardized address and a confidence score. Raw: 'Keizersgr 482 4B, 1017EJ Amsterd'", "LLM step prompt (inside the data task)"),
+    promptBox("Given this raw CRM address, return the corrected, standardized address and a confidence score. Raw: 'Keizersgr 482 4B, 1017EJ Amsterd'", "LLM step prompt (inside the data task)"),
     expectedBox("The LLM returns a normalized address (Keizersgracht 482, Apt 4B, 1017 EJ, Amsterdam) with a confidence score. High-confidence corrections flow straight through; low-confidence ones still route to the Address Cleanup stewardship sprint (Module 10)."),
 
     heading("Step 3: Ground with RAG (Optional)", 3),
     numberedItem(1, "For records needing reference context, add a RAG lookup against a vector target (Pinecone, MongoDB, Snowflake, Databricks, Milvus, or Oracle) holding known-good postal references — so a correction cites a source instead of guessing"),
 
     heading("Step 4: Agentic Orchestration", 3),
-    numberedItem(1, "Wire the route into event-driven orchestration — a new or updated Salesforce contact triggers the route automatically"),
+    numberedItem(1, "Wire the route into event-driven orchestration — a new or updated CRM contact triggers the route automatically"),
     numberedItem(2, "Extensible tool + MCP client support lets the route call out to other governed tools when a record needs more than a single model call"),
 
     heading("Step 5: Close the Loop", 3),

@@ -19,6 +19,14 @@ const cfg = JSON.parse(fs.readFileSync(path.join(__dirname, 'config.json'), 'utf
 const base = `https://${cfg.tenant.hostname}.${cfg.tenant.region}`;
 const token = cfg.auth.apiKey;
 const CONN_NAME = process.argv[2] || 'MCG WMS Database';
+// Second argument names the template file AND the connector family to prefer,
+// e.g. `pull-connection-template.js "MCG CRM Database" mysql-source` writes
+// templates/mysql-source.connection.json. Without it this script always wrote
+// the postgres template, so pointing it at any other connection silently
+// clobbered the PostgreSQL source definition.
+const OUT_BASENAME = process.argv[3] || 'postgres-source';
+// "mysql-source" -> /repsrc_mysql/i, "postgres-source" -> /repsrc_postgres/i
+const TYPE_HINT = new RegExp('repsrc_' + OUT_BASENAME.replace(/-source$/, '').replace(/-/g, '_'), 'i');
 // Only these vary per environment — everything else in the connect string is fixed.
 const DYNAMIC = ['agentId', 'server', 'port', 'username', 'database', 'sslMode'];
 
@@ -56,8 +64,9 @@ async function fetchAllConnections() {
 
 (async () => {
   const data = await fetchAllConnections();
-  // Prefer an exact (trimmed) name match that is a postgres replication source.
-  const x = data.find((o) => (o.qName || '').trim() === CONN_NAME && /repsrc_postgres/i.test(o.datasourceID || ''))
+  // Prefer an exact (trimmed) name match that is a replication source of the
+  // expected family, then fall back to any connection with that name.
+  const x = data.find((o) => (o.qName || '').trim() === CONN_NAME && TYPE_HINT.test(o.datasourceID || ''))
          || data.find((o) => (o.qName || '').trim() === CONN_NAME);
   if (!x) {
     console.error(`Connection "${CONN_NAME}" not found. Available: ${data.map((o) => (o.qName || '').trim()).join(', ')}`);
@@ -75,9 +84,10 @@ async function fetchAllConnections() {
 
   const out = {
     _comment: `Pulled from Qlik Cloud data connection "${CONN_NAME}" (${x.datasourceID}) and parameterized. ` +
-      `buildPostgresGatewaySource() in deploy-to-qlik.js fills the {{placeholders}} from deploy config ` +
-      `(dataGateway.id, dataConnections.postgresql.{host,port,username,database,sslMode}). ` +
-      `Refresh after changing the connection in Qlik: node deploy/pull-connection-template.js`,
+      `The matching buildXGatewaySource() in deploy-to-qlik.js fills the {{placeholders}} from deploy config ` +
+      `(dataGateway.id and the dataConnections entry's {host,port,username,database,sslMode}). ` +
+      `Refresh after changing the connection in Qlik: ` +
+      `node deploy/pull-connection-template.js "${CONN_NAME}" ${OUT_BASENAME}`,
     datasourceID: x.datasourceID,
     qType: x.qType,
     placeholders: DYNAMIC,
@@ -86,7 +96,7 @@ async function fetchAllConnections() {
 
   const dir = path.join(__dirname, 'templates');
   fs.mkdirSync(dir, { recursive: true });
-  const file = path.join(dir, 'postgres-source.connection.json');
+  const file = path.join(dir, `${OUT_BASENAME}.connection.json`);
   fs.writeFileSync(file, JSON.stringify(out, null, 2) + '\n');
   console.log('Wrote', file);
   console.log('datasourceID:', x.datasourceID);

@@ -3,7 +3,7 @@ package routines;
 /**
  * MCG Demo - Talend routine for address format validation (Job 1 tMap).
  *
- * Used by mcg_sf_address_validate:
+ * Used by mcg_crm_address_validate:
  *   Var.valid = AddressValidator.isValidFormat(row1.MailingStreet, row1.MailingCity,
  *                                              row1.MailingPostalCode, row1.MailingCountry)
  *

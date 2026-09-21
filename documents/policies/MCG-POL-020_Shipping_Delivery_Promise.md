@@ -85,7 +85,7 @@ Supply Chain Analytics updates SLA monitoring dashboards (within 48 hours)
 |---|---|---|---|
 | Compare delivery promise vs actual delivery time | Weekly | Supply Chain Analytics | Manual Excel analysis (SAP + carrier data) |
 | SLA breach rate by region/carrier | Weekly | Supply Chain Analytics | Manual Excel analysis |
-| WISMO rate by region | Daily | Customer Service Ops | Salesforce CRM report |
+| WISMO rate by region | Daily | Customer Service Ops | Meridian CRM report |
 | Customer NPS by region | Monthly | Customer Experience | Survey platform |
 
 **Future State**: Qlik Analytics dashboard with automated SLA compliance monitoring, integrated with Discovery Agent alerts when breach rates exceed thresholds.

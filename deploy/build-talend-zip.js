@@ -2,7 +2,7 @@
 // ---------------------------------------------------------------------------
 //  build-talend-zip.js
 //  Packages the Talend address-validation job into ONE importable ZIP:
-//    deploy/talend/mcg_sf_address_validate_bulk.zip
+//    deploy/talend/mcg_crm_address_validate_bulk.zip
 //
 //  The ZIP carries three layers, in descending order of certainty:
 //
@@ -38,7 +38,7 @@ const EXPORT_DIR   = path.join(TALEND_DIR, 'job');
 const SPEC_FILE    = path.join(TALEND_DIR, 'BUILD_BULK_ADDRESS_JOB.md');
 
 const PROJECT  = 'MCG_DEMO';
-const JOB_NAME = 'mcg_sf_address_validate_bulk';
+const JOB_NAME = 'mcg_crm_address_validate_bulk';
 const VERSION  = '0.1';
 const OUT      = path.join(TALEND_DIR, JOB_NAME + '.zip');
 

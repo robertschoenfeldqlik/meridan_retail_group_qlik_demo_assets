@@ -21,8 +21,8 @@ Customer service agents must check **5 separate systems** to answer a single WIS
 
 | System | What It Shows | Access Method |
 |---|---|---|
-| Salesforce Commerce Cloud | Order details, promised delivery date | Web portal (Tab 1) |
-| Salesforce CRM | Customer profile, previous interactions | Web portal (Tab 2) |
+| Meridian Storefront | Order details, promised delivery date | Web portal (Tab 1) |
+| Meridian CRM | Customer profile, previous interactions | Web portal (Tab 2) |
 | Descartes TMS | Carrier assignment, tracking number | Separate application (Tab 3) |
 | Carrier tracking portal | Current shipment status | Carrier-specific websites (Tab 4) |
 | Oracle WMS / Manhattan WMS | Fulfillment status (picked, packed, shipped) | VPN + terminal emulator (Tab 5) |
@@ -37,12 +37,12 @@ Average handle time for a WISMO call: **8.5 minutes** (target: 4 minutes).
 
 1. Greet the customer per MCG greeting script
 2. Ask for order number OR email address associated with the order
-3. Look up in Salesforce Commerce Cloud
+3. Look up in Meridian Storefront
 4. Confirm: order date, items ordered, shipping address
 
 ### Step 2: Check Fulfillment Status (2 minutes)
 
-1. Check Salesforce Commerce Cloud order status field:
+1. Check Meridian Storefront order status field:
    - `PROCESSING` → Order received, not yet fulfilled. Check WMS for pick status.
    - `SHIPPED` → Carrier has the package. Proceed to Step 3.
    - `DELIVERED` → System shows delivered. Ask customer to check with household members, building reception, safe place. If still not found, proceed to Step 4.
@@ -50,7 +50,7 @@ Average handle time for a WISMO call: **8.5 minutes** (target: 4 minutes).
 
 2. If status is `PROCESSING` and order is > 2 business days old:
    - Check WMS (Oracle for Americas/EU, Manhattan for APAC) for pick/pack status
-   - **KNOWN ISSUE**: WMS status may not reflect in Salesforce for up to 30 minutes due to sync delay. If WMS shows SHIPPED but Salesforce shows PROCESSING, advise customer the order is on its way and status will update shortly.
+   - **KNOWN ISSUE**: WMS status may not reflect in Meridian CRM for up to 30 minutes due to sync delay. If WMS shows SHIPPED but Meridian CRM shows PROCESSING, advise customer the order is on its way and status will update shortly.
 
 ### Step 3: Check Carrier Tracking (3 minutes)
 

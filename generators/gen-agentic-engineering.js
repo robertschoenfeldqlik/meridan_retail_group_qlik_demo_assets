@@ -464,7 +464,7 @@ capabilitySlide(
     "In-task sentiment analysis, entity extraction, classification, AI-assisted DQ",
   ],
   [
-    "Existing Talend job mcg_sf_address_validate_bulk: address standardization, bulk geocoding, GPS routing gate to Iceberg or a Stewardship sprint",
+    "Existing Talend job mcg_crm_address_validate_bulk: address standardization, bulk geocoding, GPS routing gate to Iceberg or a Stewardship sprint",
     "Add an LLM-assisted address-correction step to that route",
     "Enrich Silver in place, before packaging to Gold",
   ],
@@ -780,7 +780,7 @@ function renderProofs(list) {
 }
 
 renderProofs([
-    ['The Job the Route Upgrades', 'automation-address-correction', 'mcg_sf_address_validate_bulk hands unresolved rows to a steward; an agentic route clears them in-line first.'],
+    ['The Job the Route Upgrades', 'automation-address-correction', 'mcg_crm_address_validate_bulk hands unresolved rows to a steward; an agentic route clears them in-line first.'],
     ['Deployed: Stewardship Sprint', 'stewardship-sprints', 'Where the unresolved branch lands today.'],
 ]);
 

@@ -40,7 +40,7 @@ const API_BASE = '/api/data-governance';
 // but locked so the steward can see what arrived; the repaired fields are the
 // ones they can actually change. `reason` explains why the job gave up.
 const DEFAULT_RECORD_SCHEMA = [
-  { name: 'contact_id',   description: 'Salesforce Contact Id',      isVisible: true, isEditable: false },
+  { name: 'contact_id',   description: 'CRM contact id',      isVisible: true, isEditable: false },
   { name: 'street_raw',   description: 'Street as received',          isVisible: true, isEditable: false },
   { name: 'city_raw',     description: 'City as received',            isVisible: true, isEditable: false },
   { name: 'postal_raw',   description: 'Postal code as received',     isVisible: true, isEditable: false },
@@ -56,8 +56,8 @@ const DEFAULT_RECORD_SCHEMA = [
 
 const DEFAULT_STEWARDSHIP = {
   name: 'Address Cleanup',
-  description: 'Salesforce contact addresses the bulk validation job could not resolve to GPS. '
-    + 'Fed by the UNRESOLVED branch of mcg_sf_address_validate_bulk.',
+  description: 'CRM contact addresses the bulk validation job could not resolve to GPS. '
+    + 'Fed by the UNRESOLVED branch of mcg_crm_address_validate_bulk.',
   // Sprints are expected to live in a DATA space. The create call returns
   // 403 NOT_ALLOWED_TO_CREATE_SPRINT against a shared space — the leading
   // hypothesis for that failure is exactly this. See STEWARDSHIP_API_FINDINGS.md.

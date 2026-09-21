@@ -566,7 +566,7 @@ function main() {
   writeCsv(outDir, 'silver_shipments_canonical.csv', Object.keys(shipments[0]), shipments);
   writeCsv(outDir, 'silver_addresses_standardized.csv', Object.keys(addresses[0]), addresses);
   writeCsv(outDir, 'bronze_iot_carrier_events.csv', Object.keys(carrierEvents[0]), carrierEvents);
-  writeCsv(outDir, 'MCG_SF_Addresses_Validated.csv', Object.keys(geo[0]), geo);
+  writeCsv(outDir, 'MCG_CRM_Addresses_Validated.csv', Object.keys(geo[0]), geo);
 
   // Prove the generated data actually tells the story the narration tells.
   const pos = scHealth.reduce((s, g) => s + g.sku_positions, 0);

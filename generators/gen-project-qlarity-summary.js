@@ -327,7 +327,7 @@ stories.forEach((st, i) => {
 // SLIDE 5: Architecture at a glance
 // ═══════════════════════════════════════════════════
 slide = contentSlide("Architecture at a Glance", C.qlikTeal);
-slide.addNotes("One picture of the whole flow. Three source feeds — PostgreSQL WMS via CDC, Kafka IoT cold-chain streaming, and Salesforce every 15 minutes — land in the Open Lakehouse on Apache Iceberg, flow bronze to silver to gold, and surface as two governed gold data products that feed apps and AI. No copies; everything downstream reads trusted data.");
+slide.addNotes("One picture of the whole flow. Three source feeds — PostgreSQL WMS via CDC, Kafka IoT cold-chain streaming, and Meridian CRM every 15 minutes — land in the Open Lakehouse on Apache Iceberg, flow bronze to silver to gold, and surface as two governed gold data products that feed apps and AI. No copies; everything downstream reads trusted data.");
 
 slide.addText("Three source feeds flow through a medallion lakehouse into gold data products, apps, and AI", {
   x: 0.5, y: 0.86, w: 12.3, h: 0.4,
@@ -346,7 +346,7 @@ slide.addText("3 SOURCE FEEDS", {
 const feeds = [
   { icon: "database", name: "PostgreSQL WMS", mode: "CDC" },
   { icon: "stream", name: "Kafka IoT cold-chain", mode: "streaming" },
-  { icon: "cloud", name: "Salesforce CRM", mode: "every 15 min" },
+  { icon: "cloud", name: "Meridian CRM", mode: "every 15 min" },
 ];
 feeds.forEach((f, i) => {
   const y = 2.25 + i * 1.12;
@@ -520,7 +520,7 @@ panel(slide, 0.5, 1.4, 6.05, 4.4, "Pipelines & lakehouse", C.qlikTeal, [
 panel(slide, 6.75, 1.4, 6.05, 4.4, "Data products & simulators", C.qlikGreen, [
   "2 gold data products: Supply Chain Health + Last Mile Performance",
   "Both API-shared, each with a trust-score SLA",
-  "3 data simulators: PostgreSQL, Kafka IoT, Salesforce",
+  "3 data simulators: PostgreSQL WMS, Kafka IoT, Meridian CRM",
   "Simulators generate the intentionally-messy demo data",
   "The mess that Governance and Analytics then clean up",
 ], { icon: "lakehouse", fs: 11.5, spacing: 0.74 });

@@ -30,7 +30,7 @@ Project Qlarity proposes implementing the **Qlik platform** (Qlik Talend Cloud, 
 | # | Nightmare | Annual Cost | Systems Affected |
 |---|---|---|---|
 | 1 | Phantom Inventory (IRA at 74%) | $48M | Oracle WMS, Manhattan WMS, SAP |
-| 2 | Address Data Catastrophe | $3.1M | Salesforce, Carrier systems |
+| 2 | Address Data Catastrophe | $3.1M | Meridian CRM, Carrier systems |
 | 3 | Product Master Mess | $8.2M | SAP MDG, WMS, POS |
 | 4 | Silent Pipeline Failures | $12M | All integration pipelines |
 | 5 | Timestamp Tower of Babel | $6.5M | All systems (cross-cutting) |
@@ -76,7 +76,7 @@ At the Q3 2025 Board meeting, CEO Ingrid van der Berg stated that data quality a
 [Qlik Talend Cloud -- Integration Layer]
   - CDC from PostgreSQL/Oracle/Manhattan WMS
   - Kafka streaming from IoT sensors
-  - SaaS connectors for Salesforce, Descartes
+  - SaaS connectors for Meridian CRM, Descartes
   - API connectors for carrier tracking
   - File ingestion for legacy flat files
        ↓

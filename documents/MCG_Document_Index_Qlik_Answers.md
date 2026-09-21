@@ -193,7 +193,7 @@ INC-2025-05102 ──→ SUPP-2025-TF (formal notice to TransFrio)
 |---|---|---|---|
 | 1 | "What is the status of order WEB-2025-10-0094827?" | SHIP-2025-RTD-44821, SOP-CS-001 | Order shipped via DPD Classic from Rotterdam DC. Tracking: DPD-1025487321. Status: DELIVERED (Oct 16). |
 | 2 | "How do I handle a WISMO call?" | SOP-CS-001 | 4-step procedure: Identify order (1 min), Check fulfillment status (2 min), Check carrier tracking (3 min), Escalation if needed (2 min). |
-| 3 | "What systems do I need to check for order status?" | SOP-CS-001, TRN-2025-001 | Currently 5 systems: Salesforce Commerce Cloud, Salesforce CRM, Descartes TMS, Carrier tracking portal, WMS. Project Qlarity will provide unified view. |
+| 3 | "What systems do I need to check for order status?" | SOP-CS-001, TRN-2025-001 | Currently 5 systems: Meridian Storefront, Meridian CRM, Descartes TMS, Carrier tracking portal, WMS. Project Qlarity will provide unified view. |
 | 4 | "Customer says their order shows delivered but they didn't receive it" | SOP-CS-001 | Ask customer to check household members, building reception, safe place. If not found: create case in CRM, initiate carrier investigation (48-hour response SLA from carrier). |
 | 5 | "Why doesn't my Singapore customer have tracking for their order?" | SOP-CS-001, CARRIER-NV-2025 | 42% of orders (especially APAC) don't have tracking due to carrier limitations. Use scripted response about regional carrier and estimated delivery window. |
 | 6 | "A DPD delivery failed because of a truncated address" | SHIP-2025-RTD-44821, CARRIER-DPD-2025 | Known address quality issue: MCG 35-character field limit truncates long street names. DPD charges EUR 2.80 correction fee per address fix. Contact carrier for reattempt. |

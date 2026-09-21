@@ -116,7 +116,7 @@ Failed batch job (9/24)
 > *18.4M addresses. 11% inconsistent formatting. 6% truncated. 3.2% duplicates. 4.7% carrier rejection rate.*
 
 ### Root Cause
-Customer addresses are captured in 5+ systems (Salesforce Commerce Cloud, Oracle Xstore POS, Shopify POS, Salesforce CRM, legacy migration databases) with no standardization rules at point of entry. Legacy POS systems have 30-character field limits that truncate long street names. International address formats were never normalized.
+Customer addresses are captured in 5+ systems (Meridian Storefront, Oracle Xstore POS, Shopify POS, Meridian CRM, legacy migration databases) with no standardization rules at point of entry. Legacy POS systems have 30-character field limits that truncate long street names. International address formats were never normalized.
 
 ### Affected Datasets
 
@@ -447,7 +447,7 @@ No enterprise-wide timestamp standard was ever established. Each system team cho
 | Dataset | Timestamp Convention | Example |
 |---|---|---|
 | **#1 Inventory Positions** | SAP: UTC / WMS: local warehouse time | `06:00:00Z` vs `06:00:00+01:00` (1 hour off) |
-| **#4 E-Commerce Orders** | UTC (Salesforce Commerce Cloud) | `2025-10-15T09:14:00Z` |
+| **#4 E-Commerce Orders** | UTC (Meridian Storefront) | `2025-10-15T09:14:00Z` |
 | **#5 Shipment & Carrier Tracking** | Varies per carrier (see below) | Carrier-dependent |
 | **#10 Warehouse Operations** | Local warehouse time | `2025-10-15T14:22:47` (no timezone offset) |
 | **#11 Cold-Chain IoT Telemetry** | UTC with milliseconds | `2025-10-15T14:22:47.382Z` (truncated to seconds downstream) |

@@ -109,16 +109,16 @@ function toFileMode(src) {
   //    Its FileSize() existence guard has to move too, or the block silently never
   //    runs and the reload still reports success with the table quietly absent.
   out = out.replace(
-    /FileSize\('lib:\/\/[^']*DataFiles\/MCG_SF_Addresses_Validated\.qvd'\)/g,
-    `FileSize('lib://${SPACE}:DataFiles/MCG_SF_Addresses_Validated.${EXT}')`
+    /FileSize\('lib:\/\/[^']*DataFiles\/MCG_CRM_Addresses_Validated\.qvd'\)/g,
+    `FileSize('lib://${SPACE}:DataFiles/MCG_CRM_Addresses_Validated.${EXT}')`
   );
   out = out.replace(
-    /FROM \[lib:\/\/[^\]]*DataFiles\/MCG_SF_Addresses_Validated\.qvd\]\s*\(qvd\)/g,
-    fileFrom('MCG_SF_Addresses_Validated')
+    /FROM \[lib:\/\/[^\]]*DataFiles\/MCG_CRM_Addresses_Validated\.qvd\]\s*\(qvd\)/g,
+    fileFrom('MCG_CRM_Addresses_Validated')
   );
   out = out.replace(
-    /FROM \[lib:\/\/[^\]]*DataFiles\/MCG_SF_Addresses_Validated\.qvd\]/g,
-    fileFrom('MCG_SF_Addresses_Validated')
+    /FROM \[lib:\/\/[^\]]*DataFiles\/MCG_CRM_Addresses_Validated\.qvd\]/g,
+    fileFrom('MCG_CRM_Addresses_Validated')
   );
 
   // 5. A script already in a file mode just needs its clause swapped to the target

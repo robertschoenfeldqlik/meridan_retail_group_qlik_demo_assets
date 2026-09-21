@@ -43,13 +43,13 @@ Master checklist of everything required to stand up the full Meridian Commerce G
 - [ ] Or single batch: `python simulators/kafka_iot_simulator.py --bootstrap-servers localhost:9092 --batch-only --batch-duration 60`
 - [ ] Verify messages flowing in Control Center or via consumer
 
-### Salesforce
-- [ ] Salesforce Developer Edition org created (free at developer.salesforce.com)
-- [ ] Custom object `MCG_Order__c` created with all fields (see `data_model.md` Section 3.2)
-- [ ] Custom object `MCG_Product__c` created with all fields (see `data_model.md` Section 3.3)
+### Meridian CRM (MySQL)
+- [ ] MySQL 8.4 container running (`npm run docker:up:simulators`) and healthy on port 3307
+- [ ] Custom object `crm_orders` created with all fields (see `data_model.md` Section 3.2)
+- [ ] Custom object `crm_products` created with all fields (see `data_model.md` Section 3.3)
 - [ ] API user created with API Enabled permission
 - [ ] Security token generated (Settings > Reset My Security Token)
-- [ ] Run simulator: `python simulators/salesforce_simulator.py` — verify Contacts, Orders, Products populating
+- [ ] Run simulator: `python simulators/mysql_crm_simulator.py` — verify Contacts, Orders, Products populating
 - [ ] Let simulator run for 10 minutes to seed initial records
 
 ---
@@ -65,9 +65,9 @@ Master checklist of everything required to stand up the full Meridian Commerce G
 - [ ] PostgreSQL connection created
   - [ ] Test connection successful
   - [ ] Tables visible: `inventory_positions`, `warehouse_events`, `shipments`
-- [ ] Salesforce connection created via Standard connector
+- [ ] Meridian CRM connection created via Standard connector
   - [ ] Test connection successful
-  - [ ] Objects visible: `Contact`, `MCG_Order__c`, `MCG_Product__c`
+  - [ ] Objects visible: `Contact`, `crm_orders`, `crm_products`
 - [ ] Kafka connection created via Data Gateway - Streaming
   - [ ] Test connection successful
   - [ ] Topics visible: `mcg.iot.cold-chain`, `mcg.iot.carrier-events`
@@ -82,9 +82,9 @@ Master checklist of everything required to stand up the full Meridian Commerce G
 - [ ] CDC pipeline: PostgreSQL → `bronze.inventory_positions` (real-time)
 - [ ] CDC pipeline: PostgreSQL → `bronze.warehouse_events` (real-time)
 - [ ] CDC pipeline: PostgreSQL → `bronze.shipments` (real-time)
-- [ ] Connector pipeline: Salesforce → `bronze.sf_contacts` (15 min)
-- [ ] Connector pipeline: Salesforce → `bronze.sf_orders` (15 min)
-- [ ] Connector pipeline: Salesforce → `bronze.sf_products` (15 min)
+- [ ] CDC pipeline: Meridian CRM → `bronze.crm_contacts` (15 min)
+- [ ] CDC pipeline: Meridian CRM → `bronze.crm_orders` (15 min)
+- [ ] CDC pipeline: Meridian CRM → `bronze.crm_products` (15 min)
 - [ ] Streaming pipeline: Kafka → `bronze.iot_cold_chain` (streaming)
 - [ ] Streaming pipeline: Kafka → `bronze.iot_carrier_events` (streaming)
 - [ ] Verify all 8 Bronze tables have data flowing
@@ -96,7 +96,7 @@ Master checklist of everything required to stand up the full Meridian Commerce G
 - [ ] Data flow: **Timestamp Normalization** → `silver.warehouse_events_clean`
 - [ ] Data flow: **Inventory Reconciliation** → `silver.inventory_reconciled`
 - [ ] Data flow: **Address Standardization** → `silver.addresses_standardized`
-- [ ] **Talend Job: `mcg_sf_address_validate_bulk`** — built in Studio from `deploy/talend/BUILD_BULK_ADDRESS_JOB.md` (routines: AddressStandardizer, BulkGeocoder, AddressBatch); import bundle via `npm run talend:zip`
+- [ ] **Talend Job: `mcg_crm_address_validate_bulk`** — built in Studio from `deploy/talend/BUILD_BULK_ADDRESS_JOB.md` (routines: AddressStandardizer, BulkGeocoder, AddressBatch); import bundle via `npm run talend:zip`
 - [ ] Data flow: **Product Master Harmonization** → `silver.products_harmonized`
 - [ ] Data flow: **Carrier Status Canonicalization** → `silver.shipments_canonical`
 - [ ] Data flow: **IoT Telemetry Normalization** → `silver.iot_normalized`
@@ -125,7 +125,7 @@ Master checklist of everything required to stand up the full Meridian Commerce G
 - [ ] Verify ML experiment dependencies appear in impact analysis
 
 ### Data Profiling
-- [ ] Run profiling on `bronze.sf_contacts` → verify 11% format issues, 6% truncation detected
+- [ ] Run profiling on `bronze.crm_contacts` → verify 11% format issues, 6% truncation detected
 - [ ] Run profiling on `bronze.inventory_positions` → verify null lot numbers flagged for perishables
 - [ ] Run profiling on `silver.products_harmonized` → verify missing weight_kg identified
 - [ ] Capture profiling results for demo screenshots
@@ -342,7 +342,7 @@ Master checklist of everything required to stand up the full Meridian Commerce G
   - Posts alert to `#mcg-customer-ops` channel
 - [ ] **MCG Address Correction — Talend Job Trigger** — configured and enabled
   - Trigger: Stewardship task approved in Address Cleanup sprint (event or 15-min poll)
-  - Runs `mcg_sf_address_validate_bulk` (AddressStandardizer → BulkGeocoder → routing gate)
+  - Runs `mcg_crm_address_validate_bulk` (AddressStandardizer → BulkGeocoder → routing gate)
   - Writes corrected addresses back to `silver.addresses_standardized`
   - Resolves stewardship tasks and posts results to Teams
   - Closes the data quality loop: Stewardship → Talend Job → Silver → Gold → Predict
@@ -405,7 +405,7 @@ Master checklist of everything required to stand up the full Meridian Commerce G
 - [ ] Confirm generated glossary terms land in **DRAFT** status and require a term owner's approval before publishing
 
 ### Talend Agentic Routes (Preview)
-- [ ] Show an LLM-assisted step inside a pipeline task — the address-correction evolution of the Salesforce flow (see `automation_guide.md` Automation 5b)
+- [ ] Show an LLM-assisted step inside a pipeline task — the address-correction evolution of the CRM address flow (see `automation_guide.md` Automation 5b)
 - [ ] Note supported LLMs — cloud: OpenAI, Anthropic Claude, Google Gemini, Amazon Bedrock; on-prem: Ollama, Mistral, Gemma 3, Phi 4
 - [ ] Note RAG vector targets available — Pinecone, MongoDB, Snowflake, Databricks, Milvus, Oracle (demo against `[placeholder — target you have provisioned]`)
 - [ ] Confirm agentic orchestration inside pipeline tasks: event-driven orchestration, conversational AI, extensible tool + MCP-client support
@@ -419,7 +419,7 @@ Master checklist of everything required to stand up the full Meridian Commerce G
 ## Phase 13: Pre-Demo Verification
 
 ### Data Flow Health Check
-- [ ] All 3 source simulators running (PostgreSQL, Kafka producer, Salesforce)
+- [ ] All 3 source simulators running (PostgreSQL WMS, Kafka producer, Meridian CRM)
 - [ ] All 8 Bronze tables receiving data
 - [ ] All 8 Silver transformation routes executing successfully
 - [ ] Both Gold marts refreshing on schedule (daily 06:00 UTC)
@@ -459,7 +459,7 @@ Files generated for this demo:
 | **Presentation** | `MCG_Company_Profile_Data_Quality.pptx` | Executive overview deck |
 | | `MCG_Demo_Overview_Four_Stories.pptx` | Demo deck: Integration, Governance, Analytics, AI |
 | **Simulators** | `simulators/postgres_simulator.py` | PostgreSQL WMS data generator |
-| | `simulators/salesforce_simulator.py` | Salesforce CRM data generator |
+| | `simulators/mysql_crm_simulator.py` | Meridian CRM data generator |
 | | `simulators/kafka_iot_simulator.py` | Kafka IoT cold-chain & carrier event generator (continuous, scheduled, or batch) |
 | **Infrastructure** | `infrastructure/kafka/docker-compose.yml` | Confluent Kafka stack (ZooKeeper, Broker, Schema Registry, Control Center) |
 | | `infrastructure/kafka/.env` | Docker Compose environment defaults (version, ports) |
@@ -484,6 +484,6 @@ Files generated for this demo:
 | **Generators** | `generators/gen-mcg-logo.js` | MCG logo PNG generator (Inter font, brand colors) |
 | | `generators/assets/mcg_logo_*.png` | 4 MCG logo variants (light, dark, square, large) |
 | **Reference** | `MCG_Nightmare_to_Dataset_Map.md` | 7 nightmares mapped to datasets |
-| | `MCG_Three_Data_Feeds.md` | PostgreSQL/Kafka/Salesforce specs |
+| | `MCG_Three_Data_Feeds.md` | PostgreSQL / Kafka / MySQL feed specs |
 | | `MCG_Talend_Transformation_Routes.md` | 8 transformation route specs |
 | | `Meridian_Commerce_Group_Demo_Profile.md` | Company profile |

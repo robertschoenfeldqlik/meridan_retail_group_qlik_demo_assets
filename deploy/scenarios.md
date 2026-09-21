@@ -58,7 +58,7 @@ Rotterdam DC's WMS-to-SAP CDC pipeline silently failed for 72 hours. SAP showed 
 
 **Duration:** 8-10 minutes
 **Nightmares:** #2 (Address Catastrophe), #6 (Carrier Data Black Hole)
-**Components:** Salesforce → Lakehouse → Data Flow → Stewardship → Business Glossary → Qlik Analytics → Predict
+**Components:** Meridian CRM → Lakehouse → Data Flow → Stewardship → Business Glossary → Qlik Analytics → Predict
 
 ### The Business Problem
 
@@ -67,14 +67,14 @@ Rotterdam DC's WMS-to-SAP CDC pipeline silently failed for 72 hours. SAP showed 
 ### Demo Walk-Through
 
 **Step 1 — Show the dirty addresses (Bronze)**
-- Open `bronze.sf_contacts` → filter to demonstrate:
+- Open `bronze.crm_contacts` → filter to demonstrate:
   - `Jan de Vries` vs `Jan De Vries` (capitalization)
   - `Keizersgracht 482, Apartment 4B` vs `Keizersgracht 482, Apt 4B` (abbreviation)
   - `Friedrichstraße 123, Hinterh` — truncated at exactly 30 characters
   - `Sao Paulo` (accent stripped) vs `São Paulo`
 
 **Step 2 — Show Data Quality Profiling**
-- Run profiling on `bronze.sf_contacts`
+- Run profiling on `bronze.crm_contacts`
 - Show: 11% format inconsistency, 6% truncation (exactly 30 chars), 3.2% potential duplicates
 
 **Step 3 — Show the transformation (Data Flow Route 3)**
@@ -186,7 +186,7 @@ Listeria detected in organic butter lettuce from an undisclosed backup farm (FAR
 
 **Step 1 — Show the traceability gap (Bronze)**
 - `bronze.inventory_positions`: filter to grocery items → show 15% with `lot_number = NULL`
-- `bronze.sf_products`: show `country_of_origin = NULL` for 12% of food SKUs
+- `bronze.crm_products`: show `country_of_origin = NULL` for 12% of food SKUs
 - "If this lettuce batch is contaminated, we can't tell which stores have it"
 
 **Step 2 — Show the compliance data product (Gold)**
@@ -211,7 +211,7 @@ Listeria detected in organic butter lettuce from an undisclosed backup farm (FAR
 
 **Step 6 — Ask Qlik Answers**
 - "How long did the lettuce recall take and why?"
-- Answers: "11 days vs 24-hour target. Required manual cross-referencing across SAP, WMS, TMS, and Salesforce."
+- Answers: "11 days vs 24-hour target. Required manual cross-referencing across SAP, WMS, TMS, and Meridian CRM."
 - Follow-up: "What is MCG's corrective action plan for the NVWA citation?"
 - Answers references COMP-2025-NVWA: 5 actions, 3 on track, 1 at risk (sub-tier supplier mapping at 36%)
 
@@ -221,7 +221,7 @@ Listeria detected in organic butter lettuce from an undisclosed backup farm (FAR
 
 **Duration:** 6-8 minutes
 **Nightmares:** #6 (Carrier Data Black Hole), #2 (Address Catastrophe)
-**Components:** Salesforce → Lakehouse → Data Flow → Qlik Analytics → Predict → Qlik Answers → Automation
+**Components:** Meridian CRM → Lakehouse → Data Flow → Qlik Analytics → Predict → Qlik Answers → Automation
 
 ### The Business Problem
 
@@ -277,7 +277,7 @@ MCG's data quality crisis costs $127M annually. Project Qlarity is a $12.4M Qlik
 - Show all 3 source connections in Talend Cloud:
   - PostgreSQL CDC: live inventory changes streaming
   - Kafka: live IoT sensor readings
-  - Salesforce: customer and order data
+  - Meridian CRM (MySQL): customer and order data
 - Show Pipeline Health monitoring: all green (or one amber for demo)
 
 **Step 3 — Open Lakehouse: "One Source of Truth" (2 min)**
@@ -367,7 +367,7 @@ Scenarios 1-6 all ask questions of trusted data. But someone has to *produce* th
 |---|---|---|
 | 1 | PostgreSQL running with demo data loaded | ☐ |
 | 2 | Kafka running, IoT producer script ready (don't start yet) | ☐ |
-| 3 | Salesforce developer org with demo data loaded | ☐ |
+| 3 | Meridian CRM (MySQL) seeded with demo data | ☐ |
 | 4 | All 3 source connections tested in Talend Cloud | ☐ |
 | 5 | Open Lakehouse Bronze tables populated | ☐ |
 | 6 | Data flows run successfully (Silver + Gold populated) | ☐ |

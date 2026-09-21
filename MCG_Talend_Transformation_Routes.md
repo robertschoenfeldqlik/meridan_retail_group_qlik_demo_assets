@@ -11,7 +11,7 @@
 >   projects, YAML) → see `deploy/pipelines/` and `deploy/pipelines/README.md`.
 > - **Gold** is **two** governed data products (`gold.supply_chain_health`,
 >   `gold.last_mile_performance`) → see `deploy/data_products.json`.
-> - **Talend's** role is narrowed to the **Salesforce address validation +
+> - **Talend's** role is narrowed to the **CRM address validation +
 >   geocoding + stewardship** leg → see `deploy/talend/README.md`.
 > - **Predict** models are Cold Chain Exceedance (`alert_flag` on
 >   `silver.iot_normalized`) and Late Delivery (`delivered_late` on
@@ -29,10 +29,10 @@
 ┌───────────────────────────────────────────────────────────────────────────────┐
 │                           SOURCE LAYER                                        │
 │                                                                               │
-│   PostgreSQL (WMS)         Kafka (IoT)           Salesforce (CRM/Orders)      │
+│   PostgreSQL (WMS)         Kafka (IoT)           MySQL (Meridian CRM)        │
 │   ┌──────────────┐     ┌──────────────┐        ┌──────────────┐              │
 │   │ inventory     │     │ cold-chain   │        │ Contact      │              │
-│   │ wh_events     │     │ carrier-evts │        │ MCG_Order__c │              │
+│   │ wh_events     │     │ carrier-evts │        │ crm_orders │              │
 │   │ shipments     │     │              │        │ MCG_Product  │              │
 │   └──────┬───────┘     └──────┬───────┘        └──────┬───────┘              │
 │          │ CDC                │ Stream                 │ API (Full+Incr)      │
@@ -43,7 +43,7 @@
 │              QLIK TALEND CLOUD -- INGESTION LAYER (EL)                        │
 │                                                                               │
 │   Raw data replicated as-is with no transformation.                           │
-│   CDC for PostgreSQL, streaming for Kafka, API pull for Salesforce.           │
+│   CDC for PostgreSQL, streaming for Kafka, binlog CDC for MySQL.               │
 │   Data Movement Gateway handles on-prem PostgreSQL connection.                │
 │                                                                               │
 │   Pipeline health monitoring: freshness checks, row counts, schema drift.     │
@@ -124,7 +124,7 @@ The architecture follows an **ELT (Extract-Load-Transform)** pattern, NOT a trad
 
 | Step | What Happens | Where It Runs |
 |---|---|---|
-| **Extract** | CDC captures changes from PostgreSQL; Kafka streams IoT events; Salesforce API pulls CRM data | Qlik Talend Cloud ingestion pipelines |
+| **Extract** | CDC captures changes from PostgreSQL; Kafka streams IoT events; Meridian CRM pulls CRM data | Qlik Talend Cloud ingestion pipelines |
 | **Load** | Raw data is written directly to Open Lakehouse Bronze layer as Apache Iceberg tables -- no transformation applied | Qlik Talend Cloud → OLH Bronze |
 | **Transform** | Talend reads FROM Bronze, applies 8 transformation routes, writes cleansed data to Silver and Gold layers | Qlik Talend Cloud reading/writing OLH |
 
@@ -387,14 +387,14 @@ tPostgresqlCDC → tMap (quality rules) → tMap (SKU harmonize)
 ## Route 3: Address Standardization & Deduplication
 
 **Nightmare addressed:** #2 (Address Catastrophe)
-**Source:** Salesforce `Contact` / `Account`
+**Source:** Meridian CRM `crm_contacts`
 **Target:** `silver.customers` + `gold.customer_360`
 
 ### Transformation Logic
 
 ```
 Step 1: INGEST (Bronze)
-  └── Salesforce API → bronze.contacts_raw (all address chaos preserved)
+  └── Meridian CRM → bronze.contacts_raw (all address chaos preserved)
 
 Step 2: ADDRESS PARSING
   ┌─────────────────────────────────────────────────────────────────────────┐
@@ -474,14 +474,14 @@ Step 9: AGGREGATE TO GOLD
 ## Route 4: Product Master Harmonization
 
 **Nightmare addressed:** #3 (Product Master Data Mess)
-**Source:** Salesforce `MCG_Product__c` + PostgreSQL `inventory_positions` (for SKU cross-reference)
+**Source:** Meridian CRM `crm_products` + PostgreSQL `inventory_positions` (for SKU cross-reference)
 **Target:** `silver.product_master` + `gold.product_catalog`
 
 ### Transformation Logic
 
 ```
 Step 1: INGEST (Bronze)
-  └── Salesforce → bronze.products_raw
+  └── Meridian CRM → bronze.products_raw
 
 Step 2: SKU CROSS-REFERENCE TABLE
   ┌─────────────────────────────────────────────────────────────────────────┐
@@ -696,7 +696,7 @@ Step 8: WRITE TO SILVER + GOLD
 ## Route 7: Supplier Master Deduplication
 
 **Nightmare addressed:** #3 (Product Master -- supplier name variants)
-**Source:** Salesforce `MCG_Product__c.Supplier_Name__c` + PostgreSQL (referenced in POs)
+**Source:** Meridian CRM `crm_products.supplier_name` + PostgreSQL (referenced in POs)
 **Target:** `silver.supplier_master` + `gold.supplier_scorecard`
 
 ### Transformation Logic
@@ -756,7 +756,7 @@ Step 5: WRITE TO SILVER + GOLD
 ```
 Step 1: JOIN across silver tables to build unified order journey:
 
-  silver.orders (from Salesforce)
+  silver.orders (from Meridian CRM)
     JOIN silver.shipments_unified ON order_id
     JOIN silver.customers ON customer_id
     JOIN silver.product_master ON sku (via crossref)
@@ -845,9 +845,9 @@ Routes must execute in this order (some are parallelizable):
 | `bronze.warehouse_events_raw` | PostgreSQL CDC | Raw warehouse events |
 | `bronze.shipments_raw` | PostgreSQL CDC + Kafka | Raw shipment tracking, all carrier formats |
 | `bronze.iot_raw` | Kafka streaming | Raw IoT telemetry, mixed units and formats |
-| `bronze.contacts_raw` | Salesforce API | Raw customer contacts, address chaos |
-| `bronze.orders_raw` | Salesforce API | Raw e-commerce orders |
-| `bronze.products_raw` | Salesforce API | Raw product catalog, all SKU variants |
+| `bronze.contacts_raw` | Meridian CRM | Raw customer contacts, address chaos |
+| `bronze.orders_raw` | Meridian CRM | Raw e-commerce orders |
+| `bronze.products_raw` | Meridian CRM | Raw product catalog, all SKU variants |
 
 ### Silver Layer (Cleansed)
 

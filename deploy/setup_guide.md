@@ -191,19 +191,19 @@ python simulators/kafka_iot_simulator.py --bootstrap-servers localhost:9092 \
 
 > **Note:** The simulator intentionally injects data quality issues (mixed Fahrenheit readings, bare timestamps, GPS blackouts, carrier vocabulary inconsistencies) to demonstrate Qlik Talend Cloud profiling and Trust Score.
 
-### 1.5 Salesforce Developer Edition
+### 1.5 MySQL 8.4
 
 1. Sign up at [developer.salesforce.com](https://developer.salesforce.com/signup)
 2. Create custom objects:
-   - `MCG_Order__c` (12 fields — see `MCG_Three_Data_Feeds.md`)
-   - `MCG_Product__c` (10 fields)
+   - `crm_orders` (12 fields — see `MCG_Three_Data_Feeds.md`)
+   - `crm_products` (10 fields)
 3. Create a Connected App for OAuth:
    - Setup → App Manager → New Connected App
    - Enable OAuth: `api`, `refresh_token`, `full`
    - Callback URL: `https://login.salesforce.com/services/oauth2/callback`
 4. Load demo data:
    ```bash
-   python simulators/salesforce_simulator.py --instance https://your-dev-org.my.salesforce.com
+   python simulators/mysql_crm_simulator.py --instance https://your-dev-org.my.salesforce.com
    ```
 
 ### 1.6 Data Gateway - Streaming (for Kafka)
@@ -282,7 +282,7 @@ python simulators/kafka_iot_simulator.py --bootstrap-servers localhost:9092 \
 | Setting | Value |
 |---|---|
 | Connector type | Salesforce (Standard) |
-| Connection name | `MCG Salesforce CRM` |
+| Connection name | `MCG CRM Database` |
 | Authentication | OAuth 2.0 (or Username + Password + Security Token) |
 | Instance URL | `https://your-dev-org.my.salesforce.com` |
 | API version | v59.0+ |
@@ -293,14 +293,14 @@ python simulators/kafka_iot_simulator.py --bootstrap-servers localhost:9092 \
 |---|---|---|---|
 | `Contact` (standard) | ~2,000 | #2 | Address truncation (6%), formatting chaos (11%), duplicates (3.2%) |
 | `Account` (standard) | ~500 | #2 | Name variants ("de Vries" vs "De Vries" vs "DeVries") |
-| `MCG_Order__c` | ~5,000 | #2, #6 | 42% missing tracking numbers, WISMO flags on 41% |
-| `MCG_Product__c` | ~1,200 | #3, #7 | 3 SKU schemes, 8,200 missing weights, supplier name variants |
+| `crm_orders` | ~5,000 | #2, #6 | 42% missing tracking numbers, WISMO flags on 41% |
+| `crm_products` | ~1,200 | #3, #7 | 3 SKU schemes, 8,200 missing weights, supplier name variants |
 
 **Data landing task:**
 1. Create SaaS landing task: **Salesforce → Open Lakehouse (Bronze)**
 2. Select all 4 objects
-3. Mode: Full + Incremental (SystemModstamp)
-4. Target: `bronze.sf_contacts`, `bronze.sf_accounts`, `bronze.sf_orders`, `bronze.sf_products`
+3. Mode: Full + Incremental (last_modified_date)
+4. Target: `bronze.crm_contacts`, `bronze.sf_accounts`, `bronze.crm_orders`, `bronze.crm_products`
 
 ---
 
@@ -324,9 +324,9 @@ Data arrives here first — dirty, as-is, preserving the original for lineage an
 | `bronze.shipments` | PostgreSQL CDC | Iceberg |
 | `bronze.iot_cold_chain` | Kafka streaming | Iceberg (append) |
 | `bronze.iot_carrier_events` | Kafka streaming | Iceberg (append) |
-| `bronze.sf_contacts` | Salesforce | Iceberg |
-| `bronze.sf_orders` | Salesforce | Iceberg |
-| `bronze.sf_products` | Salesforce | Iceberg |
+| `bronze.crm_contacts` | Salesforce | Iceberg |
+| `bronze.crm_orders` | Salesforce | Iceberg |
+| `bronze.crm_products` | Salesforce | Iceberg |
 
 **Total: 8 Bronze tables**
 
@@ -427,7 +427,7 @@ Each transformation route is built as a **Qlik Talend Cloud Data Flow** (Pipelin
 
 | Property | Value |
 |---|---|
-| Input | `bronze.sf_contacts`, `bronze.sf_orders` |
+| Input | `bronze.crm_contacts`, `bronze.crm_orders` |
 | Output | `silver.addresses_standardized` |
 | Nightmare | #2 (Address Catastrophe) |
 
@@ -483,7 +483,7 @@ A dedicated **Talend Job** deployed as a reusable address validation service, ca
 
 | Property | Value |
 |---|---|
-| Input | `bronze.sf_products` |
+| Input | `bronze.crm_products` |
 | Output | `silver.products_harmonized` |
 | Nightmare | #3 (Product Master Mess) |
 
@@ -554,7 +554,7 @@ A dedicated **Talend Job** deployed as a reusable address validation service, ca
 
 | Property | Value |
 |---|---|
-| Input | `bronze.sf_products` (supplier fields) |
+| Input | `bronze.crm_products` (supplier fields) |
 | Output | `silver.suppliers_deduped` |
 | Nightmare | #3 (Product Master Mess) |
 
@@ -576,14 +576,14 @@ A dedicated **Talend Job** deployed as a reusable address validation service, ca
 
 | Property | Value |
 |---|---|
-| Input | `silver.order_delivery_timeline` (from Salesforce), `silver.shipments_canonical`, `silver.iot_normalized`, `silver.inventory_reconciled` |
+| Input | `silver.order_delivery_timeline` (from Meridian CRM), `silver.shipments_canonical`, `silver.iot_normalized`, `silver.inventory_reconciled` |
 | Output | `silver.order_delivery_timeline` |
 | Nightmare | #5 (Timestamps), #6 (Carrier Black Hole) |
 
 **Table Recipe:**
 1. **Join** — Link orders → shipments via `order_id`
 2. **Timeline Build** — For each order, extract milestone timestamps:
-   - `order_placed_utc` (from Salesforce)
+   - `order_placed_utc` (from Meridian CRM)
    - `picked_utc` (from warehouse_events via inventory)
    - `shipped_utc` (from shipments)
    - `delivered_utc` (from shipments)
@@ -677,7 +677,7 @@ Body: { "model_id": "<spoilage-model-id>", "features": { "route": "GRU-BA", "car
 |---|---|
 | PostgreSQL connection | MCG Demo - Development |
 | Kafka connection | MCG Demo - Development |
-| Salesforce connection | MCG Demo - Development |
+| Meridian CRM connection | MCG Demo - Development |
 | Open Lakehouse | MCG Demo - Data |
 | Data Products (7) | MCG Demo - Data |
 | Qlik Analytics apps (dev) | MCG Demo - Development |
@@ -995,7 +995,7 @@ python deploy/deploy_qlik.py  # Includes glossary import step
    Data Freshness:
    • PostgreSQL (WMS): Last sync {pg_last_sync} ({pg_lag})
    • Kafka (IoT): Streaming ({kafka_status})
-   • Salesforce (CRM): Last sync {sf_last_sync} ({sf_lag})
+   • Meridian CRM (MySQL): Last sync {crm_last_sync} ({crm_lag})
 
    Trust Scores:
    • Inventory: {inv_trust}  • Addresses: {addr_trust}
@@ -1251,7 +1251,7 @@ Talend Agentic Routes extend Qlik Talend Cloud for AI-native work **inside pipel
 - **RAG pipelines** — write to vector targets (Pinecone, MongoDB, Snowflake, Databricks, Milvus, Oracle)
 - **Agentic orchestration** — event-driven orchestration, conversational AI, extensible tool + MCP-client support
 
-For MCG, the concrete surface is the existing Salesforce address-validation job: an LLM-assisted correction step is the agentic evolution of that flow. See `automation_guide.md` Automation 5b.
+For MCG, the concrete surface is the existing CRM address-validation job: an LLM-assisted correction step is the agentic evolution of that flow. See `automation_guide.md` Automation 5b.
 
 ### 14.5 Qlik MCP Server for Data Governance
 

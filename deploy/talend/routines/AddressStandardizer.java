@@ -17,7 +17,7 @@ import java.util.regex.Pattern;
  * Emits the same status vocabulary the paid component produced
  * (VALID / CORRECTED / AMBIGUOUS / INVALID) so everything downstream keeps working.
  *
- * Used by mcg_sf_address_validate, tMap "map_standardize":
+ * Used by mcg_crm_address_validate, tMap "map_standardize":
  *   Var.std = AddressStandardizer.standardize(row1.Id, row1.MailingStreet,
  *                 row1.MailingCity, row1.MailingState,
  *                 row1.MailingPostalCode, row1.MailingCountry)
@@ -270,7 +270,7 @@ public class AddressStandardizer {
      *
      * {talendTypes} Object
      * {Category} MCG
-     * {param} string(contactId) contactId: Salesforce Id
+     * {param} string(contactId) contactId: CRM contact id
      * {param} string(street) street: MailingStreet
      * {param} string(city) city: MailingCity
      * {param} string(state) state: MailingState

@@ -26,7 +26,7 @@ This is **distinct from** `../../MCG_Talend_Transformation_Routes.md`, which is
 performed all bronze → silver → gold transformations and produced an eight-product
 gold layer. The current architecture moved those transformations into declarative
 **Qlik Cloud Pipelines** (two QTCP projects, YAML) and narrowed Talend's standing
-role to the **Salesforce address-validation + geocoding + stewardship** leg (see
+role to the **CRM address-validation + geocoding + stewardship** leg (see
 `README.md`).
 
 Talend Agentic Routes are not a return to that old model. They are a **new,
@@ -57,7 +57,7 @@ emails) can be reasoned over by a **locally hosted** model (Ollama / Mistral /
 Gemma 3 / Phi 4) so records never leave the tenant boundary during processing.
 
 **What MCG would use it for**
-- **Address normalization and correction** on the Salesforce job — the grounded
+- **Address normalization and correction** on the CRM address job — the grounded
   example, detailed in `agentic-routes/address-correction-route.md`.
 - **Carrier exception classification** — map free-text carrier status notes
   (multilingual: EN/DE/PT) to MCG's canonical exception set (`ADDRESS_INVALID`,
@@ -94,7 +94,7 @@ tools and services.
 
 **What MCG would use it for**
 - **Close the address-correction loop end to end**: an event (new/updated
-  Salesforce contact) triggers the route, the agent normalizes and scores, and
+  CRM contact) triggers the route, the agent normalizes and scores, and
   low-confidence records are orchestrated into the existing **Address Cleanup
   stewardship sprint** — then, on approval, the job re-runs for the corrected
   records (this is automation #5, *MCG Address Correction Loop — Talend*, already
@@ -106,20 +106,20 @@ tools and services.
 
 ---
 
-## How this relates to the existing Salesforce address-validation job
+## How this relates to the existing CRM address-validation job
 
 The current job (`README.md`) is a two-job Talend flow on a 15-minute TMC
 schedule:
 
 ```
-Salesforce ─► JOB 1: mcg_sf_address_validate
-              ├── tSalesforceInput (Contact, incremental)
+Meridian CRM ─► JOB 1: mcg_crm_address_validate
+              ├── tMysqlInput (Contact, incremental)
               ├── tMap — routines.AddressValidator (format check, Java)
               │     ├─ valid ───────────────────────► staging (validated)
               │     └─ invalid ─► tRESTClient (Nominatim geocode, 1 req/s)
               │           ├─ resolved ──────────────► staging (validated)
               │           └─ unresolved ────────────► STEWARDSHIP route
-              └── on-success ─► JOB 2: mcg_sf_address_to_qvd ─► QVD
+              └── on-success ─► JOB 2: mcg_crm_address_to_qvd ─► QVD
 ```
 
 Today, a malformed multilingual address that the Java format check rejects goes

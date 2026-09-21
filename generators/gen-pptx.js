@@ -179,7 +179,7 @@ const systems = [
   ["SAP S/4HANA", "Core ERP", "Global"],
   ["Oracle WMS", "Warehouse Mgmt", "Americas, EU"],
   ["Manhattan WMS", "Warehouse Mgmt", "APAC"],
-  ["Salesforce Commerce", "E-Commerce", "Global"],
+  ["Meridian Storefront", "E-Commerce", "Global"],
   ["Blue Yonder", "Demand Planning", "Americas"],
   ["Kinaxis", "Supply Chain Planning", "EU, APAC"],
   ["Descartes TMS", "Transportation", "Global"],
@@ -483,7 +483,7 @@ const recallDetails = [
   ["12,400 units", "Affected across 210 stores in NL, DE, BE, FR"],
   ["65 person-hours", "Manual cross-referencing across 4 disconnected systems"],
   ["32%", "Of stores had lot-level tracking (68% required manual audits)"],
-  ["4 systems", "SAP, WMS, Descartes TMS, Salesforce — no common key"],
+  ["4 systems", "SAP, WMS, Descartes TMS, Meridian CRM — no common key"],
   ["€85,125", "Total recall cost (product, labor, regulatory, brand impact)"],
   ["NVWA citation", "Formal regulatory citation issued for traceability failure"],
 ];
@@ -576,7 +576,7 @@ slide.addText("Project Qlarity — Qlik Platform Solution", {
 const phases = [
   {
     name: "Phase 1: Foundation", months: "Months 1-8", budget: "$5.2M", color: MCG.teal,
-    items: ["CDC from SAP, WMS, Salesforce", "Open Lakehouse Bronze/Silver", "Pipeline monitoring", "Inventory & cold chain dashboards"],
+    items: ["CDC from SAP, WMS, Meridian CRM", "Open Lakehouse Bronze/Silver", "Pipeline monitoring", "Inventory & cold chain dashboards"],
   },
   {
     name: "Phase 2: Analytics & Quality", months: "Months 6-16", budget: "$4.8M", color: MCG.navy,

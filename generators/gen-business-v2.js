@@ -55,7 +55,7 @@ function poSamsung() {
       [
         ["SAP S/4HANA", "Samsung Electronics Co., Ltd.", "SUPP-KR-0012"],
         ["Oracle WMS", "Samsung Elec.", "V-00012"],
-        ["Salesforce CRM", "SAMSUNG", "SF-ACC-9912"],
+        ["Meridian CRM", "SAMSUNG", "CRM-ACC-9912"],
         ["Procurement spreadsheet", "Samsung Corp", "N/A (manual)"],
       ]
     ),
@@ -341,7 +341,7 @@ function recallLettuce() {
         ["SAP S/4HANA", "PO, supplier, receipt date, quantity", "Lot-to-store mapping"],
         ["Oracle WMS", "Lot numbers, storage locations, picks", "Outbound store destinations"],
         ["Descartes TMS", "Shipment routes, carrier, delivery status", "Product lot numbers"],
-        ["Salesforce Commerce", "Customer orders, store assignments", "Supplier lot numbers"],
+        ["Meridian Storefront", "Customer orders, store assignments", "Supplier lot numbers"],
       ]
     ),
     calloutBox("No single system can answer: 'Which stores received products from lot LOT-FD-2025-0614?' This is the fundamental traceability gap that Project Qlarity's unified data layer will solve.", "info"),

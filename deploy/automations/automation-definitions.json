@@ -427,8 +427,8 @@
                       "value": "Streaming: ${kafka_status}"
                     },
                     {
-                      "title": "Salesforce (CRM)",
-                      "value": "Last sync: ${sf_last_sync} (${sf_lag} ago)"
+                      "title": "Meridian CRM (MySQL)",
+                      "value": "Last sync: ${crm_last_sync} (${crm_lag} ago)"
                     }
                   ]
                 },

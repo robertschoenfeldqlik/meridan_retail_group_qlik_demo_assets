@@ -54,7 +54,7 @@ Over 30 years of growth through acquisitions, organic expansion, and rapid digit
 | SAP S/4HANA | Core ERP (financials, procurement) | Global | On-prem, migrating to cloud |
 | Oracle WMS | Warehouse management | Americas, EU | On-prem |
 | Manhattan Associates | Warehouse management | APAC | Cloud |
-| Salesforce Commerce Cloud | E-commerce platform | Global | Cloud |
+| Meridian Storefront | E-commerce platform | Global | Cloud |
 | Blue Yonder | Demand planning & forecasting | Americas | Cloud |
 | Kinaxis | Supply chain planning | EU, APAC | Cloud |
 | Descartes | Transportation management | Global | Cloud |
@@ -145,7 +145,7 @@ MCG selects Qlik as its strategic data platform partner. Here is how every layer
 | Capability | MCG Application |
 |---|---|
 | **Change Data Capture (CDC)** | Real-time CDC from SAP S/4HANA and Oracle WMS captures every inventory adjustment, PO receipt, and shipment event as it happens -- eliminating the batch lag that created phantom inventory. Agentless CDC means no performance impact on production ERP. |
-| **SaaS Connectors** | Pre-built connectors to Salesforce Commerce Cloud, Blue Yonder, Kinaxis, Descartes, and Shopify POS pull order, forecast, and shipment data into a unified pipeline. |
+| **SaaS Connectors** | Pre-built connectors to Meridian Storefront, Blue Yonder, Kinaxis, Descartes, and Shopify POS pull order, forecast, and shipment data into a unified pipeline. |
 | **API & File Integration** | Carrier data from 42 providers is ingested via a mix of webhook listeners, API polling jobs, and SFTP file monitors -- all orchestrated in a single platform. Standardized status code mapping transforms "DEL"/"DLVRD"/"Complete" into a canonical delivery status. |
 | **Pipeline Orchestration & Monitoring** | Replaces the silent-failure problem. Every pipeline has health monitoring, SLA tracking, and automated alerting. If a carrier SFTP file doesn't arrive by 06:00 UTC, the operations team is notified immediately -- not 4.3 days later. |
 | **Hybrid Deployment** | On-prem agents connect to legacy SQL Server instances and Oracle databases behind MCG's firewall, while cloud-native pipelines handle SaaS sources. No rip-and-replace required. |

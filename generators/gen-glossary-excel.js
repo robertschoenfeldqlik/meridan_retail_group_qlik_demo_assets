@@ -283,7 +283,7 @@ const terms = [
     abbreviation: "",
     nightmare: "N/A — Bronze is the ingestion target",
     relatedDataProducts: "N/A (Bronze is not directly consumed)",
-    relatedTables: "bronze.inventory_positions, bronze.warehouse_events, bronze.shipments, bronze.sf_contacts, bronze.sf_orders, bronze.sf_products, bronze.iot_cold_chain, bronze.iot_carrier_events",
+    relatedTables: "bronze.inventory_positions, bronze.warehouse_events, bronze.shipments, bronze.crm_contacts, bronze.crm_orders, bronze.crm_products, bronze.iot_cold_chain, bronze.iot_carrier_events",
     owner: "IT Operations / Data Engineering",
     source: "Creation Guide, TRN-2025-001",
     businessImpact: "Foundation of the data platform — all downstream depends on Bronze freshness",

@@ -1,6 +1,6 @@
 # MCG Data Model Reference
 
-All source schemas for the Meridian Commerce Group demo, covering all three data feeds (PostgreSQL, Kafka, Salesforce), the Open Lakehouse tiers, and Gold-layer data products.
+All source schemas for the Meridian Commerce Group demo, covering all three data feeds (PostgreSQL, Kafka, MySQL), the Open Lakehouse tiers, and Gold-layer data products.
 
 ---
 
@@ -64,7 +64,7 @@ Outbound shipment tracking from 6 carriers, each with unique status vocabularies
 | `shipment_id` | SERIAL | PK | Auto-increment |
 | `tracking_number` | VARCHAR(40) | YES | NULL for some carriers (LOCAL-LOS never provides) |
 | `carrier_code` | VARCHAR(20) | NOT NULL | FEDEX, DHL-EXPRESS, DPD, NINJAVAN, CORREIOS, LOCAL-LOS |
-| `order_id` | VARCHAR(30) | YES | Links to warehouse_events and Salesforce MCG_Order__c |
+| `order_id` | VARCHAR(30) | YES | Links to warehouse_events and Meridian CRM crm_orders |
 | `shipment_status` | VARCHAR(60) | NOT NULL | **Nightmare #6**: Carrier-specific vocabularies (see carrier table below) |
 | `status_datetime` | VARCHAR(50) | YES | **STRING**, not timestamp! Formats vary per carrier |
 | `origin_facility` | VARCHAR(20) | YES | DC identifier |
@@ -155,17 +155,17 @@ Carrier webhook pushes forwarded to Kafka.
 
 ---
 
-## 3. Source: Salesforce (CRM)
+## 3. Source: Meridian CRM (MySQL)
 
-Standard + custom objects in a Salesforce Developer Edition org.
+Standard + custom objects in a MySQL 8.4 org.
 
 ### 3.1 `Contact` (Standard Object)
 
-Standard Salesforce Contact with address quality issues.
+Standard CRM contact with address quality issues.
 
 | Field | Type | Notes |
 |-------|------|-------|
-| `Id` | ID | Salesforce auto-ID |
+| `contact_id` | VARCHAR(18) | CRM-assigned key |
 | `FirstName` | Text | |
 | `LastName` | Text | Suffixed with unique ID to prevent duplication |
 | `Email` | Email | |
@@ -176,7 +176,7 @@ Standard Salesforce Contact with address quality issues.
 | `MailingPostalCode` | Text | **Nightmare #2**: Space/no-space variants (1012 AB vs 1012AB) |
 | `MailingCountry` | Text | **Nightmare #2**: NL vs Netherlands vs Niederlande |
 
-### 3.2 `MCG_Order__c` (Custom Object)
+### 3.2 `crm_orders` (Custom Object)
 
 Customer orders linked to Contact records.
 
@@ -195,7 +195,7 @@ Customer orders linked to Contact records.
 | `Order_Status__c` | Picklist | PROCESSING, SHIPPED, IN_TRANSIT, DELIVERED, DELIVERY_FAILED |
 | `WISMO_Flag__c` | Checkbox | **41%** of orders trigger customer inquiry |
 
-### 3.3 `MCG_Product__c` (Custom Object)
+### 3.3 `crm_products` (Custom Object)
 
 Product master with intentional data quality issues.
 
@@ -225,9 +225,9 @@ Direct CDC/connector replicas -- no transformation.
 | `bronze.inventory_positions` | PostgreSQL CDC | Real-time |
 | `bronze.warehouse_events` | PostgreSQL CDC | Real-time |
 | `bronze.shipments` | PostgreSQL CDC | Real-time |
-| `bronze.sf_contacts` | Salesforce connector | 15 min |
-| `bronze.sf_orders` | Salesforce connector | 15 min |
-| `bronze.sf_products` | Salesforce connector | 15 min |
+| `bronze.crm_contacts` | MySQL CDC | 15 min |
+| `bronze.crm_orders` | MySQL CDC | 15 min |
+| `bronze.crm_products` | MySQL CDC | 15 min |
 | `bronze.iot_cold_chain` | Kafka `mcg.iot.cold-chain` | Streaming |
 | `bronze.iot_carrier_events` | Kafka `mcg.iot.carrier-events` | Streaming |
 
@@ -260,7 +260,7 @@ Aggregated, enriched, ready for analytics and API sharing.
 ## 5. Entity Relationships
 
 ```
-PostgreSQL (WMS)                    Salesforce (CRM)
+PostgreSQL (WMS)                    Meridian CRM (MySQL)
 +----------------------+            +------------------+
 | inventory_positions  |            | Contact          |
 | - location_id (DC)   |            | - Id             |
@@ -270,7 +270,7 @@ PostgreSQL (WMS)                    Salesforce (CRM)
      (sku) |                      (Contact__c)
            |                                 |
 +----------+-----------+            +--------+---------+
-| warehouse_events     |            | MCG_Order__c     |
+| warehouse_events     |            | crm_orders     |
 | - warehouse_id (DC)  +--order_id--+ - Order_ID__c    |
 | - sku (product)      |            | - SKU__c         |
 | - order_id           |            | - Carrier__c     |
@@ -279,7 +279,7 @@ PostgreSQL (WMS)                    Salesforce (CRM)
      (order_id, carrier)              (SKU__c)
            |                                 |
 +----------+-----------+            +--------+---------+
-| shipments            |            | MCG_Product__c   |
+| shipments            |            | crm_products   |
 | - order_id           |            | - SKU__c         |
 | - carrier_code       |            | - Supplier_Name  |
 | - tracking_number    |            +------------------+
@@ -306,8 +306,8 @@ Kafka (IoT Telemetry)
 
 | Join | Left | Right | Key(s) | Notes |
 |------|------|-------|--------|-------|
-| Orders to Shipments | MCG_Order__c | shipments | `Order_ID__c = order_id` | ~80% match rate (20% missing order_id) |
-| Products to Inventory | MCG_Product__c | inventory_positions | `SKU__c ~ sku` | Requires SKU harmonization (3 formats) |
+| Orders to Shipments | crm_orders | shipments | `Order_ID__c = order_id` | ~80% match rate (20% missing order_id) |
+| Products to Inventory | crm_products | inventory_positions | `SKU__c ~ sku` | Requires SKU harmonization (3 formats) |
 | Shipments to Carrier Events | shipments | iot.carrier-events | `tracking_number + carrier_code` | 58% have tracking; rest unlinked |
 | IoT to Shipments | iot.cold-chain | shipments | `shipment_id` | 88% match (12% NULL shipment_id) |
 | Contacts to Addresses | Contact.MailingAddress | shipments.destination_address | Fuzzy match | Requires address standardization |

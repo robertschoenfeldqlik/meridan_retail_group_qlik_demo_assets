@@ -377,9 +377,9 @@ Engine:           Data Gateway - Streaming (recommended)
 | Consideration | Detail |
 |---|---|
 | **Qlik support level** | **Standard** connector (highest tier) -- most mature, extensively tested |
-| **Demo ease** | Free Salesforce Developer Edition available at developer.salesforce.com |
+| **Demo ease** | Free MySQL 8.4 available at developer.salesforce.com |
 | **MCG story fit** | Simulates SFCC e-commerce orders + CRM customer data -- the address nightmare |
-| **CDC support** | Yes -- incremental/full data landing from Salesforce objects |
+| **CDC support** | Yes -- incremental/full data landing from CRM tables |
 | **Alternatives** | ServiceNow (Lite), Jira Cloud (supported), Shopify (check current list) |
 
 ### Why Salesforce Over Alternatives
@@ -398,7 +398,7 @@ Engine:           Data Gateway - Streaming (recommended)
 
 Salesforce acts as **MCG's CRM and e-commerce order system** -- the source of customer profiles, delivery addresses, and online orders. This is ground zero for Nightmare #2 (Address Catastrophe) and the WISMO problem.
 
-### Salesforce Object Design -- Three Custom Objects + Standard Objects
+### CRM table Design -- Three Custom Objects + Standard Objects
 
 #### Object 1: Standard `Contact` / `Account` (Nightmare #2: Address Catastrophe)
 
@@ -456,7 +456,7 @@ Contact 5 (Singapore format):
   MailingCountry: Singapore                      <-- full name instead of code
 ```
 
-#### Object 2: Custom `MCG_Order__c` (E-Commerce Orders)
+#### Object 2: Custom `crm_orders` (E-Commerce Orders)
 
 | Salesforce Field | Type | MCG Mapping | Quality Issue |
 |---|---|---|---|
@@ -475,7 +475,7 @@ Contact 5 (Singapore format):
 | `Order_Status__c` | Picklist | `order_status` | Status codes don't match carrier statuses |
 | `WISMO_Flag__c` | Checkbox | Has customer called about this order? | 41% of online orders |
 
-#### Object 3: Custom `MCG_Product__c` (Nightmare #3: Product Master Mess)
+#### Object 3: Custom `crm_products` (Nightmare #3: Product Master Mess)
 
 | Salesforce Field | Type | MCG Mapping | Quality Issue |
 |---|---|---|---|
@@ -497,25 +497,25 @@ Connection Type:  Salesforce
 Authentication:   OAuth 2.0 (recommended) or Username + Password + Security Token
 Instance URL:     https://your-dev-org.my.salesforce.com
 API Version:      v59.0 (or latest)
-Objects:          Contact, Account, MCG_Order__c, MCG_Product__c
-Replication Mode: Full + Incremental (based on SystemModstamp)
+Objects:          Contact, Account, crm_orders, crm_products
+Replication Mode: Full + Incremental (based on last_modified_date)
 ```
 
 **Prerequisites:**
-- Salesforce Developer Edition org (free at developer.salesforce.com)
+- MySQL 8.4 org (free at developer.salesforce.com)
 - Connected App configured for OAuth (or security token for password auth)
 - Custom objects created via Salesforce Setup or deployed via metadata API
 - Sample data loaded (can use Salesforce Data Loader or Workbench)
 
 **Demo flow:**
 1. Connect to Salesforce in Qlik Talend Cloud
-2. Browse available objects -- show Contact, MCG_Order__c, MCG_Product__c
+2. Browse available objects -- show Contact, crm_orders, crm_products
 3. Set up landing task (full initial load + incremental)
 4. Run initial data landing
 5. Show Data Quality profiling: discovers address formatting issues, duplicate contacts, missing product weights
 6. Apply standardization rules and fuzzy matching
 7. Show Trust Score before (low) and after (high) cleansing
-8. Create or update a Contact in Salesforce → show incremental change captured
+8. Create or update a Contact in Meridian CRM → show incremental change captured
 
 ---
 
@@ -560,8 +560,8 @@ Replication Mode: Full + Incremental (based on SystemModstamp)
 │  │ (WMS DB)     │   │ (IoT Telemetry)  │   │ (CRM + Orders)         │  │
 │  │              │   │                  │   │                         │  │
 │  │ • inventory  │   │ • cold-chain     │   │ • Contact/Account      │  │
-│  │ • wh_events  │   │   topic          │   │ • MCG_Order__c         │  │
-│  │ • shipments  │   │ • carrier-events │   │ • MCG_Product__c       │  │
+│  │ • wh_events  │   │   topic          │   │ • crm_orders         │  │
+│  │ • shipments  │   │ • carrier-events │   │ • crm_products       │  │
 │  │              │   │   topic          │   │                         │  │
 │  │ CDC (WAL)    │   │ Streaming        │   │ Full + Incremental     │  │
 │  └──────┬───────┘   └────────┬─────────┘   └───────────┬─────────────┘  │

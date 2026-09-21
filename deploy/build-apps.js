@@ -1562,7 +1562,7 @@ class QlikAppBuilder {
   printPostBuildChecklist() {
     this.log.section('POST-BUILD CHECKLIST');
     const items = [
-      'Verify data connections are configured (PostgreSQL, Salesforce, Kafka, S3)',
+      'Verify data connections are configured (PostgreSQL, MySQL, Kafka, S3)',
       'Test a manual reload in each app to confirm data loads',
       'Set up scheduled reloads (every 15 min for Supply Chain, 30 min for Delivery)',
       'Apply MCG Dark Theme if not auto-applied (App Settings > Theme)',

@@ -24,7 +24,7 @@ Open `http://localhost:3939` in your browser. The wizard walks you through:
 1. Tenant connection and authentication
 2. Spaces and infrastructure setup
 3. Docker container management (simulators, DMG gateway)
-4. Data connections (PostgreSQL, Salesforce, Kafka, S3)
+4. Data connections (PostgreSQL, MySQL, Kafka, S3)
 5. App import and theme upload
 6. Knowledge base and document upload
 7. Automations, data products, and glossary
@@ -133,7 +133,7 @@ This creates each app in the shared space (empty, load-script-only, mapped to th
 | Connection | Type | Source |
 |---|---|---|
 | MCG WMS Database | PostgreSQL | Warehouse Management System |
-| MCG Salesforce CRM | Salesforce | Customer Relationship Management |
+| MCG CRM Database | MySQL (CDC) | Meridian CRM — customers, orders, product master |
 | MCG IoT Telemetry | Kafka | Real-time sensor data |
 | MCG Flat File Outputs | S3 | CSV/file exports |
 

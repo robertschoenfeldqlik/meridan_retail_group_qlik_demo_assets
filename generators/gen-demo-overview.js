@@ -251,7 +251,7 @@ stories.forEach((s, i) => {
   rowBadge("DATA SOURCES", 1.3, C.qlikTeal);
   compBox(1.85, 1.1, 3.2, 0.95, "database", "PostgreSQL (WMS)", "CDC — Change Data Capture", C.lightTeal);
   compBox(5.25, 1.1, 3.2, 0.95, "stream", "Apache Kafka (IoT)", "Streaming — Cold Chain & Carrier", C.lightTeal);
-  compBox(8.65, 1.1, 3.2, 0.95, "cloud", "Salesforce CRM", "API — Contacts, Orders, Products", C.lightTeal);
+  compBox(8.65, 1.1, 3.2, 0.95, "cloud", "Meridian CRM", "API — Contacts, Orders, Products", C.lightTeal);
 
   // ── Flow arrow 1→2 ──
   s.addText("▼", { x: 6.1, y: 2.08, w: 1, h: 0.5, fontSize: 18, color: C.qlikGray, fontFace: FONT, align: "center" });
@@ -421,7 +421,7 @@ slide.addText("Four proof points behind Project Qlarity's business case — MCG'
 const agendaItems = [
   {
     num: "1", title: "The Integrations Story", color: C.qlikTeal,
-    desc: "CDC, Kafka streaming, Salesforce → Open Lakehouse (Bronze/Silver/Gold)",
+    desc: "CDC, Kafka streaming, Meridian CRM → Open Lakehouse (Bronze/Silver/Gold)",
     components: "CDC • Data Flows • Table Recipes",
   },
   {
@@ -494,8 +494,8 @@ const sources = [
     detail: "Continuous IoT telemetry from cold chain sensors + carrier GPS/status events",
   },
   {
-    name: "Salesforce (CRM)", method: "Standard Connector (15 min)", color: C.qlikGreen,
-    tables: "Contact • MCG_Order__c • MCG_Product__c",
+    name: "Meridian CRM (MySQL)", method: "Standard Connector (15 min)", color: C.qlikGreen,
+    tables: "Contact • crm_orders • crm_products",
     detail: "Customer addresses, orders, product master — with intentional data quality issues",
   },
 ];
@@ -530,7 +530,7 @@ slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
   x: 0.5, y: 6.4, w: 12.3, h: 0.5,
   fill: { color: C.lightCyan }, rectRadius: 0.08,
 });
-slide.addText("Demo Tip: Run all 3 simulators before the demo. Data flows into Bronze within seconds (PostgreSQL, Kafka) or 15 min (Salesforce).", {
+slide.addText("Demo Tip: Run all 3 simulators before the demo. Data flows into Bronze within seconds (PostgreSQL, Kafka) or 15 min (Meridian CRM).", {
   x: 0.8, y: 6.42, w: 11.8, h: 0.45,
   fontSize: 11, color: C.qlikTeal, fontFace: FONT, bold: true,
 });
@@ -577,7 +577,7 @@ bulletList(slide, [
 recommendBox(slide, "Gateway types", [
   "Data Movement gateway → database CDC sources (Postgres / MySQL / SQL Server) — used here",
   "Data Gateway - Streaming → required for Kafka sources (a separate gateway type)",
-  "Salesforce / S3 / Athena → credentialed connectors created in Data → Create connection",
+  "S3 / Athena → credentialed connectors created in Data → Create connection",
 ], 4.8, C.lightGreen);
 
 // Callout: API limitation
@@ -600,7 +600,7 @@ slide.addText("Medallion architecture with automated data flows and table recipe
 const layers = [
   {
     name: "BRONZE", label: "Raw Ingestion", count: "8 tables", color: C.qlikGreen, bg: C.lightCyan,
-    tables: "inventory_positions • warehouse_events • shipments • sf_contacts • sf_orders • sf_products • iot_cold_chain • iot_carrier_events",
+    tables: "inventory_positions • warehouse_events • shipments • crm_contacts • crm_orders • crm_products • iot_cold_chain • iot_carrier_events",
   },
   {
     name: "SILVER", label: "Cleaned & Transformed", count: "8 tables", color: C.qlikTeal, bg: C.lightCyan,
@@ -895,7 +895,7 @@ slide.addText("Crowdsource data corrections to domain experts with tracked sprin
 });
 
 const sprints = [
-  { name: "Address Cleanup", source: "mcg_sf_address_validate_bulk", filter: "no GPS resolved", owner: "Customer Data Team", nightmare: "#2", records: "~640" },
+  { name: "Address Cleanup", source: "mcg_crm_address_validate_bulk", filter: "no GPS resolved", owner: "Customer Data Team", nightmare: "#2", records: "~640" },
   { name: "Supplier Dedup", source: "silver.suppliers_deduped", filter: "confidence < 0.9", owner: "Procurement Team", nightmare: "#3", records: "~160" },
   { name: "Missing Weights", source: "silver.products_harmonized", filter: "weight_kg IS NULL", owner: "Product Data Team", nightmare: "#3", records: "~8,200" },
   { name: "Lot Number Compliance", source: "silver.inventory_reconciled", filter: "perishable AND lot IS NULL", owner: "Quality Team", nightmare: "#7", records: "~15%" },
@@ -1768,16 +1768,16 @@ talendRoutes.forEach((f, i) => {
   });
 });
 
-// MCG grounding — the Salesforce address job
+// MCG grounding — the CRM address job
 slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
   x: 0.5, y: 4.8, w: 12.3, h: 1.0,
   fill: { color: C.lightBg }, rectRadius: 0.1, line: { color: C.qlikLightGreen, width: 1.5 },
 });
-slide.addText("MCG surface — the Salesforce address job", {
+slide.addText("MCG surface — the CRM address job", {
   x: 0.7, y: 4.87, w: 11.9, h: 0.32,
   fontSize: 13, color: C.qlikLightGreen, fontFace: FONT, bold: true,
 });
-slide.addText("Today's Talend job repairs and scores every Salesforce address, bulk-geocodes the batch against OSM Nominatim, and routes on one gate — GPS resolved goes to Iceberg, the rest to a Qlik Stewardship sprint. An agentic route adds an LLM-assisted correction step inside the same job, before the record ever reaches that queue.", {
+slide.addText("Today's Talend job repairs and scores every CRM address, bulk-geocodes the batch against OSM Nominatim, and routes on one gate — GPS resolved goes to Iceberg, the rest to a Qlik Stewardship sprint. An agentic route adds an LLM-assisted correction step inside the same job, before the record ever reaches that queue.", {
   x: 0.7, y: 5.2, w: 11.9, h: 0.55,
   fontSize: 11, color: C.darkText, fontFace: FONT,
 });

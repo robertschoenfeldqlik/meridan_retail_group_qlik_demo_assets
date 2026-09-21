@@ -18,8 +18,8 @@ note below was confirmed live, not inferred.
 | Running user | Robert Schoenfeld, profile **System Administrator** |
 | Permissions | `ModifyAllData`, `CustomizeApplication`, `AuthorApex` |
 | API versions | up to **v67.0** (simulator pinned to **61.0**) |
-| `MCG_Order__c` | created — 12 custom fields |
-| `MCG_Product__c` | created — 10 custom fields |
+| `crm_orders` | created — 12 custom fields |
+| `crm_products` | created — 10 custom fields |
 | Field-level security | granted via permission set `MCG_Simulator_Access` |
 | External Client App **"Qlik"** | exists — `0xIak0000000OTlEAM`, DistributionState `Local`, created 2025-02-03 |
 | ↳ its OAuth settings | **absent** — `ExtlClntAppOauthSettings` has 0 records, so no Consumer Key/Secret exists yet |
@@ -34,8 +34,8 @@ Re-running is safe — it reports what already exists and changes nothing.
 
 ```bash
 podman run --rm --env-file infrastructure/.env \
-  -v "$PWD/simulators/setup_salesforce_org.py:/app/setup.py:ro" \
-  infrastructure-salesforce-simulator python /app/setup.py
+  -v "$PWD/simulators/mysql_schema.sql:/app/setup.py:ro" \
+  infrastructure-mysql-crm-simulator python /app/setup.py
 ```
 
 Expected on a clean org: `12 created` / `10 created`, then `22 granted`.
@@ -49,7 +49,7 @@ invisible: the Tooling API lists all 22 while `describe()` returns only the 9
 standard fields, and every insert fails with:
 
 ```
-INVALID_FIELD: No such column 'Order_ID__c' on sobject of type MCG_Order__c
+INVALID_FIELD: No such column 'Order_ID__c' on sobject of type crm_orders
 ```
 
 This is the single most time-consuming failure mode in this setup. If you ever see
@@ -86,7 +86,7 @@ and `docker-compose.simulators-dmg.yml` now pass `SF_DOMAIN` and `SF_API_VERSION
 
 ```bash
 cd infrastructure
-docker-compose -f docker-compose.full-stack-dmg.yml --profile salesforce up -d salesforce-simulator
+docker-compose -f docker-compose.full-stack-dmg.yml --profile salesforce up -d mysql-crm-simulator
 ```
 
 `--profile salesforce` is required — the service is profile-gated. Note that
@@ -111,8 +111,8 @@ Record counts should climb on all three objects:
 | Object | Sample 1 | Sample 2 (+45s) | Δ |
 |---|---|---|---|
 | Contact | 246 | 248 | +2 |
-| `MCG_Order__c` | 4 | 6 | +2 |
-| `MCG_Product__c` | 0 | 1 | +1 |
+| `crm_orders` | 4 | 6 | +2 |
+| `crm_products` | 0 | 1 | +1 |
 
 Spot-check that the data is *deliberately messy* — e.g. a product landing with
 supplier `Samsung Corp` where others carry `Samsung Electronics Co.`, `Samsung Elec.`
@@ -128,7 +128,7 @@ That is documentation style, **not** a naming change. Verified directly against 
 - `describe()` reports the canonical API name as **`Contact`** (capital C)
 - SOQL is **case-insensitive** on object names — `Contact`, `contact` and `CONTACT`
   all return identical row counts
-- Custom objects report as `MCG_Order__c` / `MCG_Product__c`
+- Custom objects report as `crm_orders` / `crm_products`
 
 **The pipeline's existing `Contact` is correct.** No change is required to
 `sourceSelection.yaml` or `transformationRules.yaml`.
@@ -173,12 +173,12 @@ the same username / password / security token the simulator already authenticate
 with, read straight from `infrastructure/.env`.
 
 ```bash
-npm run salesforce:connection:dry-run   # prints the payload, credentials redacted
-npm run salesforce:connection           # creates it
+npm run deploy:dry-run   # prints the payload, credentials redacted
+npm run deploy           # creates it
 ```
 
 The script asserts the two load-bearing values itself — space `MCG Demo - DI` and
-name `MCG Salesforce CRM` — and is idempotent: if a connection of that name already
+name `MCG CRM Database` — and is idempotent: if a connection of that name already
 exists it reports the id and changes nothing, so it will never create the duplicate
 that would make the pipeline binding ambiguous.
 
@@ -207,7 +207,7 @@ so it has no Consumer Key or Secret yet.
 | Refresh token policy | Valid until revoked |
 
 Then *Qlik Cloud → Data Integration → Create connection → Salesforce*, in space
-**MCG Demo - DI**, named exactly **`MCG Salesforce CRM`**, with the Consumer Key and
+**MCG Demo - DI**, named exactly **`MCG CRM Database`**, with the Consumer Key and
 Secret, Environment **Production** (Developer Edition authenticates at `login`), and
 Data gateway `None`. Record the same key/secret in `deploy/config.json` under
 `dataConnections.salesforce` so the deployer and UI stay in sync — that file is
@@ -215,7 +215,7 @@ gitignored.
 
 > **The connection name and space are load-bearing, whichever route you take.** The
 > pipeline binds by *space + name*
-> (`{{id(connection, MCG Demo - DI.MCG Salesforce CRM)}}`). Any other name or space
+> (`{{id(connection, MCG Demo - DI.MCG CRM Database)}}`). Any other name or space
 > and the CRM landing task silently fails to bind.
 
 ---
@@ -225,12 +225,12 @@ gitignored.
 | Symptom | Cause | Fix |
 |---|---|---|
 | `INVALID_LOGIN` | `SF_DOMAIN=test` on a Dev Edition org | set `SF_DOMAIN=login` |
-| `No such column 'X__c'` | Metadata-API fields have no FLS | re-run `setup_salesforce_org.py` |
-| `NOT_FOUND` on `MCG_Order__c` | custom objects absent | run `setup_salesforce_org.py` |
+| `No such column 'X__c'` | Metadata-API fields have no FLS | re-run `mysql_schema.sql` |
+| `NOT_FOUND` on `crm_orders` | custom objects absent | run `mysql_schema.sql` |
 | `DUPLICATES_DETECTED` | duplicate rule blocking intentional dupes | ensure the `Sforce-Duplicate-Rule-Header` is sent |
 | Simulator logs empty but container up | Python stdout buffering | `PYTHONUNBUFFERED=1` (set in the image) |
 | Compose rejects the command | `--profile` placed after `up -d` | it is a root flag — put it before the subcommand |
-| CRM landing task won't bind | connection name/space mismatch | must be `MCG Salesforce CRM` in `MCG Demo - DI` |
+| CRM landing task won't bind | connection name/space mismatch | must be `MCG CRM Database` in `MCG Demo - DI` |
 
 ---
 
@@ -241,9 +241,9 @@ different org) does not mean redoing any of this by hand.
 
 | Step | Command | Idempotent |
 |---|---|---|
-| Custom objects, 22 fields, field-level security | `python setup_salesforce_org.py` (see §2 for the container form) | yes — reports "already present" |
-| Qlik data connection | `npm run salesforce:connection` | yes — skips if the name exists |
-| Preview the connection payload | `npm run salesforce:connection:dry-run` | read-only, credentials redacted |
+| Custom objects, 22 fields, field-level security | `python mysql_schema.sql` (see §2 for the container form) | yes — reports "already present" |
+| Qlik data connection | `npm run deploy` | yes — skips if the name exists |
+| Preview the connection payload | `npm run deploy:dry-run` | read-only, credentials redacted |
 | Verify the whole stack | `npm run deploy:dry-run` | read-only |
 
 Both scripts read their inputs from files rather than arguments —

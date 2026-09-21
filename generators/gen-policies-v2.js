@@ -38,7 +38,7 @@ function pol007() {
     numberedItem(2, "One step forward: The business customer or store to which every food product was supplied (who received it, when, what quantity)"),
     numberedItem(3, "Product identification: Lot number, product description, quantity, date of transaction"),
     para("Target response time for a complete traceability query: 24 hours.", { bold: true }),
-    calloutBox("CURRENT PERFORMANCE: The June 2025 lettuce recall (RCL-2025-003) required 11 days and 65 person-hours of manual cross-referencing across 4 disconnected systems (SAP, WMS, Descartes TMS, Salesforce) to complete full product tracing. This is 10 days beyond the 24-hour regulatory target.", "critical"),
+    calloutBox("CURRENT PERFORMANCE: The June 2025 lettuce recall (RCL-2025-003) required 11 days and 65 person-hours of manual cross-referencing across 4 disconnected systems (SAP, WMS, Descartes TMS, Meridian CRM) to complete full product tracing. This is 10 days beyond the 24-hour regulatory target.", "critical"),
 
     heading("4. Mandatory Data Elements"),
     dataTable(

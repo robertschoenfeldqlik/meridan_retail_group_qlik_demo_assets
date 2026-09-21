@@ -95,7 +95,7 @@ At the Q3 board meeting, five metrics told the story. Shelves going empty despit
 - **0** unified view of the supply chain
 
 **System logos/names around the edges:**
-SAP S/4HANA | Oracle WMS | Manhattan Associates | Salesforce Commerce Cloud | Blue Yonder | Kinaxis | Descartes | Tive/Sensitech IoT | Shopify POS | Oracle Xstore | Snowflake | Legacy SQL Server | Excel/Google Sheets
+SAP S/4HANA | Oracle WMS | Manhattan Associates | Meridian Storefront | Blue Yonder | Kinaxis | Descartes | Tive/Sensitech IoT | Shopify POS | Oracle Xstore | Snowflake | Legacy SQL Server | Excel/Google Sheets
 
 **Speaker Notes:**
 Three decades of acquisitions, organic growth, and digital transformation created this. 47 systems. Six ERP instances from different eras. Three warehouse management platforms that don't talk to each other. Two point-of-sale systems with different data models. 42 last-mile carriers, each with their own tracking format. And 14 rogue spreadsheets that became the de facto monitoring tools. No one has a single, trusted view of the supply chain. Let's look at the specific data quality nightmares this created.
@@ -137,7 +137,7 @@ This is the number one pain point. SAP says they have 500 units of this Bluetoot
 | System | address_line_2 | postal_code | country |
 |---|---|---|---|
 | Commerce Cloud | `Apartment 4B` | `1017 EJ` | `NL` |
-| Salesforce CRM | `Apt 4B` | `1017EJ` | `Netherlands` |
+| Meridian CRM | `Apt 4B` | `1017EJ` | `Netherlands` |
 | Xstore POS | `#4B` | `1017 EJ` | `NL` |
 
 **Key stats:**
@@ -209,7 +209,7 @@ This is the nightmare that amplifies every other nightmare. Twenty-three pipelin
 
 | System | Timestamp | Convention |
 |---|---|---|
-| Salesforce (order placed) | `2025-10-15T09:14:00Z` | UTC |
+| Meridian CRM (order placed) | `2025-10-15T09:14:00Z` | UTC |
 | Oracle WMS (picked) | `2025-10-15T14:22:47` | Local warehouse time, **no timezone indicator** |
 | SAP (shipped) | `2025-10-15T15:30:00Z` | UTC |
 | DPD carrier (delivered) | `2025-10-18T11:23:00+01:00` | Recipient local time with offset |

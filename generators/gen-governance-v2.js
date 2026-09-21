@@ -350,7 +350,7 @@ function compNVWA() {
     para("The MCG Express format stores require a POS hardware upgrade (current terminals lack barcode scanning capability for lot numbers). Hardware procurement is approved; installation scheduled for November 2025 — February 2026."),
 
     heading("2.3 Action 3: Unified Traceability (F2)", 2),
-    labelValue("Target", "Single-query traceability across SAP, WMS, TMS, and Salesforce Commerce"),
+    labelValue("Target", "Single-query traceability across SAP, WMS, TMS, and Meridian Storefront"),
     labelValue("Deadline", "Dependent on Project Qlarity Phase 1"),
     labelValue("Status", "Business case submitted — Pending CIO approval (31 October 2025)"),
     para("This corrective action depends on the implementation of Project Qlarity, which will create a unified data layer connecting all 4 traceability systems via Qlik Talend Cloud CDC pipelines and a Qlik Open Lakehouse. The business case ($12.4M over 24 months) was presented to senior leadership on 15 October 2025."),
@@ -433,7 +433,7 @@ function projClarity() {
     dataTable(
       ["Component", "Purpose", "Addresses Nightmares"],
       [
-        ["Qlik Talend Cloud — Data Integration", "CDC pipelines from SAP, WMS (Oracle + Manhattan), Salesforce, IoT, TMS", "#1, #4, #7"],
+        ["Qlik Talend Cloud — Data Integration", "CDC pipelines from SAP, WMS (Oracle + Manhattan), Meridian CRM, IoT, TMS", "#1, #4, #7"],
         ["Qlik Talend Cloud — Data Quality", "Automated profiling, address standardization, supplier dedup, product master harmonization", "#2, #3, #6"],
         ["Qlik Talend Cloud — Data Stewardship", "Workflow for resolving data quality issues with SLA tracking and accountability", "#1-#7"],
         ["Qlik Open Lakehouse", "Unified Bronze/Silver/Gold data architecture on Apache Iceberg", "#1-#7"],
@@ -451,7 +451,7 @@ function projClarity() {
     dataTable(
       ["Deliverable", "Description", "Nightmare Addressed"],
       [
-        ["CDC Pipelines", "Real-time CDC from SAP, Oracle WMS, Manhattan WMS, Salesforce", "#1, #4"],
+        ["CDC Pipelines", "Real-time CDC from SAP, Oracle WMS, Manhattan WMS, Meridian CRM", "#1, #4"],
         ["Open Lakehouse (Bronze/Silver)", "Apache Iceberg storage with automated ingestion and quality checks", "Foundation"],
         ["Timestamp Normalizer", "Standardize all timestamps to UTC with source timezone metadata", "#5"],
         ["Inventory Reconciliation", "Automated WMS-SAP reconciliation replacing manual daily checks", "#1"],
@@ -466,7 +466,7 @@ function projClarity() {
     para("Advanced data quality, remaining transformation routes, and predictive analytics:"),
     para("Address Standardization — postal address validation and correction for EU, Americas, APAC (addresses Nightmare #2)", { bullet: true }),
     para("Product Master Harmonizer — cross-system SKU matching, weight/dimension completion (addresses #3)", { bullet: true }),
-    para("Supplier Identity Resolution — fuzzy matching to create canonical supplier records across SAP, WMS, Salesforce (addresses #3)", { bullet: true }),
+    para("Supplier Identity Resolution — fuzzy matching to create canonical supplier records across SAP, WMS, Meridian CRM (addresses #3)", { bullet: true }),
     para("Order Enrichment — end-to-end order tracking from PO to delivery with unified timestamps (#5, #6, #7)", { bullet: true }),
     para("Enterprise Data Quality Trust Score — automated scoring across all 6 quality dimensions (#1-#7)", { bullet: true }),
     para("Data Stewardship Workflows — issue routing, SLA tracking, accountability framework", { bullet: true }),

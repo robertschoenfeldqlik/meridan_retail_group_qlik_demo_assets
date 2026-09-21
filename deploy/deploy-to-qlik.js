@@ -1827,14 +1827,60 @@ function buildPostgresGatewaySource(cfg, gatewayId) {
   };
 }
 
-// Salesforce, Kafka, and S3 connectors use REST-based data sources whose
-// property schemas are defined server-side. We create the connection shell
-// with an empty connectionProperties object (API requires at least one of
-// qConnectStatement or connectionProperties). Users configure credentials
-// in the Qlik Cloud UI after deployment.
-function buildSalesforceProperties(/* cfg */) {
-  return { connectionProperties: {}, _configureInUI: true };
+// Build a Data-Movement-gateway-bound MySQL SOURCE connection (datasourceID
+// repsrc_mysql) for the Meridian CRM database. Same connect-string mechanics as
+// the PostgreSQL source above: the gateway is referenced by agentId with
+// allowManagedGateway=true, which creates the connection without the live test
+// that the nested-connectionProperties path runs and fails.
+//
+// The CRM used to be a credentialed SaaS connector that could only be created by
+// hand in the UI. As a gateway-bound database it is API-creatable like the WMS,
+// which is the main operational win of the migration.
+//
+// Source of truth: deploy/templates/mysql-source.connection.json, pulled from a
+// real connection with `node deploy/pull-connection-template.js "MCG CRM
+// Database" mysql-source`. DO NOT hand-author the connect string — pull it. The
+// inline copy below is a documented fallback, not a substitute: it is modelled
+// on the PostgreSQL string and has not been round-tripped against the tenant.
+const MYSQL_SOURCE_TEMPLATE_PATH = path.join(SCRIPT_DIR, 'templates', 'mysql-source.connection.json');
+const MYSQL_SOURCE_INLINE =
+  'provider=QlikConnectorsCommonService.exe;sourceType=repsrc_mysql;agentId={{agentId}};' +
+  'allowManagedGateway=true;replicateEndpointType=mysqlsource###None;server={{server}};' +
+  'port={{port}};username={{username}};sshTunnel.enabled=false;sshTunnel.localHost=127.0.0.2;' +
+  'sshTunnel.sshServerPort=22;sshFlagEnabled=true;sshEnable=false;databaseManualInput=false;' +
+  'database={{database}};sslMode={{sslMode}};starterMode=false';
+
+function buildMysqlGatewaySource(cfg, gatewayId) {
+  const vals = {
+    agentId: gatewayId,
+    server: cfg.host || 'localhost',
+    // 3307 on the host, because the gateway container already binds 3306.
+    port: cfg.port || 3307,
+    username: cfg.username || 'qlik_cdc',
+    database: cfg.database || 'mcg_crm',
+    sslMode: cfg.sslMode || 'PREFERRED',
+  };
+  let template = MYSQL_SOURCE_INLINE;
+  let qType = 'QlikConnectorsCommonService.exe';
+  try {
+    const t = JSON.parse(fs.readFileSync(MYSQL_SOURCE_TEMPLATE_PATH, 'utf8'));
+    if (t.connectStringTemplate) template = t.connectStringTemplate;
+    if (t.qType) qType = t.qType;
+  } catch (_) { /* template file is optional — use the inline copy */ }
+  const inner = template.replace(/\{\{(\w+)\}\}/g, (_m, k) => (vals[k] !== undefined ? vals[k] : ''));
+  return {
+    qConnectStatement: `CUSTOM CONNECT TO "${inner}"`,
+    qType,
+    qUsername: vals.username,
+    qPassword: cfg.password,
+  };
 }
+
+// Kafka and S3 connectors use REST-based data sources whose property schemas are
+// defined server-side. We create the connection shell with an empty
+// connectionProperties object (the API requires at least one of qConnectStatement
+// or connectionProperties). Users configure credentials in the Qlik Cloud UI
+// after deployment.
 
 function buildKafkaProperties(cfg) {
   // Kafka connections use qConnectStatement like ODBC connectors
@@ -1923,7 +1969,7 @@ async function resolvePipelineBindings(client, cfg, log, srcDir) {
     } else if (prop === 'sourceConnection') {
       let connName = '';
       if (/wms|postgres/.test(taskRef))        connName = (dc.postgresql && dc.postgresql.name) || '';
-      else if (/crm|salesforce|sf/.test(taskRef)) connName = (dc.salesforce && dc.salesforce.name) || '';
+      else if (/crm|mysql/.test(taskRef))        connName = (dc.mysql && dc.mysql.name) || '';
       else if (/iot|kafka|stream/.test(taskRef))  connName = (dc.kafka && dc.kafka.name) || '';
       value = await connectionValue(connName);
     } else if (prop === 'taskSchema') {
@@ -2005,7 +2051,7 @@ function printChecklist(report, enabled, log) {
     connections: [
       "Test each data connection (click 'Test Connection' in the UI)",
       'Verify tables/topics are visible through each connection',
-      'Configure CDC Cluster for PostgreSQL + Salesforce pipelines',
+      'Configure CDC Cluster for PostgreSQL + MySQL pipelines',
       'Configure Streaming Cluster for Kafka IoT pipelines',
     ],
     theme: [
@@ -2060,7 +2106,7 @@ function printChecklist(report, enabled, log) {
 
   const components = [
     ['spaces',       'Create Spaces (shared + managed)'],
-    ['connections',  'Create Data Connections (PostgreSQL, Salesforce, Kafka, S3)'],
+    ['connections',  'Create Data Connections (PostgreSQL, MySQL, Kafka, S3)'],
     ['theme',        'Upload MCG Dark Theme Extension'],
     ['apps',         'Import & Publish Analytics Apps (.qvf)'],
     ['knowledge',    'Create Qlik Answers Knowledge Base + Upload Documents'],
@@ -2408,16 +2454,17 @@ async function main() {
     //     column. Without an ID we fall back to UI guidance.
     //   • Kafka has no SOURCE connector in the tenant (only reptgt_qdikafka, a
     //     target); a Kafka source needs a Data Gateway - Streaming, created in the UI.
-    //   • Salesforce/S3/Athena are credentialed REST (dcaas) connectors that need an
-    //     OAuth/IAM flow, so they're created in the Qlik Cloud UI.
+    //   • S3/Athena are credentialed REST (dcaas) connectors that need an IAM flow,
+    //     so they're created in the Qlik Cloud UI.
     const GW = 'mcg-qlik-dmg';
     const gatewayId = (cfg.dataGateway && cfg.dataGateway.id) || process.env.QLIK_DATA_GATEWAY_ID || '';
     const connectionDefs = [
       { key: 'postgresql', label: 'PostgreSQL (MCG WMS)', gatewaySource: true,
         dataSourceId: 'repsrc_postgresql', buildGateway: buildPostgresGatewaySource,
         uiHint: `Set dataGateway.id in config to auto-create this (Qlik Cloud → Administration → Data Gateways → copy the "Data gateway ID"), or create it in the DI project UI selecting the "${GW}" gateway.` },
-      { key: 'salesforce', label: 'Salesforce (MCG CRM)', uiOnly: true,
-        uiHint: 'Create in the Qlik Cloud UI (Data Integration → Create connection → Salesforce) in the MCG Demo - DI space, named exactly "MCG Salesforce CRM" so the pipeline binding resolves. The V2 connector uses OAuth 2.0 against a Salesforce EXTERNAL CLIENT APP (not the V1 Connected App; there is no Instance/Login Domain field) — callback https://connector.qlik.com/auth/oauth/v3.htm, scopes api + refresh_token,offline_access + openid + full. Supply Client Id, Client Secret, Environment and API Type; a data gateway is optional (None by default). The OAuth step needs an interactive Salesforce login and an auth code pasted back, so it cannot be performed headlessly.' },
+      { key: 'mysql', label: 'MySQL (Meridian CRM)', gatewaySource: true,
+        dataSourceId: 'repsrc_mysql', buildGateway: buildMysqlGatewaySource,
+        uiHint: `Set dataGateway.id in config to auto-create this (Qlik Cloud → Administration → Data Gateways → copy the "Data gateway ID"), or create it in the DI project UI selecting the "${GW}" gateway. It must be named exactly "MCG CRM Database" so the pipeline binding in deploy/pipelines/mcg-batch-pipeline/bindings.json resolves.` },
       { key: 'kafka',      label: 'Kafka (IoT Telemetry)', uiOnly: true,
         uiHint: 'Create the Kafka source inside your Data Integration project. Kafka as a SOURCE requires a Data Gateway - Streaming (the Data Movement gateway does not expose a Kafka source), and there is no Kafka source connector in the public API.' },
       { key: 's3',         label: 'S3 (Flat File Outputs)', uiOnly: true,

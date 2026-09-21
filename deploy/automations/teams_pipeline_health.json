@@ -65,7 +65,7 @@
               "facts": [
                 {"title": "PostgreSQL (WMS)", "value": "Last sync: ${pg_last_sync} (${pg_lag} ago)"},
                 {"title": "Kafka (IoT)", "value": "Streaming: ${kafka_status}"},
-                {"title": "Salesforce (CRM)", "value": "Last sync: ${sf_last_sync} (${sf_lag} ago)"}
+                {"title": "Meridian CRM (MySQL)", "value": "Last sync: ${crm_last_sync} (${crm_lag} ago)"}
               ]
             },
             {

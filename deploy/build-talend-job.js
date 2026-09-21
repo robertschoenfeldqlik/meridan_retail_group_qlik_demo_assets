@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // ---------------------------------------------------------------------------
 //  build-talend-job.js
-//  Emits the Talend Studio job `mcg_sf_address_validate_bulk` as a ProcessType
+//  Emits the Talend Studio job `mcg_crm_address_validate_bulk` as a ProcessType
 //  .item plus its .properties sidecar, ready to drop into the synthesized project
 //  tree that build-talend-zip.js produces.
 //
@@ -33,7 +33,7 @@ const fs = require('fs');
 const path = require('path');
 
 const OUT_DIR = path.join(__dirname, 'talend', 'job');
-const JOB = 'mcg_sf_address_validate_bulk';
+const JOB = 'mcg_crm_address_validate_bulk';
 const VERSION = '0.1';
 
 // Deterministic ids: the same input must produce the same job, or every rebuild shows
@@ -137,7 +137,7 @@ function nodeInput() {
     param('TEXT', 'FIELDSEPARATOR', '","'),
     param('CHECK', 'CSV_OPTION', 'true'),
     param('TEXT', 'HEADER', '1'),
-    param('TEXT', 'LIMIT', 'context.sf_batch_limit'),
+    param('TEXT', 'LIMIT', 'context.crm_batch_limit'),
     param('CHECK', 'REMOVE_EMPTY_ROW', 'true'),
     param('TEXT', 'ENCODING', '"UTF-8"'),
     `    <metadata connector="FLOW" label="tFileInputDelimited_1" name="tFileInputDelimited_1">`,
@@ -256,7 +256,7 @@ function nodeOutput(id, unique, y, fileCtx) {
 
 const CONTEXT_VARS = [
   ['address_extract_path', '"deploy/mockdata/out/silver_addresses_standardized.csv"'],
-  ['sf_batch_limit', '500'],
+  ['crm_batch_limit', '500'],
   ['nominatim_throttle_ms', '1100'],
   ['nominatim_base_url', '"https://nominatim.openstreetmap.org/search"'],
   ['nominatim_user_agent', '"MCG-Demo-AddressValidation/1.0 (Qlik demo dataset)"'],

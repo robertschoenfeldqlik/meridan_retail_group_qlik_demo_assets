@@ -227,63 +227,63 @@ function buildCreationGuide() {
       ]
     ),
 
-    // ─── 1.4 Salesforce API Pipelines ───────────────────────────────────
+    // ─── 1.4 Meridian CRM Pipelines ───────────────────────────────────
     pageBreak(),
-    heading("1.4 Salesforce API Pipelines (3 Objects)", 2),
-    para("These pipelines use the Salesforce Standard connector to poll data every 15 minutes using SystemModstamp for incremental sync."),
+    heading("1.4 Meridian CRM Pipelines (3 Objects)", 2),
+    para("These pipelines use the MySQL CDC connector to poll data every 15 minutes using last_modified_date for incremental sync."),
 
     heading("Prerequisites", 3),
-    para("Salesforce Developer Edition account with MCG custom objects created", { bullet: true }),
-    para("Salesforce connection created (see Setup Guide Section 7.3)", { bullet: true }),
+    para("MySQL 8.4 account with MCG custom objects created", { bullet: true }),
+    para("Meridian CRM connection created (see Setup Guide Section 7.3)", { bullet: true }),
 
-    heading("Pipeline 6: Contacts (sf_contacts)", 3),
+    heading("Pipeline 6: Contacts (crm_contacts)", 3),
     numberedItem("1", "Navigate to Data Integration → Data pipelines → Create pipeline"),
     numberedItem("2", "Select \"Replicate data\" as the pipeline type"),
-    numberedItem("3", "Choose source: Salesforce (MCG CRM) connection"),
+    numberedItem("3", "Choose source: MySQL (Meridian CRM) connection"),
     numberedItem("4", "Select object: Contact"),
     numberedItem("5", "Set target: MCG Open Lakehouse → bronze schema"),
-    numberedItem("6", "Target table name: bronze.sf_contacts"),
+    numberedItem("6", "Target table name: bronze.crm_contacts"),
     numberedItem("7", "Configure sync settings:"),
     para("Initial load: Full", { bullet: true, indent: true }),
-    para("Incremental field: SystemModstamp", { bullet: true, indent: true }),
+    para("Incremental field: last_modified_date", { bullet: true, indent: true }),
     para("Refresh interval: 15 minutes", { bullet: true, indent: true }),
     numberedItem("8", "Click Save and Run"),
-    screenshot("Salesforce pipeline showing Contact object selection and incremental sync settings"),
+    screenshot("Meridian CRM pipeline showing Contact object selection and incremental sync settings"),
 
     dataTable(
       ["Setting", "Value"],
       [
-        ["Source", "Salesforce: Contact (~2,000 records)"],
-        ["Target", "bronze.sf_contacts (Iceberg)"],
-        ["Method", "Full + Incremental (SystemModstamp)"],
+        ["Source", "Meridian CRM: crm_contacts (~2,000 rows)"],
+        ["Target", "bronze.crm_contacts (Iceberg)"],
+        ["Method", "Full + Incremental (last_modified_date)"],
         ["Schedule", "Every 15 minutes"],
         ["Data Quality Issues", "11% address format issues, 6% truncated addresses, 3.2% duplicates"],
         ["Nightmares Addressed", "#2 Address Catastrophe"],
       ]
     ),
 
-    heading("Pipeline 7: Orders (sf_orders)", 3),
+    heading("Pipeline 7: Orders (crm_orders)", 3),
     para("Repeat with these settings:"),
     dataTable(
       ["Setting", "Value"],
       [
-        ["Source", "Salesforce: MCG_Order__c (~5,000 records)"],
-        ["Target", "bronze.sf_orders (Iceberg)"],
-        ["Method", "Full + Incremental (SystemModstamp)"],
+        ["Source", "Meridian CRM: crm_orders (~5,000 rows)"],
+        ["Target", "bronze.crm_orders (Iceberg)"],
+        ["Method", "Full + Incremental (last_modified_date)"],
         ["Schedule", "Every 15 minutes"],
         ["Data Quality Issues", "42% missing tracking numbers, 41% with WISMO flags"],
         ["Nightmares Addressed", "#2 Address Catastrophe, #6 Carrier Data"],
       ]
     ),
 
-    heading("Pipeline 8: Products (sf_products)", 3),
+    heading("Pipeline 8: Products (crm_products)", 3),
     para("Repeat with these settings:"),
     dataTable(
       ["Setting", "Value"],
       [
-        ["Source", "Salesforce: MCG_Product__c (~1,200 records)"],
-        ["Target", "bronze.sf_products (Iceberg)"],
-        ["Method", "Full + Incremental (SystemModstamp)"],
+        ["Source", "Meridian CRM: crm_products (~1,200 rows)"],
+        ["Target", "bronze.crm_products (Iceberg)"],
+        ["Method", "Full + Incremental (last_modified_date)"],
         ["Schedule", "Every 15 minutes"],
         ["Data Quality Issues", "3 SKU schemes, 8,200 missing weights, supplier name variants"],
         ["Nightmares Addressed", "#3 Product Master Mess, #7 Compliance"],
@@ -311,12 +311,12 @@ function buildCreationGuide() {
       [
         ["1", "Timestamp Normalization", "warehouse_events", "warehouse_events_clean", "#5"],
         ["2", "Inventory Reconciliation", "inventory_positions", "inventory_reconciled", "#1, #3, #7"],
-        ["3", "Address Standardization", "sf_contacts", "addresses_standardized", "#2"],
-        ["4", "Product Harmonization", "sf_products", "products_harmonized", "#3"],
+        ["3", "Address Standardization", "crm_contacts", "addresses_standardized", "#2"],
+        ["4", "Product Harmonization", "crm_products", "products_harmonized", "#3"],
         ["5", "Carrier Canonicalization", "shipments, iot_carrier_events", "shipments_canonical", "#6"],
         ["6", "IoT Normalization", "iot_cold_chain", "iot_normalized", "#4, #5"],
-        ["7", "Supplier Deduplication", "sf_products", "suppliers_deduped", "#3"],
-        ["8", "Order-to-Delivery Timeline", "sf_orders, shipments", "order_delivery_timeline", "#5, #6"],
+        ["7", "Supplier Deduplication", "crm_products", "suppliers_deduped", "#3"],
+        ["8", "Order-to-Delivery Timeline", "crm_orders, shipments", "order_delivery_timeline", "#5, #6"],
       ]
     ),
 
@@ -385,7 +385,7 @@ function buildCreationGuide() {
 
     // ─── Route 3 ────────────────────────────────────────────────────────
     heading("2.4 Route 3: Address Standardization & Deduplication", 2),
-    para("Normalizes customer addresses from Salesforce, detects truncation artifacts, and deduplicates customer records using fuzzy matching."),
+    para("Normalizes customer addresses from Meridian CRM, detects truncation artifacts, and deduplicates customer records using fuzzy matching."),
 
     heading("Transformation Steps", 3),
     numberedItem("1", "Country Normalize: Netherlands/Niederlande → NL, Singapore → SG"),
@@ -473,7 +473,7 @@ function buildCreationGuide() {
     para("Deduplicates supplier records using Jaro-Winkler fuzzy matching and selects golden records."),
 
     heading("Transformation Steps", 3),
-    numberedItem("1", "Extract: Pull supplier names and IDs from bronze.sf_products"),
+    numberedItem("1", "Extract: Pull supplier names and IDs from bronze.crm_products"),
     numberedItem("2", "Normalize: Lowercase, strip suffixes (Ltd, PLC, Corp, S.A., Co., Inc.)"),
     numberedItem("3", "Accent Normalize: Nestlé → nestle for matching purposes"),
     numberedItem("4", "Fuzzy Match (Jaro-Winkler similarity): >95% → auto-merge; 85-95% → route to Stewardship; <85% → distinct"),
@@ -486,7 +486,7 @@ function buildCreationGuide() {
 
     heading("Transformation Steps", 3),
     numberedItem("1", "Join: orders → shipments via order_id"),
-    numberedItem("2", "Timeline Build (4 milestones): order_placed_utc (Salesforce), picked_utc (warehouse_events), shipped_utc (shipments), delivered_utc (shipments)"),
+    numberedItem("2", "Timeline Build (4 milestones): order_placed_utc (Meridian CRM), picked_utc (warehouse_events), shipped_utc (shipments), delivered_utc (shipments)"),
     numberedItem("3", "Duration Calc: Order-to-delivery hours, pick-to-ship hours, ship-to-deliver hours"),
     numberedItem("4", "SLA Check: Compare actual to promised delivery → sla_met = TRUE/FALSE"),
     numberedItem("5", "IoT Enrich: If cold chain shipment, attach max_temperature, exceedance_flag, spoilage_probability"),
@@ -642,7 +642,7 @@ function buildCreationGuide() {
     heading("Adaptive Card Contents", 3),
     para("Header: MCG Pipeline Health — Daily Summary", { bullet: true }),
     para("Status counts: Healthy (count), Degraded (count), Failed (count)", { bullet: true }),
-    para("Data freshness: PostgreSQL last sync, Kafka last sync, Salesforce last sync", { bullet: true }),
+    para("Data freshness: PostgreSQL last sync, Kafka last sync, Meridian CRM last sync", { bullet: true }),
     para("Trust Scores: Inventory, Addresses, Products, Shipments (each with score)", { bullet: true }),
     para("Action button: Open Pipeline Monitor dashboard", { bullet: true }),
 
@@ -695,7 +695,7 @@ function buildCreationGuide() {
     ),
 
     calloutBox("This automation demonstrates the closed-loop data quality cycle: Stewardship → Talend Validation → Silver Update → Gold Refresh → Predict Model Retrain. It's the most impactful demo for showing how human-in-the-loop governance connects to automated correction.", "info"),
-    calloutBox("Full Talend job design: deploy/talend/BUILD_BULK_ADDRESS_JOB.md — mcg_sf_address_validate_bulk, five subjobs scheduled in TMC. It pulls Salesforce Contacts, repairs and scores each address with the AddressStandardizer routine, geocodes the whole batch in ONE bulk call via public OSM Nominatim (1 req/s, dedupe cache, retry backoff, wall-clock budget), then routes on GPS resolution: resolved rows are written as timestamped CSV to S3 and loaded downstream into the Apache Iceberg table silver.addresses_geocoded; unresolved rows go to the Address Cleanup stewardship sprint. Run npm run talend:zip to produce the Studio import bundle.", "success"),
+    calloutBox("Full Talend job design: deploy/talend/BUILD_BULK_ADDRESS_JOB.md — mcg_crm_address_validate_bulk, five subjobs scheduled in TMC. It pulls CRM contacts, repairs and scores each address with the AddressStandardizer routine, geocodes the whole batch in ONE bulk call via public OSM Nominatim (1 req/s, dedupe cache, retry backoff, wall-clock budget), then routes on GPS resolution: resolved rows are written as timestamped CSV to S3 and loaded downstream into the Apache Iceberg table silver.addresses_geocoded; unresolved rows go to the Address Cleanup stewardship sprint. Run npm run talend:zip to produce the Studio import bundle.", "success"),
     screenshot("Address Correction Loop automation showing all 8 blocks from stewardship trigger through Gold refresh"),
 
     // ─── Teams Webhook Setup ────────────────────────────────────────────
@@ -737,9 +737,9 @@ function buildCreationGuide() {
         ["CDC Pipeline 3 (shipments)", "Full Load Complete, CDC Active", "Check DMG status page"],
         ["Streaming Pipeline 4 (cold chain)", "Running, messages flowing", "Check Confluent Control Center"],
         ["Streaming Pipeline 5 (carrier events)", "Running, messages flowing", "Check Confluent Control Center"],
-        ["Salesforce Pipeline 6 (contacts)", "Last sync < 15 min ago", "Check connection status in hub"],
-        ["Salesforce Pipeline 7 (orders)", "Last sync < 15 min ago", "Check connection status in hub"],
-        ["Salesforce Pipeline 8 (products)", "Last sync < 15 min ago", "Check connection status in hub"],
+        ["Meridian CRM Pipeline 6 (contacts)", "Last sync < 15 min ago", "Check connection status in hub"],
+        ["Meridian CRM Pipeline 7 (orders)", "Last sync < 15 min ago", "Check connection status in hub"],
+        ["Meridian CRM Pipeline 8 (products)", "Last sync < 15 min ago", "Check connection status in hub"],
         ["Silver Routes 1-8", "All transformations completed", "Check Data Integration > Transformations"],
         ["Gold Table Recipes (2)", "All recipes producing output", "Check Data Catalog for row counts"],
         ["Data Products (2)", "All registered with Trust Score", "Check Data Marketplace"],
@@ -758,7 +758,7 @@ function buildCreationGuide() {
         ["CDC not capturing changes", "WAL level not set to logical", "Set wal_level=logical in PostgreSQL config; restart container"],
         ["Replication slot not active", "Gateway not connected", "Check DMG agent status; re-register if needed"],
         ["Kafka messages not flowing", "Consumer group offset issue", "Reset consumer group offset to earliest; check topic permissions"],
-        ["Salesforce sync fails", "Token expired", "Regenerate security token in Salesforce settings"],
+        ["Meridian CRM sync fails", "Token expired", "Regenerate security token in Meridian CRM settings"],
         ["Teams card not posting", "Webhook URL invalid", "Recreate webhook connector in Teams channel"],
         ["Automation times out", "Query too slow", "Increase timeout in block settings; optimize Gold table query"],
         ["Talend job fails", "Wrong job ID or credentials", "Verify Talend API endpoint and job ID in automation block"],

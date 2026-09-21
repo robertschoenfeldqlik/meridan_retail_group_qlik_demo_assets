@@ -11,7 +11,7 @@ Both projects are `DATA_PIPELINE` / platform `QLIK_OPEN_LAKEHOUSE`. They are ind
 | Task | Type | Source → Target | Schedule (one per task) |
 |---|---|---|---|
 | MCG WMS CDC Landing | `LAKE_LANDING` | PostgreSQL CDC (3 tables) → `bronze` | Continuous CDC (started, not scheduled) |
-| MCG CRM Landing | `LAKE_LANDING` | Salesforce (Contact, MCG_Order__c, MCG_Product__c) → `bronze` | Every 15 min |
+| MCG CRM Landing | `LAKE_LANDING` | MySQL CDC (crm_contacts, crm_orders, crm_products) → `bronze` | Every 15 min |
 | MCG Silver Transform | `TRANSFORM` | bronze WMS + CRM → `silver` (7 datasets) | Event: any input task |
 | MCG Gold Datamart | `DATAMART` | silver → `gold` (2 datasets) | Daily 06:00 UTC |
 
@@ -36,7 +36,7 @@ Everything Step 13 (and the deploy UI) does on the integration side, with the ve
 
 | Stage | Endpoint | Notes |
 |---|---|---|
-| Create connections | `POST /api/v1/data-connections` (after `GET /api/v1/data-sources` discovery) | PostgreSQL / Salesforce / Kafka source connections; idempotent by name |
+| Create connections | `POST /api/v1/data-connections` (after `GET /api/v1/data-sources` discovery) | PostgreSQL / MySQL / Kafka source connections; idempotent by name |
 | Validate definitions | `POST /api/v1/di-projects/utils/actions/validate-project-definitions` | Preview utility — multipart ZIP; soft-skips if the tenant lacks it |
 | Create project | `POST /api/v1/di-projects` | `type: DATA_PIPELINE`, `platformType: QLIK_OPEN_LAKEHOUSE` |
 | Upload pipeline | `POST /api/v1/di-projects/{id}/actions/import` | Multipart ZIP of this YAML project; 202 actions polled via `GET /api/v1/di-projects/actions/{actionId}` |
@@ -65,7 +65,7 @@ The silver/gold logic from the creation guide is encoded declaratively in each t
 | `supply_chain_health` | gold-datamart | `CUSTOM` SQL | Per-DC inventory accuracy KPIs + cycle-count variance |
 | `last_mile_performance` | gold-datamart | `CUSTOM` SQL | Per-carrier/country SLA, on-time rate, WISMO rate, address quality |
 
-The CRM landing additionally carries a `transformationRules.yaml` that renames Salesforce objects to the documented bronze names (`Contact` → `sf_contacts`, `MCG_Order__c` → `sf_orders`, `MCG_Product__c` → `sf_products`).
+The CRM landing additionally carries a `transformationRules.yaml` that renames CRM tables to the documented bronze names (`Contact` → `crm_contacts`, `crm_orders` → `crm_orders`, `crm_products` → `crm_products`).
 
 SQL is written as portable ANSI (CASE/COALESCE/window functions); the lakehouse engine compiles it at prepare time. If an expression needs dialect tweaks, fix it in the QTCP UI and run `npm run deploy:export-pipeline` to round-trip the correction back here.
 

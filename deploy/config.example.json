@@ -61,14 +61,16 @@
       "sslMode": "PREFER",
       "comment_postgresql": "Created as a Data-Movement-gateway-bound replication SOURCE (repsrc_postgresql) when dataGateway.id is set. 'host' must be the PostgreSQL host reachable from the gateway container (Docker service name / host IP)."
     },
-    "salesforce": {
-      "name": "MCG Salesforce CRM",
-      "instance": "orgfarm-xxxx-dev-ed.develop.my",
-      "loginDomain": "orgfarm-xxxx-dev-ed.develop.my.salesforce.com",
-      "clientId": "YOUR_SF_CONNECTED_APP_CLIENT_ID",
-      "clientSecret": "YOUR_SF_CONNECTED_APP_CLIENT_SECRET",
-      "isSandbox": true,
-      "comment_salesforce": "Salesforce is a SaaS source created in the Qlik Cloud UI (Data Integration → Create connection → Salesforce), in the data space, over Qlik's managed gateway ($$qlikManagedGateway$$). It authenticates via a Connected App (OAuth: Instance, Login Domain, Client Id, Client Secret) — the interactive Salesforce login can't be done headlessly, so the deploy skips it with guidance."
+    "mysql": {
+      "name": "MCG CRM Database",
+      "host": "localhost",
+      "port": 3307,
+      "database": "mcg_crm",
+      "username": "qlik_cdc",
+      "password": "mcg_crm_2025",
+      "schema": "mcg_crm",
+      "sslMode": "PREFERRED",
+      "comment_mysql": "Meridian CRM. Created as a Data-Movement-gateway-bound replication SOURCE (repsrc_mysql) when dataGateway.id is set — unlike the SaaS CRM connector this replaced, it needs no interactive login and the deploy creates it headlessly. 'host' must be the MySQL host reachable FROM THE GATEWAY CONTAINER (compose service name, or the host IP), and 'port' is 3307 on the host because the gateway container itself binds 3306. Inside the compose network it is mysql:3306."
     },
     "kafka": {
       "name": "MCG IoT Telemetry",
@@ -114,7 +116,7 @@
   "clusters": {
     "cdc": {
       "name": "CDC Cluster",
-      "comment": "Handles PostgreSQL change data capture (Pipelines 1-3) and Salesforce incremental sync (Pipelines 6-8)"
+      "comment": "Handles PostgreSQL change data capture (Pipelines 1-3) and Meridian CRM incremental sync (Pipelines 6-8)"
     },
     "streaming": {
       "name": "Streaming Cluster",
@@ -199,7 +201,7 @@
         "appName": "MCG Delivery & Customer Experience",
         "cronExpression": "0 5/15 * * * *",
         "timeZone": "UTC",
-        "description": "Every 15 min at :05/:20/:35/:50 — 5 minutes after each Talend Salesforce QVD drop (deploy/talend), so the validated-address dataset is always fresh"
+        "description": "Every 15 min at :05/:20/:35/:50 — 5 minutes after each Talend CRM QVD drop (deploy/talend), so the validated-address dataset is always fresh"
       }
     ],
     "comment_reloadtasks": "appName resolves to the appId automatically at deploy time (apps must exist — run Build Apps first). Set appId explicitly to skip the lookup."
@@ -259,7 +261,7 @@
   },
   "stewardship": {
     "name": "Address Cleanup",
-    "description": "Salesforce contact addresses the bulk validation job could not resolve to GPS. Fed by the UNRESOLVED branch of mcg_sf_address_validate_bulk.",
+    "description": "CRM contact addresses the bulk validation job could not resolve to GPS. Fed by the UNRESOLVED branch of mcg_crm_address_validate_bulk.",
     "space": "data",
     "storageConnectionType": "QLIK_CLOUD_STORAGE",
     "workflowType": "ONE_STEP_VALIDATION",
@@ -268,7 +270,7 @@
     "recordDataSchema": [
       {
         "name": "contact_id",
-        "description": "Salesforce Contact Id",
+        "description": "CRM contact id",
         "isVisible": true,
         "isEditable": false
       },

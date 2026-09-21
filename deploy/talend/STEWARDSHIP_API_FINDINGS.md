@@ -1,7 +1,7 @@
 # Qlik Stewardship — the sprint API, found and documented
 
 Research for standing up the stewardship sprint that receives the `UNRESOLVED` branch of
-`mcg_sf_address_validate_bulk`. Tested against the live MCG tenant, August 2026.
+`mcg_crm_address_validate_bulk`. Tested against the live MCG tenant, August 2026.
 
 ---
 
@@ -103,7 +103,7 @@ against the live API — it passes validation.
   "aiAssistance": { "isEnabled": false },
   "rulesMappings": [],
   "recordDataSchema": { "items": [
-    { "name": "contact_id", "description": "Salesforce Contact Id",
+    { "name": "contact_id", "description": "CRM contact id",
       "isVisible": true, "isEditable": false,
       "standardType": { "name": "STRING" } }
   ]}
