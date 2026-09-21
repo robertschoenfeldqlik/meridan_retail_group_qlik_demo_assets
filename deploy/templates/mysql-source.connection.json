@@ -1,0 +1,13 @@
+{
+  "_comment": "Pulled from the live tenant connection \"source_mysql_e2e_local\" (repsrc_mysql) and parameterized. buildMysqlGatewaySource() in deploy-to-qlik.js fills the {{placeholders}} from deploy config (dataGateway.id and dataConnections.mysql.{host,port,username,sslMode}). NOTE: a repsrc_mysql connect string carries NO database= parameter - unlike PostgreSQL, the schema is chosen per landing task, which is why MCG CRM Landing/sourceSelection.yaml needs its schema: key. Refresh with: node deploy/pull-connection-template.js \"MCG CRM Database\" mysql-source",
+  "datasourceID": "repsrc_mysql",
+  "qType": "QlikConnectorsCommonService.exe",
+  "placeholders": [
+    "agentId",
+    "server",
+    "port",
+    "username",
+    "sslMode"
+  ],
+  "connectStringTemplate": "provider=QlikConnectorsCommonService.exe;sourceType=repsrc_mysql;agentId={{agentId}};allowManagedGateway=true;replicateEndpointType=mysql###None;server={{server}};port={{port}};username={{username}};sshTunnel.enabled=false;sshTunnel.localHost=127.0.0.2;sshTunnel.sshServerPort=22;sshFlagEnabled=true;sshEnable=false;sslMode={{sslMode}};eventsPollInterval=5;starterMode=false;"
+}

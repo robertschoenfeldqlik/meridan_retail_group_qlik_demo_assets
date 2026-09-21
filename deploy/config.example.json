@@ -63,14 +63,14 @@
     },
     "mysql": {
       "name": "MCG CRM Database",
-      "host": "your-mysql-host.example.com",
+      "host": "mysql",
       "port": 3306,
       "database": "mcg_crm",
       "username": "qlik_cdc",
       "password": "mcg_crm_2025",
       "schema": "mcg_crm",
-      "sslMode": "PREFERRED",
-      "comment_mysql": "Meridian CRM. Created as a Data-Movement-gateway-bound replication SOURCE (repsrc_mysql) when dataGateway.id is set — unlike the SaaS CRM connector this replaced, it needs no interactive login and the deploy creates it headlessly. 'host' must be the MySQL host reachable FROM THE GATEWAY CONTAINER (compose service name, or the host IP), and 'port' is 3307 on the host because the gateway container itself binds 3306. Inside the compose network it is mysql:3306."
+      "sslMode": "PREFER",
+      "comment_mysql": "Meridian CRM. A Data-Movement-gateway-bound replication SOURCE (repsrc_mysql), created headlessly by the deploy when dataGateway.id is set - unlike the SaaS CRM connector it replaced, which needed an interactive login. 'host' and 'port' are what THE GATEWAY sees, not your laptop: the gateway container bundles its own MySQL, so localhost:3306 is correct there, exactly as for the PostgreSQL WMS above. Run the DMG stack (npm run docker:up:dmg) for the tenant-connected demo; the standalone stack publishes MySQL on host port 3307 for local work and is not what the gateway connects to. NOTE: a repsrc_mysql connect string has no database parameter - the schema is chosen per landing task, via the schema: key in MCG CRM Landing/sourceSelection.yaml."
     },
     "kafka": {
       "name": "MCG IoT Telemetry",

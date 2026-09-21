@@ -1838,27 +1838,38 @@ function buildPostgresGatewaySource(cfg, gatewayId) {
 // which is the main operational win of the migration.
 //
 // Source of truth: deploy/templates/mysql-source.connection.json, pulled from a
-// real connection with `node deploy/pull-connection-template.js "MCG CRM
-// Database" mysql-source`. DO NOT hand-author the connect string — pull it. The
-// inline copy below is a documented fallback, not a substitute: it is modelled
-// on the PostgreSQL string and has not been round-tripped against the tenant.
+// real repsrc_mysql connection with
+//   node deploy/pull-connection-template.js "MCG CRM Database" mysql-source
+// The inline copy below mirrors that pull and is only the fallback when the
+// template file is absent.
+//
+// Four things differ from the PostgreSQL string, all of them load-bearing and
+// none of them guessable — an earlier hand-written version had all four wrong:
+//   • replicateEndpointType is `mysql###None`, not `mysqlsource###None`
+//   • there is NO `database=` parameter at all. A MySQL source selects its
+//     schema per landing task, which is exactly why MCG CRM Landing's
+//     sourceSelection.yaml needs a `schema:` key where the old SaaS source
+//     needed none.
+//   • sslMode values are NONE / PREFER, not PREFERRED
+//   • it carries `eventsPollInterval` and drops every heartbeat/DDL parameter
 const MYSQL_SOURCE_TEMPLATE_PATH = path.join(SCRIPT_DIR, 'templates', 'mysql-source.connection.json');
 const MYSQL_SOURCE_INLINE =
   'provider=QlikConnectorsCommonService.exe;sourceType=repsrc_mysql;agentId={{agentId}};' +
-  'allowManagedGateway=true;replicateEndpointType=mysqlsource###None;server={{server}};' +
+  'allowManagedGateway=true;replicateEndpointType=mysql###None;server={{server}};' +
   'port={{port}};username={{username}};sshTunnel.enabled=false;sshTunnel.localHost=127.0.0.2;' +
-  'sshTunnel.sshServerPort=22;sshFlagEnabled=true;sshEnable=false;databaseManualInput=false;' +
-  'database={{database}};sslMode={{sslMode}};starterMode=false';
+  'sshTunnel.sshServerPort=22;sshFlagEnabled=true;sshEnable=false;sslMode={{sslMode}};' +
+  'eventsPollInterval=5;starterMode=false;';
 
 function buildMysqlGatewaySource(cfg, gatewayId) {
   const vals = {
     agentId: gatewayId,
+    // As seen FROM the gateway, not from the operator's laptop.
     server: cfg.host || 'localhost',
-    // 3307 on the host, because the gateway container already binds 3306.
-    port: cfg.port || 3307,
+    port: cfg.port || 3306,
     username: cfg.username || 'qlik_cdc',
-    database: cfg.database || 'mcg_crm',
-    sslMode: cfg.sslMode || 'PREFERRED',
+    // No `database` here on purpose: repsrc_mysql has no such parameter.
+    // cfg.database still drives the pipeline binding's schema variable.
+    sslMode: cfg.sslMode || 'PREFER',
   };
   let template = MYSQL_SOURCE_INLINE;
   let qType = 'QlikConnectorsCommonService.exe';

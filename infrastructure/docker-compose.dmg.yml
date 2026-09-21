@@ -92,19 +92,24 @@ services:
       - "${DMG_SSH_PORT:-2222}:22"
     volumes:
       - qlik-mysql-data:/var/lib/mysql
+      # The gateway's identity lives here. Without a volume, recreating the
+      # container mints a brand-new keypair, the tenant still holds the old
+      # one, and the registered gateway sits "disconnected" forever with a
+      # perfectly healthy agent running inside. Persisting it means you
+      # register once, not once per rebuild.
+      - qlik-gateway-data:/opt/qlik/gateway/movement/data
+      - qlik-gateway-agents:/opt/qlik/gateway/movement/qcs_agents
       - /sys/fs/cgroup:/sys/fs/cgroup:rw
-    # The "postgres" and "mysql" aliases let the simulators connect to this
-    # all-in-one container with the same hostnames they use against the
-    # standalone database services in docker-compose.simulators.yml.
+    # NO network aliases. They used to be "postgres" and "mysql", which are the
+    # service names of the standalone databases in docker-compose.simulators.yml
+    # on this same network. Podman accepts the duplicate silently and aardvark-dns
+    # returns BOTH A records, so a client resolving "mysql" reaches whichever
+    # container joined first — the CRM simulator could write to one database while
+    # the gateway CDC-reads the other, with no error anywhere. Everything that
+    # needs this container addresses it as "qlik-dmg".
     networks:
-      mcg-sim-net:
-        aliases:
-          - postgres
-          - mysql
-      mcg-kafka-net:
-        aliases:
-          - postgres
-          - mysql
+      - mcg-sim-net
+      - mcg-kafka-net
     extra_hosts:
       - "host.docker.internal:host-gateway"
     healthcheck:
@@ -117,6 +122,10 @@ services:
 
 volumes:
   qlik-mysql-data:
+    driver: local
+  qlik-gateway-data:
+    driver: local
+  qlik-gateway-agents:
     driver: local
 
 networks:

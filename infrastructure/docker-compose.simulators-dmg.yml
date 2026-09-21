@@ -5,7 +5,7 @@
 # PostgreSQL service. Use this alongside docker-compose.dmg.yml, which
 # provides PostgreSQL via the Qlik Data Movement Gateway container.
 #
-# The DMG container exposes a "postgres" network alias on mcg-sim-net,
+# The DMG container is reachable as "qlik-dmg" on mcg-sim-net,
 # so all simulators connect transparently to qlik-dmg:5432.
 #
 # Usage (with Kafka + DMG):
@@ -44,17 +44,17 @@ services:
     # rejects a project with a depends_on referencing an undefined service.
     # Ensure qlik-dmg is already running and healthy (see header usage note
     # above) before starting this file — seed-data reaches it via the
-    # "postgres" network alias qlik-dmg publishes on mcg-sim-net.
+    # qlik-dmg service name on mcg-sim-net.
     command: >
       python seed_data.py
         --postgres
-        --pg-host postgres
+        --pg-host qlik-dmg
         --pg-port 5432
         --pg-db ${POSTGRES_DB:-mcg_wms}
         --pg-user ${DMG_PG_USER:-postgres}
         --pg-pass ${DMG_POSTGRES_PASSWORD:-Qlik1234}
         --mysql
-        --my-host mysql
+        --my-host qlik-dmg
         --my-port 3306
         --my-db ${MYSQL_DB:-mcg_crm}
         --my-user root
@@ -78,7 +78,7 @@ services:
         condition: service_completed_successfully
     command: >
       python postgres_simulator.py
-        --host ${PG_SIM_HOST:-postgres}
+        --host ${PG_SIM_HOST:-qlik-dmg}
         --port ${PG_SIM_PORT:-5432}
         --db ${POSTGRES_DB:-mcg_wms}
         --user ${DMG_PG_USER:-postgres}
@@ -131,7 +131,7 @@ services:
     # DMG_MYSQL_PASSWORD would produce a credential that exists nowhere.
     command: >
       python mysql_crm_simulator.py
-        --host mysql
+        --host qlik-dmg
         --port 3306
         --db ${MYSQL_DB:-mcg_crm}
         --user root
