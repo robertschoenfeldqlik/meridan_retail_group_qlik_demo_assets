@@ -43,6 +43,8 @@ pptx.author = "Qlik";
 pptx.company = "Qlik / Meridian Commerce Group";
 pptx.title = "Project Qlarity — MCG Technology Architecture (Qlik Cloud)";
 
+const deckMedia = require("./lib/deck-media");
+
 let slideNum = 0;
 
 // ─── HELPERS ───────────────────────────────────────────────────────────────────
@@ -74,6 +76,32 @@ function contentSlide(title, accentColor) {
     fontSize: 22, color: C.qlikBlue, fontFace: FONT, bold: true,
   });
   return slide;
+}
+
+/**
+ * "It actually runs" slide: a live-tenant screenshot, framed and captioned to
+ * sit inside the deck's visual system rather than looking pasted on.
+ *
+ * Returns false and adds NO slide when the screenshot has not been captured
+ * yet, so an uncaptured shot leaves no empty frame in the deck.
+ */
+function proofSlide(title, slug, subtitle) {
+  const hit = deckMedia.resolveShot(slug);
+  if (!hit) return false;
+
+  const slide = contentSlide(title, C.qlikTeal);
+  if (subtitle) {
+    slide.addText(subtitle, {
+      x: 0.6, y: 0.82, w: 12.1, h: 0.32,
+      fontSize: 11, color: C.darkText, fontFace: FONT,
+    });
+  }
+  deckMedia.screenshotCard(pptx, slide, hit.path, {
+    x: 1.55, y: 1.32, w: 10.2, maxH: 5.2,
+    caption: hit.caption,
+    colors: C,
+  });
+  return true;
 }
 
 function dividerSlide(title, subtitle) {
@@ -1029,10 +1057,10 @@ dividerSlide("The 7 Nightmares", "$127M in annual data quality costs");
   const components = [
     { category: "Data Sources (3)", items: "PostgreSQL WMS (CDC)  •  Apache Kafka 2 topics (streaming)  •  Salesforce CRM (API)", color: C.qlikTeal },
     { category: "Open Lakehouse", items: "2 declarative pipeline projects (batch + streaming)  •  8 Bronze tables  •  8 Silver transforms  •  2 Gold products", color: C.qlikGreen },
-    { category: "Governance", items: "Trust Score  •  Data Lineage  •  Impact Analysis  •  Profiling  •  25-term Glossary  •  4 Stewardship campaigns", color: C.qlikTeal },
+    { category: "Governance", items: "Trust Score  •  Data Lineage  •  Impact Analysis  •  Profiling  •  25-term Glossary  •  4 Stewardship sprints", color: C.qlikTeal },
     { category: "Analytics", items: "2 Qlik Analytics apps (10 sheets)  •  MCG Dark Theme  •  Streaming IoT  •  Alerts  •  Reports", color: C.qlikBlue },
     { category: "AI / ML", items: "2 Predict models (Exceedance + Late Delivery)  •  Qlik Answers (25 docs)  •  Discovery Agent  •  MCP Server", color: C.qlikLightGreen },
-    { category: "Automation", items: "5 automations: App Reload, Cold Chain Alert, Pipeline Health, WISMO, Address Correction", color: C.qlikGreen },
+    { category: "Automation", items: "5 automations: App Reload, Cold Chain Alert, Pipeline Health, Sprint Summary, Address Correction", color: C.qlikGreen },
     { category: "Infrastructure", items: "Docker Compose (Confluent)  •  3 simulators (PG, Kafka, SF)  •  Deploy script  •  Setup guide", color: C.qlikGray },
   ];
 
@@ -1062,6 +1090,29 @@ dividerSlide("The 7 Nightmares", "$127M in annual data quality costs");
     x: 0.5, y: 6.9, w: 12.33, h: 0.45,
     fontSize: 11, color: C.white, fontFace: FONT, bold: true, align: "center", valign: "middle",
   });
+})();
+
+
+// =============================================================================
+// PROOF - the deployed environment, captured live
+// =============================================================================
+// Each of these is skipped entirely if its screenshot has not been captured.
+// Refresh with: node generators/capture-tenant-screenshots.js
+(() => {
+  const proofs = [
+    ["Deployed: Data Integration", "di-home", "The tenant after one deployment run - spaces, connections, pipelines, products and automations."],
+    ["Deployed: Stewardship Sprint", "stewardship-sprints", "The Address Cleanup sprint, created over the API by npm run stewardship:sprint. Sprints must live in a data space."],
+    ["Deployed: Automations", "automations-list", "All five MCG automations, each with a real block graph authored from version-controlled code."],
+    ["Deployed: The Address Correction Loop", "automation-address-correction", "Start -> read steward-corrected records -> hand off to the Talend job. The consume step is deliberately disabled and owned by Talend."],
+    ["Deployed: Pipeline Projects", "pipeline-projects", "Two declarative pipeline projects, imported from YAML in git."],
+    ["Deployed: Catalog", "catalog", "Bronze, silver and gold in one catalog with lineage back to source."],
+    ["Deployed: Data Products", "data-products", "The two governed gold data products."],
+    ["Deploy Console", "deploy-ui-wizard", "The whole environment deploys from one repository - 11 wizard steps or a single command."],
+    ["Deploy Console: Stewardship", "deploy-ui-stewardship", "Sprint settings and the 12-column record schema the Talend job emits."],
+  ];
+  let shown = 0;
+  for (const [title, slug, sub] of proofs) if (proofSlide(title, slug, sub)) shown++;
+  if (shown) console.log(`    ${shown} proof slide(s) from captured screenshots`);
 })();
 
 

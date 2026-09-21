@@ -183,7 +183,7 @@ for MCG's purposes.
 | Pipeline template guide | `deploy/pipelines/README.md` | Setup, schema kit, round-trip export, the demo edit |
 | Talend Agentic Routes | `deploy/talend/MCG_Talend_Agentic_Routes.md` | Positioning for capability 5 |
 | Grounded route example | `deploy/talend/agentic-routes/address-correction-route.md` | LLM-assisted address correction on the Salesforce job |
-| Existing Talend job | `deploy/talend/README.md` | The Salesforce address-validation + Nominatim + stewardship job the route upgrades |
+| Existing Talend job | `deploy/talend/README.md` | `mcg_sf_address_validate_bulk` — standardize, bulk-geocode, then route on GPS to Iceberg or the Address Cleanup sprint. The route upgrades the unresolved branch. |
 
 ---
 

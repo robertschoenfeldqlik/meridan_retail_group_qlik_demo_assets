@@ -211,13 +211,13 @@ Pipeline Health Summary:
 
 ## Automation 5: Talend Address Correction — Automated Data Quality Remediation
 
-**Purpose:** Close the data quality loop by automatically correcting addresses flagged in Stewardship campaigns. When a steward reviews and approves address records in the Address Cleanup campaign, this automation triggers the Talend Address Validation Service job to standardize, validate, and geocode the addresses, then writes the corrected data back to the Silver layer.
+**Purpose:** Close the data quality loop by automatically correcting addresses flagged in Stewardship sprints. When a steward reviews and approves address records in the Address Cleanup sprint, this automation triggers the Talend Address Validation Service job to standardize, validate, and geocode the addresses, then writes the corrected data back to the Silver layer.
 
 **Data Quality Story:** This automation is the final link in the MCG address quality chain:
 
 ```
 Bronze (dirty addresses) → Data Flow 3 (standardization) → Silver (quality-scored)
-    → Stewardship Campaign (human review of ambiguous matches)
+    → Stewardship Sprint (human review of ambiguous matches)
     → THIS AUTOMATION (Talend job corrects approved records)
     → Silver updated (corrected addresses flow to Gold → Analytics → Predict)
 ```
@@ -231,8 +231,8 @@ Bronze (dirty addresses) → Data Flow 3 (standardization) → Silver (quality-s
 #### Block 1: Event Trigger — Stewardship Task Completed
 - Select **Webhook** or **Scheduled Start** as the trigger
 - **Option A (Event-driven):** Configure a webhook that fires when a stewardship task status changes to "Completed" or "Approved"
-- **Option B (Scheduled):** Poll every 15 minutes for newly approved stewardship tasks in the Address Cleanup campaign
-  - Query: `GET /api/data-governance/stewardship/tasks?campaign=address-cleanup&status=approved&since={{lastRunTimestamp}}`
+- **Option B (Scheduled):** Poll every 15 minutes for newly approved stewardship tasks in the Address Cleanup sprint
+  - Query: `GET /api/data-governance/stewardship/tasks?sprint=address-cleanup&status=approved&since={{lastRunTimestamp}}`
 
 #### Block 2: Collect Approved Records
 - Add block: **Qlik Cloud > REST API Call**
@@ -256,9 +256,9 @@ Bronze (dirty addresses) → Data Flow 3 (standardization) → Silver (quality-s
 }
 ```
 - This runs the Talend Address Validation Service job with components:
-  - **tAddressRowStandardize** — Parses and standardizes the address
-  - **tAddressRowValidate** — Validates against postal reference databases
-  - **tGeocode** — Adds latitude/longitude for map visualizations
+  - **`AddressStandardizer`** — repairs and standardizes the address (custom Java routine)
+  - **`BulkGeocoder`** — bulk-geocodes the batch via public OSM Nominatim, 1 req/s
+  - **Routing gate** — GPS resolved -> S3/Iceberg; unresolved -> the Address Cleanup sprint
 
 #### Block 4: Wait for Job Completion
 - Add block: **Control > Wait** + **REST API Call** to poll job status
@@ -300,7 +300,7 @@ Bronze (dirty addresses) → Data Flow 3 (standardization) → Silver (quality-s
         {"title": "Corrected", "value": "{{recordsCorrected}}"},
         {"title": "Failed", "value": "{{recordsFailed}}"},
         {"title": "Avg Confidence", "value": "{{avgConfidence}}%"},
-        {"title": "Campaign", "value": "Address Cleanup"},
+        {"title": "Sprint", "value": "Address Cleanup"},
         {"title": "Talend Job", "value": "MCG Address Validation Service"}
       ]
     }
@@ -308,8 +308,8 @@ Bronze (dirty addresses) → Data Flow 3 (standardization) → Silver (quality-s
   "actions": [
     {
       "type": "Action.OpenUrl",
-      "title": "View Stewardship Campaign",
-      "url": "https://<tenant>/stewardship/campaigns/<address-cleanup-id>"
+      "title": "View Stewardship Sprint",
+      "url": "https://<tenant>/stewardship/sprints/<address-cleanup-id>"
     },
     {
       "type": "Action.OpenUrl",
@@ -334,7 +334,7 @@ Bronze (dirty addresses) → Data Flow 3 (standardization) → Silver (quality-s
 1. Source: Salesforce addresses arrive with 11% formatting issues
 2. Pipeline: Data Flow 3 standardizes + scores (Bronze → Silver)
 3. Governance: Semantic Types + AI Validation Rules flag quality issues
-4. Stewardship: Address Cleanup campaign routes ambiguous records to stewards
+4. Stewardship: Address Cleanup sprint routes ambiguous records to stewards
 5. Human Review: Steward approves/corrects flagged addresses
 6. AUTOMATION: Talend job validates, standardizes, geocodes approved records
 7. Silver Updated: Corrected addresses flow to Gold via table recipes
@@ -349,12 +349,12 @@ Bronze (dirty addresses) → Data Flow 3 (standardization) → Silver (quality-s
 
 > **Preview status:** Talend Agentic Routes and the Declarative Pipeline / MCP tooling they build on are in Qlik internal preview (June 2026). Present this as the roadmap evolution of Automation 5, not a shipping feature. No endpoints, model quotas, or accuracy figures are invented below — where a real value is needed, use the `[placeholder]` markers and fill them in against your own tenant.
 
-**Purpose:** Automation 5 corrects addresses with the deterministic Talend components (`tAddressRowStandardize` → `tAddressRowValidate` → `tGeocode`). A **Talend Agentic Route** extends that same job by running an LLM step *inside the pipeline task* for the records those components leave as `AMBIGUOUS` — the ones that otherwise fall through to a human steward.
+**Purpose:** Automation 5 corrects addresses with the deterministic Talend routines (`AddressStandardizer` → `BulkGeocoder`). A **Talend Agentic Route** extends that same job by running an LLM step *inside the pipeline task* for the records those components leave as `AMBIGUOUS` — the ones that otherwise fall through to a human steward.
 
 **Where it fits the existing loop:**
 
 ```
-Automation 5 (deterministic):  approved records → tAddressRowStandardize → tAddressRowValidate → tGeocode → Silver
+Automation 5 (deterministic):  approved records → AddressStandardizer → BulkGeocoder → S3 → Silver
 Automation 5b (agentic add-on):        AMBIGUOUS records ↑ → LLM reasoning step (RAG-grounded) → proposed correction → human review → Silver
 ```
 
@@ -375,7 +375,7 @@ Beyond addresses, the same route pattern supports sentiment analysis, entity ext
 ### UI Configuration Notes (Preview)
 
 1. Open the **MCG Address Validation Service** job (see `creation_guide.md` — Talend Job) in Qlik Talend Cloud.
-2. Add an **LLM task / agentic route** on the `AMBIGUOUS` branch of `tAddressRowValidate`.
+2. Add an **LLM task / agentic route** on the `UNRESOLVED` branch of the routing gate.
    - **Model connection:** select a configured LLM connection — `[placeholder — model + connection name]`.
    - **RAG source (optional):** point at your vector target — `[placeholder — vector target + index]`.
    - **Prompt:** instruct the model to return a structured correction (`street_clean`, `postal_clean`, `country_iso`, `confidence`, `reasoning`) and to abstain when it is not confident.

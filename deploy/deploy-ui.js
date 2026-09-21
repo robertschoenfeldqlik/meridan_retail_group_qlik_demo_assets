@@ -14,6 +14,9 @@ const http = require('http');
 const fs   = require('fs');
 const path = require('path');
 const { spawn } = require('child_process');
+const { resolveEngine, composeCmd, engineCmd, engineEnv } = require('./container-engine');
+const stewardship = require('./stewardship');
+const automationWorkspaces = require('./automation-workspaces');
 
 const SCRIPT_DIR  = __dirname;
 const PROJECT_DIR = path.resolve(SCRIPT_DIR, '..');
@@ -604,15 +607,26 @@ function runBuildAutomations(res, options) {
 }
 
 // ---------------------------------------------------------------------------
-//  Docker infrastructure helpers
+//  Container infrastructure helpers
 // ---------------------------------------------------------------------------
 
 const INFRA_DIR = path.join(PROJECT_DIR, 'infrastructure');
 
+// Which engine drives the stacks (podman here; docker still works if installed).
+// Resolved once at startup so every spawn below targets the same engine and the
+// same Compose provider. Override with MCG_CONTAINER_ENGINE=docker|podman.
+const ENGINE = resolveEngine();
+
 function discoverDocker() {
   const result = {
-    dockerAvailable: false,
-    composeAvailable: false,
+    engine: {
+      name: ENGINE.name,
+      version: ENGINE.version,
+      compose: ENGINE.compose.kind,
+      error: ENGINE.error,
+    },
+    dockerAvailable: ENGINE.available,
+    composeAvailable: ENGINE.compose.available,
     composeFiles: [],
     dmgGateway: {
       dockerfileExists: false,
@@ -731,14 +745,15 @@ function fmtMs(ms) {
   return m + 'm' + (r < 10 ? '0' : '') + r + 's';
 }
 
-// Sanity-check the stack: parse `docker compose ps` and report per-service
+// Sanity-check the stack: parse `compose ps` and report per-service
 // running/health state plus a one-line summary, into the job log.
 async function dockerSanityCheck(composeFile) {
-  pushDockerLog('section', '\n── Sanity check: docker compose ps ──');
+  pushDockerLog('section', `\n── Sanity check: ${ENGINE.compose.kind} ps ──`);
   await new Promise((resolve) => {
     let out = '', errOut = '';
-    const child = spawn('docker', ['compose', '-f', composeFile, 'ps', '--format', 'json'], {
-      cwd: INFRA_DIR, env: { ...process.env }, stdio: ['ignore', 'pipe', 'pipe'], shell: true,
+    const ps = composeCmd(ENGINE, '-f', composeFile, 'ps', '--format', 'json');
+    const child = spawn(ps.cmd, ps.args, {
+      cwd: INFRA_DIR, env: engineEnv(ENGINE), stdio: ['ignore', 'pipe', 'pipe'], shell: true,
     });
     activeDockerProcess = child;
     child.stdout.on('data', (d) => { out += d.toString(); });
@@ -793,10 +808,10 @@ async function dockerGatewayRegistrationToken(containerName) {
   // Pass as ONE pre-quoted command string (not a spawn args array). With shell:true,
   // an args array doesn't re-quote, so the `bash -lc "cd … && …"` arg gets split and
   // agentctl never runs. A single string keeps the inner quotes intact cross-platform.
-  const cmdStr = `docker exec ${containerName} bash -lc "cd /opt/qlik/gateway/movement/bin && ./agentctl qcs get_registration"`;
+  const cmdStr = `${ENGINE.bin} exec ${containerName} bash -lc "cd /opt/qlik/gateway/movement/bin && ./agentctl qcs get_registration"`;
   const tryGet = () => new Promise((resolve) => {
     let out = '';
-    const child = spawn(cmdStr, { env: { ...process.env }, stdio: ['ignore', 'pipe', 'pipe'], shell: true });
+    const child = spawn(cmdStr, { env: engineEnv(ENGINE), stdio: ['ignore', 'pipe', 'pipe'], shell: true });
     activeDockerProcess = child;
     child.stdout.on('data', (d) => { out += d.toString(); });
     child.stderr.on('data', (d) => { out += d.toString(); });
@@ -821,7 +836,7 @@ async function dockerGatewayRegistrationToken(containerName) {
     pushDockerLog('error', `Gateway container "${containerName}" is not running. Deploy a DMG profile (Full Stack + DMG, or DMG Gateway) first, then try again.`);
   } else {
     pushDockerLog('warn', 'Gateway still initializing — retrieve the token shortly with:');
-    pushDockerLog('info', `docker exec ${containerName} bash -lc "cd /opt/qlik/gateway/movement/bin && ./agentctl qcs get_registration"`);
+    pushDockerLog('info', `${ENGINE.bin} exec ${containerName} bash -lc "cd /opt/qlik/gateway/movement/bin && ./agentctl qcs get_registration"`);
   }
 }
 
@@ -833,21 +848,21 @@ async function dockerGatewayLifecycle(action, containerName) {
   pushDockerLog('section', `\n── Data Movement Gateway: ${verb} container ──`);
   const run = (cmdStr) => new Promise((resolve) => {
     let out = '';
-    const child = spawn(cmdStr, { env: { ...process.env }, stdio: ['ignore', 'pipe', 'pipe'], shell: true });
+    const child = spawn(cmdStr, { env: engineEnv(ENGINE), stdio: ['ignore', 'pipe', 'pipe'], shell: true });
     activeDockerProcess = child;
     child.stdout.on('data', (d) => { out += d.toString(); });
     child.stderr.on('data', (d) => { out += d.toString(); });
     child.on('close', (c) => { activeDockerProcess = null; resolve({ code: c, out }); });
     child.on('error', (e) => { activeDockerProcess = null; resolve({ code: 1, out: e.message }); });
   });
-  pushDockerLog('info', `$ docker ${verb} ${containerName}`);
-  const r = await run(`docker ${verb} ${containerName}`);
+  pushDockerLog('info', `$ ${ENGINE.bin} ${verb} ${containerName}`);
+  const r = await run(`${ENGINE.bin} ${verb} ${containerName}`);
   if (r.out && r.out.trim()) pushDockerLog('info', r.out.trim());
   if (r.code !== 0) {
-    pushDockerLog('error', `docker ${verb} ${containerName} failed (exit ${r.code}). Is the gateway deployed? Use Deploy (Full Stack + DMG, or DMG Gateway) first.`);
+    pushDockerLog('error', `${ENGINE.bin} ${verb} ${containerName} failed (exit ${r.code}). Is the gateway deployed? Use Deploy (Full Stack + DMG, or DMG Gateway) first.`);
     return r.code;
   }
-  const ps = await run(`docker ps -a --filter name=${containerName} --format "{{.Status}}"`);
+  const ps = await run(`${ENGINE.bin} ps -a --filter name=${containerName} --format "{{.Status}}"`);
   const state = (ps.out || '').trim();
   if (verb === 'start') {
     pushDockerLog('success', `Gateway container started${state ? ' — ' + state : ''}.`);
@@ -1006,9 +1021,11 @@ async function runDockerJob(options) {
 
   // --- Prune: multi-step cleanup ---
   if (action === 'prune') {
+    const down  = composeCmd(ENGINE, '-f', composeFile, 'down', '--remove-orphans');
+    const prune = engineCmd(ENGINE, 'system', 'prune', '-a', '-f', '--volumes');
     const steps = [
-      { label: 'Stopping containers', cmd: 'docker', args: ['compose', '-f', composeFile, 'down', '--remove-orphans'] },
-      { label: 'Removing images, volumes & build cache', cmd: 'docker', args: ['system', 'prune', '-a', '-f', '--volumes'] },
+      { label: 'Stopping containers', cmd: down.cmd, args: down.args },
+      { label: 'Removing images, volumes & build cache', cmd: prune.cmd, args: prune.args },
     ];
 
     try {
@@ -1019,7 +1036,7 @@ async function runDockerJob(options) {
 
         await new Promise((resolve, reject) => {
           const child = spawn(step.cmd, step.args, {
-            cwd: INFRA_DIR, env: { ...process.env },
+            cwd: INFRA_DIR, env: engineEnv(ENGINE),
             stdio: ['ignore', 'pipe', 'pipe'], shell: true,
             detached: process.platform !== 'win32', // own process group so Stop can kill the tree
           });
@@ -1051,21 +1068,17 @@ async function runDockerJob(options) {
 
   let cmd, args;
   if (action === 'status') {
-    cmd = 'docker';
-    args = ['compose', '-f', composeFile, 'ps', '--format', 'table'];
+    ({ cmd, args } = composeCmd(ENGINE, '-f', composeFile, 'ps', '--format', 'table'));
   } else if (action === 'down') {
-    cmd = 'docker';
-    args = ['compose', '-f', composeFile, 'down'];
+    ({ cmd, args } = composeCmd(ENGINE, '-f', composeFile, 'down'));
   } else {
-    // up
-    cmd = 'docker';
-    args = ['compose', '-f', composeFile, 'up', '-d'];
+    // up. `--profile` is a ROOT compose flag, not a flag of `up`, so it has to
+    // precede the subcommand — appending it after `up -d` makes compose reject
+    // the whole invocation (this is what enables the salesforce simulator).
+    const profileArgs = [];
+    for (const p of (options.profiles || [])) profileArgs.push('--profile', p);
+    ({ cmd, args } = composeCmd(ENGINE, ...profileArgs, '-f', composeFile, 'up', '-d'));
     if (options.build) args.push('--build');
-    if (options.profiles) {
-      for (const p of options.profiles) {
-        args.push('--profile', p);
-      }
-    }
   }
 
   const cmdStr = [cmd, ...args].join(' ');
@@ -1106,7 +1119,7 @@ async function runDockerJob(options) {
   const exitCode = await new Promise((resolve) => {
     const child = spawn(cmd, args, {
       cwd: INFRA_DIR,
-      env: { ...process.env },
+      env: engineEnv(ENGINE),
       stdio: ['ignore', 'pipe', 'pipe'],
       shell: true,
       detached: process.platform !== 'win32', // own process group so Stop can kill the tree
@@ -1550,7 +1563,7 @@ function getHTML() {
   }
   .wizard-nav button .step-check { margin-left: auto; font-size: 14px; color: var(--qlik-green); }
   /* Deploy step set apart as the terminal action */
-  .wizard-nav button[onclick*="showPage(11)"] {
+  .wizard-nav button[onclick*="showPage(12)"] {
     margin-top: 10px;
     background: var(--surface);
     border-color: var(--border);
@@ -1558,7 +1571,7 @@ function getHTML() {
     color: var(--text-bright);
     font-weight: 600;
   }
-  .wizard-nav button[onclick*="showPage(11)"] .step-num { background: var(--accent2); color: #fff; border-color: transparent; }
+  .wizard-nav button[onclick*="showPage(12)"] .step-num { background: var(--accent2); color: #fff; border-color: transparent; }
 
   /* Form (middle column) */
   .wizard-content {
@@ -2083,7 +2096,7 @@ function getHTML() {
     <!-- Step rail -->
     <div class="wizard-nav" id="wizard-nav">
       <div class="rail-progress" id="rail-progress">
-        <div class="rp-row"><span class="rp-label">Setup progress</span><span class="rp-step" id="rp-step">Step 1 of 10</span></div>
+        <div class="rp-row"><span class="rp-label">Setup progress</span><span class="rp-step" id="rp-step">Step 1 of 11</span></div>
         <div class="rp-bar"><div class="rp-fill" id="rp-fill" style="width:10%"></div></div>
       </div>
       <button class="active" onclick="showPage(0)"><span class="step-num">1</span>Connection & Auth<span class="step-check" id="check-0"></span></button>
@@ -2097,7 +2110,8 @@ function getHTML() {
       <button onclick="showPage(8)"><span class="step-num">8</span>Automations<span class="step-check" id="check-7"></span></button>
       <button onclick="showPage(9)"><span class="step-num">9</span>Qlik Predict<span class="step-check" id="check-predict"></span></button>
       <button onclick="showPage(10)"><span class="step-num">10</span>Glossary<span class="step-check" id="check-9"></span></button>
-      <button onclick="showPage(11)"><span class="step-num">&#9654;</span>Deploy<span class="step-check" id="check-10"></span></button>
+      <button onclick="showPage(11)"><span class="step-num">11</span>Stewardship<span class="step-check" id="check-stewardship"></span></button>
+      <button onclick="showPage(12)"><span class="step-num">&#9654;</span>Deploy<span class="step-check" id="check-10"></span></button>
     </div>
 
     <div class="wizard-content">
@@ -2174,7 +2188,7 @@ function getHTML() {
         <div class="page-desc">Deploy and manage the local data sources (Kafka, PostgreSQL, simulators) and the optional Data Movement Gateway on this machine.</div>
 
         <div class="hint" style="background:rgba(13,124,143,0.12);border:1px solid var(--teal);border-radius:6px;padding:8px 12px;margin-bottom:10px">
-          <strong>Deployed separately from the tenant.</strong> These containers run locally and are <strong>not</strong> part of the tenant <em>Deploy</em> step — start/stop them here on their own timeline. The Data Movement Gateway image build can take several minutes; closing this page won't cancel it (it builds in the Docker daemon).
+          <strong>Deployed separately from the tenant.</strong> These containers run locally and are <strong>not</strong> part of the tenant <em>Deploy</em> step — start/stop them here on their own timeline. The Data Movement Gateway image build can take several minutes; closing this page won't cancel it (it builds in the container engine).
         </div>
 
         <div class="section-divider">Stack Selection</div>
@@ -2248,7 +2262,7 @@ function getHTML() {
           <div class="field" id="rpm-field-local">
             <label>RPM File Path <span style="font-weight:400;color:var(--text-dim)">(local — takes precedence)</span></label>
             <input type="text" id="f-docker-rpm-path" placeholder="C:\\Users\\you\\Downloads\\qlik-data-gateway-data-movement.rpm">
-            <div class="hint">Absolute path to the RPM on this machine — it is copied into the Docker build context and used as-is.</div>
+            <div class="hint">Absolute path to the RPM on this machine — it is copied into the image build context and used as-is.</div>
           </div>
           <div class="field" id="rpm-field-github" style="display:none">
             <label>RPM Download URL</label>
@@ -2390,28 +2404,50 @@ function getHTML() {
         </div>
         <div class="field-row-3">
           <div class="field">
-            <label>Salesforce Instance</label>
-            <input type="text" id="f-sf-instance" placeholder="orgfarm-xxxx-dev-ed.develop.my">
-          </div>
-          <div class="field">
-            <label>Login Domain</label>
-            <input type="text" id="f-sf-login-domain" placeholder="…develop.my.salesforce.com">
-          </div>
-          <div class="field">
             <label>Client Id</label>
-            <input type="text" id="f-sf-client-id" placeholder="Connected App consumer key">
+            <input type="text" id="f-sf-client-id" placeholder="External Client App consumer key">
+          </div>
+          <div class="field">
+            <label>Client Secret</label>
+            <input type="password" id="f-sf-client-secret" placeholder="External Client App consumer secret">
+          </div>
+          <div class="field">
+            <label>API Type</label>
+            <input type="text" id="f-sf-api-type" placeholder="REST or Bulk">
           </div>
         </div>
-        <div class="field">
-          <label>Client Secret</label>
-          <input type="password" id="f-sf-client-secret" placeholder="Connected App consumer secret">
+        <div class="field-row-3">
+          <div class="field">
+            <label>Environment</label>
+            <select id="f-sf-environment">
+              <option value="sandbox">Sandbox</option>
+              <option value="production">Production</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Data Gateway</label>
+            <input type="text" id="f-sf-gateway" placeholder="None">
+          </div>
+          <div class="field">
+            <label>Start Date (MM/DD/YYYY)</label>
+            <input type="text" id="f-sf-start-date" placeholder="optional">
+          </div>
         </div>
         <div class="toggle-row" style="margin-top:4px">
-          <label>Sandbox Environment</label>
-          <label class="switch"><input type="checkbox" id="f-sf-sandbox" checked><span class="slider"></span></label>
+          <label>Replicate new fields automatically</label>
+          <label class="switch"><input type="checkbox" id="f-sf-replicate-new-fields" checked><span class="slider"></span></label>
         </div>
         <div class="hint">
-          Salesforce is a SaaS source — it authenticates <strong>with Salesforce via a Connected App (OAuth)</strong> over Qlik's <strong>managed gateway</strong> (not the on-prem Data Movement gateway). Because the OAuth consent is interactive, create it in the Qlik Cloud UI (Data Integration → Create connection → Salesforce) in the <strong>MCG Demo - DI</strong> space, entering the Instance, Login Domain, Client Id &amp; Secret and completing the Salesforce login.
+          Salesforce <strong>V2</strong> authenticates via OAuth 2.0 against a Salesforce
+          <strong>External Client App</strong> — <em>not</em> the Connected App the V1 connector used, and there is
+          no Instance / Login Domain field any more. In Salesforce, create the External Client App with callback URL
+          <code>https://connector.qlik.com/auth/oauth/v3.htm</code>, distribution state <strong>Local</strong>, scopes
+          <code>api</code>, <code>refresh_token,offline_access</code>, <code>openid</code>, <code>full</code>, and
+          "All users can self-authorize". <strong>Data gateway is optional for V2</strong> (leave as <code>None</code>
+          unless you need egress through the Data Movement gateway). Because the OAuth step requires logging into
+          Salesforce and pasting an authentication code back, create the connection in the Qlik Cloud UI
+          (Data Integration → Create connection → Salesforce) in the <strong>MCG Demo - DI</strong> space —
+          the name must match <code>MCG Salesforce CRM</code> or the pipeline binding will not resolve.
         </div>
 
         <div class="section-divider">Kafka (IoT Telemetry)</div>
@@ -2764,7 +2800,62 @@ function getHTML() {
         <div id="gl-list" style="max-height:400px;overflow-y:auto"><!-- populated by JS --></div>
       </div>
 
-      <!-- Page (index 11): Deploy -->
+      <!-- Page (index 11): Stewardship -->
+      <div class="wizard-page" id="page-stewardship">
+        <div class="page-title">Stewardship</div>
+        <div class="page-desc">Create the Address Cleanup stewardship sprint that receives the UNRESOLVED branch of the Talend address job, and author the automation block graphs that close the loop.</div>
+
+        <div class="section-divider">Sprint</div>
+        <div class="field">
+          <label>Sprint name</label>
+          <input type="text" id="f-sw-name" placeholder="Address Cleanup">
+        </div>
+        <div class="field">
+          <label>Space</label>
+          <select id="f-sw-space">
+            <option value="data">Data space (required)</option>
+            <option value="shared">Shared space</option>
+            <option value="managed">Managed space</option>
+          </select>
+        </div>
+        <div style="margin:8px 0 12px;padding:10px 14px;border-radius:var(--radius);background:rgba(196,146,46,0.12);border:1px solid rgba(196,146,46,0.3);font-size:12px;line-height:1.55">
+          <strong>Sprints must live in a data space.</strong> Creating one in a shared or managed space returns
+          <code>403 NOT_ALLOWED_TO_CREATE_SPRINT</code> — that is the product enforcing the rule, not a permissions gap.
+        </div>
+        <div class="field">
+          <label>Workflow</label>
+          <select id="f-sw-workflow">
+            <option value="ONE_STEP_VALIDATION">One-step validation</option>
+            <option value="TWO_STEPS_VALIDATION">Two-step validation</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Assignment</label>
+          <select id="f-sw-assign">
+            <option value="AUTO">Auto</option>
+            <option value="MANUAL">Manual</option>
+          </select>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <button class="btn btn-dry" id="btn-sw-dry" onclick="createSprint(true)" style="flex:0 0 auto">Dry Run</button>
+          <button class="btn btn-deploy" id="btn-sw-create" onclick="createSprint(false)" style="flex:1;white-space:nowrap">Create Sprint</button>
+        </div>
+        <div id="sw-result" style="margin-top:8px;font-size:12px;line-height:1.55;display:none;padding:8px 12px;border-radius:var(--radius-md);border:1px solid var(--border);white-space:pre-wrap"></div>
+
+        <div class="section-divider">Record schema</div>
+        <div class="page-desc" style="margin-bottom:8px">The 12 columns the job's UNRESOLVED branch emits. Raw fields stay visible but locked so the steward sees what arrived; the repaired fields are editable.</div>
+        <div id="sw-schema" style="max-height:320px;overflow-y:auto"><!-- populated by JS --></div>
+
+        <div class="section-divider">Automation workspaces</div>
+        <div class="page-desc" style="margin-bottom:8px">Fills in the block graphs. Without this, the automations exist in the tenant as empty shells with <code>workspace: null</code>.</div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-dry" onclick="pushWorkspaces(true)">Dry Run</button>
+          <button class="btn btn-deploy" id="btn-sw-ws" onclick="pushWorkspaces(false)" style="flex:1">Author Workspaces</button>
+        </div>
+        <div id="sw-ws-result" style="margin-top:8px;font-size:12px;line-height:1.55;display:none;padding:8px 12px;border-radius:var(--radius-md);border:1px solid var(--border);white-space:pre-wrap"></div>
+      </div>
+
+      <!-- Page (index 12): Deploy -->
       <div class="wizard-page" id="page-9">
         <div class="page-title">Deploy</div>
         <div class="page-desc">Review your configuration, run pre-flight checks, and launch the deployment.</div>
@@ -2867,7 +2958,7 @@ function getHTML() {
       <tr><th>Gateway</th><th>Used for</th><th>In this demo</th></tr>
       <tr><td>Data Movement gateway</td><td>Database CDC sources (Postgres/MySQL/SQL Server)</td><td>The on-prem <code>mcg-qlik-dmg</code> container — PostgreSQL source</td></tr>
       <tr><td>Streaming (network integration)</td><td>Kafka / streaming sources</td><td>The Kafka IoT source (<code>external_data_provider</code>)</td></tr>
-      <tr><td>Qlik managed gateway</td><td>SaaS sources reachable from Qlik Cloud</td><td>Salesforce (<code>$$qlikManagedGateway$$</code>)</td></tr>
+      <tr><td>Qlik-hosted egress</td><td>SaaS sources reachable from Qlik Cloud</td><td>Salesforce V2 (data gateway optional — <code>None</code> by default)</td></tr>
       <tr><td>Direct Access gateway</td><td>Analytics data loads via a gateway</td><td>Not used here</td></tr>
     </table>
 
@@ -2889,7 +2980,7 @@ function getHTML() {
     <ul>
       <li><strong>PostgreSQL</strong> — created by the deploy as a gateway-bound replication source (<code>repsrc_postgresql</code>) in MCG Demo - DI. Needs the Data Gateway ID.</li>
       <li><strong>Kafka (IoT)</strong> — a streaming source (<code>external_data_provider</code>) over a network integration, <em>not</em> the Data Movement gateway. Created in the DI UI.</li>
-      <li><strong>Salesforce</strong> — a Connected App (OAuth) over Qlik's managed gateway; created in the DI UI with an interactive Salesforce login. Needs Salesforce Instance, Login Domain, Client Id &amp; Secret.</li>
+      <li><strong>Salesforce (V2)</strong> — OAuth 2.0 against a Salesforce <em>External Client App</em> (callback <code>https://connector.qlik.com/auth/oauth/v3.htm</code>); created in the DI UI with an interactive Salesforce login. Needs Client Id, Client Secret, Environment and API Type. A data gateway is optional. Name it <code>MCG Salesforce CRM</code> in <strong>MCG Demo - DI</strong> so the pipeline binding resolves.</li>
       <li><strong>Amazon S3 / Athena</strong> — credentialed connectors created in the UI (IAM keys).</li>
     </ul>
 
@@ -3061,7 +3152,8 @@ function getHTML() {
     document.querySelectorAll('.wizard-nav button').forEach((b, i) => {
       b.classList.toggle('active', i === idx);
     });
-    if (idx === 11) renderSummary();
+    if (idx === 11) renderStewardshipPage();
+    if (idx === 12) renderSummary();
     if (idx === 3) prefillFromDocker();
     if (idx === 4) renderPipelinesPage();
     if (idx === 6) renderBuildAppsPage();
@@ -3071,16 +3163,16 @@ function getHTML() {
     if (wc) wc.scrollTop = 0;  // start each page/mode at the top, not mid-scroll
   }
 
-  // Rail "Step X of 10" + progress bar. The 10 config steps are showPage 0,2..10;
-  // Deploy (11) is the terminal action; Local Stack (1) has its own mode.
-  var TENANT_STEP = { 0:1, 2:2, 3:3, 4:4, 5:5, 6:6, 7:7, 8:8, 9:9, 10:10, 11:10 };
+  // Rail "Step X of 11" + progress bar. The 11 config steps are showPage 0,2..11;
+  // Deploy (12) is the terminal action; Local Stack (1) has its own mode.
+  var TENANT_STEP = { 0:1, 2:2, 3:3, 4:4, 5:5, 6:6, 7:7, 8:8, 9:9, 10:10, 11:11, 12:11 };
   function updateRailProgress(idx) {
     if (idx === 1) return;  // local page — not part of tenant progress
     var stepEl = document.getElementById('rp-step'), fill = document.getElementById('rp-fill');
     if (!stepEl || !fill) return;
     var n = TENANT_STEP[idx] || 1;
-    if (idx === 11) { stepEl.textContent = 'Deploy'; fill.style.width = '100%'; }
-    else { stepEl.textContent = 'Step ' + n + ' of 10'; fill.style.width = Math.round(n / 10 * 100) + '%'; }
+    if (idx === 12) { stepEl.textContent = 'Deploy'; fill.style.width = '100%'; }
+    else { stepEl.textContent = 'Step ' + n + ' of 11'; fill.style.width = Math.round(n / 11 * 100) + '%'; }
   }
 
   // --- Pipelines page: per-project task lists + live connection-binding map ---
@@ -3235,11 +3327,14 @@ function getHTML() {
 
       const sf = cfg.dataConnections.salesforce || {};
       setVal('f-sf-name', sf.name);
-      setVal('f-sf-instance', sf.instance);
-      setVal('f-sf-login-domain', sf.loginDomain);
       setVal('f-sf-client-id', sf.clientId);
       setVal('f-sf-client-secret', sf.clientSecret);
-      setCheck('f-sf-sandbox', sf.isSandbox !== false);
+      setVal('f-sf-api-type', sf.apiType);
+      // Fall back to the V1 isSandbox boolean so an older config still populates.
+      setSelVal('f-sf-environment', sf.environment || (sf.isSandbox === false ? 'production' : 'sandbox'));
+      setVal('f-sf-gateway', sf.dataGateway || 'None');
+      setVal('f-sf-start-date', sf.startDate);
+      setCheck('f-sf-replicate-new-fields', sf.replicateNewFieldsAutomatically !== false);
 
       const kf = cfg.dataConnections.kafka || {};
       setVal('f-kafka-name', kf.name);
@@ -3520,7 +3615,23 @@ function getHTML() {
     // Compose file status
     const infoEl = document.getElementById('docker-compose-info');
     const files = docker.composeFiles || [];
-    let html = '<div style="font-size:12px;margin-bottom:8px">';
+    let html = '';
+
+    // Which engine will actually run these stacks. Surfaced because the host may
+    // have podman, docker, or neither, and a missing engine is otherwise only
+    // discovered when a deploy fails several clicks later.
+    const eng = docker.engine || {};
+    if (eng.name) {
+      const ok = docker.dockerAvailable && docker.composeAvailable;
+      const dot = '<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--' + (ok ? 'success' : 'error') + ');margin-right:6px"></span>';
+      html += '<div style="font-size:12px;margin-bottom:8px">' + dot + '<strong>Engine: ' + esc(eng.name) + '</strong>'
+            + (eng.version ? ' <span style="color:var(--text-dim)">— ' + esc(eng.version) + '</span>' : '')
+            + (eng.compose ? ' <span style="color:var(--text-dim)">· compose via ' + esc(eng.compose) + '</span>' : '')
+            + (eng.error ? '<div style="color:var(--error);margin-top:4px">' + esc(eng.error) + '</div>' : '')
+            + '</div>';
+    }
+
+    html += '<div style="font-size:12px;margin-bottom:8px">';
     for (const cf of files) {
       const dot = cf.exists
         ? '<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--success);margin-right:6px"></span>'
@@ -4202,11 +4313,14 @@ function getHTML() {
         },
         salesforce: {
           name: getVal('f-sf-name') || 'MCG Salesforce CRM',
-          instance: getVal('f-sf-instance'),
-          loginDomain: getVal('f-sf-login-domain'),
+          connectorVersion: 'v2',
           clientId: getVal('f-sf-client-id'),
           clientSecret: getVal('f-sf-client-secret'),
-          isSandbox: isChecked('f-sf-sandbox'),
+          apiType: getVal('f-sf-api-type'),
+          environment: getVal('f-sf-environment') || 'sandbox',
+          dataGateway: getVal('f-sf-gateway') || 'None',
+          startDate: getVal('f-sf-start-date'),
+          replicateNewFieldsAutomatically: isChecked('f-sf-replicate-new-fields'),
         },
         kafka: {
           name: getVal('f-kafka-name') || 'MCG IoT Telemetry',
@@ -4365,6 +4479,151 @@ function getHTML() {
     }
 
     el.innerHTML = html;
+  }
+
+  // ---- Stewardship page ---------------------------------------------------
+  // NOTE: this whole block lives inside getHTML()'s template literal, so an
+  // in-string newline escape must be DOUBLE-backslashed here. A single one is
+  // consumed when the HTML is built and lands as a real newline inside a JS
+  // string literal, breaking the entire script block. The same applies to any
+  // such escape written in a comment.
+
+  var _swSchema = [];
+
+  function swSetResult(elId, ok, text) {
+    var el = document.getElementById(elId);
+    if (!el) return;
+    el.style.display = 'block';
+    el.style.borderColor = ok ? 'var(--teal)' : '#c0392b';
+    el.textContent = text;
+  }
+
+  function renderStewardshipPage() {
+    fetch('/api/stewardship/sprints')
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        var c = (d && d.configured) || {};
+        if (c.name) document.getElementById('f-sw-name').value = c.name;
+        if (c.space) document.getElementById('f-sw-space').value = c.space;
+        _swSchema = c.schema || [];
+        renderSwSchema();
+
+        if (d && d.success && d.sprints && d.sprints.length) {
+          var lines = d.sprints.map(function (sp) { return '  ' + sp.id + '  ' + (sp.name || ''); });
+          swSetResult('sw-result', true, 'Existing sprint(s):\\n' + lines.join('\\n'));
+          var chk = document.getElementById('check-stewardship');
+          if (chk) chk.textContent = '\\u2713';
+        } else if (d && !d.success) {
+          swSetResult('sw-result', false, d.error || 'Could not list sprints.');
+        }
+      })
+      .catch(function (e) { swSetResult('sw-result', false, e.message); });
+  }
+
+  function renderSwSchema() {
+    var host = document.getElementById('sw-schema');
+    if (!host) return;
+    if (!_swSchema.length) { host.innerHTML = '<div class="page-desc">No schema configured.</div>'; return; }
+    var rows = _swSchema.map(function (col, i) {
+      return '<tr>' +
+        '<td style="padding:4px 8px"><code>' + col.name + '</code></td>' +
+        '<td style="padding:4px 8px;font-size:11px;opacity:.8">' + (col.description || '') + '</td>' +
+        '<td style="padding:4px 8px;text-align:center"><input type="checkbox" data-sw-vis="' + i + '"' + (col.isVisible !== false ? ' checked' : '') + '></td>' +
+        '<td style="padding:4px 8px;text-align:center"><input type="checkbox" data-sw-edit="' + i + '"' + (col.isEditable ? ' checked' : '') + '></td>' +
+        '</tr>';
+    }).join('');
+    host.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:12px">' +
+      '<thead><tr style="text-align:left;opacity:.7">' +
+      '<th style="padding:4px 8px">Column</th><th style="padding:4px 8px">Description</th>' +
+      '<th style="padding:4px 8px;text-align:center">Visible</th><th style="padding:4px 8px;text-align:center">Editable</th>' +
+      '</tr></thead><tbody>' + rows + '</tbody></table>';
+  }
+
+  function collectSwSchema() {
+    return _swSchema.map(function (col, i) {
+      var v = document.querySelector('[data-sw-vis="' + i + '"]');
+      var e = document.querySelector('[data-sw-edit="' + i + '"]');
+      return Object.assign({}, col, {
+        isVisible: v ? v.checked : col.isVisible !== false,
+        isEditable: e ? e.checked : !!col.isEditable
+      });
+    });
+  }
+
+  function createSprint(dryRun) {
+    var btn = document.getElementById(dryRun ? 'btn-sw-dry' : 'btn-sw-create');
+    if (btn) btn.disabled = true;
+    swSetResult('sw-result', true, dryRun ? 'Building payload...' : 'Creating sprint...');
+
+    var settings = {
+      name: document.getElementById('f-sw-name').value || 'Address Cleanup',
+      space: document.getElementById('f-sw-space').value,
+      workflowType: document.getElementById('f-sw-workflow').value,
+      assignationStrategy: document.getElementById('f-sw-assign').value,
+      recordDataSchema: collectSwSchema()
+    };
+
+    fetch('/api/stewardship/sprint', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dryRun: !!dryRun, settings: settings, space: settings.space })
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (btn) btn.disabled = false;
+        if (!d.success) {
+          var msg = d.error || 'Failed.';
+          if (d.hint) msg += '\\n\\nHint: ' + d.hint;
+          swSetResult('sw-result', false, msg);
+          return;
+        }
+        if (d.dryRun) {
+          swSetResult('sw-result', true,
+            'Dry run - space ' + d.space.name + ' (' + d.space.type + ')\\n\\n' +
+            JSON.stringify(d.payload, null, 2));
+          return;
+        }
+        swSetResult('sw-result', true,
+          'Created sprint "' + settings.name + '"\\n' +
+          '  sprintId : ' + (d.sprintId || '(not returned)') + '\\n' +
+          '  space    : ' + d.space.name + ' (' + d.space.type + ')\\n' +
+          '  saved to config.json -> stewardship.sprintId');
+        var chk = document.getElementById('check-stewardship');
+        if (chk) chk.textContent = '\\u2713';
+      })
+      .catch(function (e) {
+        if (btn) btn.disabled = false;
+        swSetResult('sw-result', false, e.message);
+      });
+  }
+
+  function pushWorkspaces(dryRun) {
+    var btn = document.getElementById('btn-sw-ws');
+    if (btn) btn.disabled = true;
+    swSetResult('sw-ws-result', true, dryRun ? 'Building block graphs...' : 'Authoring workspaces...');
+
+    fetch('/api/stewardship/workspaces', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dryRun: !!dryRun })
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (btn) btn.disabled = false;
+        if (d.error) { swSetResult('sw-ws-result', false, d.error); return; }
+        var lines = (d.results || []).map(function (r) {
+          return r.success
+            ? '  [ok] ' + (r.name || r.key) + ' - ' + r.blocks + ' blocks' + (r.action ? ' (' + r.action + ')' : '')
+            : '  [!!] ' + (r.key || '?') + ' - ' + r.error;
+        });
+        var txt = lines.join('\\n');
+        if (d.manualStep) txt += '\\n\\n' + d.manualStep;
+        swSetResult('sw-ws-result', !!d.success, txt);
+      })
+      .catch(function (e) {
+        if (btn) btn.disabled = false;
+        swSetResult('sw-ws-result', false, e.message);
+      });
   }
 
   function renderSummary() {
@@ -5056,6 +5315,82 @@ const server = http.createServer((req, res) => {
     }
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ ok: true }));
+    return;
+  }
+
+  // ---- Stewardship --------------------------------------------------------
+  // Credentials are NEVER taken from the request body here. /api/test-connection
+  // has to juggle masked secrets because it probes a tenant the user is still
+  // typing in; by the time a sprint is created the tenant is settled, so these
+  // read auth from the stored config only. That removes the "real key paired
+  // with an attacker-supplied host" hazard rather than defending against it.
+
+  if (req.method === 'GET' && parsed.pathname === '/api/stewardship/sprints') {
+    (async () => {
+      try {
+        const cfg = loadConfig();
+        if (!cfg || cfg.error) throw new Error(cfg && cfg.error ? cfg.error : 'No config.json yet — save Step 1 first.');
+        const r = await stewardship.listSprints(cfg);
+        const st = stewardship.stewardshipConfig(cfg);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(Object.assign({}, r, {
+          configured: { name: st.name, space: st.space, sprintId: st.sprintId, schema: st.recordDataSchema },
+        })));
+      } catch (e) {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, error: e.message }));
+      }
+    })();
+    return;
+  }
+
+  if (req.method === 'POST' && parsed.pathname === '/api/stewardship/sprint') {
+    readRequestBody(req, res, async (body) => {
+      try {
+        const opts = body ? JSON.parse(body) : {};
+        const cfg = loadConfig();
+        if (!cfg || cfg.error) throw new Error(cfg && cfg.error ? cfg.error : 'No config.json yet — save Step 1 first.');
+
+        // Persist any sprint settings the form changed before creating.
+        if (opts.settings) {
+          cfg.stewardship = Object.assign({}, stewardship.DEFAULT_STEWARDSHIP, cfg.stewardship || {}, opts.settings);
+          saveConfig(cfg);
+        }
+        const r = await stewardship.createSprint(cfg, { dryRun: !!opts.dryRun, space: opts.space });
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(r));
+      } catch (e) {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, error: e.message }));
+      }
+    });
+    return;
+  }
+
+  if (req.method === 'POST' && parsed.pathname === '/api/stewardship/workspaces') {
+    readRequestBody(req, res, async (body) => {
+      try {
+        const opts = body ? JSON.parse(body) : {};
+        const cfg = loadConfig();
+        if (!cfg || cfg.error) throw new Error(cfg && cfg.error ? cfg.error : 'No config.json yet — save Step 1 first.');
+
+        const conn = await automationWorkspaces.ensureApiKeyConnection(cfg, { dryRun: !!opts.dryRun });
+        const results = [];
+        for (const key of Object.keys(automationWorkspaces.WORKSPACES)) {
+          results.push(await automationWorkspaces.pushWorkspace(cfg, key, { dryRun: !!opts.dryRun }));
+        }
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          success: results.every((r) => r.success),
+          connection: { connected: !!conn.connected, id: conn.id || '', error: conn.error || '' },
+          manualStep: conn.connected ? '' : automationWorkspaces.MANUAL_CONNECTION_STEPS,
+          results,
+        }));
+      } catch (e) {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, error: e.message }));
+      }
+    });
     return;
   }
 

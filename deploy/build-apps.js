@@ -869,6 +869,18 @@ class QlikAppBuilder {
       });
     }
 
+    // Current Qlik Cloud exposes the script as a version history: POST a new version
+    // to /scripts (plural). Both singular endpoints above 404 on these tenants, and a
+    // silent failure here is expensive — the reload still "succeeds", against the old
+    // script, leaving an app that looks built but holds no data.
+    if (res.statusCode === 404) {
+      this.log.debug('Alternative endpoint returned 404; posting a new script version...');
+      res = await this._post(`/api/v1/apps/${appId}/scripts`, {
+        script: scriptContent,
+        versionMessage: 'Set by deploy/build-apps.js',
+      });
+    }
+
     if (res.statusCode === 200 || res.statusCode === 201 || res.statusCode === 204) {
       this.log.success(`Load script set (${scriptContent.length} chars)`);
       return;

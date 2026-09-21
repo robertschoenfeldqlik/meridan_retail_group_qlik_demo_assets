@@ -85,7 +85,7 @@ Rotterdam DC's WMS-to-SAP CDC pipeline silently failed for 72 hours. SAP showed 
   - Fuzzy dedup: Jan de Vries × 2 records → merged with 88% confidence
 
 **Step 4 — Show Stewardship**
-- Open Stewardship → Address Cleanup campaign
+- Open Stewardship → Address Cleanup sprint
 - Show a task: "These two records are 88% similar. Same customer?"
 - Show the before/after: 3.2% duplicates → resolved to unique customers
 
@@ -195,7 +195,7 @@ Listeria detected in organic butter lettuce from an undisclosed backup farm (FAR
 - `trace_complete_flag = FALSE` for 30% of lettuce records
 
 **Step 3 — Show Stewardship**
-- Open Lot Number Compliance campaign
+- Open Lot Number Compliance sprint
 - 750 grocery inventory records need lot numbers assigned
 - Show a steward task: "Locate lot number for MCG-GRO-LET-001 at STR-MUN-042"
 
@@ -293,7 +293,7 @@ MCG's data quality crisis costs $127M annually. Project Qlarity is a $12.4M Qlik
 
 **Step 5 — Governance: "Manage at Scale" (2 min)**
 - Business Glossary: look up "Phantom Inventory" — definition, owner, related datasets
-- Stewardship: show active campaigns — 640 addresses, 80 suppliers, 8,200 products in progress
+- Stewardship: show active sprints — 640 addresses, 80 suppliers, 8,200 products in progress
 - Data Products: show the 2 governed products with API sharing enabled
 
 **Step 6 — Analytics: "See What Matters" (2 min)**
@@ -342,7 +342,7 @@ Scenarios 1-6 all ask questions of trusted data. But someone has to *produce* th
 **Step 2 — Validate with the Data Quality Agent**
 - In Qlik Answers, ask the Data Quality Agent to assess the affected landing output — e.g., "Do the quality rules on `silver.inventory_reconciled` still hold after the CRM landing change?"
 - Show it assessing the dataset and confirming (or mapping) rules like `quantity_on_hand >= 0` and lot-number completeness.
-- Talking point: "A steward defines and checks rules in plain language. Any violations route to the same Stewardship campaigns from the other scenarios."
+- Talking point: "A steward defines and checks rules in plain language. Any violations route to the same Stewardship sprints from the other scenarios."
 
 **Step 3 — Package with the Data Product Agent**
 - Ask the Data Product Agent to review and repackage the **Supply Chain Health** data product: confirm owner (Henrik Jansen), tags, description, SLA, and that the Trust Score is populated.

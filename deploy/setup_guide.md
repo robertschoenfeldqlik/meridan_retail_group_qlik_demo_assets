@@ -464,9 +464,18 @@ A dedicated **Talend Job** deployed as a reusable address validation service, ca
 | Called by | Route 3, Route 8 |
 
 **Talend Job Components:**
-1. **tAddressRowStandardize** — Parse free-text address into structured components, normalize country to ISO 3166, standardize postal codes, expand abbreviations
-2. **tAddressRowValidate** — Validate against country postal databases (NL PostNL, US USPS, BR Correios), return confidence score + status (VALID/CORRECTED/AMBIGUOUS/INVALID)
-3. **tGeocode** — Optional geocoding for map visualizations (latitude/longitude for GPS correlation with IoT data)
+1. **`AddressStandardizer`** (custom Java routine) — parses free-text address into structured
+   components, repairs country to ISO 3166, canonicalizes postal codes, expands street
+   abbreviations, extracts unit/floor, and scores the result 0.0-1.0
+2. **`BulkGeocoder`** (custom Java routine) — one bulk call geocodes the whole batch against
+   public OSM Nominatim behind a shared 1 req/s rate limiter, with dedupe cache, 429/503 backoff
+   and a wall-clock budget; sets latitude/longitude/confidence
+3. **Routing gate** — GPS resolved goes to S3 (then Apache Iceberg `silver.addresses_geocoded`);
+   GPS unresolved goes to the **Address Cleanup** stewardship sprint
+
+> These replace the subscription-only `tAddressRowStandardize` -> `tAddressRowValidate` ->
+> `tGeocode` chain. No Talend Data Quality subscription, no licensed postal reference data,
+> no API key. Full build spec: `deploy/talend/BUILD_BULK_ADDRESS_JOB.md`.
 
 **Deployment:** Publish to Qlik Talend Cloud as callable service → Route 3 calls via **tRunJob** component.
 
@@ -621,7 +630,7 @@ Qlik auto-detects semantic types for columns. Review key examples:
 | `destination_country` | Country Code (ISO 3166) | 2-letter ISO code, not null |
 | `weight_kg` | Weight (metric) | Positive numeric, > 0 |
 
-Accept/modify/reject AI-suggested rules → violations route to **Stewardship campaigns** (Section 9).
+Accept/modify/reject AI-suggested rules → violations route to **Stewardship sprints** (Section 9).
 
 ### 5.3 Enable API Sharing
 
@@ -660,7 +669,7 @@ Body: { "model_id": "<spoilage-model-id>", "features": { "route": "GRU-BA", "car
 |---|---|---|---|
 | `MCG Demo - Development` | Shared | Dev workspace for building apps and flows | Data connections, data flow drafts, dev apps |
 | `MCG Demo - Published` | Managed | Production analytics for end users | Published Qlik Analytics apps, scheduled reports |
-| `MCG Demo - Data` | Shared | Data products + governance artifacts | Data products, glossary, stewardship campaigns, catalog |
+| `MCG Demo - Data` | Shared | Data products + governance artifacts | Data products, glossary, stewardship sprints, catalog |
 
 ### 6.2 Resource Assignment
 
@@ -797,11 +806,11 @@ python deploy/deploy_qlik.py  # Creates KB + uploads all 25 documents
 
 ## 9. Qlik Stewardship
 
-### 9.1 Stewardship Campaigns
+### 9.1 Stewardship Sprints
 
-Create 4 data stewardship campaigns tied to transformation route outputs:
+Create 4 data stewardship sprints tied to transformation route outputs:
 
-**Campaign 1: Address Cleanup**
+**Sprint 1: Address Cleanup**
 
 | Property | Value |
 |---|---|
@@ -815,7 +824,7 @@ Create 4 data stewardship campaigns tied to transformation route outputs:
 
 Example task: "Are these the same customer? Jan de Vries (Keizersgracht 482, Apartment 4B, 1017 EJ) vs Jan De Vries (Keizersgracht 482, Apt 4B, 1017EJ). Match confidence: 88%."
 
-**Campaign 2: Supplier Deduplication**
+**Sprint 2: Supplier Deduplication**
 
 | Property | Value |
 |---|---|
@@ -827,7 +836,7 @@ Example task: "Are these the same customer? Jan de Vries (Keizersgracht 482, Apa
 | Deadline | 14 days |
 | Nightmare | #3 (Product Master Mess) |
 
-**Campaign 3: Missing Product Weights**
+**Sprint 3: Missing Product Weights**
 
 | Property | Value |
 |---|---|
@@ -839,7 +848,7 @@ Example task: "Are these the same customer? Jan de Vries (Keizersgracht 482, Apa
 | Deadline | 60 days |
 | Nightmare | #3 |
 
-**Campaign 4: Lot Number Compliance**
+**Sprint 4: Lot Number Compliance**
 
 | Property | Value |
 |---|---|
@@ -853,7 +862,7 @@ Example task: "Are these the same customer? Jan de Vries (Keizersgracht 482, Apa
 
 ### 9.2 Setup in Qlik Cloud
 
-1. **Data Governance** → **Stewardship** → **Create Campaign**
+1. **Data Governance** → **Stewardship** → **Create Sprint**
 2. Select the source dataset (Silver-layer table with flagged records)
 3. Define task fields (what the steward sees and can edit)
 4. Assign to user group
@@ -1000,13 +1009,13 @@ python deploy/deploy_qlik.py  # Includes glossary import step
 **Purpose:** When a new stewardship task is created, send a direct message to the assigned steward.
 
 **Automation flow:**
-1. **Trigger:** Stewardship campaign task created
+1. **Trigger:** Stewardship sprint task created
 2. **Lookup:** Get steward's Teams user ID from user mapping
 3. **Teams DM:**
    ```
    📋 New Data Stewardship Task Assigned
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   Campaign: {campaign_name}
+   Sprint: {sprint_name}
    Task: {task_description}
    Records to review: {record_count}
    Deadline: {deadline}
@@ -1232,7 +1241,7 @@ The agentic capabilities are gated behind a preview flag on the tenant.
 | Agent | What it does for MCG |
 |---|---|
 | **Data Product Agent** | Create/manage data products conversationally (CRUD). Package **Supply Chain Health** and **Last Mile Performance**; review a product's quality and completeness before publishing (Section 5). |
-| **Data Quality Agent** | Assess data quality, create/map/enforce DQ rules by conversation, run DQ metric calculations. Bridges the steward and the pipeline for tables like `silver.inventory_reconciled`. Violations route to the Stewardship campaigns in Section 9. |
+| **Data Quality Agent** | Assess data quality, create/map/enforce DQ rules by conversation, run DQ metric calculations. Bridges the steward and the pipeline for tables like `silver.inventory_reconciled`. Violations route to the Stewardship sprints in Section 9. |
 | **Catalog and Business Glossary Agent** | Query the Qlik Cloud Catalog metadata in natural language; generate glossaries from apps, data products, datasets, or a domain to seed/extend the 25-term glossary in Section 10. Generated terms are **DRAFT by default** and require human review. |
 
 ### 14.4 Talend Agentic Routes (Preview)

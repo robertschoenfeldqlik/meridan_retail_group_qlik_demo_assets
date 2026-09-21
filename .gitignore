@@ -52,3 +52,9 @@ deploy/pipelines/schema/
 
 # Generated pipeline import package
 deploy/pipelines/*.zip
+
+# Generated Talend job import package (npm run talend:zip)
+deploy/talend/*.zip
+
+# Puppeteer profile used by capture-tenant-screenshots.js (holds a Qlik session)
+generators/.chrome-profile/

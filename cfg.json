@@ -5,66 +5,145 @@
   "accentColor": "TEAL",
   "trackLength": "60s",
   "output": "C:\\Claude\\MCG Full Stack\\MCG_Marketecture.pptx",
-
   "slideTitle": "Meridian Commerce Group — From Three Silos to Trusted AI",
   "slideSubtitle": "INTERNAL — DEMO ENABLEMENT  ·  How MCG lands WMS, IoT, and CRM in the Open Lakehouse for governed analytics and AI",
   "col1Header": "WHERE COMMERCE HAPPENS",
   "col3Header": "QLIK CLOUD PIPELINES",
   "col5Header": "RESULTS THAT SELL",
-
   "sources": [
-    { "t": "PostgreSQL WMS",      "s1": "Warehouse system",     "s2": "Inventory · Shipments",      "tag": "CDC real-time",     "icon": "warehouse" },
-    { "t": "Cold-chain IoT",      "s1": "Tive/Sensitech feeds", "s2": "Temp · GPS · Battery",       "tag": "Kafka streaming",   "icon": "cell-tower" },
-    { "t": "Carrier events",      "s1": "6 carrier webhooks",   "s2": "5 languages, 1 stream",      "tag": "Kafka streaming",   "icon": "data-pipeline" },
-    { "t": "Salesforce CRM",      "s1": "Contacts + orders",    "s2": "Product master",             "tag": "Every 15 min",      "icon": "office" },
-    { "t": "Product master",      "s1": "Salesforce objects",   "s2": "Weights · suppliers",        "tag": "Every 15 min",      "icon": "spec" },
-    { "t": "Operational docs",    "s1": "SOPs + contracts",     "s2": "25 DOCX knowledge base",     "tag": "Qlik Answers",      "icon": "doc" }
+    {
+      "t": "PostgreSQL WMS",
+      "s1": "Warehouse system",
+      "s2": "Inventory · Shipments",
+      "tag": "CDC real-time",
+      "icon": "warehouse"
+    },
+    {
+      "t": "Cold-chain IoT",
+      "s1": "Tive/Sensitech feeds",
+      "s2": "Temp · GPS · Battery",
+      "tag": "Kafka streaming",
+      "icon": "cell-tower"
+    },
+    {
+      "t": "Carrier events",
+      "s1": "6 carrier webhooks",
+      "s2": "5 languages, 1 stream",
+      "tag": "Kafka streaming",
+      "icon": "data-pipeline"
+    },
+    {
+      "t": "Salesforce CRM",
+      "s1": "Contacts + orders",
+      "s2": "Product master",
+      "tag": "Every 15 min",
+      "icon": "office"
+    },
+    {
+      "t": "Product master",
+      "s1": "Salesforce objects",
+      "s2": "Weights · suppliers",
+      "tag": "Every 15 min",
+      "icon": "spec"
+    },
+    {
+      "t": "Operational docs",
+      "s1": "SOPs + contracts",
+      "s2": "25 DOCX knowledge base",
+      "tag": "Qlik Answers",
+      "icon": "doc"
+    }
   ],
-
   "sor": {
     "name": "LAKE",
     "subtitle": "OPEN LAKEHOUSE",
     "badge": "ONE OPEN STORE ON S3",
     "capabilities": [
-      { "hd": "Iceberg open tables",   "sub": "bronze · silver · gold" },
-      { "hd": "Every feed captured",   "sub": "CDC + streaming + SaaS" },
-      { "hd": "Read via Athena",       "sub": "Glue catalog · any engine" },
-      { "hd": "Governance native",     "sub": "Trust Score · Lineage" }
+      {
+        "hd": "Iceberg open tables",
+        "sub": "bronze · silver · gold"
+      },
+      {
+        "hd": "Every feed captured",
+        "sub": "CDC + streaming + SaaS"
+      },
+      {
+        "hd": "Read via Athena",
+        "sub": "Glue catalog · any engine"
+      },
+      {
+        "hd": "Governance native",
+        "sub": "Trust Score · Lineage"
+      }
     ]
   },
-
   "integration": {
     "sectionSubtitle": "Two declarative projects land three feeds as code",
     "step1Title": "1 · Ingest as Code",
     "step1Body1": "Pipelines as code",
     "step1Body2": "— YAML, via API",
     "step2Title": "2 · Cleanse + Conform",
-    "step2Lines": ["8 silver routes", "Carrier + UoM fixes", "Talend + Nominatim", "address validation", " ", "Stewardship the rest"],
+    "step2Lines": [
+      "8 silver routes",
+      "Carrier + UoM fixes",
+      "Talend + Nominatim",
+      "address validation",
+      " ",
+      "Stewardship the rest"
+    ],
     "step3Title": "3 · Serve Gold Products",
-    "step3Lines": ["2 data products", "API-attached", "Daily 06:00 UTC", " ", "Open to any engine"]
+    "step3Lines": [
+      "2 data products",
+      "API-attached",
+      "Daily 06:00 UTC",
+      " ",
+      "Open to any engine"
+    ]
   },
-
   "analytics": {
     "aiml": {
-      "body":   ["Predict trained on", "lakehouse datasets"],
-      "accent": ["Exceedance + late-delivery", "models on governed data"]
+      "body": [
+        "Predict trained on",
+        "lakehouse datasets"
+      ],
+      "accent": [
+        "Exceedance + late-delivery",
+        "models on governed data"
+      ]
     }
   },
-
   "outcomes": [
-    { "t": "Dashboards",        "s": "2 apps · 10 sheets",     "tag": "Sheets via Qlik MCP" },
-    { "t": "KPIs",              "s": "IRA · On-time · WISMO",  "tag": "2 data products" },
-    { "t": "AI · Agentic",      "s": "Discovery Agent + MCP",  "tag": "Claude on live data" },
-    { "t": "AI · Generative",   "s": "Answers on 25 docs",     "tag": "Cited, grounded RAG" },
-    { "t": "AI · Predictive",   "s": "Qlik Predict models",    "tag": "Exceedance · SLA risk" }
+    {
+      "t": "Dashboards",
+      "s": "2 apps · 10 sheets",
+      "tag": "Sheets via Qlik MCP"
+    },
+    {
+      "t": "KPIs",
+      "s": "IRA · On-time · WISMO",
+      "tag": "2 data products"
+    },
+    {
+      "t": "AI · Agentic",
+      "s": "Discovery Agent + MCP",
+      "tag": "Claude on live data"
+    },
+    {
+      "t": "AI · Generative",
+      "s": "Answers on 25 docs",
+      "tag": "Cited, grounded RAG"
+    },
+    {
+      "t": "AI · Predictive",
+      "s": "Qlik Predict models",
+      "tag": "Exceedance · SLA risk"
+    }
   ],
-
   "bottomBand": "HIPAA · HITRUST · SOC 2 · ISO 27001",
   "bottomBuy": "pipelines as code · 15-minute freshness · trusted data products · AI that ships",
-
   "talkTrack": {
     "30s": "MCG runs commerce on three disconnected systems — a warehouse database, cold-chain sensors, and a CRM. Two declarative Qlik Cloud Pipelines land all of it in the Open Lakehouse as code, eight transformation routes clean it, and two governed data products feed the apps, Predict models, and AI agents. Deployment is one command; freshness is 15 minutes.",
-    "60s": "TALK TRACK · 60 SECONDS\n\nMeridian Commerce Group runs on three systems that never talked: a PostgreSQL warehouse database, cold-chain IoT sensors streaming through Kafka, and Salesforce. Seven data-quality nightmares cost them $127M a year.\n\nThe fix is efficiency by design. Two declarative Qlik Cloud Pipelines — version-controlled YAML, imported through the API — land every feed in the Open Lakehouse: Iceberg tables on S3, bronze to silver to gold. Eight transformation routes canonicalize six carrier vocabularies, standardize units, and score trust. Talend validates and geocodes every Salesforce address on a 15-minute cycle, routing the unfixable to Stewardship.\n\nTwo governed data products serve the business — read straight from the lakehouse through Amazon Athena, no copies. On top: two analytics apps whose sheets are authored by an AI agent over MCP, Predict models for exceedance and late-delivery risk, Answers grounded on 25 operational documents, and a Discovery Agent watching it all.\n\nOne command deploys the whole stack. That's pipelines as code, and AI that actually ships.",
-    "2min": "TALK TRACK · 2 MINUTES\n\nMeridian Commerce Group is a global logistics company running commerce across twelve warehouses and six carriers — on three systems that never talked. A PostgreSQL warehouse management database holds inventory, events, and shipments. Cold-chain IoT sensors stream temperature, GPS, and battery telemetry through Kafka, alongside webhook events from six carriers in five languages. Salesforce holds contacts, orders, and the product master. Add 25 operational documents — SOPs, carrier contracts, incident reports — and you have the full picture of where commerce happens. Seven data-quality nightmares across those silos cost MCG $127M a year.\n\nThe efficiency story starts with how the data lands. Two declarative Qlik Cloud Pipelines — plain YAML in git, imported and prepared through the platform API — land every feed in the Qlik Open Lakehouse: Apache Iceberg tables on S3, organized bronze, silver, gold. Eight silver transformation routes do the heavy lifting: six carrier status vocabularies collapse into one, units and storage zones standardize, timestamps normalize to UTC per distribution center, and every row carries a trust score. In parallel, Talend pulls Salesforce every fifteen minutes, validates address format in a tMap routine, geocodes the failures against Nominatim, and routes what it can't fix to a Stewardship campaign — human-in-the-loop, closed loop.\n\nThe gold layer serves two governed data products — supply chain health and last-mile performance — with datasets attached through the Data Products API and refreshed daily plus on every upstream event. The analytics apps read those products straight from the lakehouse through Amazon Athena. No extracts, no copies, open formats end to end.\n\nOn top of that foundation: two analytics apps whose sheets are authored conversationally by an AI agent over the Qlik MCP server, Qlik Predict models trained on lakehouse datasets for temperature-exceedance and late-delivery risk, Qlik Answers grounded on the 25-document knowledge base with cited responses, and a Discovery Agent that finds anomalies before anyone asks. Teams alerts and Talend jobs close the action loop.\n\nThe punchline for your buyer: the entire environment — pipelines, products, apps, agents — deploys from one repository with one command, and stays fifteen minutes fresh. That's pipelines as code, governed data products, and AI that actually ships."
+    "60s": "TALK TRACK · 60 SECONDS\n\nMeridian Commerce Group runs on three systems that never talked: a PostgreSQL warehouse database, cold-chain IoT sensors streaming through Kafka, and Salesforce. Seven data-quality nightmares cost them $127M a year.\n\nThe fix is efficiency by design. Two declarative Qlik Cloud Pipelines — version-controlled YAML, imported through the API — land every feed in the Open Lakehouse: Iceberg tables on S3, bronze to silver to gold. Eight transformation routes canonicalize six carrier vocabularies, standardize units, and score trust. Talend standardizes every Salesforce address and bulk-geocodes the batch, routing what it resolves to Iceberg and what it can't to a Stewardship sprint.\n\nTwo governed data products serve the business — read straight from the lakehouse through Amazon Athena, no copies. On top: two analytics apps whose sheets are authored by an AI agent over MCP, Predict models for exceedance and late-delivery risk, Answers grounded on 25 operational documents, and a Discovery Agent watching it all.\n\nOne command deploys the whole stack. That's pipelines as code, and AI that actually ships.",
+    "2min": "TALK TRACK · 2 MINUTES\n\nMeridian Commerce Group is a global logistics company running commerce across twelve warehouses and six carriers — on three systems that never talked. A PostgreSQL warehouse management database holds inventory, events, and shipments. Cold-chain IoT sensors stream temperature, GPS, and battery telemetry through Kafka, alongside webhook events from six carriers in five languages. Salesforce holds contacts, orders, and the product master. Add 25 operational documents — SOPs, carrier contracts, incident reports — and you have the full picture of where commerce happens. Seven data-quality nightmares across those silos cost MCG $127M a year.\n\nThe efficiency story starts with how the data lands. Two declarative Qlik Cloud Pipelines — plain YAML in git, imported and prepared through the platform API — land every feed in the Qlik Open Lakehouse: Apache Iceberg tables on S3, organized bronze, silver, gold. Eight silver transformation routes do the heavy lifting: six carrier status vocabularies collapse into one, units and storage zones standardize, timestamps normalize to UTC per distribution center, and every row carries a trust score. In parallel, Talend pulls Salesforce, repairs and scores every address with a custom standardizer, then geocodes the whole batch in one bulk call against public OpenStreetMap Nominatim. One gate decides what happens next — did we get GPS? Resolved rows land in the lakehouse as Iceberg; the rest go to a Stewardship sprint for a human. Closed loop, and not a line of it needs a Data Quality subscription.\n\nThe gold layer serves two governed data products — supply chain health and last-mile performance — with datasets attached through the Data Products API and refreshed daily plus on every upstream event. The analytics apps read those products straight from the lakehouse through Amazon Athena. No extracts, no copies, open formats end to end.\n\nOn top of that foundation: two analytics apps whose sheets are authored conversationally by an AI agent over the Qlik MCP server, Qlik Predict models trained on lakehouse datasets for temperature-exceedance and late-delivery risk, Qlik Answers grounded on the 25-document knowledge base with cited responses, and a Discovery Agent that finds anomalies before anyone asks. Teams alerts and Talend jobs close the action loop.\n\nThe punchline for your buyer: the entire environment — pipelines, products, apps, agents — deploys from one repository with one command, and stays fifteen minutes fresh. That's pipelines as code, governed data products, and AI that actually ships."
   }
 }

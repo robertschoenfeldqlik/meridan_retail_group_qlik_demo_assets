@@ -54,6 +54,8 @@ pptx.author = "Qlik";
 pptx.company = "Qlik / Meridian Commerce Group";
 pptx.title = "Project Qlarity — Meridian Commerce Group Qlik Cloud Demo";
 
+const deckMedia = require("./lib/deck-media");
+
 let slideNum = 0;
 
 // ─── HELPERS ───────────────────────────────────────
@@ -751,6 +753,38 @@ slide.addText([
 // ═══════════════════════════════════════════════════
 //  SAVE
 // ═══════════════════════════════════════════════════
+
+// --- Proof slides: the deployed environment, captured live -------------------
+// Skipped entirely when a screenshot has not been captured, so the deck never
+// shows an empty frame. Refresh: node generators/capture-tenant-screenshots.js
+function proofSlide(title, slug, subtitle) {
+  const hit = deckMedia.resolveShot(slug);
+  if (!hit) return false;
+  const slide = contentSlide(title, C.qlikTeal || C.qlikGreen);
+  if (subtitle) {
+    slide.addText(subtitle, {
+      x: 0.6, y: 0.82, w: 12.1, h: 0.32,
+      fontSize: 11, color: C.darkText, fontFace: FONT,
+    });
+  }
+  deckMedia.screenshotCard(pptx, slide, hit.path, {
+    x: 1.55, y: 1.32, w: 10.2, maxH: 5.2, caption: hit.caption, colors: C,
+  });
+  return true;
+}
+
+function renderProofs(list) {
+  let shown = 0;
+  for (const [t, slug, sub] of list) if (proofSlide(t, slug, sub)) shown++;
+  if (shown) console.log(`    ${shown} proof slide(s) from captured screenshots`);
+}
+
+renderProofs([
+    ['Deployed: Data Integration', 'di-home', 'Project Qlarity, running.'],
+    ['Deploy Console', 'deploy-ui-wizard', 'The whole environment deploys from one repository.'],
+]);
+
+
 const outPath = path.join(__dirname, "..", "MCG_Project_Qlarity_Summary.pptx");
 pptx.writeFile({ fileName: outPath }).then(() => {
   console.log(`✅ PowerPoint saved: ${outPath} (${slideNum} slides)`);

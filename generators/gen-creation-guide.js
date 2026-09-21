@@ -12,9 +12,10 @@
 const {
   buildQlikDocument, saveDocument,
   metadataTable, dataTable,
-  heading, para, labelValue, calloutBox, numberedItem,
+  heading, para, labelValue, calloutBox, numberedItem, figure,
   useQlikTheme,
 } = require("./mcg-docx-builder");
+const deckMedia = require("./lib/deck-media");
 const path = require("path");
 const {
   Paragraph, TextRun, PageBreak,
@@ -24,8 +25,16 @@ const OUT = path.join(__dirname, "..", "documents");
 
 // ─── Reusable helpers ────────────────────────────────────────────────────────
 
-/** Screenshot placeholder callout */
+/**
+ * Screenshot. Resolves the description against generators/screenshots.json and
+ * embeds the captured PNG when it exists, else falls back to the original text
+ * callout — so the ~12 call sites below never change.
+ *
+ * Refresh captures with: node generators/capture-tenant-screenshots.js
+ */
 function screenshot(desc) {
+  const hit = deckMedia.resolveShot(desc);
+  if (hit) return figure(hit.path, hit.caption || desc);
   return calloutBox(`[Screenshot: ${desc}]`, "info");
 }
 
@@ -388,9 +397,10 @@ function buildCreationGuide() {
 
     heading("Route 3a: Talend Address Validation Job (Reusable Service)", 3),
     para("This route uses a Talend Cloud job as a callable service for advanced address validation:"),
-    para("tAddressRowStandardize — Parse free-text address, normalize country to ISO 3166", { bullet: true }),
-    para("tAddressRowValidate — Validate against country postal databases (PostNL, USPS, Correios)", { bullet: true }),
-    para("tGeocode — Optional geocoding for map visualizations and GPS correlation with IoT", { bullet: true }),
+    para("AddressStandardizer (custom Java routine) — parse free-text address, repair country to ISO 3166, canonicalize postal codes, expand abbreviations, score 0.0-1.0", { bullet: true }),
+    para("BulkGeocoder (custom Java routine) — one bulk call geocodes the batch via public OSM Nominatim behind a 1 req/s limiter, with dedupe cache and retry backoff", { bullet: true }),
+    para("Routing gate — GPS resolved goes to S3 then Iceberg silver.addresses_geocoded; unresolved goes to the Address Cleanup stewardship sprint", { bullet: true }),
+    para("These replace the subscription-only tAddressRowStandardize / tAddressRowValidate / tGeocode chain — no Talend Data Quality subscription and no licensed postal reference data required.", { bullet: true }),
     calloutBox("The Talend Address Validation job is also invoked by Automation 5 (Address Correction Loop) when stewardship tasks are approved.", "info"),
 
     // ─── Route 4 ────────────────────────────────────────────────────────
@@ -544,7 +554,7 @@ function buildCreationGuide() {
         ["1", "Daily App Reload", "Schedule: 06:00 UTC daily", "Reload both analytics apps", "N/A (Qlik Cloud)"],
         ["2", "Cold Chain Alert", "Every 5 min: temp > 8°C for 15+ min", "Post Adaptive Card to Teams", "#mcg-cold-chain-alerts"],
         ["3", "Pipeline Health Summary", "Schedule: 07:00 UTC daily", "Post summary card to Teams", "#mcg-data-engineering"],
-        ["4", "WISMO Rate Alert", "Every 30 min: WISMO > 40%", "Post alert to Teams", "#mcg-customer-ops"],
+        ["4", "Stewardship Sprint Summary", "Schedule: 07:00 UTC daily", "Read the Address Cleanup sprint summary", "Run title / digest"],
         ["5", "Address Correction Loop", "Stewardship task approved", "Trigger Talend job, update, notify", "#mcg-data-engineering"],
       ]
     ),
@@ -639,17 +649,16 @@ function buildCreationGuide() {
     calloutBox("The automation JSON template is available at deploy/automations/teams_pipeline_health.json.", "info"),
 
     // ─── Automation 4 ───────────────────────────────────────────────────
-    heading("4.6 Automation 4: WISMO Rate Alert → Teams", 2),
-    para("Monitors the WISMO (Where Is My Order?) rate every 30 minutes. When the rate exceeds 40% for any carrier or region combination, an alert is posted to #mcg-customer-ops."),
+    heading("4.6 Automation 4: Stewardship Sprint Summary", 2),
+    para("Reads the Address Cleanup sprint summary once a day and titles the run with it. This is the read-only half of the address-correction loop - safe to enable in a demo, and it proves the sprint is live without mutating anything."),
 
     heading("Block Configuration", 3),
     dataTable(
       ["Block #", "Type", "Configuration"],
       [
-        ["1", "Scheduled Start", "Cron: */30 * * * * (Every 30 minutes)"],
-        ["2", "Qlik Cloud → Query Data", "Data Product: Last Mile Performance; Filter: wismo_flag = true AND on_time_pct < 0.60; Group by: carrier, destination_region"],
-        ["3", "Control → Condition", "If results exist → continue; else → end"],
-        ["4", "Microsoft Teams → Post Message", "Channel: #mcg-customer-ops; Include: carrier, region, WISMO rate, affected order count, dashboard link"],
+        ["1", "Scheduled Start", "Cron: 0 7 * * * (Daily at 07:00 UTC)"],
+        ["2", "API Key connector → Raw API request", "GET data-governance/sprints/<sprintId>/external-integrations/sprint-summary"],
+        ["3", "Update run title", "Title the run with the sprint state"],
       ]
     ),
 
@@ -686,7 +695,7 @@ function buildCreationGuide() {
     ),
 
     calloutBox("This automation demonstrates the closed-loop data quality cycle: Stewardship → Talend Validation → Silver Update → Gold Refresh → Predict Model Retrain. It's the most impactful demo for showing how human-in-the-loop governance connects to automated correction.", "info"),
-    calloutBox("Full Talend job design: deploy/talend/README.md — two Studio jobs scheduled every 15 minutes in TMC. Job 1 (mcg_sf_address_validate) pulls Salesforce, validates address format with the routines.AddressValidator tMap function, geocodes bad addresses via the public Nominatim API (1 req/s throttle), and routes unresolved rows to the Address Cleanup stewardship campaign. Job 2 (mcg_sf_address_to_qvd) lands the validated + geocoded set as MCG_SF_Addresses_Validated.qvd in Qlik Cloud DataFiles, which the Delivery & Customer Experience app loads (CustomerGeo table) on its 15-minute reload task.", "success"),
+    calloutBox("Full Talend job design: deploy/talend/BUILD_BULK_ADDRESS_JOB.md — mcg_sf_address_validate_bulk, five subjobs scheduled in TMC. It pulls Salesforce Contacts, repairs and scores each address with the AddressStandardizer routine, geocodes the whole batch in ONE bulk call via public OSM Nominatim (1 req/s, dedupe cache, retry backoff, wall-clock budget), then routes on GPS resolution: resolved rows are written as timestamped CSV to S3 and loaded downstream into the Apache Iceberg table silver.addresses_geocoded; unresolved rows go to the Address Cleanup stewardship sprint. Run npm run talend:zip to produce the Studio import bundle.", "success"),
     screenshot("Address Correction Loop automation showing all 8 blocks from stewardship trigger through Gold refresh"),
 
     // ─── Teams Webhook Setup ────────────────────────────────────────────
@@ -760,7 +769,8 @@ function buildCreationGuide() {
     ),
   ];
 
-  return buildQlikDocument("CREATION GUIDE", sections);
+  // screenshot() returns an array (image + caption), so flatten one level.
+  return buildQlikDocument("CREATION GUIDE", sections.flat());
 }
 
 

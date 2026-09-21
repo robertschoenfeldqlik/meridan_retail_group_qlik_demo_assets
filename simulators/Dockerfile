@@ -19,6 +19,11 @@ LABEL description="Meridian Commerce Group data simulators for Qlik Cloud demo"
 
 WORKDIR /app
 
+# Python buffers stdout when it isn't a TTY, so the simulators' progress output
+# sits in the buffer indefinitely and `logs` shows nothing for a container that
+# is in fact working. Unbuffer it so container logs are usable for diagnosis.
+ENV PYTHONUNBUFFERED=1
+
 # Install system dependencies for psycopg2
 RUN apt-get update && \
     apt-get install -y --no-install-recommends libpq-dev gcc && \

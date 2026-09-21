@@ -41,6 +41,14 @@ except ImportError:
     sys.exit(1)
 
 
+# This simulator deliberately emits near-duplicate contacts -- that IS the
+# "Address Catastrophe" scenario the demo is built on. Salesforce's
+# Standard_Contact_Duplicate_Rule rejects those inserts with DUPLICATES_DETECTED
+# and the run stalls on errors. The rule reports allowSave=true, so this header
+# lets the intentional duplicates land instead of failing the cycle.
+DUPLICATE_RULE_HEADER = {"Sforce-Duplicate-Rule-Header": "allowSave=true"}
+
+
 # ---------------------------------------------------------------------------
 # Address templates -- THE NIGHTMARE (Nightmare #2)
 # ---------------------------------------------------------------------------
@@ -157,7 +165,7 @@ def create_contact(sf, persona_variant, unique_suffix):
     # Remove None values
     record = {k: v for k, v in record.items() if v is not None}
 
-    result = sf.Contact.create(record)
+    result = sf.Contact.create(record, headers=DUPLICATE_RULE_HEADER)
     return result["id"] if result["success"] else None
 
 
@@ -218,7 +226,7 @@ def create_order(sf, contact_id, unique_suffix):
     record = {k: v for k, v in record.items() if v is not None}
 
     try:
-        result = sf.MCG_Order__c.create(record)
+        result = sf.MCG_Order__c.create(record, headers=DUPLICATE_RULE_HEADER)
         return result["id"] if result["success"] else None
     except Exception as e:
         print(f"\n  [WARN] Order creation failed: {e}")
@@ -261,7 +269,7 @@ def create_product(sf, template, unique_suffix):
     record = {k: v for k, v in record.items() if v is not None}
 
     try:
-        result = sf.MCG_Product__c.create(record)
+        result = sf.MCG_Product__c.create(record, headers=DUPLICATE_RULE_HEADER)
         return result["id"] if result["success"] else None
     except Exception as e:
         print(f"\n  [WARN] Product creation failed: {e}")
@@ -347,6 +355,7 @@ def main():
     parser.add_argument("--password", default=os.environ.get("SF_PASSWORD"), help="Salesforce password")
     parser.add_argument("--token", default=os.environ.get("SF_SECURITY_TOKEN", ""), help="Salesforce security token")
     parser.add_argument("--domain", default=os.environ.get("SF_DOMAIN", "login"), help="Salesforce domain (login or test)")
+    parser.add_argument("--api-version", default=os.environ.get("SF_API_VERSION", "61.0"), help="Salesforce REST API version (default 61.0)")
     parser.add_argument("--interval", type=float, default=10.0, help="Seconds between event cycles")
     parser.add_argument("--setup-help", action="store_true", help="Show custom object setup instructions")
     args = parser.parse_args()
@@ -366,14 +375,19 @@ def main():
     print("=" * 60)
     print(f"  Username: {args.username}")
     print(f"  Domain:   {args.domain}")
+    print(f"  API ver:  {args.api_version}")
     print(f"  Interval: {args.interval}s between cycles")
     print()
 
+    # Pin the REST API version rather than taking simple_salesforce's built-in
+    # default: the default drifts with the library, which silently changes the
+    # endpoint the simulator writes through and the fields it may send.
     sf = Salesforce(
         username=args.username,
         password=args.password,
         security_token=args.token,
-        domain=args.domain
+        domain=args.domain,
+        version=args.api_version
     )
     print(f"[OK] Connected to Salesforce ({sf.sf_instance})\n")
     print("[>>] Starting continuous data generation. Press Ctrl+C to stop.\n")

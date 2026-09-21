@@ -96,7 +96,7 @@ tools and services.
 - **Close the address-correction loop end to end**: an event (new/updated
   Salesforce contact) triggers the route, the agent normalizes and scores, and
   low-confidence records are orchestrated into the existing **Address Cleanup
-  stewardship campaign** — then, on approval, the job re-runs for the corrected
+  stewardship sprint** — then, on approval, the job re-runs for the corrected
   records (this is automation #5, *MCG Address Correction Loop — Talend*, already
   in the demo).
 - **MCP client to the Qlik MCP Server**: a route could, in future, use the

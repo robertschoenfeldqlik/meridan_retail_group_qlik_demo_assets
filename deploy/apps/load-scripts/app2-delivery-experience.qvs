@@ -15,7 +15,7 @@
 // Bronze (live feed):
 //   - bronze.iot_carrier_events
 //
-// Talend QVD (DataFiles, refreshed every 15 min by deploy/talend jobs):
+// Talend output (refreshed every 15 min by deploy/talend jobs):
 //   - MCG_SF_Addresses_Validated.qvd   (validated + geocoded addresses)
 //
 // The connection name matches the deploy config (dataConnections.athena) —
@@ -35,9 +35,10 @@ SET BrokenWeeks=1;
 SET ReferenceDay=0;
 SET FirstMonthOfYear=1;
 
-// Analytics reads go through Amazon Athena: the lakehouse's Iceberg tables
-// are queried via the Glue catalog (databases: bronze / silver / gold).
-LIB CONNECT TO 'MCG Lakehouse (Athena)';
+// >>> MCG lakehouse source switch — generated, do not hand-edit <<<
+// Analytics reads come from the Qlik Open Lakehouse connection: bronze, silver and
+// gold, one table per LOAD. Table names, column names and grain match the catalog.
+// <<< end lakehouse source switch >>>
 
 // =============================================================================
 // 1. LAST MILE PERFORMANCE — Data Product (gold, carrier/country grain)
@@ -55,11 +56,13 @@ LOAD
     wismo_inquiries          AS [WISMO Inquiries],
     wismo_rate               AS [WISMO Rate],
     tracking_missing_count   AS [Tracking Missing Count],
-    avg_address_quality      AS [Avg Address Quality];
-SELECT carrier_code, destination_country, orders, delivered_orders,
-       late_deliveries, on_time_rate, avg_days_late, wismo_inquiries,
-       wismo_rate, tracking_missing_count, avg_address_quality
-FROM gold.last_mile_performance;
+    avg_address_quality      AS [Avg Address Quality]
+// SELECT carrier_code, destination_country, orders, delivered_orders,
+//        late_deliveries, on_time_rate, avg_days_late, wismo_inquiries,
+//        wismo_rate, tracking_missing_count, avg_address_quality
+// FROM gold.last_mile_performance;
+FROM [lib://MCG Demo - Development:MCG Open Lakehouse/gold_last_mile_performance.qvd]
+(qvd);
 
 // =============================================================================
 // 2. ORDER TIMELINE — silver.order_delivery_timeline (order grain)
@@ -85,13 +88,15 @@ LOAD
     shipment_id           AS [Shipment ID],
     carrier_status_raw    AS [Carrier Status],
     delivery_attempts     AS [Delivery Attempts],
-    exception_code        AS [Exception Code];
-SELECT order_id, contact_id, order_date, sku, product_name,
-       fulfillment_method, carrier_code, tracking_number, order_status,
-       promised_delivery, actual_delivery, tracking_missing, delivered_late,
-       days_late, wismo_flag, shipment_id, carrier_status_raw,
-       delivery_attempts, exception_code
-FROM silver.order_delivery_timeline;
+    exception_code        AS [Exception Code]
+// SELECT order_id, contact_id, order_date, sku, product_name,
+//        fulfillment_method, carrier_code, tracking_number, order_status,
+//        promised_delivery, actual_delivery, tracking_missing, delivered_late,
+//        days_late, wismo_flag, shipment_id, carrier_status_raw,
+//        delivery_attempts, exception_code
+// FROM silver.order_delivery_timeline;
+FROM [lib://MCG Demo - Development:MCG Open Lakehouse/silver_order_delivery_timeline.qvd]
+(qvd);
 
 // =============================================================================
 // 3. SHIPMENTS CANONICAL — silver.shipments_canonical
@@ -117,13 +122,15 @@ LOAD
     delivery_attempts             AS [Ship Delivery Attempts],
     exception_code                AS [Ship Exception Code],
     weight_kg                     AS [Weight (kg)],
-    delivered_without_timestamp   AS [Delivered w/o Timestamp Flag];
-SELECT shipment_id, tracking_number, carrier_code, order_id,
-       shipment_status_raw, shipment_status, status_datetime_raw,
-       origin_facility, destination_city, destination_country,
-       estimated_delivery, actual_delivery, delivery_attempts,
-       exception_code, weight_kg, delivered_without_timestamp
-FROM silver.shipments_canonical;
+    delivered_without_timestamp   AS [Delivered w/o Timestamp Flag]
+// SELECT shipment_id, tracking_number, carrier_code, order_id,
+//        shipment_status_raw, shipment_status, status_datetime_raw,
+//        origin_facility, destination_city, destination_country,
+//        estimated_delivery, actual_delivery, delivery_attempts,
+//        exception_code, weight_kg, delivered_without_timestamp
+// FROM silver.shipments_canonical;
+FROM [lib://MCG Demo - Development:MCG Open Lakehouse/silver_shipments_canonical.qvd]
+(qvd);
 
 // =============================================================================
 // 4. CUSTOMER ADDRESSES — silver.addresses_standardized
@@ -141,10 +148,12 @@ LOAD
     state_region            AS [Customer Region],
     postal_code             AS [Postal Code],
     country_iso             AS [Customer Country],
-    address_quality_score   AS [Address Quality Score];
-SELECT contact_id, first_name, last_name, email, city, state_region,
-       postal_code, country_iso, address_quality_score
-FROM silver.addresses_standardized;
+    address_quality_score   AS [Address Quality Score]
+// SELECT contact_id, first_name, last_name, email, city, state_region,
+//        postal_code, country_iso, address_quality_score
+// FROM silver.addresses_standardized;
+FROM [lib://MCG Demo - Development:MCG Open Lakehouse/silver_addresses_standardized.qvd]
+(qvd);
 
 // =============================================================================
 // 5. VALIDATED ADDRESSES + GEO — Talend QVD (refreshed every 15 minutes)
@@ -152,11 +161,11 @@ FROM silver.addresses_standardized;
 // Produced by the Talend jobs in deploy/talend/ (mcg_sf_address_validate →
 // mcg_sf_address_to_qvd): Salesforce pull every 15 min, AddressValidator tMap
 // format check, Nominatim geocoding for bad addresses, unresolved rows routed
-// to the Address Cleanup stewardship campaign. Linked via [Contact ID].
+// to the Address Cleanup stewardship sprint. Linked via [Contact ID].
 // FileSize() guard: the app reloads cleanly before the first Talend run.
 // =============================================================================
 
-IF NOT IsNull(FileSize('lib://DataFiles/MCG_SF_Addresses_Validated.qvd')) THEN
+IF NOT IsNull(FileSize('lib://MCG Demo - Development:MCG Open Lakehouse/MCG_SF_Addresses_Validated.qvd')) THEN
 
 CustomerGeo:
 LOAD
@@ -170,7 +179,7 @@ LOAD
     geo_confidence          AS [Geo Confidence],
     validation_status       AS [Address Validation Status],
     validated_at_utc        AS [Validated At]
-FROM [lib://DataFiles/MCG_SF_Addresses_Validated.qvd]
+FROM [lib://MCG Demo - Development:MCG Open Lakehouse/MCG_SF_Addresses_Validated.qvd]
 (qvd);
 
 END IF
@@ -180,8 +189,10 @@ END IF
 // =============================================================================
 
 CarrierEventsLive:
-LOAD *;
-SELECT * FROM bronze.iot_carrier_events;
+LOAD *
+// SELECT * FROM bronze.iot_carrier_events;
+FROM [lib://MCG Demo - Development:MCG Open Lakehouse/bronze_iot_carrier_events.qvd]
+(qvd);
 
 // =============================================================================
 // CALENDAR (Master Calendar for time intelligence)

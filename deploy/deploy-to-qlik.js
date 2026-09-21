@@ -28,10 +28,17 @@ const path  = require('path');
 const url   = require('url');
 const { spawn, spawnSync } = require('child_process');
 const { zipDirectory, unzipToDirectory } = require('./zip-utils');
+const { resolveEngine, composeCmd, engineEnv } = require('./container-engine');
+const stewardship = require('./stewardship');
+const automationWorkspaces = require('./automation-workspaces');
 
 // ---------------------------------------------------------------------------
 //  Constants
 // ---------------------------------------------------------------------------
+
+// Container engine backing the infrastructure profiles (podman here; docker is
+// still honoured if installed). Override with MCG_CONTAINER_ENGINE=docker|podman.
+const ENGINE = resolveEngine();
 
 const SCRIPT_DIR  = __dirname;
 const PROJECT_DIR = path.resolve(SCRIPT_DIR, '..');
@@ -1052,11 +1059,21 @@ class QlikClient {
     throw new Error(`Failed to delete data product ${id} (${res.statusCode}): ${JSON.stringify(res.body)}`);
   }
 
+  // Returns every data product the tenant can see, each carrying its spaceId so
+  // callers can scope destructive operations. Tenants are shared: a caller that
+  // deletes on name alone would take out unrelated demos, so spaceId is not optional
+  // metadata here — deleteAllDataProducts refuses to run without it.
   async listAllDataProducts() {
     // Try governance API first
     try {
       const products = await this._getAll('/api/data-governance/data-products');
-      return products || [];
+      if (products) {
+        return products.map(p => ({
+          id: p.id,
+          name: p.name,
+          spaceId: p.spaceId || p.space || null,
+        }));
+      }
     } catch (err) {
       this.log.debug(`Data governance API list failed: ${err.message}`);
     }
@@ -1065,18 +1082,53 @@ class QlikClient {
     // products undeleted and risk creating duplicates on re-deploy).
     try {
       const items = await this._getAll('/api/v1/items', { resourceType: 'dataproduct' });
-      return items.map(it => ({ id: it.resourceId || it.id, name: it.name }));
+      return items.map(it => ({
+        id: it.resourceId || it.id,
+        name: it.name,
+        spaceId: it.spaceId || null,
+      }));
     } catch (err2) {
       this.log.debug(`Items API fallback failed: ${err2.message}`);
     }
     return [];
   }
 
-  async deleteAllDataProducts(keepNames = []) {
+  // Deletes data products not named in keepNames, but ONLY within spaceIds.
+  // spaceIds is required for a scoped delete; pass { allowTenantWide: true }
+  // to opt into the old behaviour (used by --cleanup-dataproducts).
+  async deleteAllDataProducts(keepNames = [], spaceIds = null, opts = {}) {
     const all = await this.listAllDataProducts();
-    this.log.info(`Found ${all.length} data product(s) in tenant`);
+    const tenantWide = opts.allowTenantWide === true;
+
+    let scoped = all;
+    if (!tenantWide) {
+      const scope = (spaceIds || []).filter(Boolean);
+      if (!scope.length) {
+        this.log.warn('Data product cleanup skipped: no space scope was supplied.');
+        return { deleted: 0, kept: all.length, total: all.length, skipped: true };
+      }
+      scoped = all.filter(dp => scope.includes(dp.spaceId));
+
+      // Guard: never delete outside the scope. If the filter produced anything
+      // out of scope, something is wrong with the listing — abort rather than trust it.
+      const strays = scoped.filter(dp => !scope.includes(dp.spaceId));
+      if (strays.length) {
+        throw new Error(
+          `Refusing to delete data products outside the MCG spaces: ` +
+          strays.map(d => `"${d.name}"`).join(', ')
+        );
+      }
+      const outOfScope = all.length - scoped.length;
+      this.log.info(
+        `Found ${all.length} data product(s) in tenant; ${scoped.length} in scope, ` +
+        `${outOfScope} out of scope and protected.`
+      );
+    } else {
+      this.log.info(`Found ${all.length} data product(s) in tenant (tenant-wide cleanup)`);
+    }
+
     let deleted = 0, kept = 0;
-    for (const dp of all) {
+    for (const dp of scoped) {
       if (keepNames.includes(dp.name)) {
         this.log.info(`  Keeping: "${dp.name}" (${dp.id})`);
         kept++;
@@ -1221,8 +1273,51 @@ class QlikClient {
     return null;
   }
 
+  /**
+   * Build a valid ExperimentVersionInput. The API validates one field at a time and
+   * returns only the name of the first bad argument, so the exact shape is expensive
+   * to rediscover. Learned against this tenant (Sept 2026):
+   *
+   *   - the dataset field is `dataSetId` — capital S. `datasetId` and `dataset:{id}`
+   *     both fail with "/data/attributes/dataSetId".
+   *   - `experimentMode` is 'intelligent' (or 'manual'). 'auto' is NOT accepted.
+   *   - `experimentType` is 'binary' for a 0/1 target — not 'binary_classification'.
+   *   - every featuresList entry needs `{ name, dataType, include, changeType }`, and
+   *     `changeType` must be **null**, not a string. dataType is Qlik's own uppercase
+   *     vocabulary (STRING / INTEGER / DOUBLE / DATE / TIMESTAMP) exactly as
+   *     GET /api/v1/data-sets/{id}/schema reports it.
+   *   - `datasetOrigin`, `dateIndexes`, `trainingDuration` and `pipeline` are all
+   *     required; omitting any one of them is another 400.
+   *
+   * Exclude any column that is recorded AFTER the event being predicted. A field like
+   * days_late or a post-hoc exception code leaks the target through time: the model
+   * scores near 1.0, the importance chart collapses to that one column, and the result
+   * could not run at prediction time anyway.
+   */
+  buildMlVersionInput({ name, target, dataSetId, features, experimentType = 'binary', algorithms }) {
+    return {
+      name: name || 'v1',
+      target,
+      dataSetId,
+      experimentMode: 'intelligent',
+      experimentType,
+      datasetOrigin: 'new',
+      dateIndexes: [],
+      trainingDuration: 3600,
+      pipeline: { transforms: [] },
+      algorithms: algorithms || [
+        'gaussian_nb', 'lgbm_classifier', 'catboost_classifier',
+        'logistic_regression', 'random_forest_classifier', 'xgb_classifier',
+      ],
+      featuresList: (features || []).map(({ name: fname, dataType }) => ({
+        name: fname, dataType, include: true, changeType: null,
+      })),
+    };
+  }
+
   // Optional: start a training run. Body is a pass-through ExperimentVersionInput
-  // (target, experimentType, algorithms, experimentMode, dataset, featuresList…).
+  // (target, experimentType, algorithms, experimentMode, dataSetId, featuresList…).
+  // Use buildMlVersionInput() above rather than assembling one by hand.
   async createMlExperimentVersion(experimentId, body) {
     if (this.dryRun) { this.log.info(`DRY RUN: Would train a version on experiment ${experimentId}`); return { id: 'dry-run-version' }; }
     const payload = (body && body.data) ? body : { data: { type: 'experiment-version', attributes: body } };
@@ -1565,6 +1660,23 @@ class QlikClient {
   // ========================================================================
 
   async findDatasetByName(name, spaceId) {
+    // Primary: Items API with resourceType filter (consistent with other lookups).
+    // `name` arrives bare (supply_chain_health) because that is how a pipeline
+    // registers it. Until a pipeline has run, the same table exists only as its
+    // staging file, catalogued under the file name (gold_supply_chain_health.qvd),
+    // so those spellings are tried as well rather than reporting the table missing.
+    const candidates = [name];
+    for (const layer of ['gold', 'silver', 'bronze']) {
+      for (const ext of ['qvd', 'csv']) candidates.push(`${layer}_${name}.${ext}`);
+    }
+    for (const cand of candidates) {
+      const hit = await this._findDatasetExact(cand, spaceId);
+      if (hit) return hit;
+    }
+    return null;
+  }
+
+  async _findDatasetExact(name, spaceId) {
     // Primary: Items API with resourceType filter (consistent with other lookups)
     try {
       const params = { resourceType: 'dataset', name, limit: '100' };
@@ -1599,8 +1711,12 @@ class QlikClient {
     if (apiConsumable) {
       ops.push({ op: 'replace', path: '/apiConsumableDatasetIds', value: datasetIds });
     }
+    // The ops list is JSON-Patch shaped, but the service rejects the
+    // application/json-patch+json media type with a 415 and only deserializes the
+    // array under plain application/json. Sending the documented content type
+    // silently leaves every data product with zero datasets attached.
     const res = await this._patch(`/api/data-governance/data-products/${dataProductId}`, ops, {
-      'Content-Type': 'application/json-patch+json',
+      'Content-Type': 'application/json',
     });
     if (res.statusCode >= 200 && res.statusCode < 300) return res.body || { status: 'updated' };
     throw new Error(`Data product dataset attach failed (${res.statusCode}): ${JSON.stringify(res.body).slice(0, 400)}`);
@@ -1937,7 +2053,7 @@ function printChecklist(report, enabled, log) {
     ['Data Flows',         'Build 8 transformation flows + Talend address validation job (see creation_guide.md §1.3)'],
     ['Table Recipes',      'Create 7 Gold-layer table recipes from Silver tables (see creation_guide.md §1.4)'],
     ['Qlik Predict',       'Create AutoML experiments for Spoilage Risk & SLA Prediction (see creation_guide.md §4)'],
-    ['Stewardship',        'Create 4 stewardship campaigns (see demo_checklist.md Phase 8)'],
+    ['Stewardship',        'Address Cleanup sprint is automated (node deploy/stewardship.js); create any additional sprints per demo_checklist.md Phase 8'],
     ['Discovery Agent',    'Enable Discovery Agent on data products and set alert thresholds'],
     ['MCP Server',         'Install and configure Qlik MCP server (see setup_guide.md §13)'],
   ];
@@ -1954,6 +2070,7 @@ function printChecklist(report, enabled, log) {
     ['glossary',     'Create Business Glossary Terms'],
     ['webhooks',     'Create Webhooks (app reload + pipeline health events)'],
     ['reloadtasks',  'Create Reload Tasks (scheduled app refreshes)'],
+    ['stewardship',  'Create Stewardship Sprint + author automation workspaces'],
   ];
 
   // Maps each component key to the actual substring(s) used in the
@@ -1973,6 +2090,7 @@ function printChecklist(report, enabled, log) {
     glossary:     ['glossary'],
     webhooks:     ['webhook'],
     reloadtasks:  ['reload task'],
+    stewardship:  ['stewardship sprint', 'automation workspace'],
   };
 
   let idx = 1;
@@ -2055,7 +2173,8 @@ async function main() {
   if (args.cleanupDataProducts) {
     log.section('Cleanup: Delete All Data Products');
     try {
-      const { deleted, total } = await client.deleteAllDataProducts([]);
+      // Explicit tenant-wide opt-in: this mode exists to wipe everything.
+      const { deleted, total } = await client.deleteAllDataProducts([], null, { allowTenantWide: true });
       log.success(`Deleted ${deleted} of ${total} data product(s) from tenant.`);
     } catch (err) {
       log.error(`Cleanup failed: ${err.message}`);
@@ -2135,29 +2254,33 @@ async function main() {
         log.success(`[DRY RUN] Would start Docker stack "${profile}" via ${composeFile}`);
       } else {
         // Check if containers are already running
-        const psResult = spawnSync('docker', ['compose', '-f', composeFile, 'ps', '--status', 'running', '-q'], {
-          cwd: infraDir, encoding: 'utf-8', timeout: 15000,
+        const psArgs = composeCmd(ENGINE, '-f', composeFile, 'ps', '--status', 'running', '-q');
+        const psResult = spawnSync(psArgs.cmd, psArgs.args, {
+          cwd: infraDir, encoding: 'utf-8', timeout: 15000, env: engineEnv(ENGINE),
         });
         const runningIds = (psResult.stdout || '').trim().split('\n').filter(Boolean);
 
         if (runningIds.length > 0) {
           // Containers already up — report and continue
-          const psNames = spawnSync('docker', ['compose', '-f', composeFile, 'ps', '--status', 'running', '--format', '{{.Name}}'], {
-            cwd: infraDir, encoding: 'utf-8', timeout: 15000,
+          const nameArgs = composeCmd(ENGINE, '-f', composeFile, 'ps', '--status', 'running', '--format', '{{.Name}}');
+          const psNames = spawnSync(nameArgs.cmd, nameArgs.args, {
+            cwd: infraDir, encoding: 'utf-8', timeout: 15000, env: engineEnv(ENGINE),
           });
           const names = (psNames.stdout || '').trim().split('\n').filter(Boolean);
           log.success(`Docker containers already running (${names.length} containers)`);
           for (const n of names) { log.info(`  ✓ ${n}`); }
         } else {
           // Clean up any stale/stopped containers to avoid name conflicts
-          const psAllResult = spawnSync('docker', ['compose', '-f', composeFile, 'ps', '-a', '-q'], {
-            cwd: infraDir, encoding: 'utf-8', timeout: 15000,
+          const allArgs = composeCmd(ENGINE, '-f', composeFile, 'ps', '-a', '-q');
+          const psAllResult = spawnSync(allArgs.cmd, allArgs.args, {
+            cwd: infraDir, encoding: 'utf-8', timeout: 15000, env: engineEnv(ENGINE),
           });
           const staleIds = (psAllResult.stdout || '').trim().split('\n').filter(Boolean);
           if (staleIds.length > 0) {
             log.warn(`Found ${staleIds.length} stale container(s) — removing before fresh deploy...`);
-            spawnSync('docker', ['compose', '-f', composeFile, 'down', '--remove-orphans'], {
-              cwd: infraDir, encoding: 'utf-8', timeout: 60000,
+            const downArgs = composeCmd(ENGINE, '-f', composeFile, 'down', '--remove-orphans');
+            spawnSync(downArgs.cmd, downArgs.args, {
+              cwd: infraDir, encoding: 'utf-8', timeout: 60000, env: engineEnv(ENGINE),
             });
             log.info('Stale containers removed.');
           }
@@ -2207,25 +2330,25 @@ async function main() {
             }
           }
 
-          const dockerArgs = ['compose', '-f', composeFile, 'up', '-d'];
-          if (isDmg) dockerArgs.push('--build');
+          const upCmd = composeCmd(ENGINE, '-f', composeFile, 'up', '-d');
+          if (isDmg) upCmd.args.push('--build');
 
-          log.info(`Starting Docker Compose (${profile})... this may take several minutes on first pull`);
+          log.info(`Starting ${ENGINE.compose.kind} (${profile})... this may take several minutes on first pull`);
           log.info(`Compose file: ${composeFile}`);
           await new Promise((resolve, reject) => {
-            const child = spawn('docker', dockerArgs, {
-              cwd: infraDir, stdio: ['ignore', 'pipe', 'pipe'],
+            const child = spawn(upCmd.cmd, upCmd.args, {
+              cwd: infraDir, stdio: ['ignore', 'pipe', 'pipe'], env: engineEnv(ENGINE),
             });
             let stderr = '';
             child.stdout.on('data', (d) => { d.toString().trim().split('\n').forEach(l => l.trim() && log.info(l.trim())); });
             child.stderr.on('data', (d) => { const s = d.toString(); stderr += s; s.trim().split('\n').forEach(l => l.trim() && log.info(l.trim())); });
             child.on('close', (code) => {
               if (code === 0) { resolve(); }
-              else { reject(new Error(`docker compose exited with code ${code}\n${stderr.slice(-500)}`)); }
+              else { reject(new Error(`${ENGINE.compose.kind} exited with code ${code}\n${stderr.slice(-500)}`)); }
             });
             child.on('error', reject);
           });
-          log.success(`Docker containers started (${profile})`);
+          log.success(`Containers started on ${ENGINE.name} (${profile})`);
         }
       }
       report.record('Docker Containers', 'OK', `profile=${profile}`);
@@ -2294,7 +2417,7 @@ async function main() {
         dataSourceId: 'repsrc_postgresql', buildGateway: buildPostgresGatewaySource,
         uiHint: `Set dataGateway.id in config to auto-create this (Qlik Cloud → Administration → Data Gateways → copy the "Data gateway ID"), or create it in the DI project UI selecting the "${GW}" gateway.` },
       { key: 'salesforce', label: 'Salesforce (MCG CRM)', uiOnly: true,
-        uiHint: 'Create in the Qlik Cloud UI (Data Integration → Create connection → Salesforce) in the MCG Demo - DI space. Salesforce authenticates WITH Salesforce via a Connected App (OAuth: Instance, Login Domain, Client Id & Secret) over the Qlik-managed gateway ($$qlikManagedGateway$$, not the on-prem DMG) — the interactive Salesforce login cannot be performed headlessly.' },
+        uiHint: 'Create in the Qlik Cloud UI (Data Integration → Create connection → Salesforce) in the MCG Demo - DI space, named exactly "MCG Salesforce CRM" so the pipeline binding resolves. The V2 connector uses OAuth 2.0 against a Salesforce EXTERNAL CLIENT APP (not the V1 Connected App; there is no Instance/Login Domain field) — callback https://connector.qlik.com/auth/oauth/v3.htm, scopes api + refresh_token,offline_access + openid + full. Supply Client Id, Client Secret, Environment and API Type; a data gateway is optional (None by default). The OAuth step needs an interactive Salesforce login and an auth code pasted back, so it cannot be performed headlessly.' },
       { key: 'kafka',      label: 'Kafka (IoT Telemetry)', uiOnly: true,
         uiHint: 'Create the Kafka source inside your Data Integration project. Kafka as a SOURCE requires a Data Gateway - Streaming (the Data Movement gateway does not expose a Kafka source), and there is no Kafka source connector in the public API.' },
       { key: 's3',         label: 'S3 (Flat File Outputs)', uiOnly: true,
@@ -2569,7 +2692,7 @@ async function main() {
       ['MCG Daily App Reload',
        'Scheduled daily reload of MCG analytics apps at 06:00 UTC.'],
       ['MCG Address Correction — Talend Job Trigger',
-       'Triggered by new Stewardship tasks in the Address Cleanup campaign. '
+       'Triggered by new Stewardship tasks in the Address Cleanup sprint. '
        + 'Runs the Talend Address Validation Service job on flagged records, writes corrected '
        + 'addresses back to silver.addresses_standardized, and resolves the stewardship task.'],
     ];
@@ -2577,7 +2700,13 @@ async function main() {
     // Load additional automations from JSON templates
     const autoDir = path.resolve(SCRIPT_DIR, (cfg.automations && cfg.automations.templateDir) || './automations');
     if (fs.existsSync(autoDir)) {
-      const templates = fs.readdirSync(autoDir).filter((f) => f.endsWith('.json')).sort();
+      // automation-definitions.json is the CATALOG of automations, not a single
+      // automation template. Including it created a junk automation literally
+      // named "automation-definitions" in the tenant, because it has no .name
+      // and the loader falls back to the filename.
+      const templates = fs.readdirSync(autoDir)
+        .filter((f) => f.endsWith('.json') && f !== 'automation-definitions.json')
+        .sort();
       if (templates.length) log.info(`Found ${templates.length} automation template(s) in ${path.basename(autoDir)}/`);
       for (const tplFile of templates) {
         try {
@@ -2842,15 +2971,24 @@ async function main() {
           ];
 
     // Resolve the target space once for all projects + dataset attachment.
-    let spaceId = sharedSpace ? sharedSpace.id : undefined;
-    if (!spaceId && !dryRun && cfg.spaces && cfg.spaces.shared) {
-      try {
-        const found = await client.findSpaceByName(cfg.spaces.shared);
-        if (found) spaceId = found.id;
-      } catch (err) {
-        log.debug(`Space lookup failed: ${err.message}`);
+    // DI projects belong in a DATA space, like the stewardship sprint below: the
+    // create API answers 403 "Unauthorized operation" for a shared space, and a
+    // lookup scoped to the wrong space misses the existing project and retries the
+    // create every run. It also has to match the space holding the data connections
+    // the pipeline bindings resolve against. Fall back to shared only if no data
+    // space exists.
+    let spaceId = dataSpace ? dataSpace.id : undefined;
+    if (!spaceId && !dryRun && cfg.spaces && (cfg.spaces.data || cfg.spaces.shared)) {
+      for (const name of [cfg.spaces.data, cfg.spaces.shared].filter(Boolean)) {
+        try {
+          const found = await client.findSpaceByName(name);
+          if (found) { spaceId = found.id; break; }
+        } catch (err) {
+          log.debug(`Space lookup failed for "${name}": ${err.message}`);
+        }
       }
     }
+    if (!spaceId && sharedSpace) spaceId = sharedSpace.id;
 
     const rank = (t) => {
       const ty = String(t.type || '').toUpperCase();
@@ -2872,7 +3010,10 @@ async function main() {
           continue;
         }
         const zipBuf = zipDirectory(srcDir, {
-          exclude: ['README.md', 'schema', '.vscode', '.github', '.gitignore', 'CLAUDE.md'],
+          // Keep in sync with deploy/build-pipeline-zip.js — staging-olh holds tasks
+          // that are deliberately NOT deployed yet, and the import API rejects the
+          // whole project if it sees a non-.json/.yaml file (its .sql lives there).
+          exclude: ['README.md', 'schema', '.vscode', '.github', '.gitignore', 'CLAUDE.md', 'staging-olh'],
         });
         log.info(`Packaged "${projectName}" (${(zipBuf.length / 1024).toFixed(1)} KB) from ${path.relative(PROJECT_DIR, srcDir)}`);
 
@@ -2892,7 +3033,7 @@ async function main() {
           log.success(`"${projectName}" definitions validated.`);
         }
 
-        // 2. Create (or reuse) the DI project in the shared space
+        // 2. Create (or reuse) the DI project in the data space
         const project = await client.createDiProject({
           name: projectName,
           description: def.description || `MCG declarative pipeline — imported from ${path.basename(srcDir)} YAML definitions.`,
@@ -2900,11 +3041,11 @@ async function main() {
           platformType: def.platformType || pCfg.platformType || 'QLIK_OPEN_LAKEHOUSE',
         });
 
-        // 3. Import the YAML definitions
-        await client.importDiProject(project.id, zipBuf);
-        log.success(`Imported definitions into "${projectName}" (${project.id}).`);
-
-        // 4. Resolve binding variables against this tenant and push them
+        // 3. Resolve binding variables against this tenant and push them.
+        //    This MUST happen before the import: the import API validates that every
+        //    variable the project declares already has a value and otherwise answers
+        //    400 VARIABLES-NOT-FOUND — "update the project's export variables using
+        //    the PUT bindings API before attempting to import again".
         const variables = await resolvePipelineBindings(client, cfg, log, srcDir);
         if (Object.keys(variables).length > 0) {
           await client.updateDiProjectBindings(project.id, variables);
@@ -2912,6 +3053,10 @@ async function main() {
         } else {
           log.warn('No binding variables resolved — set them in the QTCP UI or cfg.pipelines.bindings.');
         }
+
+        // 4. Import the YAML definitions
+        await client.importDiProject(project.id, zipBuf);
+        log.success(`Imported definitions into "${projectName}" (${project.id}).`);
 
         // 5. Optionally prepare (creates physical artifacts on the platform)
         if (pCfg.prepare === true) {
@@ -2968,11 +3113,19 @@ async function main() {
         log.info(`Found ${products.length} data product definition(s) in ${path.basename(dpFile)}`);
         const spaceId = sharedSpace ? sharedSpace.id : undefined;
 
-        // Clean up stale data products not in current definitions
+        // Clean up stale data products not in current definitions.
+        // Scoped to the MCG spaces only — this tenant is shared with other demos,
+        // and an unscoped delete here would remove their data products too.
         const desiredNames = products.map(p => p.name);
+        const mcgSpaceIds = [sharedSpace, managedSpace, dataSpace]
+          .filter(Boolean)
+          .map(s => s.id);
         try {
-          const { deleted: staleDeleted } = await client.deleteAllDataProducts(desiredNames);
-          if (staleDeleted > 0) {
+          const { deleted: staleDeleted, skipped } =
+            await client.deleteAllDataProducts(desiredNames, mcgSpaceIds);
+          if (skipped) {
+            log.warn('Stale data product cleanup skipped — MCG spaces were not resolved.');
+          } else if (staleDeleted > 0) {
             log.success(`Removed ${staleDeleted} stale data product(s) not in current definitions.`);
           }
         } catch (cleanupErr) {
@@ -3016,6 +3169,80 @@ async function main() {
     log.section('Step 14: Create Data Products (Gold Layer)');
     log.info('Skipped (disabled).');
     report.record('Data Products', 'SKIP', 'disabled');
+  }
+
+  // ---- Step 15: Stewardship Sprint + Automation Workspaces -----------------
+  // Two things the rest of the deploy cannot do:
+  //   1. The Address Cleanup sprint (deploy/stewardship.js). Must be a DATA
+  //      space — a shared space returns 403 NOT_ALLOWED_TO_CREATE_SPRINT.
+  //   2. Real block graphs for the automations. createAutomation() above only
+  //      makes empty shells (workspace: null); this fills them in.
+  if (enabled.stewardship !== false) {
+    log.section('Step 15: Stewardship Sprint & Automation Workspaces');
+
+    if (dryRun) {
+      log.info('DRY RUN: Would create the Address Cleanup sprint and author automation workspaces.');
+      report.record('Stewardship Sprint', 'OK', 'dry run');
+      report.record('Automation Workspaces', 'OK', 'dry run');
+    } else {
+      // --- the sprint ---
+      try {
+        const existing = await stewardship.listSprints(cfg);
+        const already = existing.success && existing.sprints.find((sp) => sp.name === stewardship.stewardshipConfig(cfg).name);
+        if (already) {
+          log.success(`Stewardship sprint already exists: "${already.name}" (${already.id})`);
+          report.record('Stewardship Sprint', 'OK', 'already exists');
+        } else {
+          const r = await stewardship.createSprint(cfg);
+          if (r.success) {
+            log.success(`Created stewardship sprint (${r.sprintId}) in ${r.space.name}`);
+            report.record('Stewardship Sprint', 'OK', r.sprintId);
+          } else {
+            log.error(`Stewardship sprint: ${r.error}`);
+            if (r.hint) log.warn(`Hint: ${r.hint}`);
+            report.record('Stewardship Sprint', 'FAIL', r.error.slice(0, 120));
+            if (!continueOnError) { report.print(log); process.exit(EXIT_FAILURE); }
+          }
+        }
+      } catch (err) {
+        log.error(`Stewardship sprint: ${err.message}`);
+        report.record('Stewardship Sprint', 'FAIL', err.message);
+        if (!continueOnError) { report.print(log); process.exit(EXIT_FAILURE); }
+      }
+
+      // --- the automation workspaces ---
+      try {
+        const conn = await automationWorkspaces.ensureApiKeyConnection(cfg);
+        if (conn.success && !conn.connected) {
+          log.warn('The API Key connection is not connected yet — the address-correction blocks will 404 until it is.');
+          log.info(automationWorkspaces.MANUAL_CONNECTION_STEPS);
+        }
+        // Re-read config from disk: createSprint persists stewardship.sprintId,
+        // and the workspaces need it. The in-memory cfg predates that write.
+        // Re-apply the env overrides — the file on disk may carry a stale API key,
+        // and a raw read would hand the workspaces credentials we deliberately overrode.
+        const freshCfg = applyEnvOverrides(JSON.parse(fs.readFileSync(args.configPath, 'utf-8')));
+        for (const key of Object.keys(automationWorkspaces.WORKSPACES)) {
+          const r = await automationWorkspaces.pushWorkspace(freshCfg, key);
+          if (r.success) {
+            log.success(`Automation workspace ${r.action}: "${r.name}" (${r.blocks} blocks)`);
+            report.record(`Automation workspace: ${r.name}`, 'OK', `${r.blocks} blocks`);
+          } else {
+            log.error(`Automation workspace "${key}": ${r.error}`);
+            report.record(`Automation workspace: ${key}`, 'FAIL', r.error.slice(0, 120));
+            if (!continueOnError) { report.print(log); process.exit(EXIT_FAILURE); }
+          }
+        }
+      } catch (err) {
+        log.error(`Automation workspaces: ${err.message}`);
+        report.record('Automation Workspaces', 'FAIL', err.message);
+        if (!continueOnError) { report.print(log); process.exit(EXIT_FAILURE); }
+      }
+    }
+  } else {
+    log.section('Step 15: Stewardship Sprint & Automation Workspaces');
+    log.info('Skipped (disabled).');
+    report.record('Stewardship', 'SKIP', 'disabled');
   }
 
   // ---- Attach Gold Datasets to Data Products ------------------------------

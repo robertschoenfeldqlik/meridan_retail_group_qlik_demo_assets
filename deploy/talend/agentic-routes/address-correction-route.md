@@ -44,7 +44,7 @@ the stewardship webhook, the QVD output, and automation #5 are unchanged.
         │                     │
         ▼                     ▼
   tRESTClient           STEWARDSHIP route
-  (Nominatim geocode)   (Address Cleanup campaign,
+  (Nominatim geocode)   (Address Cleanup sprint,
                          LLM suggestion attached)
 ```
 
@@ -63,7 +63,7 @@ Same cadence as the host job — **no new schedule.**
   way Nominatim throttling already bounds it (~700 invalid rows/run; backlog
   carries via the watermark).
 - **Re-run (stewardship loop):** when a steward approves a correction in the
-  **Address Cleanup** campaign, automation #5 (*MCG Address Correction Loop —
+  **Address Cleanup** sprint, automation #5 (*MCG Address Correction Loop —
   Talend*) re-runs JOB 1 for the corrected records — this route runs again for
   them with no change to that loop.
 
@@ -160,7 +160,7 @@ LLM output slots into the same downstream shape the rest of the pipeline expects
 |---|---|---|
 | `out_corrected` | Existing Nominatim branch → `staging (validated)` → JOB 2 QVD | Corrected, structured address; `validation_status = "LLM_CORRECTED"`; `llm_confidence`, `llm_model`, `correction_notes` for provenance |
 | `out_stewardship_llm` | Existing stewardship route (`sf_addresses_stewardship.csv` + Address Cleanup webhook) | Original address **plus** the LLM's suggested correction and notes, so the steward accepts/edits instead of retyping; `validation_status = "LLM_LOW_CONFIDENCE"` |
-| Provenance columns | Carried to `MCG_SF_Addresses_Validated.qvd` | `llm_model`, `llm_confidence`, `correction_notes` alongside `validated_at_utc` — visible in the *Address Quality Impact* sheet as a drill dimension |
+| Provenance columns | Carried to `silver.addresses_geocoded` | `llm_model`, `llm_confidence`, `correction_notes` alongside `validated_at_utc` — visible in the *Address Quality Impact* sheet as a drill dimension |
 
 **Net effect for the demo:** more malformed multilingual addresses are
 auto-repaired before geocoding, fewer records reach a human, and every steward who
@@ -173,7 +173,7 @@ full audit trail of what the model changed and how confident it was.
 
 **Grounded (reused MCG facts):** the host job and its two-job structure, the
 15-minute TMC schedule, the Nominatim throttle, the stewardship webhook and
-Address Cleanup campaign, automation #5, the QVD output and the *Address Quality
+Address Cleanup sprint, automation #5, the QVD output and the *Address Quality
 Impact* sheet, the canonical `unit_type` vocabulary and country postal formats,
 and the list of Tier-1 cloud/on-prem models.
 

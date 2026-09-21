@@ -367,6 +367,61 @@ function labelValue(label, value) {
   });
 }
 
+// ─── HELPER: Body figure (screenshot + caption) ───
+// The header logos above prove the ImageRun pattern; this is the body-level
+// equivalent. Two things the docx package is strict about in v9:
+//   * `transformation` is in PIXELS, not twips or inches
+//   * `type` is REQUIRED
+//
+// Height is derived from the image's real dimensions rather than assumed, so a
+// 16:9 screenshot and a 4:3 one both come out undistorted. Reading the PNG
+// header directly avoids making this async just to call sharp.
+function pngSize(buf) {
+  // PNG: 8-byte signature, then IHDR whose width/height are big-endian u32 at 16..24
+  if (buf.length > 24 && buf.readUInt32BE(0) === 0x89504e47) {
+    return { width: buf.readUInt32BE(16), height: buf.readUInt32BE(20) };
+  }
+  return null;
+}
+
+/**
+ * A screenshot with a caption. Returns [] when the file is missing so callers
+ * can spread it unconditionally — the same degrade-silently convention the
+ * deck generators use for icons.
+ *
+ * @param {string} imgPath  absolute path to a .png
+ * @param {string} caption  italic caption rendered beneath the image
+ * @param {object} [opts]   { maxWidth } in pixels (default 620 ~ content width)
+ */
+function figure(imgPath, caption, opts = {}) {
+  if (!imgPath || !fs.existsSync(imgPath)) return [];
+
+  const data = fs.readFileSync(imgPath);
+  const size = pngSize(data);
+  const maxWidth = opts.maxWidth || 620;
+  const width = maxWidth;
+  const height = size ? Math.round(maxWidth * (size.height / size.width)) : Math.round(maxWidth * 0.5625);
+
+  const out = [
+    new Paragraph({
+      spacing: { before: 160, after: caption ? 40 : 200 },
+      alignment: AlignmentType.CENTER,
+      children: [new ImageRun({ data, transformation: { width, height }, type: "png" })],
+    }),
+  ];
+  if (caption) {
+    out.push(new Paragraph({
+      spacing: { after: 200 },
+      alignment: AlignmentType.CENTER,
+      children: [new TextRun({
+        text: caption,
+        font: T.fonts.body, size: 17, italics: true, color: T.colors.medGray,
+      })],
+    }));
+  }
+  return out;
+}
+
 // ─── HELPER: Callout/highlight box ───
 function calloutBox(text, type = "info") {
   const colors = {
@@ -573,6 +628,6 @@ module.exports = {
   createHeader, createQlikHeader, createFooter, createQlikFooter,
   createBrandHeader, createBrandFooter,
   metadataTable, dataTable,
-  heading, para, labelValue, calloutBox, numberedItem, signatureBlock,
+  heading, para, labelValue, calloutBox, numberedItem, signatureBlock, figure,
   useQlikTheme, useMcgTheme, setDocTheme,
 };

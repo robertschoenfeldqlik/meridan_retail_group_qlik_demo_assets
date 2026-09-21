@@ -32,9 +32,10 @@ SET BrokenWeeks=1;
 SET ReferenceDay=0;
 SET FirstMonthOfYear=1;
 
-// Analytics reads go through Amazon Athena: the lakehouse's Iceberg tables
-// are queried via the Glue catalog (databases: bronze / silver / gold).
-LIB CONNECT TO 'MCG Lakehouse (Athena)';
+// >>> MCG lakehouse source switch — generated, do not hand-edit <<<
+// Analytics reads come from the Qlik Open Lakehouse connection: bronze, silver and
+// gold, one table per LOAD. Table names, column names and grain match the catalog.
+// <<< end lakehouse source switch >>>
 
 // =============================================================================
 // 1. SUPPLY CHAIN HEALTH — Data Product (gold, per-DC grain)
@@ -52,11 +53,13 @@ LOAD
     cycle_count_events                                   AS [Cycle Count Events],
     avg_cycle_count_variance                             AS [Avg Cycle Count Variance],
     IF(sku_positions > 0,
-       1 - (phantom_suspect_count / sku_positions), 0)   AS [IRA %];
-SELECT location_id, sku_positions, total_on_hand, phantom_suspect_count,
-       negative_qty_count, lot_missing_count, avg_trust_score,
-       cycle_count_events, avg_cycle_count_variance
-FROM gold.supply_chain_health;
+       1 - (phantom_suspect_count / sku_positions), 0)   AS [IRA %]
+// SELECT location_id, sku_positions, total_on_hand, phantom_suspect_count,
+//        negative_qty_count, lot_missing_count, avg_trust_score,
+//        cycle_count_events, avg_cycle_count_variance
+// FROM gold.supply_chain_health;
+FROM [lib://MCG Demo - Development:MCG Open Lakehouse/gold_supply_chain_health.qvd]
+(qvd);
 
 // =============================================================================
 // 2. INVENTORY DETAIL — silver.inventory_reconciled (position grain)
@@ -78,12 +81,14 @@ LOAD
     lot_missing           AS [Lot Missing Flag],
     last_count_date       AS [Last Count Date],
     snapshot_timestamp    AS [Snapshot Time],
-    trust_score           AS [Position Trust Score];
-SELECT location_id, sku, lot_number, quantity_on_hand, quantity_available,
-       quantity_reserved, quantity_in_transit, unit_of_measure, storage_zone,
-       logic_error, phantom_suspect, lot_missing, last_count_date,
-       snapshot_timestamp, trust_score
-FROM silver.inventory_reconciled;
+    trust_score           AS [Position Trust Score]
+// SELECT location_id, sku, lot_number, quantity_on_hand, quantity_available,
+//        quantity_reserved, quantity_in_transit, unit_of_measure, storage_zone,
+//        logic_error, phantom_suspect, lot_missing, last_count_date,
+//        snapshot_timestamp, trust_score
+// FROM silver.inventory_reconciled;
+FROM [lib://MCG Demo - Development:MCG Open Lakehouse/silver_inventory_reconciled.qvd]
+(qvd);
 
 // =============================================================================
 // 3. PRODUCT MASTER — silver.products_harmonized
@@ -103,11 +108,13 @@ LOAD
     country_of_origin                AS [Country of Origin],
     origin_missing_compliance_risk   AS [Origin Compliance Risk],
     supplier_name_raw                AS [Supplier (Raw)],
-    supplier_canonical               AS [Supplier];
-SELECT sku, legacy_sku_americas, legacy_sku_eu, product_name, category_l1,
-       category_l2, category_l3, weight_kg, weight_imputed, country_of_origin,
-       origin_missing_compliance_risk, supplier_name_raw, supplier_canonical
-FROM silver.products_harmonized;
+    supplier_canonical               AS [Supplier]
+// SELECT sku, legacy_sku_americas, legacy_sku_eu, product_name, category_l1,
+//        category_l2, category_l3, weight_kg, weight_imputed, country_of_origin,
+//        origin_missing_compliance_risk, supplier_name_raw, supplier_canonical
+// FROM silver.products_harmonized;
+FROM [lib://MCG Demo - Development:MCG Open Lakehouse/silver_products_harmonized.qvd]
+(qvd);
 
 // =============================================================================
 // 4. COLD CHAIN TELEMETRY — silver.iot_normalized (streaming pipeline)
@@ -132,20 +139,24 @@ LOAD
     sensor_unregistered   AS [Sensor Unregistered Flag],
     alert_flag            AS [Temp Alert Flag],
     warehouse_id          AS [Distribution Center],
-    route_id              AS [Route];
-SELECT sensor_id, shipment_id, timestamp, temperature_value, temperature_unit,
-       temperature_c, humidity_pct, light_exposure, shock_detected,
-       gps_latitude, gps_longitude, gps_gap, battery_level_pct, battery_low,
-       sensor_unregistered, alert_flag, warehouse_id, route_id
-FROM silver.iot_normalized;
+    route_id              AS [Route]
+// SELECT sensor_id, shipment_id, timestamp, temperature_value, temperature_unit,
+//        temperature_c, humidity_pct, light_exposure, shock_detected,
+//        gps_latitude, gps_longitude, gps_gap, battery_level_pct, battery_low,
+//        sensor_unregistered, alert_flag, warehouse_id, route_id
+// FROM silver.iot_normalized;
+FROM [lib://MCG Demo - Development:MCG Open Lakehouse/silver_iot_normalized.qvd]
+(qvd);
 
 // =============================================================================
 // 5. LIVE CARRIER EVENTS — bronze.iot_carrier_events (raw stream)
 // =============================================================================
 
 CarrierEventsLive:
-LOAD *;
-SELECT * FROM bronze.iot_carrier_events;
+LOAD *
+// SELECT * FROM bronze.iot_carrier_events;
+FROM [lib://MCG Demo - Development:MCG Open Lakehouse/bronze_iot_carrier_events.qvd]
+(qvd);
 
 // =============================================================================
 // CALENDAR (Master Calendar for time intelligence)

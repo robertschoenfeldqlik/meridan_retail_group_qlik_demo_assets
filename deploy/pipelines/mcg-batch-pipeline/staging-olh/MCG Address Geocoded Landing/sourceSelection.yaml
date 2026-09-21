@@ -1,0 +1,6 @@
+sourceConnection: '{{task.address-geo-landing-4103.sourceConnection}}'
+includePatterns:
+  - tablePattern: 'addresses_geocoded%'
+    type: TABLE
+excludePatterns: []
+explicitlySelected: []

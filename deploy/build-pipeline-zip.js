@@ -36,7 +36,9 @@ for (const dir of dirs) {
   const src = path.join(PIPELINES_DIR, dir);
   const out = path.join(PIPELINES_DIR, `${dir}.zip`);
   const zip = zipDirectory(src, {
-    exclude: ['README.md', 'schema', '.vscode', '.github', '.gitignore', 'CLAUDE.md'],
+    // staging-olh holds tasks that are deliberately NOT deployed yet (they
+    // reference an S3 connection that does not exist until the lakehouse is up).
+    exclude: ['README.md', 'schema', '.vscode', '.github', '.gitignore', 'CLAUDE.md', 'staging-olh'],
   });
   fs.writeFileSync(out, zip);
   console.log(`Wrote ${out} (${(zip.length / 1024).toFixed(1)} KB)`);

@@ -53,6 +53,8 @@ pptx.author = "Qlik";
 pptx.company = "Qlik / Meridian Commerce Group";
 pptx.title = "Meridian Commerce Group — Qlik Agentic Data Engineering";
 
+const deckMedia = require("./lib/deck-media");
+
 let slideNum = 0;
 
 // ─── HELPERS ───────────────────────────────────────
@@ -462,7 +464,7 @@ capabilitySlide(
     "In-task sentiment analysis, entity extraction, classification, AI-assisted DQ",
   ],
   [
-    "Existing Talend job: Salesforce address validation + Nominatim geocoding + Qlik Stewardship routing",
+    "Existing Talend job mcg_sf_address_validate_bulk: address standardization, bulk geocoding, GPS routing gate to Iceberg or a Stewardship sprint",
     "Add an LLM-assisted address-correction step to that route",
     "Enrich Silver in place, before packaging to Gold",
   ],
@@ -751,6 +753,38 @@ slide.addText([
 // ═══════════════════════════════════════════════════
 //  SAVE
 // ═══════════════════════════════════════════════════
+
+// --- Proof slides: the deployed environment, captured live -------------------
+// Skipped entirely when a screenshot has not been captured, so the deck never
+// shows an empty frame. Refresh: node generators/capture-tenant-screenshots.js
+function proofSlide(title, slug, subtitle) {
+  const hit = deckMedia.resolveShot(slug);
+  if (!hit) return false;
+  const slide = contentSlide(title, C.qlikTeal || C.qlikGreen);
+  if (subtitle) {
+    slide.addText(subtitle, {
+      x: 0.6, y: 0.82, w: 12.1, h: 0.32,
+      fontSize: 11, color: C.darkText, fontFace: FONT,
+    });
+  }
+  deckMedia.screenshotCard(pptx, slide, hit.path, {
+    x: 1.55, y: 1.32, w: 10.2, maxH: 5.2, caption: hit.caption, colors: C,
+  });
+  return true;
+}
+
+function renderProofs(list) {
+  let shown = 0;
+  for (const [t, slug, sub] of list) if (proofSlide(t, slug, sub)) shown++;
+  if (shown) console.log(`    ${shown} proof slide(s) from captured screenshots`);
+}
+
+renderProofs([
+    ['The Job the Route Upgrades', 'automation-address-correction', 'mcg_sf_address_validate_bulk hands unresolved rows to a steward; an agentic route clears them in-line first.'],
+    ['Deployed: Stewardship Sprint', 'stewardship-sprints', 'Where the unresolved branch lands today.'],
+]);
+
+
 const outPath = path.join(__dirname, "..", "MCG_Agentic_Data_Engineering.pptx");
 pptx.writeFile({ fileName: outPath }).then(() => {
   console.log(`✅ PowerPoint saved: ${outPath} (${slideNum} slides)`);

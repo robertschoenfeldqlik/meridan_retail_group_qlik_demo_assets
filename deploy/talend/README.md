@@ -1,96 +1,124 @@
-# MCG Salesforce Pipeline via Talend — Address Validation & Geocoding
+# MCG Salesforce Pipeline via Talend — Address Standardization, Bulk Geocoding & Stewardship
 
-Two Talend Studio jobs (orchestrated in Talend Management Console) that pull Salesforce
-every **15 minutes**, validate and geocode customer addresses, route bad records to
-**Qlik Stewardship**, and land the clean result as a **QVD** consumed by the analytics apps.
+A Talend Studio job (`mcg_sf_address_validate_bulk`, orchestrated in Talend Management Console)
+that pulls Salesforce Contacts, repairs and scores every address, geocodes the batch in **one
+bulk call**, and routes each row on a single gate — **did we get GPS?**
+
+- **GPS resolved** → timestamped CSV to **S3**, loaded downstream into the Apache Iceberg table
+  `silver.addresses_geocoded` in the Open Lakehouse
+- **GPS unresolved** → the **Address Cleanup** stewardship **sprint** for a human
 
 This complements (does not replace) the declarative batch pipeline's CRM landing: the QTCP
-pipeline lands raw Salesforce objects to bronze for the lakehouse story; this Talend leg
-produces the *validated + geocoded* address dataset the Delivery & Customer Experience app
-maps. It is also the job behind automation #5 (**MCG Address Correction Loop — Talend**),
-which re-runs it for stewardship-approved corrections.
+pipeline lands raw Salesforce objects to bronze for the lakehouse story; this Talend leg produces
+the *validated + geocoded* address dataset. It is also the job behind automation #5
+(**MCG Address Correction Loop — Talend**), which re-runs it for stewardship-approved corrections.
 
 ```
-                       every 15 min (TMC schedule)
-Salesforce ──► JOB 1: mcg_sf_address_validate
-               ├── tSalesforceInput (Contact, incremental on LastModifiedDate)
-               ├── tMap  — routines.AddressValidator (format check, Java)
-               │     ├─ valid ────────────────────────────────► staging (validated)
-               │     └─ invalid ─► tRESTClient (Nominatim geocode, 1 req/s)
-               │           ├─ resolved (lat/lon + normalized) ─► staging (validated)
-               │           └─ unresolved ─────────────────────► STEWARDSHIP route
-               └── on-success ─► tRunJob: JOB 2
-                   JOB 2: mcg_sf_address_to_qvd
-               ├── tFileInputDelimited (staging, validated only)
-               ├── tMap (final shape: contact grain + geo + audit columns)
-               └── tQlikOutput ─► MCG_SF_Addresses_Validated.qvd  (Qlik Cloud DataFiles)
-
-Qlik app reload task (cron, :05/:20/:35/:50) re-reads the QVD into
-'MCG Delivery & Customer Experience'.
+                        ┌──────────────────────────────────────┐
+Salesforce Contacts ───► │ standardize (repair + score)         │
+   (100–1000 rows)      │ ONE bulk call → GPS for the batch    │
+                        └────────────────┬─────────────────────┘
+                                         │
+                        ┌────────────────┴─────────────────┐
+                        ▼                                  ▼
+                GPS resolved                        GPS not resolved
+                        │                                  │
+                        ▼                                  ▼
+                ██ S3 ██                        ██ QLIK STEWARDSHIP ██
+         s3://…/addresses_geocoded_<ts>.csv       "Address Cleanup" sprint
+                    │                             (tDSOutput / records API)
+                    ▼  (downstream load)
+         Apache Iceberg — silver.addresses_geocoded
 ```
 
-## Job 1 — `mcg_sf_address_validate`
+The routing gate is **GPS resolution**, nothing else: `latitude != null && longitude != null`.
 
-| # | Component | Configuration |
+## Where the detail lives
+
+| Document | What it covers |
+|---|---|
+| **[BUILD_BULK_ADDRESS_JOB.md](BUILD_BULK_ADDRESS_JOB.md)** | The build spec — five subjobs, component by component, plus the S3 → Iceberg load options and the Iceberg component reference |
+| **[STEWARDSHIP_API_FINDINGS.md](STEWARDSHIP_API_FINDINGS.md)** | The sprint API: how it was found, the full route table, the create payload, and why it must be a **data** space |
+| `routines/*.java` | The four custom routines, compiled and unit-tested |
+| `contexts/mcg_talend_demo.properties` | Context group `MCG_Demo` — Salesforce, Nominatim, S3/AWS, Iceberg, Qlik |
+
+## The routines — free replacements for the paid components
+
+These replace the subscription-only `tAddressRowStandardize` → `tAddressRowValidate` → `tGeocode`
+chain. **No Talend Data Quality subscription, no licensed postal reference data, no API key.**
+
+| Routine | Replaces | What it does |
 |---|---|---|
-| 1 | `tSalesforceInput` | Connection from context (`sf_*`); module `Contact`; columns `Id, FirstName, LastName, Email, MailingStreet, MailingCity, MailingState, MailingPostalCode, MailingCountry, LastModifiedDate`; SOQL condition `LastModifiedDate > ${context.sf_watermark}` (full pull on first run) |
-| 2 | `tMap` (`map_validate`) | Output routing via **`routines.AddressValidator`** (below). Var `valid = AddressValidator.isValidFormat(row1.MailingStreet, row1.MailingCity, row1.MailingPostalCode, row1.MailingCountry)`. Output `out_valid` filter: `Var.valid`; output `out_invalid` filter: `!Var.valid`. `out_valid` adds `validation_status = "FORMAT_OK"`, `geo_confidence = 1.0` |
-| 3 | `tFlowToIterate` + `tRESTClient` (`geo_nominatim`) | For `out_invalid` rows. GET `https://nominatim.openstreetmap.org/search`; query params `q = AddressValidator.buildNominatimQuery(street, city, postal, country)`, `format=json`, `limit=1`, `addressdetails=1`. HTTP header `User-Agent: MCG-Demo-Talend/1.0 (contact@mcg.example)`. **Throttle: `tSleep` 1100 ms per iteration** (Nominatim usage policy: max 1 req/s) |
-| 4 | `tExtractJSONFields` | From the Nominatim response: `lat`, `lon`, `display_name`, `address.road`, `address.city` (fallback `address.town`/`address.village`), `address.postcode`, `address.country_code` |
-| 5 | `tMap` (`map_geo_route`) | If `lat != null && lon != null` → `out_geocoded` (`validation_status = "GEOCODED"`, `geo_confidence = 0.8`, normalized fields from Nominatim). Else → `out_stewardship` (`validation_status = "UNRESOLVED"`) |
-| 6 | `tUnite` → `tFileOutputDelimited` | `out_valid` + `out_geocoded` → `${context.staging_dir}/sf_addresses_validated.csv` (the Job 2 input) |
-| 7 | `tFileOutputDelimited` + `tRESTClient` (stewardship route) | `out_stewardship` → `${context.staging_dir}/sf_addresses_stewardship.csv` **and** POST one summary to `${context.qlik_webhook_url}` (the deploy's *MCG Pipeline Health Alert* webhook) so the **Address Cleanup stewardship campaign** picks the batch up — `{"campaign":"Address Cleanup","source":"talend:mcg_sf_address_validate","count":<n>,"file":"sf_addresses_stewardship.csv"}` |
-| 8 | `tRunJob` | On-subjob-OK → `mcg_sf_address_to_qvd` |
+| `AddressStandardizer.java` | `tAddressRowStandardize` | Repairs country→ISO, postal→canonical, expands street abbreviations, extracts unit/floor, scores 0.0–1.0, emits every change as JSON |
+| `BulkGeocoder.java` | `tAddressRowValidate` + `tGeocode` | One bulk call geocodes the batch via `java.net.http.HttpClient`; shared 1 req/s limiter, dedupe cache, 429/503 backoff, wall-clock budget |
+| `AddressBatch.java` | — | Holds the batch between subjobs; bounds- and null-safe typed getters for `tIterateToFlow` |
+| `AddressValidator.java` | — | Original pass/fail gate, kept for compatibility; now delegates |
 
-**TMC schedule:** every 15 minutes (`*/15 * * * *`), timezone UTC. Set the execution timeout
-below 15 minutes so runs never overlap; Nominatim throttling bounds the invalid-row volume a
-single run can geocode (~700/run) — backlog carries to the next run via the watermark.
+Verified: compiles clean on JDK 17 (`javac -Xlint:all`, zero warnings), 17/17 unit assertions
+pass, live geocode confirmed against public Nominatim.
 
-## Job 2 — `mcg_sf_address_to_qvd`
+> `BulkGeocoder` uses `java.net.http` — **Java 11+**. Talend 8 ships Java 11/17, so it works as-is.
 
-| # | Component | Configuration |
-|---|---|---|
-| 1 | `tFileInputDelimited` | `${context.staging_dir}/sf_addresses_validated.csv` |
-| 2 | `tMap` (`map_qvd_shape`) | Final schema: `contact_id, first_name, last_name, email, street_validated, city_validated, postal_code_validated, country_validated, latitude (Double), longitude (Double), geo_confidence (Double), validation_status, validated_at_utc = TalendDate.getDate("yyyy-MM-dd HH:mm:ss")` |
-| 3 | `tQlikOutput` (Talend 8 Qlik components) | Qlik Cloud connection (tenant + API key from context); space `MCG Demo - Development`; write mode *overwrite*; output **`MCG_SF_Addresses_Validated.qvd`** in DataFiles |
+## Getting it into Studio
 
-> No Qlik components in your Studio build? Fallback: `tFileOutputDelimited` to
-> `sf_addresses_validated_final.csv` + `qlik-cli`:
-> `qlik raw post v1/temp-contents --query name=MCG_SF_Addresses_Validated.csv ...` —
-> the app's load script will read either; QVD preferred for reload speed.
+```bash
+npm run talend:zip
+```
 
-## The tMap routine
+Produces `deploy/talend/mcg_sf_address_validate_bulk.zip` (deterministic — same inputs, same
+bytes). Three layers, described in the `IMPORT.md` inside it:
 
-`routines/AddressValidator.java` — import into Talend Studio under *Code → Routines*.
-Format rules: street must contain a number and a name; city non-empty alphabetic;
-postal code must match the country pattern (NL `1234 AB`, DE/US 5-digit (US optional +4),
-GB alphanumeric outward/inward, SG 6-digit, JP `123-4567`, BR `12345-678`); country must
-resolve to a known ISO code. Anything failing goes down the Nominatim branch.
+1. **`bundle/`** — the raw `.java` routines, the context group, the build spec and the Iceberg
+   DDL. Always correct; this is the manual path, just packaged.
+2. **`MCG_DEMO/`** — a synthesized Talend project tree so the routines import in one action.
+   Not verified against a live Studio; fall back to layer 1 if it is rejected.
+3. **`studio-export/`** — empty until you build the canvas once, **File → Export items**, and
+   unpack the export into `deploy/talend/job/`. The script then packages it with no code change.
 
-## Where the QVD lands in the apps
+## The stewardship sprint
 
-**`MCG Delivery & Customer Experience`** (app 2) loads the QVD as the `CustomerGeo` table,
-linked to `CustomerAddresses` / `OrderTimeline` by `[Contact ID]`:
+The `UNRESOLVED` branch feeds a Qlik Cloud Data Stewardship **sprint** (the newer product uses
+*sprints*, not campaigns). Creating it is one-time setup and is **automated**:
 
-- **Address Quality Impact sheet** — the point-map layer ([Latitude]/[Longitude] colored by
-  [Address Validation Status]) and the validated-vs-raw quality comparison
-- **Last Mile Performance / WISMO sheets** — `[Address Validation Status]` and
-  `[Geo Confidence]` as drill dimensions against late deliveries and WISMO rates
+```bash
+node deploy/stewardship.js
+```
 
-App 1 (Supply Chain Operations) does not consume the QVD — addresses are a CX-domain dataset.
+The sprint must live in a **data** space — `createExternalSprint` returns
+`403 NOT_ALLOWED_TO_CREATE_SPRINT` against a shared or managed space. The script defaults to the
+`data` space from `config.json` and writes the resulting `sprintId` back to config. Use
+`--dry-run` to print the payload, `--list` to see what exists.
+
+Loading records every run is separate, and there are two ways in:
+
+1. **`tDSOutput`** — the Studio component that loads records into a sprint as tasks. Subscription
+   component; it replaced the deprecated `tDataStewardshipTaskOutput` in Studio 8.0 R2025-12.
+2. **The records API** —
+   `POST /api/data-governance/sprints/{sprintId}/external-integrations/records/actions/create-or-update`,
+   with `.../actions/consume` to mark rows handled and `.../records` (GET) to read corrections back.
+
+> ⚠️ **Gateway limit.** Those `/api/data-governance/*` calls work from any ordinary API-key client
+> (this is exactly what `deploy/stewardship.js` does) but **not** from a Qlik Cloud Services
+> *raw API request* block inside an automation — that block only routes `/api/v1/*` and returns
+> 404 *Unknown Service* for anything else. Established by live runs. An automation that needs
+> these calls must use the **API Key** connector against the public tenant hostname, or leave
+> them to the Talend job.
 
 ## Keeping the dataset fresh end to end
 
-1. **Talend (TMC):** Job 1 every 15 min → Job 2 rewrites the QVD (:00-ish).
-2. **Qlik reload task:** the deploy's Step 12 creates *MCG Delivery Experience — Reload*
-   with cron `0 5/15 * * * *` (:05/:20/:35/:50 UTC) — 5 minutes after each QVD drop, the
-   app reload re-runs the QVS, which re-reads the QVD (guarded with `FileSize()` so the app
-   still reloads cleanly before the first Talend run).
-3. **Stewardship loop:** unresolved rows surface in the *Address Cleanup* campaign; approving
-   a fix triggers automation #5, which re-runs Job 1 for the corrected records — the next
-   QVD drop and app reload pick them up.
+1. **Talend (TMC):** the job runs on its schedule → new timestamped CSV in
+   `s3://${s3_bucket}/${s3_prefix}/`.
+2. **Downstream load:** S3 → Iceberg `silver.addresses_geocoded` (Athena `MERGE`, a Qlik Cloud
+   Pipeline, or Spark/Trino — see BUILD_BULK_ADDRESS_JOB.md §4). `MERGE` matters: corrected
+   records get reprocessed, so the same `contact_id` arrives more than once.
+3. **Stewardship loop:** unresolved rows surface in the *Address Cleanup* sprint; a steward's fix
+   is picked up by automation #5, which re-runs the job for those records.
+
+Because the table is open Iceberg on S3, Athena, Spark, Trino and the Qlik analytics apps all read
+the same copy — the point of the Open Lakehouse story.
 
 ## Context variables (`contexts/mcg_talend_demo.properties`)
 
-See the file for the full list: Salesforce credentials, Nominatim base URL + User-Agent,
-staging directory, Qlik tenant/API key (Job 2), webhook URL, and the incremental watermark.
+See the file for the full list: Salesforce credentials, batch limit, Nominatim base URL +
+User-Agent + throttle + budget, staging directories, S3 bucket/prefix/region, the downstream
+Iceberg coordinates, and the Qlik tenant/API key/data-space id.

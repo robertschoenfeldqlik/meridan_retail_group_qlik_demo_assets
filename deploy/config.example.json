@@ -4,27 +4,22 @@
     "region": "us.qlikcloud.com",
     "comment_baseUrl": "Constructed as https://{hostname}.{region} — e.g. https://your-tenant.us.qlikcloud.com"
   },
-
   "auth": {
     "method": "apikey",
     "comment_method": "One of: 'apikey' or 'oauth'",
-
     "apiKey": "YOUR_API_KEY_HERE",
-
     "oauth": {
       "clientId": "YOUR_OAUTH_CLIENT_ID",
       "clientSecret": "YOUR_OAUTH_CLIENT_SECRET",
       "tokenUrl": "https://your-tenant.us.qlikcloud.com/oauth/token"
     }
   },
-
   "spaces": {
     "shared": "MCG Demo - Development",
     "managed": "MCG Demo - Published",
     "data": "MCG Demo - DI",
     "comment_data": "Data space (type 'data') that holds Data Integration gateway-bound source connections (e.g. the PostgreSQL CDC source). Register/assign the Data Movement gateway to THIS space."
   },
-
   "enabledComponents": {
     "docker": true,
     "spaces": true,
@@ -39,9 +34,9 @@
     "webhooks": true,
     "reloadtasks": true,
     "pipelines": true,
-    "comment_components": "Toggle individual deployment steps on/off. 'docker' controls the Docker Compose stack (Kafka, simulators, and/or DMG gateway per 'docker.profile'). 'predict' creates the Qlik Predict (ML) experiment/deployment. 'pipelines' imports the declarative QTCP pipeline project (Step 13)."
+    "comment_components": "Toggle individual deployment steps on/off. 'docker' controls the Docker Compose stack (Kafka, simulators, and/or DMG gateway per 'docker.profile'). 'predict' creates the Qlik Predict (ML) experiment/deployment. 'pipelines' imports the declarative QTCP pipeline project (Step 13).",
+    "stewardship": true
   },
-
   "docker": {
     "profile": "full-stack",
     "comment_profile": "Which Docker Compose file to run (infrastructure/): 'full-stack' (Kafka+simulators, docker-compose.full-stack.yml), 'full-stack-dmg' (+ DMG gateway, docker-compose.full-stack-dmg.yml), 'kafka' (Kafka only, kafka/docker-compose.yml), 'simulators' (docker-compose.simulators.yml), 'simulators-dmg' (docker-compose.simulators-dmg.yml), or 'dmg' (DMG gateway only, docker-compose.dmg.yml).",
@@ -49,13 +44,11 @@
     "rpmUrl": "",
     "comment_rpm": "Only used for the 'dmg'/'full-stack-dmg' profiles: local file path or download URL for the Data Movement Gateway RPM (infrastructure/dmg/gateway/rpmfiles/gateway.rpm). Leave both empty if the RPM is already in place."
   },
-
   "dataGateway": {
     "id": "",
     "name": "MCG_DATA_MOVEMENT",
     "comment_dataGateway": "Data Movement gateway ID used to bind the PostgreSQL CDC source connection. Get it from Qlik Cloud → Administration → Data Gateways → your gateway row → the 'Data gateway ID' column (click the value to select/copy it). Leave id empty to skip auto-create and set the connection up in the DI project UI instead. Can also be set via the QLIK_DATA_GATEWAY_ID env var."
   },
-
   "dataConnections": {
     "postgresql": {
       "name": "MCG WMS Database",
@@ -81,7 +74,10 @@
       "name": "MCG IoT Telemetry",
       "bootstrapServers": "localhost:9092",
       "comment_bootstrapServers": "Use localhost:9092 for Docker Compose, or your-broker:9092 for Confluent Cloud / MSK / self-managed",
-      "topics": ["mcg.iot.cold-chain", "mcg.iot.carrier-events"],
+      "topics": [
+        "mcg.iot.cold-chain",
+        "mcg.iot.carrier-events"
+      ],
       "comment_topics": "Two Kafka topics: cold-chain (sensor readings ~1msg/5s) and carrier-events (status updates ~1msg/min)",
       "securityProtocol": "PLAINTEXT",
       "comment_securityProtocol": "Use PLAINTEXT for Docker Compose local dev, SASL_SSL for Confluent Cloud / production",
@@ -91,7 +87,7 @@
     },
     "athena": {
       "name": "MCG Lakehouse (Athena)",
-      "region": "us-east-1",
+      "region": "eu-west-1",
       "workgroup": "primary",
       "s3OutputLocation": "s3://your-athena-results-bucket/",
       "comment_athena": "Analytics apps read the Open Lakehouse through this Amazon Athena connection (Glue catalog databases bronze/silver/gold over the lakehouse Iceberg tables). The QVS load scripts LIB CONNECT TO this name. IAM credentials are completed in the Qlik Cloud UI after deploy."
@@ -105,14 +101,16 @@
       "prefix": "exports/"
     }
   },
-
   "lakehouse": {
     "name": "MCG Demo Lakehouse",
     "storage": "qlik-managed",
     "comment_storage": "Use 'qlik-managed' or provide S3/Azure Blob/GCS connection details",
-    "schemas": ["bronze", "silver", "gold"]
+    "schemas": [
+      "bronze",
+      "silver",
+      "gold"
+    ]
   },
-
   "clusters": {
     "cdc": {
       "name": "CDC Cluster",
@@ -123,20 +121,17 @@
       "comment": "Handles real-time Kafka ingestion from IoT topics mcg.iot.cold-chain and mcg.iot.carrier-events (Pipelines 4-5)"
     }
   },
-
   "theme": {
     "name": "MCG Dark Theme",
     "sourceFile": "./themes/mcg-dark-theme.zip",
     "comment_theme": "Upload via Administration → Themes. Contains theme.json, .qext manifest, MCG logos. Colors: Navy #1B2A4A, Teal #0D7C8F, Gold #C4922E, Inter font."
   },
-
   "knowledgeBase": {
     "name": "MCG Operations Knowledge Base",
     "description": "Operational documents for Meridian Commerce Group — SOPs, policies, incident reports, contracts, and project documentation.",
     "space": "shared",
     "comment_space": "Framework space the Qlik Answers knowledge base is created in ('shared' or 'data'). Omit/empty -> created in your personal space. Defaults to the shared space."
   },
-
   "assistant": {
     "name": "MCG Operations Assistant",
     "description": "AI assistant for Meridian Commerce Group operations. Ask about procedures, incidents, policies, carrier contracts, and Project Qlarity.",
@@ -150,12 +145,10 @@
       "What was the lettuce recall and what went wrong?"
     ]
   },
-
   "dataProducts": {
     "sourceFile": "./data_products.json",
     "comment_sourceFile": "JSON file with Gold-layer data product definitions (2 products). Loaded automatically by deploy script."
   },
-
   "predict": {
     "experimentName": "MCG Delivery Risk",
     "description": "Predicts late-delivery risk from the gold last_mile_performance features.",
@@ -167,16 +160,20 @@
     "batchPrediction": null,
     "comment_predict": "Qlik Predict (ML) via the /api/v1/ml API (the legacy automl-* APIs were removed ~Feb 2026). The deploy creates the experiment (idempotent). Deployment + model activation run once a trained model exists — either set 'modelId' to a trained model, or train the experiment on the gold feature dataset (needs the Open Lakehouse deployed) and re-run. 'space' is 'shared' or 'data'. 'trainingVersion' and 'batchPrediction' are optional pass-through request bodies for POST .../versions (training) and POST .../batch-predictions (the prediction configuration) — supply them once the dataset/model are available, or build the prediction in the Qlik Predict UI."
   },
-
   "glossary": {
     "sourceFile": "./glossary_terms.json",
     "comment_sourceFile": "JSON file with 25 business glossary terms. Loaded automatically by deploy script."
   },
-
   "pipelines": {
     "projects": [
-      { "projectName": "MCG Batch Pipeline", "sourceDir": "./pipelines/mcg-batch-pipeline" },
-      { "projectName": "MCG Streaming Pipeline", "sourceDir": "./pipelines/mcg-streaming-pipeline" }
+      {
+        "projectName": "MCG Batch Pipeline",
+        "sourceDir": "./pipelines/mcg-batch-pipeline"
+      },
+      {
+        "projectName": "MCG Streaming Pipeline",
+        "sourceDir": "./pipelines/mcg-streaming-pipeline"
+      }
     ],
     "platformType": "QLIK_OPEN_LAKEHOUSE",
     "databaseName": "",
@@ -188,7 +185,6 @@
     "bindings": {},
     "comment_pipelines": "Declarative QTCP pipeline project (YAML) imported via the DI Projects API (preview). Bindings for connections/schemas/clusters are resolved automatically from this config; 'bindings' holds exact-key overrides. databaseName defaults to the lakehouse name. Set prepare=true to validate+prepare tasks right after import; run=true additionally starts tasks in dependency order (landing>transform>datamart). attachDatasets resolves gold catalog datasets and attaches them to the matching data products (JSON-Patch /datasetIds); publishDataProducts activates them in the marketplace. Daily schedules live in the YAML (qtcp_tasks/*/schedule.yaml). Round-trip UI edits back to the repo with: npm run deploy:export-pipeline"
   },
-
   "reloadtasks": {
     "definitions": [
       {
@@ -208,19 +204,18 @@
     ],
     "comment_reloadtasks": "appName resolves to the appId automatically at deploy time (apps must exist — run Build Apps first). Set appId explicitly to skip the lookup."
   },
-
   "automations": {
     "templateDir": "./automations",
     "comment_templateDir": "Directory containing automation JSON templates (Teams alerts, pipeline health). Loaded automatically.",
     "teamsWebhookUrl": "YOUR_TEAMS_WEBHOOK_URL",
-    "comment_teamsWebhookUrl": "Microsoft Teams incoming webhook URL for alert automations"
+    "comment_teamsWebhookUrl": "Microsoft Teams incoming webhook URL for alert automations",
+    "teamsTeamId": "",
+    "teamsChannelId": ""
   },
-
   "documents": {
     "sourceDir": "../documents",
     "comment_sourceDir": "Relative path from the deploy/ directory to the documents folder containing .docx files"
   },
-
   "apps": {
     "sourceDir": "./apps",
     "comment_sourceDir": "Place .qvf app export files in this directory before running deploy",
@@ -229,17 +224,26 @@
     "domainApps": [
       {
         "name": "MCG Supply Chain Operations",
-        "goldTables": ["supply_chain_health"],
-        "streamingTables": ["silver.iot_normalized", "bronze.iot_carrier_events"]
+        "goldTables": [
+          "supply_chain_health"
+        ],
+        "streamingTables": [
+          "silver.iot_normalized",
+          "bronze.iot_carrier_events"
+        ]
       },
       {
         "name": "MCG Delivery & Customer Experience",
-        "goldTables": ["last_mile_performance"],
-        "streamingTables": ["bronze.iot_carrier_events", "silver.shipments_canonical"]
+        "goldTables": [
+          "last_mile_performance"
+        ],
+        "streamingTables": [
+          "bronze.iot_carrier_events",
+          "silver.shipments_canonical"
+        ]
       }
     ]
   },
-
   "mcp": {
     "comment_mcp": "Qlik MCP Server is cloud-hosted (SSE endpoint) — no local install required. Add this to Claude Desktop/Code config.",
     "tenantUrl": "https://your-tenant.us.qlikcloud.com",
@@ -247,11 +251,94 @@
     "sseEndpoint": "https://your-tenant.us.qlikcloud.com/api/ai/mcp",
     "comment_claude_desktop": "Add to claude_desktop_config.json: { \"mcpServers\": { \"qlik\": { \"url\": \"<sseEndpoint>\", \"headers\": { \"Authorization\": \"Bearer <apiKey>\" } } } }"
   },
-
   "options": {
     "dryRun": false,
     "verbose": true,
     "continueOnError": true,
     "comment_options": "dryRun=true will log actions without executing. continueOnError=true skips failed steps."
+  },
+  "stewardship": {
+    "name": "Address Cleanup",
+    "description": "Salesforce contact addresses the bulk validation job could not resolve to GPS. Fed by the UNRESOLVED branch of mcg_sf_address_validate_bulk.",
+    "space": "data",
+    "storageConnectionType": "QLIK_CLOUD_STORAGE",
+    "workflowType": "ONE_STEP_VALIDATION",
+    "assignationStrategy": "AUTO",
+    "aiAssistance": false,
+    "recordDataSchema": [
+      {
+        "name": "contact_id",
+        "description": "Salesforce Contact Id",
+        "isVisible": true,
+        "isEditable": false
+      },
+      {
+        "name": "street_raw",
+        "description": "Street as received",
+        "isVisible": true,
+        "isEditable": false
+      },
+      {
+        "name": "city_raw",
+        "description": "City as received",
+        "isVisible": true,
+        "isEditable": false
+      },
+      {
+        "name": "postal_raw",
+        "description": "Postal code as received",
+        "isVisible": true,
+        "isEditable": false
+      },
+      {
+        "name": "country_raw",
+        "description": "Country as received",
+        "isVisible": true,
+        "isEditable": false
+      },
+      {
+        "name": "reason",
+        "description": "Why automated repair failed",
+        "isVisible": true,
+        "isEditable": false
+      },
+      {
+        "name": "street_clean",
+        "description": "Corrected street",
+        "isVisible": true,
+        "isEditable": true
+      },
+      {
+        "name": "house_number",
+        "description": "Corrected house number",
+        "isVisible": true,
+        "isEditable": true
+      },
+      {
+        "name": "city_clean",
+        "description": "Corrected city",
+        "isVisible": true,
+        "isEditable": true
+      },
+      {
+        "name": "postal_clean",
+        "description": "Corrected postal code",
+        "isVisible": true,
+        "isEditable": true
+      },
+      {
+        "name": "country_iso",
+        "description": "ISO 3166-1 alpha-2 country",
+        "isVisible": true,
+        "isEditable": true
+      },
+      {
+        "name": "state_clean",
+        "description": "Corrected state / region",
+        "isVisible": true,
+        "isEditable": true
+      }
+    ],
+    "sprintId": ""
   }
 }

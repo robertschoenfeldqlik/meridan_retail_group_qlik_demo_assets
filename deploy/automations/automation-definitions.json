@@ -20,7 +20,11 @@
           "config": {
             "endpoint": "GET /api/v1/items",
             "filter": "resourceType eq 'app' AND spaceId eq '${shared_space_id}'",
-            "extractFields": ["resourceId", "name", "updatedAt"]
+            "extractFields": [
+              "resourceId",
+              "name",
+              "updatedAt"
+            ]
           }
         },
         {
@@ -82,10 +86,22 @@
                 {
                   "type": "FactSet",
                   "facts": [
-                    {"title": "App", "value": "${current.name}"},
-                    {"title": "Status", "value": "${reload_status}"},
-                    {"title": "Time", "value": "${timestamp}"},
-                    {"title": "Error", "value": "${error_message}"}
+                    {
+                      "title": "App",
+                      "value": "${current.name}"
+                    },
+                    {
+                      "title": "Status",
+                      "value": "${reload_status}"
+                    },
+                    {
+                      "title": "Time",
+                      "value": "${timestamp}"
+                    },
+                    {
+                      "title": "Error",
+                      "value": "${error_message}"
+                    }
                   ]
                 }
               ],
@@ -100,7 +116,10 @@
           }
         }
       ],
-      "variables": ["shared_space_id", "tenant_url"],
+      "variables": [
+        "shared_space_id",
+        "tenant_url"
+      ],
       "setupInstructions": {
         "prerequisites": [
           "Both MCG analytics apps published in shared space",
@@ -120,7 +139,7 @@
     },
     {
       "id": "cold_chain_alert",
-      "name": "MCG Cold Chain Alert \u2192 Teams",
+      "name": "MCG Cold Chain Alert → Teams",
       "description": "Posts an alert to the #mcg-cold-chain-alerts Teams channel when IoT sensors detect a temperature exceedance lasting 15+ minutes on any cold chain shipment.",
       "state": "disabled",
       "trigger": {
@@ -136,7 +155,16 @@
           "config": {
             "dataProduct": "IoT Normalized",
             "filter": "exceedance_minutes >= 15 AND alert_sent = false",
-            "fields": ["shipment_id", "route", "carrier", "max_temp_celsius", "exceedance_minutes", "estimated_loss_usd", "product_type", "sensor_count"]
+            "fields": [
+              "shipment_id",
+              "route",
+              "carrier",
+              "max_temp_celsius",
+              "exceedance_minutes",
+              "estimated_loss_usd",
+              "product_type",
+              "sensor_count"
+            ]
           }
         },
         {
@@ -168,7 +196,7 @@
               "body": [
                 {
                   "type": "TextBlock",
-                  "text": "Cold Chain Alert \u2014 Temperature Exceedance",
+                  "text": "Cold Chain Alert — Temperature Exceedance",
                   "weight": "bolder",
                   "size": "large",
                   "color": "attention"
@@ -179,25 +207,71 @@
                     {
                       "type": "Column",
                       "items": [
-                        {"type": "TextBlock", "text": "Shipment", "weight": "bolder"},
-                        {"type": "TextBlock", "text": "Route"},
-                        {"type": "TextBlock", "text": "Carrier"},
-                        {"type": "TextBlock", "text": "Max Temperature"},
-                        {"type": "TextBlock", "text": "Duration"},
-                        {"type": "TextBlock", "text": "Product Type"},
-                        {"type": "TextBlock", "text": "Est. Exposure"}
+                        {
+                          "type": "TextBlock",
+                          "text": "Shipment",
+                          "weight": "bolder"
+                        },
+                        {
+                          "type": "TextBlock",
+                          "text": "Route"
+                        },
+                        {
+                          "type": "TextBlock",
+                          "text": "Carrier"
+                        },
+                        {
+                          "type": "TextBlock",
+                          "text": "Max Temperature"
+                        },
+                        {
+                          "type": "TextBlock",
+                          "text": "Duration"
+                        },
+                        {
+                          "type": "TextBlock",
+                          "text": "Product Type"
+                        },
+                        {
+                          "type": "TextBlock",
+                          "text": "Est. Exposure"
+                        }
                       ]
                     },
                     {
                       "type": "Column",
                       "items": [
-                        {"type": "TextBlock", "text": "${shipment_id}"},
-                        {"type": "TextBlock", "text": "${route}"},
-                        {"type": "TextBlock", "text": "${carrier}"},
-                        {"type": "TextBlock", "text": "${max_temp_celsius}\u00b0C", "color": "attention"},
-                        {"type": "TextBlock", "text": "${exceedance_minutes} minutes", "color": "attention"},
-                        {"type": "TextBlock", "text": "${product_type}"},
-                        {"type": "TextBlock", "text": "$${estimated_loss_usd}", "color": "attention"}
+                        {
+                          "type": "TextBlock",
+                          "text": "${shipment_id}"
+                        },
+                        {
+                          "type": "TextBlock",
+                          "text": "${route}"
+                        },
+                        {
+                          "type": "TextBlock",
+                          "text": "${carrier}"
+                        },
+                        {
+                          "type": "TextBlock",
+                          "text": "${max_temp_celsius}°C",
+                          "color": "attention"
+                        },
+                        {
+                          "type": "TextBlock",
+                          "text": "${exceedance_minutes} minutes",
+                          "color": "attention"
+                        },
+                        {
+                          "type": "TextBlock",
+                          "text": "${product_type}"
+                        },
+                        {
+                          "type": "TextBlock",
+                          "text": "$${estimated_loss_usd}",
+                          "color": "attention"
+                        }
                       ]
                     }
                   ]
@@ -229,12 +303,18 @@
           "description": "Mark alert as sent to prevent duplicate notifications",
           "config": {
             "dataProduct": "IoT Normalized",
-            "update": {"alert_sent": true},
+            "update": {
+              "alert_sent": true
+            },
             "filter": "shipment_id = '${shipment_id}'"
           }
         }
       ],
-      "variables": ["tenant_url", "cold_chain_app_id", "kb_id"],
+      "variables": [
+        "tenant_url",
+        "cold_chain_app_id",
+        "kb_id"
+      ],
       "setupInstructions": {
         "prerequisites": [
           "Microsoft Teams connector configured in Qlik Application Automation (OAuth consent required)",
@@ -256,7 +336,7 @@
     },
     {
       "id": "pipeline_health_summary",
-      "name": "MCG Pipeline Health Daily Summary \u2192 Teams",
+      "name": "MCG Pipeline Health Daily Summary → Teams",
       "description": "Posts a daily pipeline health summary to #mcg-data-engineering Teams channel at 07:00 UTC. Shows status of all CDC pipelines, data freshness, and Trust Scores.",
       "state": "disabled",
       "trigger": {
@@ -272,9 +352,14 @@
           "config": {
             "dataProduct": "Supply Chain Health",
             "aggregation": {
-              "groupBy": ["pipeline_status"],
+              "groupBy": [
+                "pipeline_status"
+              ],
               "count": "dc_id",
-              "metrics": ["avg(trust_score)", "max(sync_lag_minutes)"]
+              "metrics": [
+                "avg(trust_score)",
+                "max(sync_lag_minutes)"
+              ]
             }
           }
         },
@@ -284,7 +369,11 @@
           "description": "Get source connection statuses",
           "config": {
             "endpoint": "GET /api/v1/data-connections",
-            "extractFields": ["name", "status", "lastSync"]
+            "extractFields": [
+              "name",
+              "status",
+              "lastSync"
+            ]
           }
         },
         {
@@ -300,16 +389,25 @@
               "body": [
                 {
                   "type": "TextBlock",
-                  "text": "MCG Pipeline Health \u2014 Daily Summary (${date})",
+                  "text": "MCG Pipeline Health — Daily Summary (${date})",
                   "weight": "bolder",
                   "size": "large"
                 },
                 {
                   "type": "FactSet",
                   "facts": [
-                    {"title": "Healthy", "value": "${healthy_count}/28 pipelines"},
-                    {"title": "Degraded", "value": "${degraded_count} (sync lag > 30 min)"},
-                    {"title": "Failed", "value": "${failed_count}"}
+                    {
+                      "title": "Healthy",
+                      "value": "${healthy_count}/28 pipelines"
+                    },
+                    {
+                      "title": "Degraded",
+                      "value": "${degraded_count} (sync lag > 30 min)"
+                    },
+                    {
+                      "title": "Failed",
+                      "value": "${failed_count}"
+                    }
                   ]
                 },
                 {
@@ -320,9 +418,18 @@
                 {
                   "type": "FactSet",
                   "facts": [
-                    {"title": "PostgreSQL (WMS)", "value": "Last sync: ${pg_last_sync} (${pg_lag} ago)"},
-                    {"title": "Kafka (IoT)", "value": "Streaming: ${kafka_status}"},
-                    {"title": "Salesforce (CRM)", "value": "Last sync: ${sf_last_sync} (${sf_lag} ago)"}
+                    {
+                      "title": "PostgreSQL (WMS)",
+                      "value": "Last sync: ${pg_last_sync} (${pg_lag} ago)"
+                    },
+                    {
+                      "title": "Kafka (IoT)",
+                      "value": "Streaming: ${kafka_status}"
+                    },
+                    {
+                      "title": "Salesforce (CRM)",
+                      "value": "Last sync: ${sf_last_sync} (${sf_lag} ago)"
+                    }
                   ]
                 },
                 {
@@ -333,10 +440,22 @@
                 {
                   "type": "FactSet",
                   "facts": [
-                    {"title": "Inventory", "value": "${inv_trust_score}"},
-                    {"title": "Addresses", "value": "${addr_trust_score}"},
-                    {"title": "Products", "value": "${prod_trust_score}"},
-                    {"title": "Shipments", "value": "${ship_trust_score}"}
+                    {
+                      "title": "Inventory",
+                      "value": "${inv_trust_score}"
+                    },
+                    {
+                      "title": "Addresses",
+                      "value": "${addr_trust_score}"
+                    },
+                    {
+                      "title": "Products",
+                      "value": "${prod_trust_score}"
+                    },
+                    {
+                      "title": "Shipments",
+                      "value": "${ship_trust_score}"
+                    }
                   ]
                 }
               ],
@@ -351,7 +470,9 @@
           }
         }
       ],
-      "variables": ["tenant_url"],
+      "variables": [
+        "tenant_url"
+      ],
       "setupInstructions": {
         "prerequisites": [
           "Microsoft Teams connector configured in Qlik Application Automation",
@@ -371,120 +492,57 @@
       }
     },
     {
-      "id": "wismo_rate_alert",
-      "name": "MCG WISMO Rate Alert \u2192 Teams",
-      "description": "Monitors the WISMO (Where Is My Order) inquiry rate across all carriers and regions. Posts an alert to #mcg-customer-ops Teams channel when the rate exceeds the configured threshold (default 8%).",
-      "state": "disabled",
+      "id": "stewardship_sprint_summary",
+      "name": "MCG Stewardship Sprint Summary",
+      "description": "Reads the Address Cleanup stewardship sprint summary and titles the run with it. The read-only half of the address-correction loop — safe to enable in a demo, and it proves the sprint is live without mutating anything.",
+      "state": "enabled",
       "trigger": {
         "type": "scheduled",
-        "schedule": "*/15 * * * *",
-        "description": "Every 15 minutes"
+        "schedule": "0 7 * * *",
+        "description": "Daily at 07:00 UTC"
       },
       "blocks": [
         {
           "step": 1,
-          "type": "qlik_query",
-          "description": "Query silver.order_delivery_timeline for WISMO rate",
-          "config": {
-            "dataProduct": "Orders Enriched",
-            "aggregation": {
-              "groupBy": ["region", "carrier"],
-              "metrics": ["avg(wismo_rate)", "count(order_id)", "sum(wismo_count)"]
-            },
-            "filter": "order_date >= today() - 1"
-          }
+          "type": "start",
+          "description": "Scheduled start"
         },
         {
           "step": 2,
-          "type": "condition",
-          "description": "Check if any region/carrier exceeds WISMO threshold",
+          "type": "api_key_connector",
+          "description": "Read the sprint summary",
           "config": {
-            "condition": "any(wismo_rate > ${wismo_threshold|0.08})"
+            "connector": "API Key (MCG Qlik Data Governance)",
+            "comment": "Uses the API Key connector, not Qlik Cloud Services: the QCS raw-request block only routes /api/v1/* and returns 404 Unknown Service for /api/data-governance/*.",
+            "endpoint": "GET data-governance/sprints/7f87296d-c00e-4171-b0df-46414d28624c/external-integrations/sprint-summary"
           }
         },
         {
           "step": 3,
-          "type": "loop",
-          "description": "For each region/carrier exceeding threshold",
-          "config": {
-            "iterateOver": "exceeded_results"
-          }
-        },
-        {
-          "step": 4,
-          "type": "microsoft_teams",
-          "description": "Post WISMO alert to Teams",
-          "config": {
-            "action": "post_adaptive_card",
-            "channel": "#mcg-customer-ops",
-            "card": {
-              "type": "AdaptiveCard",
-              "version": "1.4",
-              "body": [
-                {
-                  "type": "TextBlock",
-                  "text": "WISMO Alert \u2014 High Inquiry Rate",
-                  "weight": "bolder",
-                  "size": "large",
-                  "color": "warning"
-                },
-                {
-                  "type": "FactSet",
-                  "facts": [
-                    {"title": "Region", "value": "${region}"},
-                    {"title": "Carrier", "value": "${carrier}"},
-                    {"title": "WISMO Rate", "value": "${wismo_rate_pct}% (threshold: ${wismo_threshold_pct}%)"},
-                    {"title": "Total Orders (24h)", "value": "${order_count}"},
-                    {"title": "WISMO Inquiries", "value": "${wismo_count}"},
-                    {"title": "Trend", "value": "${trend_arrow} vs. previous period"}
-                  ]
-                },
-                {
-                  "type": "TextBlock",
-                  "text": "**Root Cause Candidates:** Check carrier tracking feed latency, address quality score for region, and recent delivery failures.",
-                  "wrap": true
-                }
-              ],
-              "actions": [
-                {
-                  "type": "Action.OpenUrl",
-                  "title": "Open WISMO Dashboard",
-                  "url": "https://${tenant_url}/sense/app/${delivery_app_id}"
-                },
-                {
-                  "type": "Action.OpenUrl",
-                  "title": "View WISMO Procedure (SOP-CS-001)",
-                  "url": "https://${tenant_url}/answers/kb/${kb_id}/search?q=WISMO+call+handling"
-                }
-              ]
-            }
-          }
+          "type": "update_run_title",
+          "description": "Title the run with the sprint state"
         }
       ],
-      "variables": ["tenant_url", "delivery_app_id", "kb_id", "wismo_threshold"],
+      "variables": [
+        "tenant_url",
+        "sprint_id"
+      ],
       "setupInstructions": {
         "prerequisites": [
-          "Microsoft Teams connector configured in Qlik Application Automation",
-          "Teams channel '#mcg-customer-ops' created",
-          "silver.order_delivery_timeline data product populated",
-          "Delivery & Customer Experience app published"
+          "Address Cleanup sprint created — run: npm run stewardship:sprint (must be a DATA space)",
+          "API Key automation connection present — created automatically by npm run automations:workspaces"
         ],
         "buildSteps": [
-          "1. In Qlik Cloud > Automations > Create New",
-          "2. Add trigger: Scheduled (every 15 minutes)",
-          "3. Add Qlik Cloud block: Query Orders Enriched data product, aggregate by region+carrier",
-          "4. Add Condition block: Check if any wismo_rate > 0.08 (8%)",
-          "5. Add Loop block: Iterate over exceeded results",
-          "6. Add Microsoft Teams block: Post Adaptive Card with WISMO metrics",
-          "7. Set wismo_threshold variable (default 0.08)",
-          "8. Test with lowered threshold, then enable schedule"
+          "1. Run: npm run automations:workspaces — this authors the real block graph and pushes it to the tenant.",
+          "2. Open Automations > MCG Stewardship Sprint Summary to see the three blocks.",
+          "3. Run it once; the run should finish green."
         ]
       }
     },
     {
       "id": "address_correction_talend",
-      "name": "MCG Address Correction Loop \u2014 Talend",
-      "description": "Monitors Qlik Cloud stewardship tasks for the Address Cleanup campaign. When pending corrections are found, triggers a Talend Cloud address validation job, then updates silver.addresses_standardized with corrected addresses and resolves the stewardship tasks.",
+      "name": "MCG Address Correction — Talend Job Trigger",
+      "description": "Monitors the Address Cleanup stewardship sprint for steward-corrected address records. When pending corrections are found, triggers a Talend Cloud address validation job, then updates silver.addresses_standardized with corrected addresses and resolves the stewardship tasks.",
       "state": "disabled",
       "trigger": {
         "type": "scheduled",
@@ -497,9 +555,16 @@
           "type": "qlik_api",
           "description": "Query stewardship tasks for pending address corrections",
           "config": {
-            "endpoint": "GET /api/v1/stewardship/tasks",
-            "filter": "campaignName eq 'Address Cleanup' AND status eq 'pending'",
-            "extractFields": ["taskId", "recordId", "fieldValues"]
+            "endpoint": "GET /api/data-governance/sprints/${sprint_id}/external-integrations/records",
+            "comment": "The real external-integration records API. NOTE: not reachable from a Qlik Cloud Services 'raw API request' block — that block only routes /api/v1/*. Use the 'API Key' connector against the public tenant hostname, or call it from the Talend job.",
+            "extractFields": [
+              "id",
+              "contact_id",
+              "street_clean",
+              "city_clean",
+              "postal_clean",
+              "country_iso"
+            ]
           }
         },
         {
@@ -564,13 +629,13 @@
         {
           "step": 7,
           "type": "qlik_api",
-          "description": "Resolve stewardship task",
+          "description": "Mark the record consumed in the sprint",
           "config": {
-            "endpoint": "PUT /api/v1/stewardship/tasks/${current.taskId}",
+            "endpoint": "POST /api/data-governance/sprints/${sprint_id}/external-integrations/records/actions/consume",
             "body": {
-              "status": "resolved",
-              "resolution": "Address corrected by Talend validation job",
-              "resolvedBy": "automation"
+              "recordIds": [
+                "${current.id}"
+              ]
             }
           }
         },
@@ -594,42 +659,60 @@
                 {
                   "type": "FactSet",
                   "facts": [
-                    {"title": "Records Processed", "value": "${total_records}"},
-                    {"title": "Corrections Applied", "value": "${corrected_count}"},
-                    {"title": "Avg Quality Score Improvement", "value": "${avg_improvement}"},
-                    {"title": "Tasks Resolved", "value": "${resolved_count}"}
+                    {
+                      "title": "Records Processed",
+                      "value": "${total_records}"
+                    },
+                    {
+                      "title": "Corrections Applied",
+                      "value": "${corrected_count}"
+                    },
+                    {
+                      "title": "Avg Quality Score Improvement",
+                      "value": "${avg_improvement}"
+                    },
+                    {
+                      "title": "Tasks Resolved",
+                      "value": "${resolved_count}"
+                    }
                   ]
                 }
               ],
               "actions": [
                 {
                   "type": "Action.OpenUrl",
-                  "title": "View Stewardship Campaign",
-                  "url": "https://${tenant_url}/catalog/stewardship"
+                  "title": "View Stewardship Sprint",
+                  "url": "https://${tenant_url}/data-stewardship"
                 }
               ]
             }
           }
         }
       ],
-      "variables": ["tenant_url", "talend_api_url", "talend_api_key", "talend_job_id"],
+      "variables": [
+        "tenant_url",
+        "sprint_id",
+        "talend_api_url",
+        "talend_api_key",
+        "talend_job_id"
+      ],
       "setupInstructions": {
         "prerequisites": [
           "Talend Cloud account with Address Validation job configured",
-          "Qlik Cloud stewardship campaign 'Address Cleanup' active",
+          "Qlik Cloud stewardship sprint 'Address Cleanup' created — run `node deploy/stewardship.js` (must be a DATA space; a shared space returns 403 NOT_ALLOWED_TO_CREATE_SPRINT)",
           "Microsoft Teams connector configured (for summary notifications)",
           "silver.addresses_standardized accessible via data product API"
         ],
         "buildSteps": [
           "1. In Qlik Cloud > Automations > Create New",
           "2. Add trigger: Scheduled (every 30 minutes)",
-          "3. Add Qlik Cloud block: GET /api/v1/stewardship/tasks filtered to 'Address Cleanup' campaign",
-          "4. Add Condition block: Check if pending tasks exist",
+          "3. Add an 'API Key' connector block: GET https://<tenant>/api/data-governance/sprints/<sprint_id>/external-integrations/records (the Qlik Cloud Services 'raw API request' block cannot reach /api/data-governance — it only routes /api/v1/*)",
+          "4. Add Condition block: Check if any records were returned",
           "5. Add REST API block: POST to Talend Cloud to trigger address validation job",
           "6. Add Condition block: Wait for Talend job completion",
           "7. Add Loop block: Iterate over corrected records",
           "8. Inside loop: Add Qlik Cloud block to update customer record with corrected address",
-          "9. Inside loop: Add Qlik Cloud block to resolve stewardship task",
+          "9. Inside loop: Add an API Key block calling .../records/actions/consume",
           "10. After loop: Add Teams block to post batch summary",
           "11. Configure Talend API credentials in automation variables",
           "12. Test with a small batch, then enable schedule"

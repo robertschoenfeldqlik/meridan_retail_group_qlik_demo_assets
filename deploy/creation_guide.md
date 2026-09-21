@@ -291,7 +291,7 @@ Create 8 data flows (plus 1 Talend job) in the Pipeline Designer that transform 
 6. **Truncation Detect** — Flag addresses exactly 30 characters (legacy POS truncation)
 7. **Fuzzy Dedup** — Match on name + postal code + street number:
    - \>90% confidence → auto-merge to surviving record
-   - 85-90% → route to Stewardship campaign
+   - 85-90% → route to Stewardship sprint
    - <85% → treat as distinct
 8. **Address Quality Score** — Per-record score (0.0 – 1.0):
    - 1.0 = complete, validated, no truncation
@@ -314,35 +314,47 @@ Create 8 data flows (plus 1 Talend job) in the Pipeline Designer that transform 
 
 **Talend Job Design:**
 
-1. **tInput** — Accept address record (street, city, state, postal_code, country_raw)
-2. **tAddressRowStandardize** — Qlik Talend address standardization component:
+1. **tSalesforceInput** — pull Contact records (incremental on `LastModifiedDate`, batch-limited)
+2. **`AddressStandardizer`** (custom Java routine, `tJavaRow`):
    - Parse free-text address into structured components
-   - Normalize country names to ISO 3166
-   - Standardize postal codes per country rules
-   - Expand abbreviations (`Str.` → `Straße`, `Apt` → `Apartment`)
-3. **tAddressRowValidate** — Validate against postal reference data:
-   - Match against country-specific postal databases (NL PostNL, US USPS, BR Correios)
-   - Return confidence score (0.0 – 1.0)
-   - Flag: `VALID`, `CORRECTED`, `AMBIGUOUS`, `INVALID`
-4. **tGeocode** — Optional geocoding for validated addresses:
-   - Latitude/longitude for map visualizations
-   - Useful for GPS correlation with IoT cold-chain data
+   - Repair country names to ISO 3166
+   - Canonicalize postal codes per country rules
+   - Expand abbreviations (`Str.` → `Straße`, `Cj` → `STE`), extract unit/floor
+   - Score the result 0.0 – 1.0 and emit a JSON list of every correction applied
+3. **`BulkGeocoder`** (custom Java routine, `tJava`) — **one bulk call for the whole batch**:
+   - Public OSM Nominatim, no API key, behind a shared 1 req/s rate limiter
+   - Dedupes identical addresses, retries 429/503 with backoff, honours a wall-clock budget
+   - Never throws — anything it cannot resolve simply arrives without GPS
+4. **Routing gate** (`tMap`, filters are exact complements so no row is lost or duplicated):
+   - `latitude != null && longitude != null` → S3 → Iceberg `silver.addresses_geocoded`
+   - otherwise → the **Address Cleanup** stewardship sprint
 5. **tOutput** — Return validated record:
    - `street_clean`, `city_clean`, `state_clean`, `postal_clean`, `country_iso`
    - `validation_status`, `confidence_score`, `geocode_lat`, `geocode_lon`
    - `corrections_applied` (JSON array of changes made)
 
+> Replaces the subscription-only `tAddressRowStandardize` → `tAddressRowValidate` → `tGeocode`
+> chain: no Talend Data Quality subscription, no licensed postal reference data, no API key.
+> The routines compile clean on JDK 17 and are unit-tested.
+
 **Deployment:**
-- Publish job to Qlik Talend Cloud → available as callable service
-- Data Flow 3 calls this job via **tRunJob** component for each address batch
-- Can be reused by any future data flow that processes addresses
+- `npm run talend:zip` packages the routines, the context group, the build spec and the Iceberg
+  DDL into `deploy/talend/mcg_sf_address_validate_bulk.zip`
+- Import in Studio: **File → Import items → Select archive file** (see `IMPORT.md` in the zip)
+- Build the five-subjob canvas from `deploy/talend/BUILD_BULK_ADDRESS_JOB.md` §3
+- Schedule in TMC; can be reused by any future flow that processes addresses
 
 **Automation Integration — Closing the Data Quality Loop:**
-This Talend job is also triggered automatically by the **MCG Address Correction automation** (see `automation_guide.md` Automation 5). When a steward approves address records in the Address Cleanup stewardship campaign, the automation:
-1. Collects approved record IDs from the stewardship task
+This Talend job is also triggered automatically by the **MCG Address Correction automation** (see `automation_guide.md` Automation 5). When a steward approves address records in the Address Cleanup stewardship sprint, the automation:
+1. Reads corrected records from `GET /api/data-governance/sprints/{sprintId}/external-integrations/records`
 2. Invokes this Talend job with those records as input
 3. Writes corrected addresses back to `silver.addresses_standardized`
-4. Resolves the stewardship task and notifies Teams
+4. Marks the records consumed via `.../records/actions/consume` and notifies Teams
+
+> **Gateway limit:** the Qlik Cloud Services *raw API request* block only routes `/api/v1/*`.
+> `/api/data-governance/*` returns 404 *Unknown Service* from inside an automation, so those two
+> calls must go through the **API Key** connector against the public tenant hostname (or be made
+> by the Talend job itself, where a plain API key works). Verified by live runs.
 
 This creates a complete data quality remediation loop:
 ```
@@ -454,7 +466,7 @@ Source (dirty) → Data Flow 3 (standardize) → Stewardship (human review)
 3. **Accent Normalize** — `Nestlé` → `nestle` for matching purposes
 4. **Fuzzy Match** — Jaro-Winkler similarity on normalized names:
    - \>95% → auto-merge
-   - 85-95% → route to Stewardship campaign
+   - 85-95% → route to Stewardship sprint
    - <85% → treat as distinct
 5. **Golden Record** — For each group, select surviving record:
    - Prefer SAP Global (`SUP-*`) ID as canonical
@@ -629,7 +641,7 @@ Qlik automatically detects **semantic types** for data product columns. Review a
    - Referential integrity (FK relationships)
    - Completeness requirements (not-null for critical fields)
 5. Accept, modify, or reject each suggested rule
-6. Enable rule enforcement → violations route to **Stewardship campaigns** (see `setup_guide.md` Section 9)
+6. Enable rule enforcement → violations route to **Stewardship sprints** (see `setup_guide.md` Section 9)
 
 ### 2.3 Enable API Sharing
 
@@ -1257,7 +1269,7 @@ A **Qlik Answers capability** that supports data stewards in assessing, defining
 - Create, manage, and map DQ rules
 - Run DQ metric calculations
 
-**MCG use:** the Silver tables already carry hand-built rules (`quantity_on_hand >= 0`, lot-number completeness for perishables, `ira_pct` range 0.0–1.0 — see Section 2.2). Use the Data Quality Agent to assess `silver.inventory_reconciled` or `silver.addresses_standardized` and propose or map the equivalent rules by conversation instead of clicking through the schema editor. Violations still route to the Stewardship campaigns from `setup_guide.md` Section 9.
+**MCG use:** the Silver tables already carry hand-built rules (`quantity_on_hand >= 0`, lot-number completeness for perishables, `ira_pct` range 0.0–1.0 — see Section 2.2). Use the Data Quality Agent to assess `silver.inventory_reconciled` or `silver.addresses_standardized` and propose or map the equivalent rules by conversation instead of clicking through the schema editor. Violations still route to the Stewardship sprints from `setup_guide.md` Section 9.
 
 ### 5.4 Catalog and Business Glossary Agent
 

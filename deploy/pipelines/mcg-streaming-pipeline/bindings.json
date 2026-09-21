@@ -1,6 +1,6 @@
 {
   "variables": {
-    "task.iot-streaming-landing-4103.sourceConnection": "{{id(connection, MCG Demo - Development.MCG IoT Telemetry)}}",
+    "task.iot-streaming-landing-4103.sourceConnection": "{{id(connection, MCG Demo - DI.MCG IoT Telemetry)}}",
     "task.iot-streaming-landing-4103.lakehouseCluster": "",
     "task.iot-streaming-transform-4202.internalSchema": "silver__internal",
     "task.iot-streaming-transform-4202.taskSchema": "silver",

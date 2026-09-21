@@ -96,7 +96,7 @@ Master checklist of everything required to stand up the full Meridian Commerce G
 - [ ] Data flow: **Timestamp Normalization** → `silver.warehouse_events_clean`
 - [ ] Data flow: **Inventory Reconciliation** → `silver.inventory_reconciled`
 - [ ] Data flow: **Address Standardization** → `silver.addresses_standardized`
-- [ ] **Talend Job: Address Validation Service** — deployed as callable service (tAddressRowStandardize, tAddressRowValidate, tGeocode)
+- [ ] **Talend Job: `mcg_sf_address_validate_bulk`** — built in Studio from `deploy/talend/BUILD_BULK_ADDRESS_JOB.md` (routines: AddressStandardizer, BulkGeocoder, AddressBatch); import bundle via `npm run talend:zip`
 - [ ] Data flow: **Product Master Harmonization** → `silver.products_harmonized`
 - [ ] Data flow: **Carrier Status Canonicalization** → `silver.shipments_canonical`
 - [ ] Data flow: **IoT Telemetry Normalization** → `silver.iot_normalized`
@@ -159,7 +159,7 @@ Master checklist of everything required to stand up the full Meridian Commerce G
   - [ ] Referential integrity (FK relationships)
   - [ ] Completeness rules (not-null for critical fields)
 - [ ] Accept/modify/reject suggested rules
-- [ ] Enable rule enforcement → violations route to Stewardship campaigns
+- [ ] Enable rule enforcement → violations route to Stewardship sprints
 
 ### API Sharing (Governance Capability)
 - [ ] API sharing enabled for "Supply Chain Health" (Discovery Agent, MCP Server, external dashboards)
@@ -286,20 +286,20 @@ Master checklist of everything required to stand up the full Meridian Commerce G
 
 ## Phase 8: Qlik Stewardship
 
-### Campaigns
-- [ ] **Address Cleanup** campaign created
+### Sprints
+- [ ] **Address Cleanup** sprint created
   - Data source: `silver.addresses_standardized`
   - Filter: `quality_score < 0.7`
   - Owner: Sophie Muller
-- [ ] **Supplier Dedup** campaign created
+- [ ] **Supplier Dedup** sprint created
   - Data source: `silver.suppliers_deduped`
   - Filter: `confidence < 0.9`
   - Owner: Thomas Berger
-- [ ] **Missing Weights** campaign created
+- [ ] **Missing Weights** sprint created
   - Data source: `silver.products_harmonized`
   - Filter: `weight_kg IS NULL OR weight_kg = 0`
   - Owner: Product Data Team
-- [ ] **Lot Number Compliance** campaign created
+- [ ] **Lot Number Compliance** sprint created
   - Data source: `silver.inventory_reconciled`
   - Filter: `perishable = true AND lot_number IS NULL`
   - Owner: Quality Team
@@ -341,8 +341,8 @@ Master checklist of everything required to stand up the full Meridian Commerce G
   - Trigger: WISMO rate exceeds 40% for any carrier
   - Posts alert to `#mcg-customer-ops` channel
 - [ ] **MCG Address Correction — Talend Job Trigger** — configured and enabled
-  - Trigger: Stewardship task approved in Address Cleanup campaign (event or 15-min poll)
-  - Runs Talend Address Validation Service (tAddressRowStandardize → tAddressRowValidate → tGeocode)
+  - Trigger: Stewardship task approved in Address Cleanup sprint (event or 15-min poll)
+  - Runs `mcg_sf_address_validate_bulk` (AddressStandardizer → BulkGeocoder → routing gate)
   - Writes corrected addresses back to `silver.addresses_standardized`
   - Resolves stewardship tasks and posts results to Teams
   - Closes the data quality loop: Stewardship → Talend Job → Silver → Gold → Predict
@@ -400,7 +400,7 @@ Master checklist of everything required to stand up the full Meridian Commerce G
 
 ### Governance Agents (Qlik Answers capabilities — not separate products)
 - [ ] **Data Product Agent** — conversationally review/package the Supply Chain Health and Last Mile Performance data products (owner, tags, description, SLA, Trust Score)
-- [ ] **Data Quality Agent** — conversationally assess `silver.inventory_reconciled` or `silver.addresses_standardized` and create/map a DQ rule; confirm violations route to Stewardship campaigns
+- [ ] **Data Quality Agent** — conversationally assess `silver.inventory_reconciled` or `silver.addresses_standardized` and create/map a DQ rule; confirm violations route to Stewardship sprints
 - [ ] **Catalog and Business Glossary Agent** — generate draft glossary terms for the supply-chain domain to seed/extend the 25-term MCG Supply Chain Glossary
 - [ ] Confirm generated glossary terms land in **DRAFT** status and require a term owner's approval before publishing
 
@@ -433,7 +433,7 @@ Master checklist of everything required to stand up the full Meridian Commerce G
 - [ ] Reporting subscriptions deliver to email
 - [ ] Qlik Answers returns coherent answers to test questions
 - [ ] Predict models show predictions when queried
-- [ ] Stewardship campaigns show records needing review
+- [ ] Stewardship sprints show records needing review
 - [ ] Business glossary terms visible and linked
 - [ ] Data Lineage traces field-level paths from source to Gold
 - [ ] Trust Scores populated on Gold-layer data products

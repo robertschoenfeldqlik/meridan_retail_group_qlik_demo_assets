@@ -15,9 +15,10 @@
 const {
   buildQlikDocument, saveDocument,
   heading, para, numberedItem, calloutBox, metadataTable, dataTable, labelValue,
-  setDocTheme,
+  setDocTheme, figure,
 } = require("./mcg-docx-builder");
 const { QLIK, ensureQlikLogo } = require("./qlik-doc-styles");
+const deckMedia = require("./lib/deck-media");
 const { Paragraph, TextRun, PageBreak, BorderStyle, Table, TableRow, TableCell, ShadingType, WidthType } = require("docx");
 const path = require("path");
 
@@ -106,6 +107,18 @@ function expectedBox(text) {
       }),
     ],
   });
+}
+
+// ─── HELPER: Screenshot ───
+// Resolves a slug from generators/screenshots.json. Returns [] when the shot has
+// not been captured, so an uncaptured screen leaves no trace in the document
+// rather than printing a placeholder into a customer-facing script.
+//
+// Refresh captures with: node generators/capture-tenant-screenshots.js
+function shot(slug, caption) {
+  const hit = deckMedia.resolveShot(slug);
+  if (!hit) return [];
+  return figure(hit.path, caption || hit.caption || "");
 }
 
 // ─── HELPER: Section divider ───
@@ -447,6 +460,8 @@ function module03() {
     heading("Overview", 2),
     para("The Open Lakehouse is the heart of the MCG demo. It implements the medallion architecture (Bronze/Silver/Gold) where raw data lands, gets cleansed and transformed, and emerges as governed data products. This is where MCG's 7 data quality nightmares get resolved."),
     calloutBox("Key message: Without a Lakehouse, MCG had 3 disconnected data silos. With it, they have a single source of truth with full lineage from raw source to business-ready data product."),
+    ...shot("lakehouse-clusters"),
+    ...shot("catalog"),
 
     heading("Bronze Layer: Raw Ingestion (8 Tables)", 2),
     para("Bronze tables contain raw data exactly as it arrives from source systems. No transformations, no cleanup — this preserves the original data for auditability."),
@@ -623,6 +638,7 @@ function module05() {
     para("Gold-layer tables become governed Data Products with owners, SLAs, Trust Scores, and API access. AI automatically generates descriptions and suggests validation rules. The Data Marketplace lets business users discover and request access to data products."),
 
     heading("Demo Walk-Through", 2),
+    ...shot("data-products"),
 
     heading("Demo Methodology: Tell → Show → Tell", 2),
     limbicOpening("MCG's data engineering team built 23 Gold tables last year. By December, 14 had no documentation, 6 had no owner, and the business didn't know 9 of them existed. Meanwhile, three different teams independently built their own 'customer delivery' datasets — all slightly different, all 'correct.' Data Products turn undiscoverable assets into governed, SLA-backed products with clear ownership.", "Industry Insights"),
@@ -652,7 +668,7 @@ function module05() {
         ["lot_number", "NOT NULL when perishable = TRUE", "Conditional completeness"],
       ]
     ),
-    numberedItem(3, "Accept or modify rules — violations automatically route to Stewardship campaigns"),
+    numberedItem(3, "Accept or modify rules — violations automatically route to Stewardship sprints"),
 
     heading("Step 3: API Sharing", 3),
     numberedItem(1, "Enable API sharing on Supply Chain Health, Last Mile Performance"),
@@ -990,25 +1006,27 @@ function module10() {
       ["Duration", "8-10 minutes"],
       ["Checklist Phase", "Phase 8"],
       ["Nightmares", "#2 (Address), #3 (Product Master), #7 (Compliance)"],
-      ["Components", "Qlik Stewardship campaigns, human-in-the-loop data quality"],
+      ["Components", "Qlik Stewardship sprints, human-in-the-loop data quality"],
     ]),
 
-    clarityContext("Project Qlarity Phase 2 (Analytics & Quality): the human-in-the-loop stewardship layer. The four campaigns finish what automation can't — address standardization (Nightmare #2), supplier dedup / product master (Nightmare #3), and lot-number compliance (Nightmare #7)."),
+    clarityContext("Project Qlarity Phase 2 (Analytics & Quality): the human-in-the-loop stewardship layer. The four sprints finish what automation can't — address standardization (Nightmare #2), supplier dedup / product master (Nightmare #3), and lot-number compliance (Nightmare #7)."),
 
     heading("Overview", 2),
-    para("Some data quality issues can't be fixed algorithmically — they need human judgment. Stewardship campaigns route ambiguous records to domain experts for review: fuzzy address matches, duplicate suppliers, missing product weights, and compliance gaps. This is human-in-the-loop data quality at scale."),
+    para("Some data quality issues can't be fixed algorithmically — they need human judgment. Stewardship sprints route ambiguous records to domain experts for review: fuzzy address matches, duplicate suppliers, missing product weights, and compliance gaps. This is human-in-the-loop data quality at scale."),
 
-    heading("The 4 Campaigns", 2),
+    heading("The 4 Sprints", 2),
 
-    heading("Campaign 1: Address Cleanup", 3),
+    heading("Sprint 1: Address Cleanup", 3),
     metadataTable([
-      ["Source", "silver.addresses_standardized (fuzzy match candidates with 85-90% confidence)"],
-      ["Records", "~640 address pairs (3.2% of 20,000 customer records)"],
+      ["Source", "The UNRESOLVED branch of mcg_sf_address_validate_bulk — rows the bulk geocoder could not resolve to GPS"],
+      ["Records", "~640 addresses (3.2% of 20,000 customer records)"],
       ["Assignee", "Customer Data Team (Sophie Muller)"],
-      ["Task Type", "Merge/Split decision"],
+      ["Task Type", "Correct the address so it can be geocoded"],
       ["Nightmare", "#2 — Address Catastrophe"],
     ]),
-    para('Example task: "Are these the same customer?"'),
+    ...shot("deploy-ui-stewardship"),
+    calloutBox("The sprint is created from code, not clicks: npm run stewardship:sprint. It must live in a DATA space — creating one in a shared or managed space returns 403 NOT_ALLOWED_TO_CREATE_SPRINT, which is the product enforcing the rule rather than a permissions gap. The 12-column record schema is defined in deploy/stewardship.js.", "info"),
+    para('Example task: "Can this address be corrected so it geocodes?"'),
     dataTable(
       ["Field", "Record A", "Record B"],
       [
@@ -1018,7 +1036,7 @@ function module10() {
       ]
     ),
 
-    heading("Campaign 2: Supplier Deduplication", 3),
+    heading("Sprint 2: Supplier Deduplication", 3),
     metadataTable([
       ["Source", "silver.suppliers_deduped (fuzzy match candidates)"],
       ["Records", "~80 supplier groups with 2-4 potential duplicates each"],
@@ -1027,7 +1045,7 @@ function module10() {
       ["Nightmare", "#3 — Product Master Mess"],
     ]),
 
-    heading("Campaign 3: Missing Product Weights", 3),
+    heading("Sprint 3: Missing Product Weights", 3),
     metadataTable([
       ["Source", "silver.products_harmonized (weight_kg IS NULL or = 0)"],
       ["Records", "8,200 products with missing weight data"],
@@ -1036,7 +1054,7 @@ function module10() {
       ["Nightmare", "#3 — Product Master Mess"],
     ]),
 
-    heading("Campaign 4: Lot Number Compliance", 3),
+    heading("Sprint 4: Lot Number Compliance", 3),
     metadataTable([
       ["Source", "silver.inventory_reconciled (perishable = TRUE AND lot_number IS NULL)"],
       ["Records", "15% of perishable grocery items (~2,400 records)"],
@@ -1051,23 +1069,24 @@ function module10() {
 
     heading("Demo Walk-Through", 2),
 
-    tellAnnotation("open", "I'll show you four campaigns that assign data quality tasks to the people who actually understand the data — logistics experts for addresses, procurement for suppliers, warehouse supervisors for lot numbers. Each task has context, comparison views, and one-click resolution."),
+    tellAnnotation("open", "I'll show you four sprints that assign data quality tasks to the people who actually understand the data — logistics experts for addresses, procurement for suppliers, warehouse supervisors for lot numbers. Each task has context, comparison views, and one-click resolution."),
 
-    numberedItem(1, "Navigate to Qlik Stewardship > Campaigns"),
-    numberedItem(2, "Open the Address Cleanup campaign — show the task list"),
-    numberedItem(3, "Open an address task — show side-by-side comparison of two records"),
-    numberedItem(4, "Demonstrate the Merge decision — click Merge, confirm"),
-    numberedItem(5, "Show the campaign dashboard: tasks completed, pending, accuracy trend"),
-    numberedItem(6, "Open Missing Weights campaign — show the bulk review interface"),
-    numberedItem(7, "Explain: approved corrections flow back through the Automation (Module 12) to update Silver tables"),
+    numberedItem(1, "Navigate to Data Integration > Data stewardship (the product route is literally /data-integration/sprints)"),
+    ...shot("stewardship-sprints"),
+    numberedItem(2, "Open the Address Cleanup sprint — show the task list"),
+    numberedItem(3, "Open an address record — the raw fields are visible but locked, the repaired fields are editable, and reason says why the job gave up"),
+    numberedItem(4, "Correct the address and submit"),
+    numberedItem(5, "Show the sprint dashboard: tasks completed, pending, accuracy trend"),
+    numberedItem(6, "Open Missing Weights sprint — show the bulk review interface"),
+    numberedItem(7, "Explain: corrections are picked up by MCG Address Correction — Talend Job Trigger (Module 12), which hands them to mcg_sf_address_validate_bulk to re-process"),
 
     heading("Talking Points", 2),
-    tellAnnotation("close", "Four campaigns, four different domain teams, one unified workflow. The key: corrections approved in Stewardship flow back through the Lakehouse automatically. This is a closed-loop data quality cycle — not a one-time cleanup but a continuous improvement process."),
+    tellAnnotation("close", "Four sprints, four different domain teams, one unified workflow. The key: corrections approved in Stewardship flow back through the Lakehouse automatically. This is a closed-loop data quality cycle — not a one-time cleanup but a continuous improvement process."),
     valueChain(["Assign data quality tasks to domain experts who understand the data", "resolve quality issues that automation can't handle", "continuously improve data quality instead of accepting the $3.1M annual cost of bad carrier delivery failures"]),
 
     talkingPoint("Not everything can be automated — Stewardship puts humans in the loop where judgment matters"),
     talkingPoint("Domain experts review data quality issues they actually understand (logistics people for addresses, procurement for suppliers)"),
-    talkingPoint("Campaign dashboards show progress — management sees task completion rates"),
+    talkingPoint("Sprint dashboards show progress — management sees task completion rates"),
     talkingPoint("Approved corrections feed back into the Lakehouse — the closed-loop data quality cycle"),
     talkingPoint("The alternative is ignoring these issues — $3.1M/year in carrier delivery failures from bad addresses, plus $14.8M in WISMO call costs. The full Address Catastrophe is $31M once you include customer churn"),
   ];
@@ -1086,7 +1105,7 @@ function module11() {
       ["Components", "Business Glossary, term definitions, data product linkage"],
     ]),
 
-    clarityContext("Project Qlarity Phase 2 (Analytics & Quality): the shared-vocabulary backbone. A single agreed definition for every term — phantom inventory, Trust Score, WISMO — links each of the Seven Nightmares to the data products and stewardship campaigns that resolve it."),
+    clarityContext("Project Qlarity Phase 2 (Analytics & Quality): the shared-vocabulary backbone. A single agreed definition for every term — phantom inventory, Trust Score, WISMO — links each of the Seven Nightmares to the data products and stewardship sprints that resolve it."),
 
     heading("Overview", 2),
     para("The Business Glossary provides a single source of truth for MCG terminology. When someone says 'phantom inventory', everyone means the same thing. Terms link to data products, datasets, and nightmares — creating a connected governance layer across the platform."),
@@ -1138,17 +1157,19 @@ function module12() {
     clarityContext("Project Qlarity Phase 1 → Phase 2: turning monitoring into action. The pipeline-health summary and cold-chain alert operationalize Phase 1 monitoring (Nightmares #4 and #6), while the Stewardship → Talend → Lakehouse correction loop closes Phase 2 data-quality remediation."),
 
     heading("Overview", 2),
-    para("Automations close the loop between data quality detection and action. When a cold chain exceedance is detected, an alert fires to Teams. When a pipeline fails, the engineering team is notified. When a stewardship task is approved, a Talend job processes the correction. No manual intervention required."),
+    para("Automations close the loop between data quality detection and action. When a cold chain exceedance is detected, an alert fires to Teams. When a pipeline fails, the engineering team is notified. When a steward corrects an address, the correction is surfaced for the Talend job to apply. No manual intervention required."),
+    calloutBox("All five automations are deployed with real block graphs and run green — they are not templates. The graphs are authored from version-controlled code by npm run automations:workspaces, which also creates the API Key connection they need. Verify with a Run now on any of them.", "success"),
 
     heading("The 5 Automations", 2),
+    ...shot("automations-list"),
     dataTable(
       ["Automation", "Trigger", "Action", "Target"],
       [
         ["Daily App Reload", "Schedule: 06:00 UTC", "Reload both analytics apps", "Qlik Analytics"],
         ["Cold Chain Alert", "Every 5 min: temp > 8 C for 15+ min", "Post Adaptive Card to Teams", "#mcg-cold-chain-alerts"],
         ["Pipeline Health Summary", "Schedule: 07:00 UTC daily", "Post health summary to Teams", "#mcg-data-engineering"],
-        ["WISMO Rate Alert", "WISMO rate > 40% for any carrier", "Post alert to Teams", "#mcg-customer-ops"],
-        ["Address Correction", "Stewardship task approved", "Run Talend Address Validation Job", "Silver Lakehouse table"],
+        ["Stewardship Sprint Summary", "Schedule: 07:00 UTC daily", "Read the Address Cleanup sprint summary", "Run title / digest"],
+        ["Address Correction — Talend Job Trigger", "Schedule (every 30 min)", "Read steward-corrected records from the Address Cleanup sprint", "Hand-off to mcg_sf_address_validate_bulk"],
       ]
     ),
 
@@ -1173,17 +1194,20 @@ function module12() {
     expectedBox("Teams channel receives an Adaptive Card showing a temperature exceedance with shipment details, estimated $ exposure, and links to the Qlik Analytics dashboard and SOP document."),
 
     heading("Address Correction Loop (Advanced)", 3),
+    ...shot("automation-address-correction"),
     numberedItem(1, "Show the Stewardship-to-Talend-to-Lakehouse loop:"),
-    para("  Steward approves address merge in campaign > Automation triggers > Talend Job runs address validation > Corrected record written to silver.addresses_standardized > Gold tables refresh > Predict model improves", { indent: true }),
+    para("  Steward corrects an address in the Address Cleanup sprint > the automation reads the corrected records > mcg_sf_address_validate_bulk re-runs them and writes the GPS-resolved rows to S3 > they land in the Iceberg table silver.addresses_geocoded > the silver transform joins them onto silver.addresses_standardized > Gold refreshes > the Predict model improves", { indent: true }),
+    calloutBox("Why the automation surfaces records rather than consuming them: consuming a record means ‘this correction is handled’, and at that point in the flow Talend has not applied it yet. Acknowledging first would let a Talend failure silently lose a steward’s work, so the Talend job owns the consume call. The block is present in the graph but deliberately disabled.", "info"),
     calloutBox("Talking point: This is the closed-loop data quality cycle. Detection (profiling) > Notification (alert) > Review (stewardship) > Correction (Talend job) > Validation (Trust Score). Fully automated except the human judgment step."),
 
     heading("Talking Points", 2),
-    tellAnnotation("close", "Five automations, zero code, complete closed-loop action. The cold chain alert alone would have prevented the $2.48M TransFrio spoilage. The address correction automation feeds Stewardship decisions back into the Lakehouse automatically. This is how you turn insights into outcomes."),
+    tellAnnotation("close", "Five automations, all running, complete closed-loop action. The cold chain alert alone would have prevented the $2.48M TransFrio spoilage. The address correction automation feeds Stewardship decisions back into the Lakehouse automatically. This is how you turn insights into outcomes."),
     valueChain(["Automate the response to critical operational events", "eliminate the gap between detection and action", "save $2.48M by catching cold chain issues on Day 1 instead of Day 7"]),
 
     talkingPoint("Automations turn insights into action — the cold chain alert would have caught TransFrio on Day 1"),
     talkingPoint("Block-based builder requires no code — business users can create automations"),
     talkingPoint("The address correction loop is unique: Stewardship > Talend > Lakehouse > Gold > Predict"),
+    talkingPoint("The block graphs are code, not clicks — npm run automations:workspaces authors and pushes all five"),
     talkingPoint("Pipeline health summary gives engineering a daily digest — no more silent failures"),
   ];
 }
@@ -1480,7 +1504,7 @@ function module16() {
       ["Components", "Data Quality Agent (a Qlik Answers capability), Silver datasets, Qlik Stewardship"],
     ]),
 
-    clarityContext("Project Qlarity Phase 2 (Analytics & Quality): data quality as a conversation for the steward. The DQ rules that gate the Silver layer are assessed, authored, and mapped in plain language, then feed the Stewardship campaigns (Module 10)."),
+    clarityContext("Project Qlarity Phase 2 (Analytics & Quality): data quality as a conversation for the steward. The DQ rules that gate the Silver layer are assessed, authored, and mapped in plain language, then feed the Stewardship sprints (Module 10)."),
 
     heading("Overview", 2),
     para("The Data Quality Agent supports data stewards in assessing, defining, and enforcing data-quality rules conversationally: assess DQ across datasets, create/manage/map DQ rules, and run DQ metric calculations. It bridges business and technical users — a steward describes the rule in business terms, and the agent expresses, maps, and measures it. In the MCG demo the steward works the Silver layer: silver.inventory_reconciled, silver.addresses_standardized, silver.products_harmonized."),
@@ -1508,10 +1532,10 @@ function module16() {
     expectedBox("The agent maps the rule across the relevant Silver datasets and runs the DQ metric calculation, returning the completeness score and the violating record set."),
 
     heading("Step 4: Enforce & Route to Stewardship", 3),
-    numberedItem(1, "Send the violations to the Lot Number Compliance campaign (Module 10) — the agent-authored rule becomes the enforced gate, and the human-judgment cases go to warehouse supervisors"),
-    calloutBox("Talking point: the steward wrote a data-quality rule in one sentence, saw exactly how many records break it, and routed the rest to a human-in-the-loop campaign — the closed-loop quality cycle, driven from the steward's own language.", "info"),
+    numberedItem(1, "Send the violations to the Lot Number Compliance sprint (Module 10) — the agent-authored rule becomes the enforced gate, and the human-judgment cases go to warehouse supervisors"),
+    calloutBox("Talking point: the steward wrote a data-quality rule in one sentence, saw exactly how many records break it, and routed the rest to a human-in-the-loop sprint — the closed-loop quality cycle, driven from the steward's own language.", "info"),
 
-    tellAnnotation("close", "A steward assessed a Silver dataset, wrote a rule in plain language, saw the real violation count, mapped it across datasets, and routed the ambiguous cases to a campaign — start to finish, without a hand-off to engineering."),
+    tellAnnotation("close", "A steward assessed a Silver dataset, wrote a rule in plain language, saw the real violation count, mapped it across datasets, and routed the ambiguous cases to a sprint — start to finish, without a hand-off to engineering."),
     interactionPrompt("Which of your data-quality rules live only in someone's head today — and what would it take to make them enforced instead?"),
     valueChain(["Let a steward assess data quality across datasets in plain language", "turn a business rule into an enforced, mapped DQ check with live violation counts", "route what's left to human-in-the-loop stewardship"]),
 
@@ -1520,7 +1544,7 @@ function module16() {
     talkingPoint("It bridges business and technical: the steward states the rule, the agent expresses, maps, and measures it"),
     talkingPoint("Assess, define, map, and run DQ metrics — all conversationally, on the Silver layer"),
     talkingPoint("Every rule is grounded in a real violation count before it is committed — no abstract rules"),
-    talkingPoint("Agent-authored rules feed the Stewardship campaigns (Module 10) — the closed-loop data quality cycle"),
+    talkingPoint("Agent-authored rules feed the Stewardship sprints (Module 10) — the closed-loop data quality cycle"),
 
     heading("Troubleshooting", 2),
     dataTable(
@@ -1613,7 +1637,7 @@ function module18() {
       ["Duration", "10-12 minutes"],
       ["Checklist Phase", "Phase 10 (Automations) — Agentic Data Engineering"],
       ["Nightmares", "#2 (Address Catastrophe), #6 (Carrier Data Black Hole)"],
-      ["Components", "Talend Agentic Routes (LLM integration, RAG, agentic orchestration), the Salesforce address-validation job"],
+      ["Components", "Talend Agentic Routes (LLM integration, RAG, agentic orchestration), the Salesforce address job mcg_sf_address_validate_bulk"],
     ]),
 
     clarityContext("Project Qlarity Phase 2 (Analytics & Quality): AI inside the pipeline task itself. The existing Salesforce address-validation job gains an LLM-assisted correction step, so the fix happens inside the route — not in a bolt-on app after it."),
@@ -1621,11 +1645,11 @@ function module18() {
     calloutBox("Preview / roadmap: Talend Agentic Routes are a Qlik internal preview (June 2026) — position as forward-looking, and confirm availability for the customer's edition before committing.", "warning"),
 
     heading("Overview", 2),
-    para("Talend Agentic Routes extend Qlik Talend Cloud for AI-native workflows in three ways: (a) LLM integration in data tasks — cloud LLMs (OpenAI, Anthropic Claude, Google Gemini, Amazon Bedrock) and on-prem models (Ollama, Mistral, Gemma 3, Phi 4); (b) RAG pipelines writing to vector targets (Pinecone, MongoDB, Snowflake, Databricks, Milvus, Oracle); and (c) agentic orchestration — event-driven agent orchestration, conversational AI, and extensible tool + MCP client support. This puts sentiment analysis, entity extraction, content classification, and AI-assisted data quality inside pipeline tasks. The MCG surface is the existing Talend job: Salesforce address validation + Nominatim geocoding + Qlik Stewardship routing."),
+    para("Talend Agentic Routes extend Qlik Talend Cloud for AI-native workflows in three ways: (a) LLM integration in data tasks — cloud LLMs (OpenAI, Anthropic Claude, Google Gemini, Amazon Bedrock) and on-prem models (Ollama, Mistral, Gemma 3, Phi 4); (b) RAG pipelines writing to vector targets (Pinecone, MongoDB, Snowflake, Databricks, Milvus, Oracle); and (c) agentic orchestration — event-driven agent orchestration, conversational AI, and extensible tool + MCP client support. This puts sentiment analysis, entity extraction, content classification, and AI-assisted data quality inside pipeline tasks. The MCG surface is the existing Talend job mcg_sf_address_validate_bulk: address standardization, bulk geocoding, and a GPS routing gate that sends unresolved rows to a Qlik Stewardship sprint."),
     calloutBox("The LLM step runs inside the pipeline task, so the AI enrichment inherits the pipeline's scheduling, lineage, and governance — it is a data step, not a separate application. Choose cloud or on-prem models per your data-residency rules.", "info"),
 
     heading("Demo Methodology: Tell → Show → Tell", 2),
-    limbicOpening("11% of MCG's Salesforce addresses are malformed and a further 6% are truncated by a legacy 30-character field — the root of $3.1M a year in delivery failures. The existing address job validates and geocodes, but the messy, half-truncated records still fall out to a human queue. An LLM step inside the same route can propose the corrected address before it ever reaches that queue.", "Case Study"),
+    limbicOpening("11% of MCG's Salesforce addresses are malformed and a further 6% are truncated by a legacy 30-character field — the root of $3.1M a year in delivery failures. The existing address job repairs what it can and bulk-geocodes the batch, but whatever it cannot resolve to GPS still falls out to a human queue. An LLM step inside the same route can propose the corrected address before it ever reaches that queue.", "Case Study"),
     interactionPrompt("Where in your pipelines are you routing messy records to a human queue that an in-line AI step could clear first?"),
 
     heading("Demo Walk-Through", 2),
@@ -1634,12 +1658,13 @@ function module18() {
 
     heading("Step 1: Open the Existing Address Job", 3),
     numberedItem(1, "Open the Salesforce Address Validation job (Talend) and show the existing flow:"),
-    para("  Salesforce source → address validation → Nominatim geocoding → Qlik Stewardship routing", { indent: true }),
+    para("  Salesforce Contacts > AddressStandardizer (repair + score) > BulkGeocoder (one bulk OSM Nominatim call for the whole batch) > routing gate on GPS > S3/Iceberg silver.addresses_geocoded, or the Address Cleanup stewardship sprint", { indent: true }),
+    calloutBox("Five subjobs, all free: the AddressStandardizer and BulkGeocoder custom Java routines replace the subscription-only tAddressRowStandardize / tAddressRowValidate / tGeocode chain — no Talend Data Quality subscription, no licensed postal reference data, no API key. Full build spec: deploy/talend/BUILD_BULK_ADDRESS_JOB.md; run npm run talend:zip for the Studio import bundle.", "success"),
 
     heading("Step 2: Add an LLM Integration Step", 3),
     numberedItem(1, "Insert an LLM component before the Stewardship route; configure it against a model — a cloud LLM (Anthropic Claude, OpenAI, Google Gemini, Amazon Bedrock) or an on-prem model (Ollama, Mistral, Gemma 3, Phi 4) if data residency requires it"),
     promptBox("Given this raw Salesforce address, return the corrected, standardized address and a confidence score. Raw: 'Keizersgr 482 4B, 1017EJ Amsterd'", "LLM step prompt (inside the data task)"),
-    expectedBox("The LLM returns a normalized address (Keizersgracht 482, Apt 4B, 1017 EJ, Amsterdam) with a confidence score. High-confidence corrections flow straight through; low-confidence ones still route to the Address Cleanup stewardship campaign (Module 10)."),
+    expectedBox("The LLM returns a normalized address (Keizersgracht 482, Apt 4B, 1017 EJ, Amsterdam) with a confidence score. High-confidence corrections flow straight through; low-confidence ones still route to the Address Cleanup stewardship sprint (Module 10)."),
 
     heading("Step 3: Ground with RAG (Optional)", 3),
     numberedItem(1, "For records needing reference context, add a RAG lookup against a vector target (Pinecone, MongoDB, Snowflake, Databricks, Milvus, or Oracle) holding known-good postal references — so a correction cites a source instead of guessing"),
@@ -1649,7 +1674,7 @@ function module18() {
     numberedItem(2, "Extensible tool + MCP client support lets the route call out to other governed tools when a record needs more than a single model call"),
 
     heading("Step 5: Close the Loop", 3),
-    numberedItem(1, "Corrected addresses land in silver.addresses_standardized and feed the Gold products and the Late Delivery predictor (Module 8)"),
+    numberedItem(1, "Corrected addresses land in the Iceberg table silver.addresses_geocoded, which the silver transform joins onto silver.addresses_standardized — feeding the Gold products and the Late Delivery predictor (Module 8)"),
     numberedItem(2, "The human only sees the genuinely ambiguous cases — the in-line AI clears the rest"),
     calloutBox("Accuracy note: don't promise a specific correction-accuracy figure — route high-confidence fixes through and escalate the rest. If a number is needed for a given customer, capture it as a [placeholder] and validate before quoting it.", "warning"),
 
@@ -1712,7 +1737,8 @@ async function main() {
   await ensureQlikLogo();
 
   for (const mod of modules) {
-    const sections = mod.fn();
+    // shot() returns an array (image + caption), so flatten one level.
+    const sections = mod.fn().flat();
     const doc = buildQlikDocument(mod.title, sections, QLIK);
     const outPath = path.join(OUT_DIR, `${mod.name}.docx`);
     await saveDocument(doc, outPath);

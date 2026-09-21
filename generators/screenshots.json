@@ -1,0 +1,268 @@
+{
+  "_comment": [
+    "Capture manifest for live-tenant screenshots embedded in the generated guides,",
+    "demo scripts and decks.",
+    "",
+    "  slug        -> generators/assets/screenshots/<slug>.png",
+    "  url         -> absolute, or a path resolved against tenantUrl",
+    "  placeholder -> matched against the existing screenshot('...') description strings in",
+    "                 gen-setup-guide.js / gen-creation-guide.js so those 31 call sites need",
+    "                 no edits. Match is on a normalized substring, not exact equality.",
+    "  waitFor     -> optional CSS selector to wait for before capturing",
+    "  skip        -> true when the screen does not exist in this tenant yet; the generators",
+    "                 fall back to the original text callout via their fs.existsSync guard.",
+    "",
+    "Refresh with:  node generators/capture-tenant-screenshots.js --login   (once)",
+    "               node generators/capture-tenant-screenshots.js"
+  ],
+  "tenantUrl": "https://qppqtcenterprise.us.qlikcloud.com",
+  "viewport": {
+    "width": 1600,
+    "height": 1000,
+    "deviceScaleFactor": 2
+  },
+  "settleMs": 2500,
+  "shots": [
+    {
+      "slug": "di-home",
+      "url": "/data-integration/home",
+      "caption": "Qlik Talend Data Integration home",
+      "placeholder": "Deploy UI landing page at localhost:3939"
+    },
+    {
+      "slug": "stewardship-sprints",
+      "url": "/data-integration/sprints",
+      "caption": "Data Stewardship \u2014 the Address Cleanup sprint, created by npm run stewardship:sprint",
+      "placeholder": "Stewardship sprint setup screen showing the candidate record filter and reviewer assignment"
+    },
+    {
+      "slug": "automations-list",
+      "url": "/data-integration/automations",
+      "caption": "The five MCG automations, each with a real block graph",
+      "placeholder": "Automation builder in Qlik Cloud showing a multi-step automation flow with trigger, condition, and action blocks"
+    },
+    {
+      "slug": "automation-address-correction",
+      "url": "/data-integration/automations",
+      "caption": "MCG Address Correction \u2014 Talend Job Trigger: Start \u2192 FetchStewardRecords \u2192 MarkRecordsConsumed",
+      "placeholder": "Address Correction Loop automation showing all 8 blocks from stewardship trigger through Gold refresh"
+    },
+    {
+      "slug": "automation-daily-reload",
+      "url": "/data-integration/automations",
+      "caption": "MCG Daily App Reload \u2014 chained reloads of both analytics apps",
+      "placeholder": "Automation builder showing the 5-block Daily App Reload flow"
+    },
+    {
+      "slug": "automation-cold-chain",
+      "url": "/data-integration/automations",
+      "caption": "MCG Cold Chain Alert \u2192 Teams",
+      "placeholder": "Cold Chain Alert automation showing all 6 blocks with condition and loop logic"
+    },
+    {
+      "slug": "connections",
+      "url": "/data-integration/connections/all",
+      "caption": "Data connections \u2014 PostgreSQL, Salesforce, Kafka, S3, Athena",
+      "placeholder": "Data Integration \u2192 Create connection dialog with PostgreSQL selected"
+    },
+    {
+      "slug": "connection-postgres",
+      "url": "/data-integration/connections/all",
+      "caption": "The MCG WMS PostgreSQL connection",
+      "placeholder": "PostgreSQL connection dialog in Qlik Cloud with the connection settings filled in"
+    },
+    {
+      "slug": "connection-salesforce",
+      "url": "/data-integration/connections/all",
+      "caption": "Salesforce CRM connection \u2014 Contact, MCG_Order__c, MCG_Product__c",
+      "placeholder": "Salesforce connector configuration in Qlik Cloud showing the object selection screen"
+    },
+    {
+      "slug": "connection-kafka",
+      "url": "/data-integration/connections/all",
+      "caption": "Kafka connection for the cold-chain and carrier-event topics",
+      "placeholder": "Kafka connection settings in Qlik Cloud with bootstrap servers and topic configuration"
+    },
+    {
+      "slug": "pipeline-projects",
+      "url": "/data-integration/projects/all",
+      "caption": "The two declarative pipeline projects, imported from version-controlled YAML",
+      "placeholder": "Pipeline configuration for inventory_positions showing CDC settings and target lakehouse"
+    },
+    {
+      "slug": "catalog",
+      "url": "/data-integration/catalog/all",
+      "caption": "The Qlik Talend catalog across bronze, silver and gold",
+      "placeholder": "Timestamp normalization data flow showing bronze.warehouse_events transformed"
+    },
+    {
+      "slug": "data-products",
+      "url": "/data-integration/marketplace/manager",
+      "caption": "The two governed gold data products",
+      "placeholder": "Data Product registration screen showing a gold table being registered"
+    },
+    {
+      "slug": "data-products-detail",
+      "url": "/data-integration/marketplace/manager",
+      "caption": "Data product detail \u2014 AI-generated description, semantic types, API sharing",
+      "placeholder": "Data Product registration showing AI-generated description, semantic types, and API sharing toggle"
+    },
+    {
+      "slug": "data-quality",
+      "url": "/data-integration/quality",
+      "caption": "Data quality \u2014 profiling, trust scores and rule enforcement",
+      "placeholder": "Order-to-Delivery Timeline data flow showing 4 Silver source joins"
+    },
+    {
+      "slug": "lakehouse-clusters",
+      "url": "/data-integration/lakehouse-clusters/all",
+      "caption": "Open Lakehouse clusters \u2014 Apache Iceberg on S3",
+      "placeholder": "Lakehouse creation dialog showing three schemas: bronze, silver, gold"
+    },
+    {
+      "slug": "monitor-views",
+      "url": "/data-integration/monitoring/all",
+      "caption": "Monitor views \u2014 task and pipeline health",
+      "placeholder": "Table Recipe builder showing Silver inputs, transformation logic, and Gold output"
+    },
+    {
+      "slug": "data-marketplace",
+      "url": "/data-integration/marketplace/consumer",
+      "caption": "The data marketplace \u2014 how consumers discover governed products",
+      "placeholder": "Salesforce pipeline showing Contact object selection and incremental sync settings"
+    },
+    {
+      "slug": "console-api-keys",
+      "url": "/console/api-keys",
+      "caption": "Qlik Cloud \u2192 API keys",
+      "placeholder": "Qlik Cloud Settings \u2192 API keys page with the 'Create New' button highlighted"
+    },
+    {
+      "slug": "console-api-keys-create",
+      "url": "/console/api-keys",
+      "caption": "Generating a tenant API key",
+      "placeholder": "Qlik Cloud tenant settings page showing the API key generation interface"
+    },
+    {
+      "slug": "console-spaces",
+      "url": "/console/spaces",
+      "caption": "The three MCG spaces \u2014 Development (shared), Published (managed), DI (data)",
+      "placeholder": "Space creation dialog in Qlik Cloud with 'Shared' selected"
+    },
+    {
+      "slug": "console-gateways",
+      "url": "/console/data-gateways",
+      "caption": "Data Movement Gateway registration status",
+      "placeholder": "Qlik Cloud Administration \u2192 Data Gateways page showing the registered gateway"
+    },
+    {
+      "slug": "glossary",
+      "url": "/catalog/glossaries",
+      "caption": "The MCG business glossary",
+      "placeholder": "Glossary term creation screen in Qlik Cloud showing a term being defined"
+    },
+    {
+      "slug": "knowledge-base",
+      "url": "/knowledgebases",
+      "caption": "The Qlik Answers knowledge base over the 25 operational documents",
+      "placeholder": "Knowledge Base document upload screen showing multiple .docx files"
+    },
+    {
+      "slug": "apps-home",
+      "url": "/catalog?resourceTypes=app",
+      "caption": "The two MCG analytics apps",
+      "placeholder": "App import dialog in Qlik Cloud showing the file selection prompt"
+    },
+    {
+      "slug": "app-supply-chain",
+      "url": "/sense/app/330f03eb-436e-4d43-aa73-9991990d1bc6",
+      "caption": "MCG Supply Chain Operations, in the MCG dark theme",
+      "placeholder": "MCG Supply Chain Operations app with the dark theme applied"
+    },
+    {
+      "slug": "app-delivery-experience",
+      "url": "/sense/app/2637a115-9347-4801-bea6-7125b934e7a4",
+      "caption": "MCG Delivery & Customer Experience",
+      "placeholder": "Kafka streaming pipeline for cold chain topic showing real-time message ingestion"
+    },
+    {
+      "slug": "predict",
+      "url": "/automl/experiments",
+      "caption": "Qlik Predict experiments",
+      "placeholder": "Qlik Predict model training results showing feature importance chart"
+    },
+    {
+      "slug": "deploy-ui-wizard",
+      "url": "http://localhost:3939/",
+      "caption": "The MCG deploy console \u2014 11 setup steps, Stewardship at step 11",
+      "placeholder": "Deploy UI landing page at localhost:3939 showing the MCG Deployment Wizard",
+      "local": true
+    },
+    {
+      "slug": "deploy-ui-stewardship",
+      "url": "http://localhost:3939/",
+      "caption": "The Stewardship wizard page \u2014 sprint settings and the 12-column record schema",
+      "placeholder": "Stewardship sprint setup screen",
+      "local": true,
+      "clickNav": "Stewardship"
+    },
+    {
+      "slug": "docker-containers",
+      "url": "",
+      "caption": "Local stack containers running",
+      "placeholder": "Docker Desktop showing all MCG containers in 'Running' state",
+      "skip": true,
+      "skipReason": "Desktop app, not a web page \u2014 cannot be captured by the browser pipeline."
+    },
+    {
+      "slug": "confluent-control-center",
+      "url": "http://localhost:9021/",
+      "caption": "Confluent Control Center \u2014 the two MCG topics",
+      "placeholder": "Confluent Control Center at localhost:9021 showing the Topics page",
+      "local": true,
+      "skip": true,
+      "skipReason": "Only available while the local Kafka stack is running."
+    },
+    {
+      "slug": "teams-webhook",
+      "url": "",
+      "caption": "Teams incoming webhook configuration",
+      "placeholder": "Teams channel connector settings showing Incoming Webhook configuration",
+      "skip": true,
+      "skipReason": "Microsoft Teams is an OAuth connector and is not connected in this tenant yet."
+    },
+    {
+      "slug": "data-product-overview",
+      "url": "/data-product/6aaab01567f64bdeec66a5f5#overview",
+      "title": "Data product \u2014 Trust Score and AI-generated description"
+    },
+    {
+      "slug": "data-product-lineage",
+      "url": "/data-product/6aaab01567f64bdeec66a5f5#lineage",
+      "title": "Data product \u2014 lineage"
+    },
+    {
+      "slug": "data-product-impact",
+      "url": "/data-product/6aaab01567f64bdeec66a5f5#impact-analysis",
+      "title": "Data product \u2014 impact analysis"
+    },
+    {
+      "slug": "data-product-quality",
+      "url": "/data-product/6aaab01567f64bdeec66a5f5#data-quality",
+      "title": "Data product \u2014 data quality"
+    },
+    {
+      "slug": "predict-cold-chain",
+      "url": "/automl/experiment/1c67fe5a-631c-45ef-ab2b-ab7b5d66ea18/model",
+      "title": "Qlik Predict \u2014 cold chain exceedance"
+    },
+    {
+      "slug": "predict-late-delivery",
+      "url": "/automl/experiment/03bc08e4-76de-452f-84a6-0bf8e4740b29/model",
+      "title": "Qlik Predict \u2014 late delivery risk, permutation importance"
+    }
+  ],
+  "renderTimeoutMs": 45000,
+  "minTextLength": 200,
+  "minBytes": 25000
+}

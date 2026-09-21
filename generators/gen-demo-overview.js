@@ -51,6 +51,8 @@ pptx.author = "Qlik";
 pptx.company = "Qlik";
 pptx.title = "Project Qlarity — MCG Qlik Cloud Demo — Four Stories";
 
+const deckMedia = require("./lib/deck-media");
+
 let slideNum = 0;
 
 // ─── HELPERS ───────────────────────────────────────
@@ -367,7 +369,7 @@ stories.forEach((s, i) => {
     "2 Gold Data Products",
     "Trust Score & Lineage",
     "Business Glossary (25 terms)",
-    "4 Stewardship Campaigns",
+    "4 Stewardship Sprints",
   ], C.lightGreen);
 
   flowArrow(6.8);
@@ -424,7 +426,7 @@ const agendaItems = [
   },
   {
     num: "2", title: "The Governance Story", color: C.qlikGreen,
-    desc: "Data Products, Lineage, Impact Analysis, Trust Score, Data Profiling, Stewardship Campaigns, Business Glossary, Data Marketplace",
+    desc: "Data Products, Lineage, Impact Analysis, Trust Score, Data Profiling, Stewardship Sprints, Business Glossary, Data Marketplace",
     components: "Data Products • Lineage • Impact Analysis • Trust Score • Profiling • Stewardship • Glossary • Data Marketplace",
   },
   {
@@ -874,7 +876,7 @@ const profItems = [
   "Column-level quality metrics & distributions",
   "Pattern detection (e.g., truncated addresses)",
   "Null/blank/outlier identification",
-  "Supports SQL DBs, QVDs, CSV, XLSX, Snowflake",
+  "Supports SQL DBs, CSV, XLSX, Snowflake, Iceberg",
   "MCG use: Profile bronze.contacts_raw → show 11% format issues, 6% truncation at 30 chars",
 ];
 profItems.forEach((item, i) => {
@@ -884,16 +886,16 @@ profItems.forEach((item, i) => {
   });
 });
 
-// ─── Slide: Stewardship Campaigns ───
+// ─── Slide: Stewardship Sprints ───
 slide = contentSlide("Stewardship — Human-in-the-Loop Data Quality", C.qlikGreen);
 
-slide.addText("Crowdsource data corrections to domain experts with tracked campaigns", {
+slide.addText("Crowdsource data corrections to domain experts with tracked sprints", {
   x: 0.5, y: 0.85, w: 12, h: 0.4,
   fontSize: 14, color: C.medGray, fontFace: FONT, italic: true,
 });
 
-const campaigns = [
-  { name: "Address Cleanup", source: "silver.addresses_standardized", filter: "quality_score < 0.7", owner: "Customer Data Team", nightmare: "#2", records: "~2,000" },
+const sprints = [
+  { name: "Address Cleanup", source: "mcg_sf_address_validate_bulk", filter: "no GPS resolved", owner: "Customer Data Team", nightmare: "#2", records: "~640" },
   { name: "Supplier Dedup", source: "silver.suppliers_deduped", filter: "confidence < 0.9", owner: "Procurement Team", nightmare: "#3", records: "~160" },
   { name: "Missing Weights", source: "silver.products_harmonized", filter: "weight_kg IS NULL", owner: "Product Data Team", nightmare: "#3", records: "~8,200" },
   { name: "Lot Number Compliance", source: "silver.inventory_reconciled", filter: "perishable AND lot IS NULL", owner: "Quality Team", nightmare: "#7", records: "~15%" },
@@ -901,14 +903,14 @@ const campaigns = [
 
 const campHeaders = [
   [
-    { text: "Campaign", options: { bold: true, color: C.white, fill: { color: C.qlikGreen }, fontSize: 10 } },
+    { text: "Sprint", options: { bold: true, color: C.white, fill: { color: C.qlikGreen }, fontSize: 10 } },
     { text: "Data Source", options: { bold: true, color: C.white, fill: { color: C.qlikGreen }, fontSize: 10 } },
     { text: "Filter", options: { bold: true, color: C.white, fill: { color: C.qlikGreen }, fontSize: 10 } },
     { text: "Owner", options: { bold: true, color: C.white, fill: { color: C.qlikGreen }, fontSize: 10 } },
     { text: "Nightmare", options: { bold: true, color: C.white, fill: { color: C.qlikGreen }, fontSize: 10, align: "center" } },
   ],
 ];
-const campRows = campaigns.map((c, i) => [
+const campRows = sprints.map((c, i) => [
   { text: c.name, options: { fontSize: 10, color: C.qlikBlue, fill: { color: i % 2 === 0 ? C.lightBg : C.white }, bold: true } },
   { text: c.source, options: { fontSize: 10, color: C.darkText, fill: { color: i % 2 === 0 ? C.lightBg : C.white } } },
   { text: c.filter, options: { fontSize: 10, color: C.darkText, fill: { color: i % 2 === 0 ? C.lightBg : C.white } } },
@@ -1022,7 +1024,7 @@ yPos = recommendBox(slide, "Lineage + Impact Analysis + Trust Score", [
 ], yPos, C.lightGreen);
 
 yPos = recommendBox(slide, "Stewardship + Glossary", [
-  "Open Address Cleanup campaign → show steward's review queue (ambiguous matches < 90% confidence)",
+  "Open Address Cleanup sprint → show the steward's queue (rows the bulk geocoder could not resolve to GPS)",
   "Open 'Phantom Inventory' glossary term → show definition, owner, linked datasets, related nightmares",
 ], yPos, C.lightGreen);
 
@@ -1211,7 +1213,7 @@ const autoItems = [
   "MCG Daily App Reload (06:00 UTC)",
   "Cold Chain Alert → Teams (every 5 min)",
   "Pipeline Health Summary → Teams (07:00 UTC)",
-  "WISMO Rate Alert → Customer Ops",
+  "Stewardship Sprint Summary → daily digest",
   "Webhook triggers for external events",
   "100+ connector blocks (Teams, Slack, SMTP, REST, ...)",
 ];
@@ -1775,7 +1777,7 @@ slide.addText("MCG surface — the Salesforce address job", {
   x: 0.7, y: 4.87, w: 11.9, h: 0.32,
   fontSize: 13, color: C.qlikLightGreen, fontFace: FONT, bold: true,
 });
-slide.addText("Today's Talend job validates Salesforce addresses, geocodes via Nominatim, and routes exceptions to Qlik Stewardship. An agentic route adds an LLM-assisted address-correction step inside the same job — the model proposes a fix, a steward approves it.", {
+slide.addText("Today's Talend job repairs and scores every Salesforce address, bulk-geocodes the batch against OSM Nominatim, and routes on one gate — GPS resolved goes to Iceberg, the rest to a Qlik Stewardship sprint. An agentic route adds an LLM-assisted correction step inside the same job, before the record ever reaches that queue.", {
   x: 0.7, y: 5.2, w: 11.9, h: 0.55,
   fontSize: 11, color: C.darkText, fontFace: FONT,
 });
@@ -1922,6 +1924,40 @@ slide.addText("Qlik Cloud  •  Full Stack  •  Integrations  •  Governance  
 // ═══════════════════════════════════════════════════
 //  SAVE
 // ═══════════════════════════════════════════════════
+
+// --- Proof slides: the deployed environment, captured live -------------------
+// Skipped entirely when a screenshot has not been captured, so the deck never
+// shows an empty frame. Refresh: node generators/capture-tenant-screenshots.js
+function proofSlide(title, slug, subtitle) {
+  const hit = deckMedia.resolveShot(slug);
+  if (!hit) return false;
+  const slide = contentSlide(title, C.qlikTeal || C.qlikGreen);
+  if (subtitle) {
+    slide.addText(subtitle, {
+      x: 0.6, y: 0.82, w: 12.1, h: 0.32,
+      fontSize: 11, color: C.darkText, fontFace: FONT,
+    });
+  }
+  deckMedia.screenshotCard(pptx, slide, hit.path, {
+    x: 1.55, y: 1.32, w: 10.2, maxH: 5.2, caption: hit.caption, colors: C,
+  });
+  return true;
+}
+
+function renderProofs(list) {
+  let shown = 0;
+  for (const [t, slug, sub] of list) if (proofSlide(t, slug, sub)) shown++;
+  if (shown) console.log(`    ${shown} proof slide(s) from captured screenshots`);
+}
+
+renderProofs([
+    ['Deployed: Stewardship Sprint', 'stewardship-sprints', 'The Address Cleanup sprint - created over the API, fed by the Talend routing gate.'],
+    ['Deployed: Automations', 'automations-list', 'All five MCG automations, each with a real block graph.'],
+    ['Deployed: Data Products', 'data-products', 'The two governed gold data products.'],
+    ['Deploy Console', 'deploy-ui-wizard', 'One repository, one command - or 11 guided steps.'],
+]);
+
+
 const outPath = path.join(__dirname, "..", "MCG_Demo_Overview_Four_Stories.pptx");
 pptx.writeFile({ fileName: outPath }).then(() => {
   console.log(`✅ PowerPoint saved: ${outPath} (${slideNum} slides)`);

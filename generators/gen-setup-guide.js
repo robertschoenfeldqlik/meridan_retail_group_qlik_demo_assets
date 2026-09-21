@@ -4,15 +4,16 @@
 // covering the complete MCG demo environment setup process.
 // =============================================================================
 // Assumes the user already has .qvf files, generated documents, and access
-// to a Qlik Cloud tenant. Screenshots are represented as descriptive callout
-// placeholders for the user to replace with actual screenshots later.
+// to a Qlik Cloud tenant. Screenshots are resolved from generators/screenshots.json
+// against captured PNGs in assets/screenshots/; any shot not yet captured falls
+// back to its original descriptive callout, so the document always builds.
 //
 // Usage:  node generators/gen-setup-guide.js
 // Output: documents/MCG_Setup_Guide.docx
 // =============================================================================
 
 const {
-  buildQlikDocument, saveDocument,
+  buildQlikDocument, saveDocument, figure,
   metadataTable, dataTable,
   heading, para, labelValue, calloutBox, numberedItem,
   useQlikTheme,
@@ -23,6 +24,8 @@ const path = require("path");
 // Switch to Qlik theme (Inter font, Qlik Colors 2024)
 useQlikTheme();
 
+const deckMedia = require("./lib/deck-media");
+
 const OUT_DIR = path.join(__dirname, "..", "documents");
 
 // ─── HELPER: Page break paragraph ───
@@ -30,8 +33,16 @@ function pageBreak() {
   return new Paragraph({ children: [new PageBreak()] });
 }
 
-// ─── HELPER: Screenshot placeholder ───
+// ─── HELPER: Screenshot ───
+// Resolves the description against generators/screenshots.json and embeds the
+// captured PNG when it exists; otherwise falls back to the original text
+// callout. That means the ~19 call sites below never change — capturing a new
+// screenshot is enough to light one up.
+//
+// Refresh captures with: node generators/capture-tenant-screenshots.js
 function screenshot(description) {
+  const hit = deckMedia.resolveShot(description);
+  if (hit) return figure(hit.path, hit.caption || description);
   return calloutBox(`[Screenshot: ${description}]`, "info");
 }
 
@@ -134,17 +145,19 @@ function sectionQuickStart() {
     dataTable(
       ["Page", "Step", "Description"],
       [
-        ["1", "Connection & Authentication", "Tenant URL, API key, connection test"],
-        ["2", "Docker Containers", "Start the local Kafka/PostgreSQL/simulator stack (optional DMG)"],
-        ["3", "Spaces & Infrastructure", "Create shared and managed spaces"],
-        ["4", "Data Connections", "Configure PostgreSQL, Kafka, and Salesforce connections"],
-        ["5", "Pipelines", "Both declarative pipeline projects (batch + streaming): tasks, connection bindings, prepare, start"],
-        ["6", "Build Apps & Theme", "Build analytics apps and apply the MCG theme"],
-        ["7", "Knowledge Base & Documents", "Create the Qlik Answers knowledge base and upload documents"],
-        ["8", "Automations", "Deploy Teams alerting automation templates"],
-        ["9", "Data Products", "The two data products with their gold dataset attachment and marketplace publish toggles"],
-        ["10", "Business Glossary", "Import business glossary terms"],
-        ["11", "Deploy", "Review the plan and run the deployment with live logs"],
+        ["1", "Connection & Auth", "Tenant URL, API key or OAuth, connection test"],
+        ["—", "Local Stack & Gateway", "Off-rail, its own mode: start the local Kafka/PostgreSQL/simulator containers and the optional Data Movement Gateway"],
+        ["2", "Spaces", "Create the shared, managed and data spaces"],
+        ["3", "Data Connections", "PostgreSQL, Salesforce, Kafka, S3 and Athena"],
+        ["4", "Pipelines", "Both declarative pipeline projects (batch + streaming): tasks, connection bindings, prepare, start"],
+        ["5", "Data Products", "The two gold data products with dataset attachment and marketplace publish toggles"],
+        ["6", "Build Apps & Theme", "Build the analytics apps and apply the MCG theme"],
+        ["7", "Knowledge Base & Docs", "Create the Qlik Answers knowledge base and upload documents"],
+        ["8", "Automations", "Automation templates and Teams webhook configuration"],
+        ["9", "Qlik Predict", "The AutoML experiment, deployment and prediction configuration"],
+        ["10", "Glossary", "Import the business glossary terms"],
+        ["11", "Stewardship", "Create the Address Cleanup sprint, edit its 12-column record schema, and author the automation block graphs"],
+        ["▶", "Deploy", "Review the plan and run the deployment with live logs"],
       ]
     ),
 
@@ -152,6 +165,19 @@ function sectionQuickStart() {
     para("For automated or headless environments, you can run the deployment entirely from the command line:"),
     cmd("npm run deploy"),
     para("The CLI mode uses the same config.json file and performs all steps sequentially with console output."),
+
+    heading("2.4 Task-Specific Commands", 2),
+    para("Individual pieces of the stack can be run on their own — useful when re-deploying one part rather than the whole thing:"),
+    dataTable(
+      ["Command", "What it does"],
+      [
+        ["npm run stewardship:sprint", "Create the Address Cleanup stewardship sprint. Must target a DATA space; add --dry-run to print the payload, or --list to see what exists."],
+        ["npm run automations:workspaces", "Author the real block graphs for all five automations and push them to the tenant, creating the API Key connection they need."],
+        ["npm run talend:zip", "Package the Talend address job — routines, context group, build spec and Iceberg DDL — into a Studio import bundle."],
+        ["npm run pipeline:zip", "Package the declarative pipeline projects for manual import."],
+        ["node generators/capture-tenant-screenshots.js", "Refresh the live-tenant screenshots embedded in this guide."],
+      ]
+    ),
     calloutBox("Both the UI and CLI deployment methods produce identical results. Use the UI for first-time setup (it provides helpful guidance at each step) and the CLI for re-deployments or CI/CD pipelines.", "info"),
   ];
 }
@@ -665,7 +691,7 @@ function sectionAutomations() {
         ["1", "Daily App Reload", "Schedule", "Reload MCG analytics apps with latest data", "06:00 UTC daily"],
         ["2", "Cold Chain Alert \u2192 Teams", "Data threshold", "Send Teams alert when temperature exceeds 8\u00B0C", "Every 5 minutes"],
         ["3", "Pipeline Health Summary \u2192 Teams", "Schedule", "Post daily pipeline status summary to Teams", "07:00 UTC daily"],
-        ["4", "WISMO Rate Alert \u2192 Teams", "Data threshold", "Alert when WISMO rate exceeds 40% for any carrier or region combination", "Every 30 minutes"],
+        ["4", "Stewardship Sprint Summary", "Scheduled", "Read the Address Cleanup sprint summary via the API Key connector and title the run with it", "Daily 07:00 UTC"],
         ["5", "Address Correction Loop \u2192 Talend", "Event", "Trigger Talend job for address standardization", "On new stewardship resolution"],
       ]
     ),
@@ -736,13 +762,13 @@ function sectionPredict() {
 function sectionStewardship() {
   return [
     pageBreak(),
-    heading("14. Stewardship Campaigns"),
-    para("Stewardship campaigns assign data quality issues to business users for manual review and resolution, closing the loop between automated detection and human judgment."),
+    heading("14. Stewardship Sprints"),
+    para("Stewardship sprints assign data quality issues to business users for manual review and resolution, closing the loop between automated detection and human judgment."),
 
-    heading("14.1 Create Campaigns", 2),
-    para("Create four stewardship campaigns that address MCG's primary data quality challenges:"),
+    heading("14.1 Create Sprints", 2),
+    para("Create four stewardship sprints that address MCG's primary data quality challenges:"),
     dataTable(
-      ["#", "Campaign Name", "Source", "Candidates", "Assigned To"],
+      ["#", "Sprint Name", "Source", "Candidates", "Assigned To"],
       [
         ["1", "Address Cleanup", "silver.addresses_standardized", "~640 records", "Customer Service Team"],
         ["2", "Supplier Deduplication", "silver.suppliers_deduped", "~80 suppliers", "Procurement Team"],
@@ -751,18 +777,18 @@ function sectionStewardship() {
       ]
     ),
 
-    heading("14.2 Campaign Setup Steps", 2),
-    para("For each campaign:"),
+    heading("14.2 Sprint Setup Steps", 2),
+    para("For each sprint:"),
     numberedItem(1, "Navigate to Data Integration \u2192 Stewardship"),
-    numberedItem(2, "Click Create Campaign"),
+    numberedItem(2, "Click Create Sprint"),
     numberedItem(3, "Select the source table and define the filter criteria for candidate records"),
-    numberedItem(4, "Set the campaign name and description"),
+    numberedItem(4, "Set the sprint name and description"),
     numberedItem(5, "Assign reviewers (use your own account for demo purposes)"),
     numberedItem(6, "Set the review deadline (30 days from creation for demo)"),
-    numberedItem(7, "Activate the campaign"),
-    screenshot("Stewardship campaign setup screen showing the candidate record filter and reviewer assignment"),
+    numberedItem(7, "Activate the sprint"),
+    screenshot("Stewardship sprint setup screen showing the candidate record filter and reviewer assignment"),
 
-    calloutBox("For demonstration purposes, resolve a few records in each campaign before the demo to show the workflow. Aim for 5-10 resolved records per campaign to demonstrate the before/after experience.", "success"),
+    calloutBox("For demonstration purposes, resolve a few records in each sprint before the demo to show the workflow. Aim for 5-10 resolved records per sprint to demonstrate the before/after experience.", "success"),
   ];
 }
 
@@ -794,7 +820,7 @@ function sectionVerification() {
         ["17", "Business Glossary", "Governance \u2192 Business Glossary", "25 terms across 5 categories"],
         ["18", "Automations", "Check automation run history", "Automations executing on schedule"],
         ["19", "Qlik Predict", "Check model status", "Both models deployed and API-enabled"],
-        ["20", "Stewardship", "Open stewardship campaigns", "4 campaigns active with candidates"],
+        ["20", "Stewardship", "Open stewardship sprints", "4 sprints active with candidates"],
       ]
     ),
 
@@ -907,7 +933,8 @@ async function main() {
     ...sectionTroubleshooting(),
   ];
 
-  const doc = buildQlikDocument("SETUP GUIDE", sections);
+  // screenshot() returns an array (image + caption), so flatten one level.
+  const doc = buildQlikDocument("SETUP GUIDE", sections.flat());
   const outPath = path.join(OUT_DIR, "MCG_Setup_Guide.docx");
   await saveDocument(doc, outPath);
 

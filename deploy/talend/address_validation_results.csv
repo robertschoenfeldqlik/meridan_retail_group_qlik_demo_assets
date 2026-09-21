@@ -1,0 +1,26 @@
+contact_id,city,postal_code,country_iso,format_score,format_faults,service,validation_status,latitude,longitude,matched_address
+CON-500000,Lyon,63-225,FR,0.7,postal code does not match FR format,NOMINATIM,RESOLVED,45.7578137,4.8320114,"Lyon, Métropole de Lyon, Rhône, Auvergne-Rhône-Alpes, Metropolitan France, France"
+CON-500800,Madrid,30056,ES,1,,NOMINATIM,UNRESOLVED,,,
+CON-501600,Warsaw,89-276,PL,1,,NOMINATIM,RESOLVED,52.2319581,21.0067249,"Warsaw, Masovian Voivodeship, Poland"
+CON-502400,Madrid,27444,ES,1,,NOMINATIM,UNRESOLVED,,,
+CON-503200,Gdansk,34-606,PL,1,,NOMINATIM,RESOLVED,54.3706858,18.6129831,"Gdansk, Gdańsk, Pomeranian Voivodeship, Poland"
+CON-504000,Amsterdam,3834 WT,NL,1,,NOMINATIM,RESOLVED,52.3730796,4.8924534,"Amsterdam, North Holland, Netherlands"
+CON-504800,Barcelona,30252,ES,1,,NOMINATIM,RESOLVED,41.3825802,2.1770730,"Barcelona, Barcelonès, Barcelona, Catalonia, Spain"
+CON-505600,Amsterdam,4973 JZ,NL,1,,NOMINATIM,RESOLVED,52.3730796,4.8924534,"Amsterdam, North Holland, Netherlands"
+CON-506400,Madrid,35476,ES,1,,NOMINATIM,UNRESOLVED,,,
+CON-507200,Munich,19597,DE,1,,NOMINATIM,RESOLVED,48.1371079,11.5753822,"Munich, Bavaria, Germany"
+CON-508000,Hamburg,46001,DE,1,,NOMINATIM,RESOLVED,53.5501721,10.0013165,"Hamburg, Germany"
+CON-508800,Marseille,39043,FR,1,,NOMINATIM,RESOLVED,43.2963986,5.3777888,"Marseille, Bouches-du-Rhône, Provence-Alpes-Côte d'Azur, Metropolitan France, France"
+CON-509600,Paris,77729,FR,1,,NOMINATIM,UNRESOLVED,,,
+CON-510400,Rotterdam,3777 VW,NL,1,,NOMINATIM,RESOLVED,51.9244424,4.4777500,"Rotterdam, South Holland, Netherlands"
+CON-511200,Krakow,50-495,PL,1,,NOMINATIM,RESOLVED,50.0619474,19.9368564,"Krakow, Lesser Poland Voivodeship, Poland"
+CON-512000,Paris,85537,FR,1,,NOMINATIM,UNRESOLVED,,,
+CON-512800,Turin,21619,IT,1,,NOMINATIM,RESOLVED,45.0677551,7.6824892,"Turin, Piedmont, Italy"
+CON-513600,Madrid,16371,ES,1,,NOMINATIM,UNRESOLVED,,,
+CON-514400,Valencia,46471,ES,1,,NOMINATIM,UNRESOLVED,,,
+CON-515200,Hamburg,94167,DE,1,,NOMINATIM,RESOLVED,53.5501721,10.0013165,"Hamburg, Germany"
+CON-516000,Amsterdam,5443 QP,NL,1,,NOMINATIM,RESOLVED,52.3730796,4.8924534,"Amsterdam, North Holland, Netherlands"
+CON-516800,Warsaw,21-360,PL,1,,NOMINATIM,RESOLVED,52.2319581,21.0067249,"Warsaw, Masovian Voivodeship, Poland"
+CON-517600,Amsterdam,5158 GH,NL,1,,NOMINATIM,RESOLVED,52.3730796,4.8924534,"Amsterdam, North Holland, Netherlands"
+CON-518400,Paris,85151,FR,1,,NOMINATIM,UNRESOLVED,,,
+CON-519200,Madrid,40798,ES,1,,NOMINATIM,UNRESOLVED,,,

@@ -1,0 +1,9 @@
+{
+  "folders": [
+    { "name": "mcg-batch-pipeline", "path": "deploy/pipelines/mcg-batch-pipeline" },
+    { "name": "mcg-streaming-pipeline", "path": "deploy/pipelines/mcg-streaming-pipeline" }
+  ],
+  "extensions": {
+    "recommendations": ["redhat.vscode-yaml"]
+  }
+}

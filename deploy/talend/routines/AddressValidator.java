@@ -1,19 +1,19 @@
 package routines;
 
 /**
- * MCG Demo — Talend routine for address format validation (Job 1 tMap).
+ * MCG Demo - Talend routine for address format validation (Job 1 tMap).
  *
  * Used by mcg_sf_address_validate:
  *   Var.valid = AddressValidator.isValidFormat(row1.MailingStreet, row1.MailingCity,
  *                                              row1.MailingPostalCode, row1.MailingCountry)
  *
- * A record that fails format validation is routed to the Nominatim geocoding branch;
- * if Nominatim cannot resolve it either, it goes to the Stewardship route
- * (Address Cleanup campaign).
+ * The country and postal-code rules now live in {@link AddressStandardizer}, which
+ * both validates AND repairs. This class stays as the thin pass/fail gate so the
+ * original tMap expressions keep working; it delegates rather than duplicating.
  *
- * Demo-grade rules on purpose: strict enough to catch the simulator's injected
- * Nightmare #2 issues (truncated streets, postal/country variants, free-text cities),
- * loose enough not to reject ordinary international addresses.
+ * For the current job, prefer AddressStandardizer.standardize(...) - it returns a
+ * repaired address plus a quality score, which is what feeds the Open Lakehouse /
+ * Stewardship routing decision.
  */
 public class AddressValidator {
 
@@ -33,44 +33,29 @@ public class AddressValidator {
         return c.matches("[\\p{L}][\\p{L} .'\\-]*");
     }
 
-    /** ISO-2 country code for the supported demo markets, or null when unknown. */
+    /**
+     * ISO-2 country code for the supported demo markets, or null when unknown.
+     * Delegates to AddressStandardizer so the alias table lives in one place.
+     *
+     * {talendTypes} String
+     * {Category} MCG
+     */
     public static String countryIso(String country) {
-        if (country == null) return null;
-        String c = country.trim().toUpperCase();
-        if (c.isEmpty()) return null;
-        switch (c) {
-            case "NL": case "NETHERLANDS": case "THE NETHERLANDS":
-            case "NEDERLAND": case "NIEDERLANDE":               return "NL";
-            case "DE": case "GERMANY": case "DEUTSCHLAND":      return "DE";
-            case "GB": case "UK": case "UNITED KINGDOM":
-            case "GREAT BRITAIN": case "ENGLAND":               return "GB";
-            case "US": case "USA": case "UNITED STATES":
-            case "UNITED STATES OF AMERICA":                    return "US";
-            case "SG": case "SINGAPORE": case "SINGAPUR":       return "SG";
-            case "JP": case "JAPAN": case "JAPON":              return "JP";
-            case "BR": case "BRAZIL": case "BRASIL":            return "BR";
-            case "NG": case "NIGERIA":                          return "NG";
-            default:                                            return null;
-        }
+        return AddressStandardizer.countryIso(country);
     }
 
-    /** Postal code pattern per demo market. Unknown country -> fail (forces geocode branch). */
+    /**
+     * Postal code already in its country's canonical form.
+     * Delegates to AddressStandardizer. Unknown country -> false.
+     *
+     * {talendTypes} boolean
+     * {Category} MCG
+     */
     public static boolean hasValidPostalCode(String postal, String country) {
-        if (postal == null) return false;
-        String p = postal.trim().toUpperCase();
-        String iso = countryIso(country);
+        String iso = AddressStandardizer.countryIso(country);
         if (iso == null) return false;
-        switch (iso) {
-            case "NL": return p.matches("\\d{4} ?[A-Z]{2}");
-            case "DE": return p.matches("\\d{5}");
-            case "GB": return p.matches("[A-Z]{1,2}\\d[A-Z\\d]? ?\\d[A-Z]{2}");
-            case "US": return p.matches("\\d{5}(-\\d{4})?");
-            case "SG": return p.matches("\\d{6}");
-            case "JP": return p.matches("\\d{3}-?\\d{4}");
-            case "BR": return p.matches("\\d{5}-?\\d{3}");
-            case "NG": return p.matches("\\d{6}");
-            default:   return false;
-        }
+        // accept both the canonical form and anything the standardizer can repair
+        return AddressStandardizer.standardizePostal(postal, iso) != null;
     }
 
     /**
@@ -92,7 +77,7 @@ public class AddressValidator {
     }
 
     /**
-     * Free-text query for the Nominatim branch — joins the non-empty parts so even
+     * Free-text query for the geocoding branch - joins the non-empty parts so even
      * partially broken addresses still produce a usable search string.
      *
      * {talendTypes} String

@@ -1,9 +1,9 @@
 {
   "variables": {
-    "task.wms-cdc-landing-4101.sourceConnection": "{{id(connection, MCG Demo - Development.MCG WMS Database)}}",
+    "task.wms-cdc-landing-4101.sourceConnection": "{{id(connection, MCG Demo - DI.MCG WMS Database)}}",
     "task.wms-cdc-landing-4101.taskSchema": "bronze",
     "task.wms-cdc-landing-4101:null$_$public.schema": "public",
-    "task.crm-landing-4102.sourceConnection": "{{id(connection, MCG Demo - Development.MCG Salesforce CRM)}}",
+    "task.crm-landing-4102.sourceConnection": "{{id(connection, MCG Demo - DI.MCG Salesforce CRM)}}",
     "task.crm-landing-4102.taskSchema": "bronze",
     "task.silver-transform-4201.internalSchema": "silver__internal",
     "task.silver-transform-4201.taskSchema": "silver",
