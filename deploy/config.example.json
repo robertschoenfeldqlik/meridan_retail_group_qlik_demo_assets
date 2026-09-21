@@ -52,14 +52,14 @@
   "dataConnections": {
     "postgresql": {
       "name": "MCG WMS Database",
-      "host": "your-postgres-host.example.com",
+      "host": "postgres",
       "port": 5432,
       "database": "mcg_wms",
       "username": "mcg_admin",
       "password": "mcg_demo_2025",
       "schema": "public",
       "sslMode": "PREFER",
-      "comment_postgresql": "Created as a Data-Movement-gateway-bound replication SOURCE (repsrc_postgresql) when dataGateway.id is set. 'host' must be the PostgreSQL host reachable from the gateway container (Docker service name / host IP)."
+      "comment_postgresql": "Created as a Data-Movement-gateway-bound replication SOURCE (repsrc_postgresql) when dataGateway.id is set. 'host' is what THE GATEWAY sees on mcg-sim-net - the standalone postgres service, not localhost. The gateway container bundles its own empty PostgreSQL; pointing at localhost reaches that instead of the seeded WMS and the task lands nothing."
     },
     "mysql": {
       "name": "MCG CRM Database",
