@@ -81,6 +81,10 @@ LOAD
     lot_missing           AS [Lot Missing Flag],
     last_count_date       AS [Last Count Date],
     snapshot_timestamp    AS [Snapshot Time],
+    // Date-grain key for the master calendar. [Snapshot Time] is a timestamp
+    // with ~45k distinct values, so a calendar keyed on it would join nothing;
+    // this truncates to the day, which is what the calendar is built from.
+    Date(Floor(snapshot_timestamp)) AS [Snapshot Date],
     trust_score           AS [Position Trust Score]
 // SELECT location_id, sku, lot_number, quantity_on_hand, quantity_available,
 //        quantity_reserved, quantity_in_transit, unit_of_measure, storage_zone,
@@ -172,9 +176,14 @@ LET vMinDate = Peek('MinDate', 0, 'MinMaxDates');
 LET vMaxDate = Peek('MaxDate', 0, 'MinMaxDates');
 DROP TABLE MinMaxDates;
 
+// Keyed on [Snapshot Date], NOT a bare [Date]. Aliasing it [Date] left the
+// calendar as an orphan island sharing no field with any table: every chart
+// broken out by month silently returned the grand total for every month,
+// with no error anywhere. app2's calendar keys to [Order Date] for the
+// same reason.
 Calendar:
 LOAD
-    Date                       AS [Date],
+    Date                       AS [Snapshot Date],
     Year(Date)                 AS [Year],
     Month(Date)                AS [Month],
     MonthName(Date)            AS [Month Name],
