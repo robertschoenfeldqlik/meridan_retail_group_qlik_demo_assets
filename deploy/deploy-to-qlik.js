@@ -758,12 +758,64 @@ class QlikClient {
       this.log.debug(`Uploaded "${fileName}" -> ${(res.body && res.body.name) || logicalName}`);
       return (res.body && res.body.name) || logicalName;
     }
-    // 409 = a file with this name already exists in the connection — reuse it.
+    // 409 = a file with this name already exists. Reusing it silently means a
+    // regenerated document never reaches the tenant: the deploy reports
+    // "uploaded, 0 failed" while the knowledge base keeps serving the old
+    // text. Delete the existing file and upload again so the tenant matches
+    // what is on disk.
     if (res.statusCode === 409) {
-      this.log.debug(`File "${logicalName}" already in DataFiles — reusing.`);
-      return logicalName;
+      const existingId = await this._findDataFileId(connectionId, logicalName);
+      if (!existingId) {
+        this.log.warn(`"${logicalName}" reported 409 but could not be located to replace — left as is.`);
+        return logicalName;
+      }
+      const del = await this._delete(`/api/v1/data-files/${existingId}`);
+      // 404 means it is already gone — which is the state we wanted. Only a
+      // real failure should abort, otherwise one stale id strands a document
+      // deleted-but-not-replaced and the run has to be repeated by hand.
+      if (del.statusCode >= 300 && del.statusCode !== 404) {
+        throw new Error(`Could not delete existing "${logicalName}" (${del.statusCode}) to replace it`);
+      }
+      // The delete is eventually consistent: POSTing straight after it races
+      // the deletion and comes back 409 "File or folder already exists", which
+      // leaves the document deleted but not replaced. Wait for it to actually
+      // disappear, then upload. Each attempt builds a fresh multipart body AND
+      // uses that body's own boundary — reusing the first request's boundary
+      // sends a mismatched Content-Type and the API answers with a bare 400.
+      for (let attempt = 1; attempt <= 6; attempt++) {
+        const gone = !(await this._findDataFileId(connectionId, logicalName));
+        if (gone) {
+          const again = buildMultipart([
+            { name: 'File', filename: fileName, contentType, value: fileBuffer },
+            { name: 'Json', value: JSON.stringify({ name: logicalName, connectionId }) },
+          ]);
+          const retry = await this._postRaw(
+            '/api/v1/data-files',
+            again.payload,
+            { 'Content-Type': `multipart/form-data; boundary=${again.boundary}` }
+          );
+          if (retry.statusCode === 200 || retry.statusCode === 201) {
+            this.log.debug(`Replaced "${logicalName}" in DataFiles.`);
+            return (retry.body && retry.body.name) || logicalName;
+          }
+          if (retry.statusCode !== 409) {
+            throw new Error(`Failed to replace "${logicalName}" (${retry.statusCode}): ${JSON.stringify(retry.body)}`);
+          }
+        }
+        await new Promise((r) => setTimeout(r, 500 * attempt));
+      }
+      throw new Error(`Failed to replace "${logicalName}": the old file was still present after 6 attempts`);
     }
     throw new Error(`Failed to upload "${fileName}" to DataFiles (${res.statusCode}): ${JSON.stringify(res.body)}`);
+  }
+
+  // Locate a data file by its logical name on a given connection, so an
+  // existing one can be replaced rather than silently kept.
+  async _findDataFileId(connectionId, logicalName) {
+    const res = await this._get(`/api/v1/data-files?limit=300&connectionId=${encodeURIComponent(connectionId)}`);
+    const rows = (res.body && res.body.data) || [];
+    const hit = rows.find((f) => f.name === logicalName);
+    return hit ? hit.id : null;
   }
 
   async createKBFileDatasource(kbId, name, fileConfig) {
@@ -1218,7 +1270,11 @@ class QlikClient {
       return { id: 'dry-run-term-id', name };
     }
 
-    const payload = { name, definition };
+    // The API field is `description`, NOT `definition`. Sending `definition`
+    // is not rejected — the term is created 201 with an empty description and
+    // the deploy reports success, which is how 175 terms ended up in the
+    // tenant with nothing written in any of them.
+    const payload = { name, description: definition || '' };
     if (category) payload.category = category;
     // Tags omitted — API expects UUIDs, not string names
 
@@ -2705,7 +2761,19 @@ async function main() {
       const docsDir = path.resolve(SCRIPT_DIR, (cfg.documents && cfg.documents.sourceDir) || '../documents');
       const allDocxFiles = findFiles(docsDir, '.docx');
 
-      // Filter: only operational documents (exclude demo-scripts and top-level guides)
+      // EVERY .docx is uploaded, because the knowledge base has a second
+      // datasource ("MCG Documents — Demo & Guides") that reads the demo
+      // scripts and the two big guides out of this same folder. Uploading only
+      // the operational subset left that datasource serving whatever was there
+      // from the last full upload — which is how the KB ended up answering
+      // from pre-migration documents months after the documents were rewritten.
+      for (const f of allDocxFiles) {
+        await client.uploadDocumentToDataFiles(connectionId, f, 'MCG Documents');
+      }
+      log.success(`Refreshed ${allDocxFiles.length} document(s) in DataFiles (every .docx, both KB datasources).`);
+
+      // The datasource membership below stays as it was: operational documents
+      // only (demo-scripts and the top-level guides belong to the other one).
       const docxFiles = allDocxFiles.filter(f => {
         const rel = path.relative(docsDir, f).replace(/\\/g, '/');
         if (rel.startsWith('demo-scripts/')) return false;
@@ -2719,21 +2787,14 @@ async function main() {
         report.record('Document Upload', 'SKIP', 'No operational .docx files found');
       } else {
         log.info(`Found ${docxFiles.length} operational .docx file(s) to upload (${allDocxFiles.length} total, ${allDocxFiles.length - docxFiles.length} excluded).`);
-        const uploadedNames = [];
-        let failed = 0;
-
-        for (const docPath of docxFiles) {
-          try {
-            const lname = await client.uploadDocumentToDataFiles(connectionId, docPath, 'MCG Documents');
-            uploadedNames.push(lname);
-          } catch (err) {
-            log.error(`Upload failed for "${path.basename(docPath)}": ${err.message}`);
-            failed++;
-            if (!continueOnError) throw err;
-          }
-        }
-        log.success(`Uploaded ${uploadedNames.length}/${docxFiles.length} documents to DataFiles (${failed} failed).`);
-        report.record('Document Upload', failed === 0 ? 'OK' : 'FAIL', `${uploadedNames.length} uploaded, ${failed} failed`);
+        // The files are already in DataFiles — every .docx was refreshed above.
+        // This step only names which of them belong to THIS datasource;
+        // uploading them a second time would delete and re-create each one
+        // moments after the first pass, racing its own eventual consistency.
+        const uploadedNames = docxFiles.map((f) => `MCG Documents/${path.basename(f)}`);
+        const failed = 0;
+        log.success(`Datasource "MCG Documents" will list ${uploadedNames.length} of the ${allDocxFiles.length} uploaded documents.`);
+        report.record('Document Upload', 'OK', `${allDocxFiles.length} refreshed, ${uploadedNames.length} in this datasource`);
 
         if (uploadedNames.length || dryRun) {
           kbDatasource = await client.createKBFileDatasource(knowledgeBase.id, 'MCG Documents', {
