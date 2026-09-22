@@ -61,6 +61,36 @@ LOAD
 FROM [lib://MCG Demo - Development:MCG Open Lakehouse/gold_supply_chain_health.qvd]
 (qvd);
 
+// -----------------------------------------------------------------------------
+// SUPPLY CHAIN HEALTH BY MONTH — gold.supply_chain_health_monthly
+// -----------------------------------------------------------------------------
+// The same facts at DC x month grain. The table above has no date, so any chart
+// broken out by time reads the estate total in every bucket and draws a flat
+// line; this one carries the month.
+//
+// Every measure column is aliased differently from the DC-grain table on
+// purpose. Sharing six field names between two tables would make Qlik build a
+// synthetic key, which silently wrecks both. [Distribution Center] is the one
+// field they are meant to share.
+// -----------------------------------------------------------------------------
+SupplyChainHealthMonthly:
+LOAD
+    location_id                                          AS [Distribution Center],
+    snapshot_month                                       AS [Snapshot Month],
+    Date(Date#(snapshot_month_start, 'YYYY-MM-DD'))      AS [Snapshot Month Start],
+    sku_positions                                        AS [Monthly SKU Positions],
+    total_on_hand                                        AS [Monthly Total On Hand],
+    phantom_suspect_count                                AS [Monthly Phantom Count],
+    lot_missing_count                                    AS [Monthly Lot Missing Count],
+    avg_trust_score                                      AS [Monthly Avg Trust Score],
+    IF(sku_positions > 0,
+       1 - (phantom_suspect_count / sku_positions), 0)   AS [Monthly IRA %]
+// SELECT location_id, snapshot_month, snapshot_month_start, sku_positions,
+//        total_on_hand, phantom_suspect_count, lot_missing_count, avg_trust_score
+// FROM gold.supply_chain_health_monthly;
+FROM [lib://MCG Demo - Development:MCG Open Lakehouse/gold_supply_chain_health_monthly.qvd]
+(qvd);
+
 // =============================================================================
 // 2. INVENTORY DETAIL — silver.inventory_reconciled (position grain)
 // =============================================================================

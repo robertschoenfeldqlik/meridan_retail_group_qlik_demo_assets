@@ -223,7 +223,11 @@ function buildInventory(products) {
     // 15% of perishables are missing a lot number — the compliance sprint's feed.
     const lotMissing = perishable && lotViolations < HEADLINES.lotViolations && chance(0.15);
     if (lotMissing) lotViolations++;
-    const ts = BASE - int(0, 30) * DAY - int(0, 86399) * 1000;
+    // 180 days, not 30. A 30-day window puts every position in two calendar
+    // months, so an IRA trend is a two-point line that says nothing. The window
+    // only spreads the same 45,000 positions over more months; it changes no
+    // ratio, so estate IRA stays on its 74% target.
+    const ts = BASE - int(0, 179) * DAY - int(0, 86399) * 1000;
     rows.push({
       location_id: dc.id,
       sku: p.sku,
@@ -277,6 +281,42 @@ function buildSupplyChainHealth(inventory) {
     cycle_count_events: int(40, 400),
     avg_cycle_count_variance: dec(0.5, 12.5),
   })).sort((a, b) => a.location_id.localeCompare(b.location_id));
+}
+
+// IRA over time needs a fact with a date on it. gold_supply_chain_health is
+// DC-grain with no date column, so Avg([IRA %]) is the same number in every
+// month by construction — a trend chart built on it draws a flat line and looks
+// broken. This is the same aggregation at DC x month grain, emitted as its own
+// table so the 12-row estate table, and the 74% headline read off it, are
+// untouched.
+function buildSupplyChainHealthMonthly(inventory) {
+  const by = new Map();
+  for (const r of inventory) {
+    const month = String(r.snapshot_timestamp).slice(0, 7); // YYYY-MM
+    const key = r.location_id + '|' + month;
+    let g = by.get(key);
+    if (!g) {
+      g = { location_id: r.location_id, snapshot_month: month, sku_positions: 0,
+            total_on_hand: 0, phantom_suspect_count: 0, lot_missing_count: 0, _trust: 0 };
+      by.set(key, g);
+    }
+    g.sku_positions++;
+    g.total_on_hand += Math.max(0, Number(r.quantity_on_hand));
+    g.phantom_suspect_count += r.phantom_suspect;
+    g.lot_missing_count += r.lot_missing;
+    g._trust += Number(r.trust_score);
+  }
+  return [...by.values()].map((g) => ({
+    location_id: g.location_id,
+    snapshot_month: g.snapshot_month,
+    // First of the month, so the app can key it straight to a master calendar.
+    snapshot_month_start: g.snapshot_month + '-01',
+    sku_positions: g.sku_positions,
+    total_on_hand: g.total_on_hand,
+    phantom_suspect_count: g.phantom_suspect_count,
+    lot_missing_count: g.lot_missing_count,
+    avg_trust_score: Number((g._trust / g.sku_positions).toFixed(3)),
+  })).sort((a, b) => (a.snapshot_month + a.location_id).localeCompare(b.snapshot_month + b.location_id));
 }
 
 // Postal codes have to match their country. Emitting a Dutch "1234 AB" for a French
@@ -549,6 +589,7 @@ function main() {
   const products = buildProducts();
   const inventory = buildInventory(products);
   const scHealth = buildSupplyChainHealth(inventory);
+  const scHealthMonthly = buildSupplyChainHealthMonthly(inventory);
   const { std: addresses, geo } = buildAddresses();
   const shipments = buildShipments();
   const orders = buildOrders(products, addresses);
@@ -558,6 +599,7 @@ function main() {
   const carrierEvents = buildCarrierEvents();
 
   writeCsv(outDir, 'gold_supply_chain_health.csv', Object.keys(scHealth[0]), scHealth);
+  writeCsv(outDir, 'gold_supply_chain_health_monthly.csv', Object.keys(scHealthMonthly[0]), scHealthMonthly);
   writeCsv(outDir, 'gold_last_mile_performance.csv', Object.keys(lastMile[0]), lastMile);
   writeCsv(outDir, 'silver_inventory_reconciled.csv', Object.keys(inventory[0]), inventory);
   writeCsv(outDir, 'silver_products_harmonized.csv', Object.keys(products[0]), products);
@@ -577,6 +619,10 @@ function main() {
 
   console.log('\nHeadline check (these must match the narration):');
   console.log(`  IRA overall            ${((1 - ph / pos) * 100).toFixed(1)}%   (target 74%)`);
+  const mPos = scHealthMonthly.reduce((s2, g) => s2 + g.sku_positions, 0);
+  const mPh = scHealthMonthly.reduce((s2, g) => s2 + g.phantom_suspect_count, 0);
+  const months = new Set(scHealthMonthly.map((g) => g.snapshot_month)).size;
+  console.log(`  IRA monthly reconciles ${((1 - mPh / mPos) * 100).toFixed(1)}%   (must equal the line above, over ${months} months)`);
   console.log(`  DC-RTD-01 trust score  ${rtd.avg_trust_score.toFixed(2)}    (target 0.31)`);
   console.log(`  Healthy DC trust       ${(scHealth.filter(g => g.location_id !== 'DC-RTD-01')
       .reduce((s, g) => s + g.avg_trust_score, 0) / (scHealth.length - 1)).toFixed(2)}    (target 0.89)`);
