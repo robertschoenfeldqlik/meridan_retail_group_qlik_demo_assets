@@ -7,7 +7,8 @@ const path = require('path');
 const os = require('os');
 
 const EMU = 914400;
-const SRC = path.resolve(__dirname, '..', 'MCG_Marketecture.pptx');
+const { deck } = require('../generators/lib/asset-paths');
+const SRC = deck('MCG_Marketecture.pptx');
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'mcg-mkt-'));
 unzipToDirectory(fs.readFileSync(SRC), tmp);

@@ -64,15 +64,6 @@ MCG Full Stack/
 │   ├── data_products.json      # 2 Gold-layer data product definitions
 │   └── glossary_terms.json     # 25 business glossary terms
 │
-├── documents/                  # 25 operational .docx + 18 demo scripts
-│   ├── carrier_contracts/      # DPD, FedEx, NinjaVan agreements
-│   ├── compliance/             # NVWA corrective action plans
-│   ├── demo-scripts/           # 18 guided demo walkthroughs (Qlik-branded)
-│   ├── incident_reports/       # Rotterdam, TransFrio incidents
-│   ├── policies/               # Cold chain, data quality, shipping
-│   ├── sops/                   # WISMO, goods receiving, cycle count
-│   └── ...                     # training, purchase orders, recalls
-│
 ├── generators/                 # Content generation scripts
 │   ├── gen-demo-scripts.js     # 18 demo walkthrough documents
 │   ├── gen-sops-enriched.js    # Standard operating procedures
@@ -100,6 +91,38 @@ MCG Full Stack/
 │
 └── package.json
 ```
+
+### Built assets live outside the repo
+
+The decks and the document corpus are deliverables, not source: generated, never
+hand-edited, and about 20 MB of binaries that churn on every run. They are
+written to an **assets root** beside the repo rather than into it.
+
+```
+C:\Claude\MCG Demo\
+├── MCG_Technology_Architecture.pptx     # 7 decks
+├── MCG_Demo_Overview_Four_Stories.pptx
+├── ...
+└── documents/                            # 45 .docx + glossary .xlsx
+    ├── carrier_contracts/                # DPD, FedEx, NinjaVan agreements
+    ├── compliance/                       # NVWA corrective action plans
+    ├── demo-scripts/                     # 18 guided demo walkthroughs
+    ├── incident_reports/                 # Rotterdam, TransFrio incidents
+    ├── policies/                         # Cold chain, data quality, shipping
+    ├── sops/                             # WISMO, goods receiving, cycle count
+    └── ...                               # training, purchase orders, recalls
+```
+
+One module decides that path — `generators/lib/asset-paths.js`. Override it with
+`MCG_ASSETS_DIR` for a different machine or a CI run:
+
+```bash
+MCG_ASSETS_DIR=/srv/mcg-assets npm run generate
+```
+
+`deploy/config.json` → `documents.sourceDir` points the knowledge-base upload at
+the same corpus; move one and move the other.
+
 
 ## npm Scripts
 

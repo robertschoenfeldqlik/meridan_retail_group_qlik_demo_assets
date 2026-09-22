@@ -1,5 +1,6 @@
 // Generate MCG Company Profile & Data Quality Issues PowerPoint
 const PptxGenJS = require("pptxgenjs");
+const { deck, doc, DOCS_DIR } = require("./lib/asset-paths");
 
 const MCG = {
   navy: "1B2A4A",
@@ -673,7 +674,7 @@ slide.addText([
 // ═══════════════════════════════════════
 // SAVE
 // ═══════════════════════════════════════
-const outPath = require("path").join(__dirname, "..", "MCG_Company_Profile_Data_Quality.pptx");
+const outPath = deck("MCG_Company_Profile_Data_Quality.pptx");
 pptx.writeFile({ fileName: outPath }).then(() => {
   console.log(`✅ PowerPoint saved: ${outPath}`);
 }).catch(err => {

@@ -258,7 +258,7 @@ Master checklist of everything required to stand up the full Meridian Commerce G
 ### Knowledge Base
 - [ ] Create knowledge base: "MCG Operations Knowledge Base"
 - [ ] Create datasource: "MCG Documents" (file type)
-- [ ] Upload all 25 DOCX documents from `documents/` directory
+- [ ] Upload all 25 DOCX documents from the assets root (`../MCG Demo/documents/`)
 - [ ] Verify upload count: 5 SOPs + 3 carrier contracts + 4 policies + 2 POs + 2 supplier comms + 1 recall + 1 shipping manifest + 2 incident reports + 2 training docs + 1 meeting minutes + 1 compliance plan + 1 project brief = 25
 - [ ] Trigger sync/indexing
 - [ ] Wait for indexing to complete (may take 5-10 minutes)
@@ -455,9 +455,9 @@ Files generated for this demo:
 
 | Category | File | Description |
 |----------|------|-------------|
-| **Documents** | `documents/**/*.docx` (25 files) | DOCX docs for Qlik Answers KB |
-| **Presentation** | `MCG_Company_Profile_Data_Quality.pptx` | Executive overview deck |
-| | `MCG_Demo_Overview_Four_Stories.pptx` | Demo deck: Integration, Governance, Analytics, AI |
+| **Documents** | `../MCG Demo/documents/**/*.docx` (45 files) | DOCX docs for Qlik Answers KB |
+| **Presentation** | `../MCG Demo/MCG_Company_Profile_Data_Quality.pptx` | Executive overview deck |
+| | `../MCG Demo/MCG_Demo_Overview_Four_Stories.pptx` | Demo deck: Integration, Governance, Analytics, AI |
 | **Simulators** | `simulators/postgres_simulator.py` | PostgreSQL WMS data generator |
 | | `simulators/mysql_crm_simulator.py` | Meridian CRM data generator |
 | | `simulators/kafka_iot_simulator.py` | Kafka IoT cold-chain & carrier event generator (continuous, scheduled, or batch) |

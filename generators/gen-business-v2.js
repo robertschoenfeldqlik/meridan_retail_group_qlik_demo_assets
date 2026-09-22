@@ -5,7 +5,8 @@ const {
   heading, para, labelValue, calloutBox, numberedItem, signatureBlock,
 } = require("./mcg-docx-builder");
 const path = require("path");
-const DOCS = path.join(__dirname, "..", "documents");
+const { deck, doc, DOCS_DIR } = require("./lib/asset-paths");
+const DOCS = DOCS_DIR;
 
 // ═══ PO-2025-RTD-00847: Samsung Electronics ═══
 function poSamsung() {

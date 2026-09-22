@@ -5,8 +5,9 @@ const {
   heading, para, labelValue, calloutBox, numberedItem, signatureBlock,
 } = require("./mcg-docx-builder");
 const path = require("path");
+const { deck, doc, DOCS_DIR } = require("./lib/asset-paths");
 
-const OUT = path.join(__dirname, "..", "documents", "sops");
+const OUT = doc("sops");
 
 // ══════════════════════════════════════════════════════════════
 // SOP-WH-001: Goods Receiving and Inbound Processing (ENRICHED)

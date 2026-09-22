@@ -54,6 +54,7 @@ pptx.company = "Qlik / Meridian Commerce Group";
 pptx.title = "Meridian Commerce Group — Qlik Agentic Data Engineering";
 
 const deckMedia = require("./lib/deck-media");
+const { deck, doc, DOCS_DIR } = require("./lib/asset-paths");
 
 let slideNum = 0;
 
@@ -785,7 +786,7 @@ renderProofs([
 ]);
 
 
-const outPath = path.join(__dirname, "..", "MCG_Agentic_Data_Engineering.pptx");
+const outPath = deck("MCG_Agentic_Data_Engineering.pptx");
 pptx.writeFile({ fileName: outPath }).then(() => {
   console.log(`✅ PowerPoint saved: ${outPath} (${slideNum} slides)`);
 }).catch(err => {

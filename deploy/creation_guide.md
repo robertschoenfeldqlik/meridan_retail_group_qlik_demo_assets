@@ -2,7 +2,7 @@
 
 Step-by-step creation instructions for building Lakehouse tables, Data Products, Analytics Apps (Qlik Analytics), and Predict model deployments in Qlik Cloud. This guide assumes prerequisites from `setup_guide.md` Section 1 are complete and data sources are connected.
 
-> **Reference:** The demo PowerPoint deck (`MCG_Demo_Overview_Four_Stories.pptx`) provides visual prototypes and slide designs for each component described below. Use the deck's 4-story structure (Integration, Governance, Analytics, AI) as the presentation framework for the built environment.
+> **Reference:** The demo PowerPoint deck (`../MCG Demo/MCG_Demo_Overview_Four_Stories.pptx`) provides visual prototypes and slide designs for each component described below. Use the deck's 4-story structure (Integration, Governance, Analytics, AI) as the presentation framework for the built environment.
 
 ---
 

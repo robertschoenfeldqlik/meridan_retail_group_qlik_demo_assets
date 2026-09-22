@@ -5,7 +5,8 @@ const {
   heading, para, labelValue, calloutBox, numberedItem, signatureBlock,
 } = require("./mcg-docx-builder");
 const path = require("path");
-const OUT = path.join(__dirname, "..", "documents", "policies");
+const { deck, doc, DOCS_DIR } = require("./lib/asset-paths");
+const OUT = doc("policies");
 
 function pol007() {
   return buildDocument("CORPORATE POLICY", [

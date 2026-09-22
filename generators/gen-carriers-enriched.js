@@ -5,8 +5,9 @@ const {
   heading, para, labelValue, calloutBox, numberedItem, signatureBlock,
 } = require("./mcg-docx-builder");
 const path = require("path");
+const { deck, doc, DOCS_DIR } = require("./lib/asset-paths");
 
-const CARRIERS = path.join(__dirname, "..", "documents", "carrier_contracts");
+const CARRIERS = doc("carrier_contracts");
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // DOCUMENT 1: NinjaVan Singapore — Contract Amendment AMD3

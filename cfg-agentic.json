@@ -4,7 +4,7 @@
   "layout": "5col",
   "accentColor": "TEAL",
   "trackLength": "60s",
-  "output": "C:\\Claude\\MCG Full Stack\\MCG_Marketecture_Agentic.pptx",
+  "output": "C:\\Claude\\MCG Demo\\MCG_Marketecture_Agentic.pptx",
   "slideTitle": "Meridian Commerce Group — Agentic Data Engineering",
   "slideSubtitle": "INTERNAL — DEMO ENABLEMENT  ·  Pipelines as code, agents that govern, AI in the pipeline — raw feeds to trusted, AI-ready data products",
   "col1Header": "WHERE COMMERCE HAPPENS",

@@ -217,8 +217,8 @@
     "teamsChannelId": ""
   },
   "documents": {
-    "sourceDir": "../documents",
-    "comment_sourceDir": "Relative path from the deploy/ directory to the documents folder containing .docx files"
+    "sourceDir": "../../MCG Demo/documents",
+    "comment_sourceDir": "Relative path from the deploy/ directory to the document corpus. Built documents live outside the repo in the assets root (see generators/lib/asset-paths.js); set MCG_ASSETS_DIR and this together if you move them."
   },
   "apps": {
     "sourceDir": "./apps",

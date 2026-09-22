@@ -58,3 +58,14 @@ deploy/talend/*.zip
 
 # Puppeteer profile used by capture-tenant-screenshots.js (holds a Qlik session)
 generators/.chrome-profile/
+
+# Built demo assets live outside the repo in the assets root
+# (C:\Claude\MCG Demo by default — see generators/lib/asset-paths.js).
+# These patterns stop a stray regenerate from re-adding them here.
+#
+# The hand-written .md under documents/ STAYS in the repo: it is authoring
+# source, not output, and deleting the assets root must never destroy it.
+# Only the generated binaries are ignored.
+/MCG_*.pptx
+/documents/**/*.docx
+/documents/**/*.xlsx

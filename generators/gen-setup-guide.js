@@ -25,8 +25,9 @@ const path = require("path");
 useQlikTheme();
 
 const deckMedia = require("./lib/deck-media");
+const { deck, doc, DOCS_DIR } = require("./lib/asset-paths");
 
-const OUT_DIR = path.join(__dirname, "..", "documents");
+const OUT_DIR = DOCS_DIR;
 
 // ─── HELPER: Page break paragraph ───
 function pageBreak() {

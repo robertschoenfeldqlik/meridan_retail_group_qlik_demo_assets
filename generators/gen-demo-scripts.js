@@ -21,6 +21,7 @@ const { QLIK, ensureQlikLogo } = require("./qlik-doc-styles");
 const deckMedia = require("./lib/deck-media");
 const { Paragraph, TextRun, PageBreak, BorderStyle, Table, TableRow, TableCell, ShadingType, WidthType } = require("docx");
 const path = require("path");
+const { deck, doc, DOCS_DIR } = require("./lib/asset-paths");
 
 // Render all demo scripts in the Qlik brand: Inter typography, Qlik palette,
 // and the official Qlik logo header/footer (injected via the QLIK theme object).
@@ -34,7 +35,7 @@ const Q = {
 };
 const FONT = "Inter";
 
-const OUT_DIR = path.join(__dirname, "..", "documents", "demo-scripts");
+const OUT_DIR = doc("demo-scripts");
 
 // ─── HELPER: Page break paragraph ───
 function pageBreak() {

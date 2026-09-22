@@ -44,6 +44,7 @@ pptx.company = "Qlik / Meridian Commerce Group";
 pptx.title = "Project Qlarity — MCG Technology Architecture (Qlik Cloud)";
 
 const deckMedia = require("./lib/deck-media");
+const { deck, doc, DOCS_DIR } = require("./lib/asset-paths");
 
 let slideNum = 0;
 
@@ -1119,7 +1120,7 @@ dividerSlide("The 7 Nightmares", "$127M in annual data quality costs");
 // =============================================================================
 // SAVE
 // =============================================================================
-const outPath = path.join(__dirname, "..", "MCG_Technology_Architecture.pptx");
+const outPath = deck("MCG_Technology_Architecture.pptx");
 
 pptx.writeFile({ fileName: outPath }).then(() => {
   console.log(`\n  ✓ Generated: ${path.basename(outPath)}`);

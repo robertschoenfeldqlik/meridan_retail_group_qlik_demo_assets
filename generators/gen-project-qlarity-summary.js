@@ -55,6 +55,7 @@ pptx.company = "Qlik / Meridian Commerce Group";
 pptx.title = "Project Qlarity — Meridian Commerce Group Qlik Cloud Demo";
 
 const deckMedia = require("./lib/deck-media");
+const { deck, doc, DOCS_DIR } = require("./lib/asset-paths");
 
 let slideNum = 0;
 
@@ -785,7 +786,7 @@ renderProofs([
 ]);
 
 
-const outPath = path.join(__dirname, "..", "MCG_Project_Qlarity_Summary.pptx");
+const outPath = deck("MCG_Project_Qlarity_Summary.pptx");
 pptx.writeFile({ fileName: outPath }).then(() => {
   console.log(`✅ PowerPoint saved: ${outPath} (${slideNum} slides)`);
 }).catch(err => {

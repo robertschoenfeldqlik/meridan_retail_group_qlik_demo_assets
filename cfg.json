@@ -4,7 +4,7 @@
   "layout": "5col",
   "accentColor": "TEAL",
   "trackLength": "60s",
-  "output": "C:\\Claude\\MCG Full Stack\\MCG_Marketecture.pptx",
+  "output": "C:\\Claude\\MCG Demo\\MCG_Marketecture.pptx",
   "slideTitle": "Meridian Commerce Group — From Three Silos to Trusted AI",
   "slideSubtitle": "INTERNAL — DEMO ENABLEMENT  ·  How MCG lands WMS, IoT, and CRM in the Open Lakehouse for governed analytics and AI",
   "col1Header": "WHERE COMMERCE HAPPENS",

@@ -17,11 +17,12 @@ const {
 } = require("./mcg-docx-builder");
 const deckMedia = require("./lib/deck-media");
 const path = require("path");
+const { deck, doc, DOCS_DIR } = require("./lib/asset-paths");
 const {
   Paragraph, TextRun, PageBreak,
 } = require("docx");
 
-const OUT = path.join(__dirname, "..", "documents");
+const OUT = DOCS_DIR;
 
 // ─── Reusable helpers ────────────────────────────────────────────────────────
 

@@ -52,6 +52,7 @@ pptx.company = "Qlik";
 pptx.title = "Project Qlarity — MCG Qlik Cloud Demo — Four Stories";
 
 const deckMedia = require("./lib/deck-media");
+const { deck, doc, DOCS_DIR } = require("./lib/asset-paths");
 
 let slideNum = 0;
 
@@ -1958,7 +1959,7 @@ renderProofs([
 ]);
 
 
-const outPath = path.join(__dirname, "..", "MCG_Demo_Overview_Four_Stories.pptx");
+const outPath = deck("MCG_Demo_Overview_Four_Stories.pptx");
 pptx.writeFile({ fileName: outPath }).then(() => {
   console.log(`✅ PowerPoint saved: ${outPath} (${slideNum} slides)`);
 }).catch(err => {

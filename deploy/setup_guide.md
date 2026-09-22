@@ -825,7 +825,7 @@ python deploy/deploy_qlik.py  # Creates KB + uploads all 25 documents
 **Manual setup:**
 1. **Qlik Answers** → **Knowledge Bases** → **Create**
 2. Name: `MCG Operations Knowledge Base`
-3. Add datasource → Upload files → Select all 25 `.docx` files from `documents/`
+3. Add datasource → Upload files → Select the `.docx` files from the assets root (`../MCG Demo/documents/`)
 4. Wait for indexing to complete (~2-5 minutes for 25 docs)
 
 ### 8.2 Assistant Configuration
