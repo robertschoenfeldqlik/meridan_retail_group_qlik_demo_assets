@@ -39,13 +39,19 @@ const { z } = require('zod');
 const { REPO_ROOT, doc } = require('./lib/asset-paths');
 
 // The video sources live beside the repo, not inside it — the series folder is
-// its own project. Override for a different checkout.
+// its own project, and it gets moved (it has already been archived once). Try
+// the places it is known to live rather than hardcoding one, and let
+// MCG_SERIES_DIR override when it lands somewhere else again.
+const SERIES_CANDIDATES = [
+  path.resolve(REPO_ROOT, '..', 'MCG Video Voiceover', 'series'),
+  path.resolve(REPO_ROOT, '..', 'Archive', 'MCG Video Voiceover', 'series'),
+];
 const SERIES_DIR = process.env.MCG_SERIES_DIR
   ? path.resolve(process.env.MCG_SERIES_DIR)
-  : path.resolve(REPO_ROOT, '..', 'MCG Video Voiceover', 'series');
+  : (SERIES_CANDIDATES.find((d) => fs.existsSync(d)) || SERIES_CANDIDATES[0]);
 
 const RUBRIC_PATH = path.join(__dirname, 'rubrics', 'agentic-video-rubric.json');
-const MODEL = 'claude-opus-5';
+const MODEL = 'claude-opus-5-5';
 
 // Which stories carry which dimension. s5_ai spans both: its first half is the
 // build side, its later scenes are what the consumption side experiences.
