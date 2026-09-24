@@ -11,8 +11,9 @@ deploy/config.json
 .DS_Store
 Thumbs.db
 
-# Claude project files
-.claude/
+# Claude project files — local settings stay private, agent definitions are shared
+.claude/*
+!.claude/agents/
 
 # Python
 __pycache__/
