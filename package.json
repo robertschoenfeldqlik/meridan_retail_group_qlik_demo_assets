@@ -45,8 +45,10 @@
     "docker:logs": "node deploy/compose.js -f docker-compose.full-stack.yml logs --tail=50",
     "db:schema": "node deploy/compose.js exec -i mcg-postgres psql -U mcg_admin -d mcg_wms -f /dev/stdin < simulators/schema.sql",
     "db:seed": "node deploy/compose.js exec mcg-seed-data python seed_data.py --postgres --pg-host postgres --pg-db mcg_wms --pg-user mcg_admin --pg-pass mcg_demo_2025 --mysql --my-host mysql --my-port 3306 --my-db mcg_crm --my-user root --my-pass mcg_root_2025",
-    "lint": "node -c deploy/deploy-to-qlik.js && node -c deploy/deploy-ui.js && node -c deploy/zip-utils.js && node -c deploy/container-engine.js && node -c deploy/compose.js && node -c deploy/build-apps.js && node -c deploy/build-automations.js && node -c deploy/build-pipeline-zip.js && node -c deploy/build-talend-zip.js && node -c deploy/stewardship.js && node -c deploy/automation-workspaces.js && node -c generators/capture-tenant-screenshots.js && node -c generators/lib/deck-media.js && node -c deploy/pull-connection-template.js && node -c deploy/marketecture-column-swap.js && node -c deploy/pipelines/setup-vscode-template.js",
-    "db:crm": "node deploy/compose.js exec -it mcg-mysql mysql -uqlik_cdc -pmcg_crm_2025 mcg_crm"
+    "lint": "node -c deploy/deploy-to-qlik.js && node -c deploy/deploy-ui.js && node -c deploy/zip-utils.js && node -c deploy/container-engine.js && node -c deploy/compose.js && node -c deploy/build-apps.js && node -c deploy/build-automations.js && node -c deploy/build-pipeline-zip.js && node -c deploy/build-talend-zip.js && node -c deploy/stewardship.js && node -c deploy/automation-workspaces.js && node -c generators/capture-tenant-screenshots.js && node -c generators/lib/deck-media.js && node -c deploy/pull-connection-template.js && node -c deploy/marketecture-column-swap.js && node -c deploy/pipelines/setup-vscode-template.js && node -c generators/gen-ceo-video-review.js",
+    "db:crm": "node deploy/compose.js exec -it mcg-mysql mysql -uqlik_cdc -pmcg_crm_2025 mcg_crm",
+    "review:video": "node generators/gen-ceo-video-review.js",
+    "review:video:dry": "node generators/gen-ceo-video-review.js --dry-run"
   },
   "keywords": [
     "qlik",
@@ -59,11 +61,13 @@
   "license": "MIT",
   "type": "commonjs",
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.128.0",
     "docx": "^9.6.0",
     "exceljs": "^4.4.0",
     "pptxgenjs": "^4.0.1",
     "sharp": "^0.34.5",
-    "ws": "^8.18.0"
+    "ws": "^8.18.0",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "puppeteer": "^24.37.5"

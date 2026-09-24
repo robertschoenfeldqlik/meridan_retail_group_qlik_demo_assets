@@ -1,0 +1,193 @@
+{
+  "id": "mcg-agentic-video-rubric",
+  "version": "1.0",
+  "title": "Agentic Data Engineering & Agentic Analytics Experience — video talking-point rubric",
+  "purpose": "What a video covering MCG's agentic story is expected to say. gen-ceo-video-review.js classifies the actual narration against each criterion and reports what got missed.",
+  "note": "Authored from the repo's own narrative sources, not invented. Every criterion carries a `source` pointing at the file that defines it. Edit this file to change what the review scores; the classifier binds to `id`, so keep ids stable.",
+  "sources": [
+    "MCG_Agentic_Data_Engineering.md — two AI stories, six capabilities, seven-step flow, coding-agent loop, GA vs preview",
+    "cfg-agentic.json — outcomes row and the 30s/60s talk tracks",
+    "Meridian_Commerce_Group_Demo_Profile.md — company, CEO, the seven nightmares",
+    "documents/project_briefs/PROJ-CLARITY-2025_Business_Case.md — the $127M and the board framing"
+  ],
+  "scale": {
+    "covered": "Stated explicitly and clearly enough that a first-time viewer would take the point away.",
+    "partial": "Touched, implied, or named without enough substance to land — a viewer could miss it.",
+    "missed": "Not present in the narration at all."
+  },
+  "weights": {
+    "must": "The video fails its job without this.",
+    "should": "Expected; its absence is a real gap worth fixing before the next cut.",
+    "nice": "Strengthens the story; acceptable to trade away for time."
+  },
+  "dimensions": [
+    {
+      "id": "ADE",
+      "name": "Agentic Data Engineering (build side)",
+      "framing": "The AI that helps author the pipeline and govern the data in the first place — one step upstream of the analytics. Build side produces trust; consumption side spends it.",
+      "criteria": [
+        {
+          "id": "ADE-01",
+          "name": "Pipelines are code, in version control",
+          "weight": "must",
+          "expect": "The pipeline is declarative YAML held in Git — reviewable, diffable, revertable — not something clicked together in a browser. CI/CD deploys the definition.",
+          "source": "MCG_Agentic_Data_Engineering.md § six capabilities #1"
+        },
+        {
+          "id": "ADE-02",
+          "name": "One definition, three ways to author it",
+          "weight": "must",
+          "expect": "The same YAML file is editable visually in the Qlik Talend Cloud UI, programmatically in an IDE such as VS Code, or agentically by an AI coding agent — one schema, one Git history, whichever path the engineer takes.",
+          "source": "MCG_Agentic_Data_Engineering.md § Two AI stories; talking point 1"
+        },
+        {
+          "id": "ADE-03",
+          "name": "The agent types, the human decides",
+          "weight": "must",
+          "expect": "A worked coding-agent loop: the agent edits the file, the schema validates the change live, the diff is small and reviewable, a human owns the decision, and a bad change is a git revert.",
+          "source": "MCG_Agentic_Data_Engineering.md § human-in-the-loop coding-agent loop; talking point 2"
+        },
+        {
+          "id": "ADE-04",
+          "name": "Data Product Agent",
+          "weight": "should",
+          "expect": "Gold data products are packaged and reviewed conversationally — the two products being Supply Chain Health and Last Mile Performance, each with governance metadata and a trust-score SLA.",
+          "source": "MCG_Agentic_Data_Engineering.md § six capabilities #2; seven steps #4"
+        },
+        {
+          "id": "ADE-05",
+          "name": "Data Quality Agent",
+          "weight": "should",
+          "expect": "A steward states a rule in plain language — for example that every perishable item must carry a lot number — and the agent turns it into an enforced rule and shows the violations, feeding the trust scores on the silver datasets.",
+          "source": "MCG_Agentic_Data_Engineering.md § six capabilities #3; seven steps #3"
+        },
+        {
+          "id": "ADE-06",
+          "name": "Catalog and Business Glossary Agent, with drafts held for approval",
+          "weight": "should",
+          "expect": "Natural-language questions across the catalog, and generated glossary terms that arrive in draft status and wait for a human to approve them — the approval gate is the point, not a detail.",
+          "source": "MCG_Agentic_Data_Engineering.md § six capabilities #4; seven steps #5"
+        },
+        {
+          "id": "ADE-07",
+          "name": "AI inside the pipeline task, not only on the dashboard",
+          "weight": "must",
+          "expect": "Talend Agentic Routes put an LLM or RAG step inside a data task: a mangled multilingual address goes in, a structured corrected one with a confidence score comes back, above the threshold it continues automatically and below it goes to a human steward — and the model can run inside the customer's own tenant.",
+          "source": "MCG_Agentic_Data_Engineering.md § six capabilities #5; talking point 5"
+        },
+        {
+          "id": "ADE-08",
+          "name": "Qlik MCP Server exposes governance to any AI client",
+          "weight": "should",
+          "expect": "The governed result — data products, quality metrics, lineage, catalog — is reachable by any MCP-compatible assistant, not locked inside one vendor's chat window.",
+          "source": "MCG_Agentic_Data_Engineering.md § six capabilities #6"
+        },
+        {
+          "id": "ADE-09",
+          "name": "Medallion on an open target",
+          "weight": "should",
+          "expect": "Bronze through gold lands on the Qlik Open Lakehouse as Apache Iceberg tables on object storage — an open format, not a proprietary one.",
+          "source": "MCG_Agentic_Data_Engineering.md § Two AI stories; seven steps #2"
+        },
+        {
+          "id": "ADE-10",
+          "name": "Build side produces the trust the consumption side spends",
+          "weight": "must",
+          "expect": "The explicit through-line between the two halves: the governed products this side builds are exactly what Answers, Predict and the Discovery Agent read. Without it the two halves look like separate products.",
+          "source": "MCG_Agentic_Data_Engineering.md § seven steps close; talking point 3"
+        },
+        {
+          "id": "ADE-11",
+          "name": "Honest about GA versus preview",
+          "weight": "must",
+          "expect": "Declarative pipelines and the Qlik MCP Server are called out as preview, and the three conversational agents are described as Qlik Answers capabilities rather than separate products.",
+          "source": "MCG_Agentic_Data_Engineering.md § GA vs preview status; talking point 4"
+        },
+        {
+          "id": "ADE-12",
+          "name": "Anchored in Meridian's own numbers",
+          "weight": "should",
+          "expect": "The engineering story is tied back to the business case — the $127M annual cost, the seven data nightmares, the four systems with no common key — rather than presented as generic capability.",
+          "source": "Meridian_Commerce_Group_Demo_Profile.md; PROJ-CLARITY-2025_Business_Case.md"
+        }
+      ]
+    },
+    {
+      "id": "AAX",
+      "name": "Agentic Analytics Experience (consumption side)",
+      "framing": "What people do with the trusted data: ask, watch, predict and act — with the governance visible rather than assumed.",
+      "criteria": [
+        {
+          "id": "AAX-01",
+          "name": "Answers that cite their source",
+          "weight": "must",
+          "expect": "A question over the operational document knowledge base returns an answer with the document attached — the NinjaVan contract amendment behind the Singapore delivery-accuracy fall is the worked example — so the viewer sees it did not guess.",
+          "source": "series/s4_analytics/script.md scene 3; MCG_Agentic_Data_Engineering.md § Two AI stories"
+        },
+        {
+          "id": "AAX-02",
+          "name": "Dashboards authored conversationally over MCP",
+          "weight": "must",
+          "expect": "Sheets and charts created by an assistant calling live Qlik tools against the real tenant, ending as governed objects in a governed app — plain English in, governed artifact out.",
+          "source": "series/s4_analytics/script.md scene 2; MCG_Agentic_Data_Engineering.md § six capabilities #6"
+        },
+        {
+          "id": "AAX-03",
+          "name": "Prediction on the same governed data",
+          "weight": "should",
+          "expect": "Qlik Predict trained on the governed lakehouse — cold-chain exceedance and late-delivery risk — with the insight that a missing tracking number is itself one of the strongest predictors, so the data gap predicts the failure.",
+          "source": "series/s4_analytics/script.md scene 4; cfg-agentic.json analytics.aiml"
+        },
+        {
+          "id": "AAX-04",
+          "name": "Something is always watching the products",
+          "weight": "must",
+          "expect": "A Discovery Agent monitors the gold products continuously against explicit thresholds — trust score, sync lag, volume shift — so the Rotterdam failure's seventy-two silent hours would now be an alert.",
+          "source": "series/s5_ai/script.md scene 4; documents/incident_reports/INC-2025-04872"
+        },
+        {
+          "id": "AAX-05",
+          "name": "The loop closes without a person in it",
+          "weight": "should",
+          "expect": "Automations carry detection through notification, review, correction and validation — a cold-chain breach posting to the operations channel, a steward's correction handed back to the pipeline — automated end to end except the step that should stay human.",
+          "source": "series/s5_ai/script.md scene 7"
+        },
+        {
+          "id": "AAX-06",
+          "name": "The human gate is named on this side too",
+          "weight": "must",
+          "expect": "Where a person approves, overrides or is escalated to — drafts awaiting approval, a steward queue, an override path — stated rather than implied, so the experience is not read as fully autonomous.",
+          "source": "cfg-agentic.json analytics.aiml accent; MCG_Agentic_Data_Engineering.md § coding-agent loop"
+        },
+        {
+          "id": "AAX-07",
+          "name": "One governed product, many consumers",
+          "weight": "should",
+          "expect": "Sheets, answers and predictions are shown reading the same two gold products, so the viewer sees one governed source rather than three disconnected AI features.",
+          "source": "MCG_Agentic_Data_Engineering.md § seven steps #7"
+        },
+        {
+          "id": "AAX-08",
+          "name": "Tied to a decision someone actually makes",
+          "weight": "must",
+          "expect": "At least one concrete operational decision that changes because of this — who acts, on what, how much sooner — rather than a tour of features.",
+          "source": "PROJ-CLARITY-2025_Business_Case.md; Meridian_Commerce_Group_Demo_Profile.md"
+        },
+        {
+          "id": "AAX-09",
+          "name": "Quantified outcome",
+          "weight": "should",
+          "expect": "The business result carried in numbers the board already knows — against the $127M baseline and the accuracy, SLA and WISMO measures behind it.",
+          "source": "PROJ-CLARITY-2025_Business_Case.md"
+        },
+        {
+          "id": "AAX-10",
+          "name": "Honest about what is live",
+          "weight": "should",
+          "expect": "Consumption-side capabilities that are preview or forward-looking are labelled as such, consistent with how the build side is described.",
+          "source": "MCG_Agentic_Data_Engineering.md § GA vs preview status"
+        }
+      ]
+    }
+  ]
+}
