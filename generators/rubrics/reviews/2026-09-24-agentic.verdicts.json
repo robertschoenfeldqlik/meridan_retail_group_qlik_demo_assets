@@ -1,0 +1,138 @@
+{
+  "reviewer": "Claude Opus 5, reading the narration in series/*/script.md and the slides each video actually uses per recut.py VIDEOS",
+  "verdicts": [
+    {
+      "id": "ADE-01",
+      "verdict": "covered",
+      "evidence": "They are declarative pipelines — plain YAML in version control, imported through the platform API. Bronze to silver to gold, expressed as code you can review, diff and roll back.",
+      "gap": ""
+    },
+    {
+      "id": "ADE-02",
+      "verdict": "missed",
+      "evidence": "",
+      "gap": "Nothing says the same YAML is editable three ways. The narration contrasts code with clicking — 'not clicked together in this browser' — and then only ever shows an agent editing it. A viewer concludes that choosing pipelines-as-code means giving up the visual editor, which is the opposite of the point: one definition, one schema, one Git history, authored in the Qlik Talend Cloud UI or an IDE or by an agent, whichever the engineer prefers."
+    },
+    {
+      "id": "ADE-03",
+      "verdict": "covered",
+      "evidence": "The agent does the typing. The schema catches the mistakes. The human owns the decision. And if it is wrong, it is a git revert.",
+      "gap": ""
+    },
+    {
+      "id": "ADE-04",
+      "verdict": "covered",
+      "evidence": "A Data Product Agent packages and reviews products conversationally.",
+      "gap": ""
+    },
+    {
+      "id": "ADE-05",
+      "verdict": "covered",
+      "evidence": "A Data Quality Agent turns \"every perishable item must have a lot number\" into a rule and shows you the violations.",
+      "gap": ""
+    },
+    {
+      "id": "ADE-06",
+      "verdict": "covered",
+      "evidence": "Drafts is the operative word. Generated terms arrive in draft status and wait for a human to approve them.",
+      "gap": ""
+    },
+    {
+      "id": "ADE-07",
+      "verdict": "covered",
+      "evidence": "hand it a mangled address, get back a structured, corrected one with a confidence score. Above the threshold it goes to the geocoder; below it, here, to a human steward. And the model can run in your own tenant.",
+      "gap": ""
+    },
+    {
+      "id": "ADE-08",
+      "verdict": "partial",
+      "evidence": "through the Qlik MCP server — an assistant calling live Qlik tools to create the sheet, add the charts, and set the measures",
+      "gap": "The MCP server appears only as the channel through which sheets get authored. Nobody says the governed result — data products, quality metrics, lineage, catalog — is reachable by any MCP-compatible assistant. The interoperability claim, which is what stops this reading as a closed vendor stack, is never made."
+    },
+    {
+      "id": "ADE-09",
+      "verdict": "covered",
+      "evidence": "The target is the Qlik Open Lakehouse: Iceberg tables on object storage, bronze through gold.",
+      "gap": ""
+    },
+    {
+      "id": "ADE-10",
+      "verdict": "covered",
+      "evidence": "One way to think about it: the build side produces trust, and the consumption side spends it.",
+      "gap": ""
+    },
+    {
+      "id": "ADE-11",
+      "verdict": "partial",
+      "evidence": "these are Qlik Answers capabilities, not separate products",
+      "gap": "Half of it lands. The three agents are correctly framed as Qlik Answers capabilities rather than products. But no narration anywhere says 'preview'. Declarative pipelines and the Qlik MCP server are both preview and both are presented as shipping — 'Everything you're about to see is running on a live tenant' and 'It exposes the real tenant, not a simulation'. The only preview label in the whole sequence is on-screen small print on the Talend routes slide, which a viewer reading the narration will never register."
+    },
+    {
+      "id": "ADE-12",
+      "verdict": "partial",
+      "evidence": "Meridian started at a hundred and twenty-seven million dollars a year, and forty-seven systems that disagreed.",
+      "gap": "The figure appears once, in the closing seconds of the last video, as a bookend. No engineering capability is tied to a share of it or to a named nightmare, so the middle of the story is capability described for its own sake."
+    },
+    {
+      "id": "AAX-01",
+      "verdict": "covered",
+      "evidence": "it does not guess. It cites the NinjaVan contract amendment, effective the first of October, that moved five-to-ten kilo parcels from two-day to three-day.",
+      "gap": ""
+    },
+    {
+      "id": "AAX-02",
+      "verdict": "covered",
+      "evidence": "which is why a sentence of plain English can end up as a governed object in a governed app",
+      "gap": ""
+    },
+    {
+      "id": "AAX-03",
+      "verdict": "covered",
+      "evidence": "a missing tracking number is one of the strongest predictors of a late delivery. The data gap itself predicts the failure.",
+      "gap": ""
+    },
+    {
+      "id": "AAX-04",
+      "verdict": "covered",
+      "evidence": "trust score falling below zero point seven, sync lag over an hour, volume moving more than fifty percent. That is the Rotterdam failure again: seventy-two silent hours becomes an alert",
+      "gap": ""
+    },
+    {
+      "id": "AAX-05",
+      "verdict": "covered",
+      "evidence": "Detection, notification, review, correction, validation — automated end to end, except the one step that should stay human.",
+      "gap": ""
+    },
+    {
+      "id": "AAX-06",
+      "verdict": "partial",
+      "evidence": "Generated terms arrive in draft status and wait for a human to approve them.",
+      "gap": "Every human gate named sits on the build side — glossary drafts, the steward below the confidence threshold, the one manual step in the automation loop. On the consumption side there is none. A sentence of plain English becomes a governed object in a governed app with no review, no approver and no owner mentioned. The first question a governance-minded viewer asks is who signed that off, and the video does not answer it."
+    },
+    {
+      "id": "AAX-07",
+      "verdict": "partial",
+      "evidence": "These are the two gold data products from the governance story, and they are what the agents operate on.",
+      "gap": "The single-source claim is made for the agents and only for the agents. The three consumption surfaces are shown reading three different things — sheets over the apps, Answers over twenty-five documents, Predict over sensor telemetry and the order timeline. Nothing connects them back to Supply Chain Health and Last Mile Performance, so they read as three separate AI features rather than one governed source with three consumers."
+    },
+    {
+      "id": "AAX-08",
+      "verdict": "missed",
+      "evidence": "",
+      "gap": "Not one worked example of a person deciding something differently. The Singapore answer explains a number that already happened. The Discovery Agent raises an alert and nobody receives it. The automation posts a card 'to the operations channel' with no role attached. In every case the story stops at the insight: no named person, no action taken, no outcome changed."
+    },
+    {
+      "id": "AAX-09",
+      "verdict": "missed",
+      "evidence": "",
+      "gap": "The sequence opens on a cost and closes on the same cost. No measure moves — not inventory record accuracy, not delivery promise accuracy, not WISMO volume, not a euro or dollar of the hundred and twenty-seven million. There is no claim of value, only a claim of capability."
+    },
+    {
+      "id": "AAX-10",
+      "verdict": "partial",
+      "evidence": "It exposes the real tenant, not a simulation",
+      "gap": "Answers, Predict, the Discovery Agent and the automations are shipping and are shown as such. Sheet authoring runs through the MCP server, which is preview, and the line that introduces it stresses the opposite — that it is real and live. Consistent with the build side, the only preview label in the sequence is on-screen small print on one slide."
+    }
+  ],
+  "scope": "Verdicts are formed from the spoken narration in each script.md and from the slides each video actually uses, per the VIDEOS mapping in recut.py. Evidence quotes are from the narration."
+}

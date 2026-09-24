@@ -71,6 +71,18 @@ const DRY = has('--dry-run');
 const TOPIC = (val('--topic', 'both') || 'both').toLowerCase();
 const JSON_OUT = val('--json', null);
 
+// Offline path: supply verdicts and memo that were produced elsewhere — by a
+// human reviewer, by an assistant with the sources in front of it, or by an
+// earlier run whose --json was kept. The validation below is the same either
+// way, so a hand-written review cannot skip criteria or cite absent quotes.
+const VERDICTS_IN = val('--verdicts', null);
+const MEMO_IN = val('--memo', null);
+const OFFLINE = Boolean(VERDICTS_IN || MEMO_IN);
+if (OFFLINE && !(VERDICTS_IN && MEMO_IN)) {
+  console.error('--verdicts and --memo must be given together');
+  process.exit(2);
+}
+
 const TOPIC_MAP = { engineering: ['ADE'], analytics: ['AAX'], both: ['ADE', 'AAX'] };
 if (!TOPIC_MAP[TOPIC]) {
   console.error(`--topic must be one of: ${Object.keys(TOPIC_MAP).join(', ')}`);
@@ -249,7 +261,7 @@ const VerdictSchema = z.object({
 
 const MARK = { covered: '✓', partial: '~', missed: '✗' };
 
-function buildMarkdown({ dims, verdicts, memo, scripts, counts }) {
+function buildMarkdown({ dims, verdicts, memo, scripts, counts, scope }) {
   const byId = new Map();
   dims.forEach((d) => d.criteria.forEach((c) => byId.set(c.id, c)));
   const today = new Date().toISOString().slice(0, 10);
@@ -279,13 +291,13 @@ ${memo}
 
 ## Appendix — coverage analysis
 
-Scored against \`generators/rubrics/agentic-video-rubric.json\`. Verdicts are machine-classified from the spoken narration only; what appears on screen is not scored.
+Scored against \`generators/rubrics/agentic-video-rubric.json\`. ${scope}
 
 ${sections}
 `;
 }
 
-async function writeDocx({ dims, verdicts, memo, scripts, counts, outMd }) {
+async function writeDocx({ dims, verdicts, memo, scripts, counts, outMd, scope }) {
   const {
     buildDocument, saveDocument, metadataTable, dataTable,
     heading, para, calloutBox, signatureBlock,
@@ -316,7 +328,7 @@ async function writeDocx({ dims, verdicts, memo, scripts, counts, outMd }) {
   });
 
   body.push(heading('Appendix — Coverage Analysis', 2));
-  body.push(para('Scored against the agentic video rubric. Verdicts are classified from the spoken narration only; on-screen content is not scored.'));
+  body.push(para(`Scored against the agentic video rubric. ${scope}`));
   for (const d of dims) {
     body.push(heading(d.name, 3));
     body.push(dataTable(
@@ -369,35 +381,55 @@ async function writeDocx({ dims, verdicts, memo, scripts, counts, outMd }) {
     return;
   }
 
-  if (!process.env.ANTHROPIC_API_KEY && !process.env.ANTHROPIC_AUTH_TOKEN) {
-    throw new Error(
-      'no Anthropic credential — set ANTHROPIC_API_KEY, or run `ant auth login`.\n' +
-      '         --dry-run works without one and shows exactly what would be sent.',
-    );
+  let verdicts;
+  let memo;
+  // What the verdicts were actually formed from. The API path sees the
+  // narration and nothing else; an offline review may also have watched the
+  // slides, so it can say so in its own file.
+  let scope = 'Verdicts are classified from the spoken narration only; on-screen content is not scored.';
+
+  if (OFFLINE) {
+    const raw = JSON.parse(fs.readFileSync(VERDICTS_IN, 'utf8'));
+    verdicts = Array.isArray(raw) ? raw : raw.verdicts;
+    if (!Array.isArray(verdicts)) throw new Error(`${VERDICTS_IN}: expected an array, or an object with a "verdicts" array`);
+    const parsed = VerdictSchema.safeParse({ verdicts });
+    if (!parsed.success) throw new Error(`${VERDICTS_IN}: ${parsed.error.issues.map((i) => `${i.path.join('.')} ${i.message}`).join('; ')}`);
+    verdicts = parsed.data.verdicts;
+    if (raw && raw.scope) scope = String(raw.scope);
+    memo = fs.readFileSync(MEMO_IN, 'utf8').trim();
+    if (!memo) throw new Error(`${MEMO_IN} is empty`);
+    console.log(`\noffline: ${verdicts.length} verdicts from ${path.basename(VERDICTS_IN)}, memo from ${path.basename(MEMO_IN)}`);
+  } else {
+    if (!process.env.ANTHROPIC_API_KEY && !process.env.ANTHROPIC_AUTH_TOKEN) {
+      throw new Error(
+        'no Anthropic credential — set ANTHROPIC_API_KEY, or run `ant auth login`.\n' +
+        '         --dry-run shows what would be sent; --verdicts/--memo take a review made elsewhere.',
+      );
+    }
+    // A Claude Code shell exports ANTHROPIC_BASE_URL pointing at its own proxy,
+    // which is not the public API and will not serve this key. Say so rather
+    // than failing later with an opaque 401.
+    if (process.env.ANTHROPIC_BASE_URL) {
+      console.log(`  note: ANTHROPIC_BASE_URL is set (${process.env.ANTHROPIC_BASE_URL}) — unset it to reach api.anthropic.com`);
+    }
+
+    const Anthropic = require('@anthropic-ai/sdk');
+    const { zodOutputFormat } = require('@anthropic-ai/sdk/helpers/zod');
+    const client = new Anthropic();
+
+    console.log(`\nclassifying ${nCriteria} criteria against ${nScenes} narrated scenes...`);
+    const classified = await client.messages.parse({
+      model: MODEL,
+      max_tokens: 16000,
+      thinking: { type: 'adaptive' },
+      output_config: { effort: 'high', format: zodOutputFormat(VerdictSchema) },
+      system: CLASSIFY_SYSTEM,
+      messages: [{ role: 'user', content: classifyPrompt(dims, scripts) }],
+    });
+
+    if (!classified.parsed_output) throw new Error('classifier returned no parsed output');
+    verdicts = classified.parsed_output.verdicts;
   }
-  // A Claude Code shell exports ANTHROPIC_BASE_URL pointing at its own proxy,
-  // which is not the public API and will not serve this key. Say so rather
-  // than failing later with an opaque 401.
-  if (process.env.ANTHROPIC_BASE_URL) {
-    console.log(`  note: ANTHROPIC_BASE_URL is set (${process.env.ANTHROPIC_BASE_URL}) — unset it to reach api.anthropic.com`);
-  }
-
-  const Anthropic = require('@anthropic-ai/sdk');
-  const { zodOutputFormat } = require('@anthropic-ai/sdk/helpers/zod');
-  const client = new Anthropic();
-
-  console.log(`\nclassifying ${nCriteria} criteria against ${nScenes} narrated scenes...`);
-  const classified = await client.messages.parse({
-    model: MODEL,
-    max_tokens: 16000,
-    thinking: { type: 'adaptive' },
-    output_config: { effort: 'high', format: zodOutputFormat(VerdictSchema) },
-    system: CLASSIFY_SYSTEM,
-    messages: [{ role: 'user', content: classifyPrompt(dims, scripts) }],
-  });
-
-  if (!classified.parsed_output) throw new Error('classifier returned no parsed output');
-  const verdicts = classified.parsed_output.verdicts;
 
   // The classifier must return every criterion. A short list means a silent
   // miss, and a review built on it would understate the gaps.
@@ -424,24 +456,28 @@ async function writeDocx({ dims, verdicts, memo, scripts, counts, outMd }) {
     console.log(`  ${MARK[v.verdict]} ${v.id}  ${v.gap}`);
   });
 
-  console.log('\nwriting the CEO review...');
-  const stream = client.messages.stream({
-    model: MODEL,
-    max_tokens: 64000,
-    thinking: { type: 'adaptive' },
-    output_config: { effort: 'high' },
-    system: REVIEW_SYSTEM,
-    messages: [{ role: 'user', content: reviewPrompt(dims, verdicts, context, scripts) }],
-  });
-  const final = await stream.finalMessage();
-  const memo = final.content.filter((b) => b.type === 'text').map((b) => b.text).join('\n').trim();
-  if (!memo) throw new Error('reviewer returned no text');
+  if (!OFFLINE) {
+    console.log('\nwriting the CEO review...');
+    const Anthropic = require('@anthropic-ai/sdk');
+    const client = new Anthropic();
+    const stream = client.messages.stream({
+      model: MODEL,
+      max_tokens: 64000,
+      thinking: { type: 'adaptive' },
+      output_config: { effort: 'high' },
+      system: REVIEW_SYSTEM,
+      messages: [{ role: 'user', content: reviewPrompt(dims, verdicts, context, scripts) }],
+    });
+    const final = await stream.finalMessage();
+    memo = final.content.filter((b) => b.type === 'text').map((b) => b.text).join('\n').trim();
+    if (!memo) throw new Error('reviewer returned no text');
+  }
 
   const slug = TOPIC === 'both' ? 'agentic' : TOPIC;
   const outMd = doc('reviews', `CEO_Video_Review_${slug}.md`);
-  fs.writeFileSync(outMd, buildMarkdown({ dims, verdicts, memo, scripts, counts }), 'utf8');
+  fs.writeFileSync(outMd, buildMarkdown({ dims, verdicts, memo, scripts, counts, scope }), 'utf8');
   console.log(`  ✓ ${path.basename(outMd)}`);
-  const outDocx = await writeDocx({ dims, verdicts, memo, scripts, counts, outMd });
+  const outDocx = await writeDocx({ dims, verdicts, memo, scripts, counts, outMd, scope });
 
   if (JSON_OUT) {
     fs.writeFileSync(JSON_OUT, JSON.stringify({
