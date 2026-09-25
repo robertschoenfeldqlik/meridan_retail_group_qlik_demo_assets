@@ -25,8 +25,14 @@ const fs = require('fs');
 
 const REPO_ROOT = path.resolve(__dirname, '..', '..');
 
-// Sibling of the repo: C:\Claude\MCG Full Stack -> C:\Claude\MCG Demo
-const DEFAULT_ASSETS_DIR = path.resolve(REPO_ROOT, '..', 'MCG Demo');
+// Two supported layouts, detected rather than assumed:
+//   repo inside the assets root:  C:\Claude\MCG Demo\MCG Full Stack -> C:\Claude\MCG Demo
+//   repo beside the assets root:  C:\Claude\MCG Full Stack           -> C:\Claude\MCG Demo
+function resolveAssetsDir(repoRoot) {
+  const parent = path.resolve(repoRoot, '..');
+  return path.basename(parent) === 'MCG Demo' ? parent : path.join(parent, 'MCG Demo');
+}
+const DEFAULT_ASSETS_DIR = resolveAssetsDir(REPO_ROOT);
 
 const ASSETS_DIR = process.env.MCG_ASSETS_DIR
   ? path.resolve(process.env.MCG_ASSETS_DIR)
@@ -56,4 +62,4 @@ function doc(...segments) {
   return full;
 }
 
-module.exports = { REPO_ROOT, ASSETS_DIR, DECKS_DIR, DOCS_DIR, ensure, deck, doc };
+module.exports = { REPO_ROOT, ASSETS_DIR, DECKS_DIR, DOCS_DIR, ensure, deck, doc, resolveAssetsDir };

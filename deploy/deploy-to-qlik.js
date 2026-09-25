@@ -31,6 +31,7 @@ const { zipDirectory, unzipToDirectory } = require('./zip-utils');
 const { resolveEngine, composeCmd, engineEnv } = require('./container-engine');
 const stewardship = require('./stewardship');
 const automationWorkspaces = require('./automation-workspaces');
+const { DOCS_DIR } = require('../generators/lib/asset-paths');
 
 // ---------------------------------------------------------------------------
 //  Constants
@@ -2758,7 +2759,11 @@ async function main() {
         throw new Error(`Cannot ingest documents: ${!connectionId ? 'no DataFiles connection for the KB space (set one up in the Qlik UI)' : 'could not resolve current userId'}`);
       }
 
-      const docsDir = path.resolve(SCRIPT_DIR, (cfg.documents && cfg.documents.sourceDir) || '../documents');
+      // Built .docx live in the assets root (generators/lib/asset-paths.js), which
+      // moves with the repo's layout. An explicit sourceDir still wins.
+      const docsDir = (cfg.documents && cfg.documents.sourceDir)
+        ? path.resolve(SCRIPT_DIR, cfg.documents.sourceDir)
+        : DOCS_DIR;
       const allDocxFiles = findFiles(docsDir, '.docx');
 
       // EVERY .docx is uploaded, because the knowledge base has a second

@@ -217,8 +217,7 @@
     "teamsChannelId": ""
   },
   "documents": {
-    "sourceDir": "../../MCG Demo/documents",
-    "comment_sourceDir": "Relative path from the deploy/ directory to the document corpus. Built documents live outside the repo in the assets root (see generators/lib/asset-paths.js); set MCG_ASSETS_DIR and this together if you move them."
+    "comment_sourceDir": "Optional. Omit to upload from the assets root resolved by generators/lib/asset-paths.js (the repo's parent when the repo sits inside 'MCG Demo', else the sibling 'MCG Demo' folder; MCG_ASSETS_DIR overrides). Set it only to point at a different corpus, relative to deploy/."
   },
   "apps": {
     "sourceDir": "./apps",

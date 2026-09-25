@@ -43,7 +43,8 @@ const { REPO_ROOT, doc } = require('./lib/asset-paths');
 // the places it is known to live rather than hardcoding one, and let
 // MCG_SERIES_DIR override when it lands somewhere else again.
 const SERIES_CANDIDATES = [
-  path.resolve(REPO_ROOT, '..', 'MCG Video Voiceover', 'series'),
+  path.resolve(REPO_ROOT, '..', 'MCG Video Voiceover', 'series'),              // repo and videos side by side
+  path.resolve(REPO_ROOT, '..', 'MCG Demo', 'MCG Video Voiceover', 'series'),  // videos inside MCG Demo, repo beside it
   path.resolve(REPO_ROOT, '..', 'Archive', 'MCG Video Voiceover', 'series'),
 ];
 const SERIES_DIR = process.env.MCG_SERIES_DIR
