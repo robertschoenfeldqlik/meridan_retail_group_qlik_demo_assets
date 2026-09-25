@@ -15,7 +15,7 @@ A complete, deployable demo environment showcasing the full Qlik platform — fr
 | **Data Pipelines** | Declarative QTCP pipeline (YAML) — bronze/silver/gold tasks imported via the DI Projects API |
 | **Automations** | Teams alerting for cold-chain breaches and pipeline health |
 | **Content Generation** | 18 Node.js generators for documents, presentations, SOPs, and glossaries |
-| **Demo Scripts** | 13 guided walkthrough scripts covering every platform capability |
+| **Demo Scripts** | 18 guided walkthrough scripts covering every platform capability |
 
 ## Quick Start
 
@@ -94,34 +94,71 @@ MCG Full Stack/
 
 ### Built assets live outside the repo
 
-The decks and the document corpus are deliverables, not source: generated, never
-hand-edited, and about 20 MB of binaries that churn on every run. They are
-written to an **assets root** beside the repo rather than into it.
+The decks, the document corpus and the videos are deliverables, not source:
+generated, never hand-edited, and binaries that churn on every run. They live in
+an **assets root**, `C:\Claude\MCG Demo`, which also holds this repo and the video
+toolchain, so everything MCG sits in one folder:
 
 ```
 C:\Claude\MCG Demo\
-├── MCG_Technology_Architecture.pptx     # 7 decks
-├── MCG_Demo_Overview_Four_Stories.pptx
+├── MCG Full Stack\                       # this repo
+├── MCG Video Voiceover\                  # video toolchain and sources (series\, intro\)
+├── 01_MCG_Company_Profile_1080p.mp4      # 5 videos, 01–05
 ├── ...
-└── documents/                            # 45 .docx + glossary .xlsx
-    ├── carrier_contracts/                # DPD, FedEx, NinjaVan agreements
-    ├── compliance/                       # NVWA corrective action plans
-    ├── demo-scripts/                     # 18 guided demo walkthroughs
-    ├── incident_reports/                 # Rotterdam, TransFrio incidents
-    ├── policies/                         # Cold chain, data quality, shipping
-    ├── sops/                             # WISMO, goods receiving, cycle count
+├── MCG_Technology_Architecture.pptx      # 7 decks
+├── ...
+└── documents\                            # 46 .docx + glossary .xlsx
+    ├── carrier_contracts\                # DPD, FedEx, NinjaVan agreements
+    ├── compliance\                       # NVWA corrective action plans
+    ├── demo-scripts\                     # 18 guided demo walkthroughs
+    ├── incident_reports\                 # Rotterdam, TransFrio incidents
+    ├── policies\                         # Cold chain, data quality, shipping
+    ├── reviews\                          # CEO review of the videos (kept out of the KB)
+    ├── sops\                             # WISMO, goods receiving, cycle count
     └── ...                               # training, purchase orders, recalls
 ```
 
-One module decides that path — `generators/lib/asset-paths.js`. Override it with
+One module decides that path — `generators/lib/asset-paths.js`. It uses the
+repo's parent when that folder is named `MCG Demo`, and a sibling `MCG Demo`
+folder otherwise, so a clone beside the assets root works too. Override it with
 `MCG_ASSETS_DIR` for a different machine or a CI run:
 
 ```bash
 MCG_ASSETS_DIR=/srv/mcg-assets npm run generate
 ```
 
-`deploy/config.json` → `documents.sourceDir` points the knowledge-base upload at
-the same corpus; move one and move the other.
+The knowledge-base upload reads the same corpus, so moving the assets root needs
+no other change. Set `documents.sourceDir` in `deploy/config.json` only to point
+at a different corpus. `documents/reviews/` is never uploaded: it reviews the
+demo, it is not MCG content.
+
+### Where each asset is uploaded
+
+| Asset | Local | Uploaded to |
+|---|---|---|
+| Code, generators, deploy | `MCG Demo\MCG Full Stack` | GitHub, `main` |
+| 7 decks | `MCG Demo\*.pptx` | GitHub release [`assets-2026-09-25`](https://github.com/robertschoenfeldqlik/meridan_retail_group_qlik_demo_assets/releases/tag/assets-2026-09-25) |
+| 5 videos | `MCG Demo\*_1080p.mp4` | Same release |
+| Document corpus | `MCG Demo\documents` | Same release, as `MCG_Documents.zip`, and the Qlik tenant (below) |
+| Video generation assets | `MCG Demo\MCG Video Voiceover` | Same release, as `MCG_Video_Voiceover.zip` |
+
+In the tenant, `npm run deploy` uploads every corpus `.docx` to the
+`MCG Demo - Development` DataFiles folder `MCG Documents/`. The **MCG Operations
+Knowledge Base** indexes them through two datasources: **MCG Documents** (the 25
+operational documents) and **MCG Documents — Demo & Guides** (the 18 demo scripts
+and the two guides). The deploy does not manage the second one, so a new demo
+script has to be added to it by hand.
+
+The release is a snapshot. After regenerating, replace the changed files:
+
+```bash
+gh release upload assets-2026-09-25 <files> --clobber
+```
+
+`MCG_Video_Voiceover.zip` leaves out the capture browser profile
+(`series/.qlik-profile`, which holds a Qlik login), `.claude/settings.local.json`,
+`__pycache__`, and the ffmpeg intermediates in `series/work`, which
+`build_video.py` rewrites on every run.
 
 
 ## npm Scripts
