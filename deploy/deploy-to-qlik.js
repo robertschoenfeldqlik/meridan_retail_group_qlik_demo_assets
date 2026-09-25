@@ -1220,7 +1220,7 @@ class QlikClient {
     }
   }
 
-  async createGlossary(name, description) {
+  async createGlossary(name, description, spaceId) {
     const existing = await this.findGlossaryByName(name);
     if (existing) {
       this.log.success(`Glossary already exists: "${name}" (${existing.id || '?'}) — skipping.`);
@@ -1228,11 +1228,14 @@ class QlikClient {
     }
 
     if (this.dryRun) {
-      this.log.info(`DRY RUN: Would create glossary "${name}"`);
+      this.log.info(`DRY RUN: Would create glossary "${name}"${spaceId ? ` in space ${spaceId}` : ' (personal space)'}`);
       return { id: 'dry-run-glossary-id', name };
     }
 
-    const res = await this._post('/api/data-governance/glossaries', { name, description });
+    // Omit spaceId -> the glossary lands in the creator's personal space.
+    const body = { name, description };
+    if (spaceId) body.spaceId = spaceId;
+    const res = await this._post('/api/data-governance/glossaries', body);
     if (res.statusCode === 200 || res.statusCode === 201) {
       this.log.success(`Created glossary "${name}" (${res.body.id || '?'})`);
       return res.body;
@@ -2764,7 +2767,10 @@ async function main() {
       const docsDir = (cfg.documents && cfg.documents.sourceDir)
         ? path.resolve(SCRIPT_DIR, cfg.documents.sourceDir)
         : DOCS_DIR;
-      const allDocxFiles = findFiles(docsDir, '.docx');
+      // documents/reviews/ holds reviews OF the demo (gen-ceo-video-review.js),
+      // not MCG documents, so it never goes to the knowledge base.
+      const allDocxFiles = findFiles(docsDir, '.docx')
+        .filter((f) => !path.relative(docsDir, f).replace(/\\/g, '/').startsWith('reviews/'));
 
       // EVERY .docx is uploaded, because the knowledge base has a second
       // datasource ("MCG Documents — Demo & Guides") that reads the demo
@@ -2999,9 +3005,12 @@ async function main() {
         const terms  = glData.terms || [];
         log.info(`Found ${terms.length} glossary term(s) in ${path.basename(glFile)}`);
 
+        // The glossary belongs in the shared space with the rest of MCG, not in
+        // the personal space of whoever ran the deploy.
         const glossary = await client.createGlossary(
           glMeta.name || 'MCG Supply Chain Glossary',
-          glMeta.description || ''
+          glMeta.description || '',
+          sharedSpace ? sharedSpace.id : undefined
         );
 
         if (glossary.notAvailable) {
