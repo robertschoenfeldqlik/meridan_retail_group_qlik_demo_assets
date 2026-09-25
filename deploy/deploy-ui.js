@@ -17,6 +17,7 @@ const { spawn } = require('child_process');
 const { resolveEngine, composeCmd, engineCmd, engineEnv } = require('./container-engine');
 const stewardship = require('./stewardship');
 const automationWorkspaces = require('./automation-workspaces');
+const { DOCS_DIR } = require('../generators/lib/asset-paths');
 
 const SCRIPT_DIR  = __dirname;
 const PROJECT_DIR = path.resolve(SCRIPT_DIR, '..');
@@ -90,14 +91,18 @@ function discoverFiles() {
   const cfgExPath = path.join(SCRIPT_DIR, 'config.example.json');
   result.configExample = { exists: fs.existsSync(cfgExPath), path: cfgExPath };
 
-  const docsDir = path.resolve(SCRIPT_DIR, '..', 'documents');
+  // The built .docx live in the assets root, the same folder deploy-to-qlik.js
+  // uploads from. repo/documents holds only the hand-written .md sources.
+  // reviews/ is skipped here for the same reason the deployer skips it.
+  const docsDir = DOCS_DIR;
   if (fs.existsSync(docsDir)) {
     result.documents = findFilesRecursive(docsDir, '.docx')
       .sort()
       .map(f => {
         const rel = path.relative(docsDir, f).replace(/\\/g, '/');
         return { name: path.basename(f), folder: path.dirname(rel) === '.' ? '' : path.dirname(rel), rel, path: f, size: fs.statSync(f).size };
-      });
+      })
+      .filter(d => !d.rel.startsWith('reviews/'));
   }
 
   const appsDir = path.join(SCRIPT_DIR, 'apps');
