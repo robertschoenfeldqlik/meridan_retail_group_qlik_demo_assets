@@ -716,7 +716,7 @@ function saveEnvFile(vars) {
   fs.writeFileSync(path.join(INFRA_DIR, '.env'), lines.join('\n') + '\n', 'utf-8');
 }
 
-// Run a docker compose command as a detached, log-backed background job.
+// Run a compose command (via the resolved engine) as a detached, log-backed background job.
 //
 // The build's lifetime is fully independent of any browser connection. All
 // output is appended to an in-memory buffer (dockerJob.lines) that the client
@@ -1020,7 +1020,7 @@ async function runDockerJob(options) {
     }
   }
 
-  // Build docker compose command
+  // Build the compose command for the resolved engine
   const composeFile = options.composeFile;
   const action = options.action; // 'up', 'down', 'status'
 
@@ -2963,7 +2963,7 @@ function getHTML() {
     <h2>2 · Demo assets &amp; their intent</h2>
     <table>
       <tr><th>Asset</th><th>What it is</th><th>Why it is in the demo</th></tr>
-      <tr><td>Local stack (Docker)</td><td>Kafka + simulators + the DMG container, started from <em>Local Stack &amp; Gateway</em></td><td>Generates realistic, intentionally-flawed source data on your machine</td></tr>
+      <tr><td>Local stack (containers)</td><td>Kafka + simulators + the DMG container, started from <em>Local Stack &amp; Gateway</em></td><td>Generates realistic, intentionally-flawed source data on your machine</td></tr>
       <tr><td>Data Movement gateway</td><td>The <code>mcg-qlik-dmg</code> container (PostgreSQL/MySQL/SQL Server + the gateway agent)</td><td>Lets Qlik Cloud reach the local databases for log-based CDC</td></tr>
       <tr><td>Spaces</td><td>Development (shared), Published (managed), MCG Demo - DI (data)</td><td>Separate where you build, where governed content is published, and where DI source connections live</td></tr>
       <tr><td>Data connections</td><td>PostgreSQL, Kafka, MySQL sources + Amazon Athena read-back</td><td>The inputs to the pipeline and the read path analytics uses</td></tr>
@@ -3915,7 +3915,7 @@ function getHTML() {
           var idleSec = Math.round((d.idleMs || 0) / 1000);
           statusEl.style.color = 'var(--text-dim)';
           statusEl.textContent = '⏳ Working… ' + fmtDuration(d.runningMs) + ' elapsed'
-            + (idleSec >= 5 ? ' · waiting for Docker ' + idleSec + 's' : '')
+            + (idleSec >= 5 ? ' · waiting for the container engine ' + idleSec + 's' : '')
             + ' — safe to leave; the build continues on the server.';
           setDockerBtns(true);
           dockerPollTimer = setTimeout(function() { pollDockerStatus(newOffset, 0); }, 1500);

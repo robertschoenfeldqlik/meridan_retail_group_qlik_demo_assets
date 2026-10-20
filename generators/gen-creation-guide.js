@@ -111,7 +111,7 @@ function buildCreationGuide() {
     para("The CDC pipelines below read from a PostgreSQL source connection that routes through the Data Movement gateway. Set that up first — a one-time gateway registration plus a gateway-bound connection created in the Data Integration UI."),
     para("1. Register the Data Movement gateway:", { bold: true }),
     numberedItem(1, "In the MCG Deploy UI → Local Stack & Gateway, click Register Gateway / Get Token to print the registration token (or run agentctl inside the mcg-qlik-dmg container):"),
-    cmd('docker exec -it mcg-qlik-dmg bash -lc "cd /opt/qlik/gateway/movement/bin && ./agentctl qcs get_registration"'),
+    cmd('podman exec -it mcg-qlik-dmg bash -lc "cd /opt/qlik/gateway/movement/bin && ./agentctl qcs get_registration"'),
     numberedItem(2, "In Qlik Cloud → Administration → Data Gateways → Register, paste the token, name the gateway, and wait for status Connected."),
     para("2. Create the gateway-bound PostgreSQL connection:", { bold: true }),
     numberedItem(1, "Data Integration → your project → Create connection → PostgreSQL."),
@@ -174,7 +174,7 @@ function buildCreationGuide() {
       ]
     ),
 
-    calloutBox("Verification: After all 3 CDC pipelines are running, check the Data Movement Gateway status page. You should see 3 active replication tasks with \"Full Load Complete, CDC Active\" status. Use docker exec -i mcg-postgres psql -U mcg_admin -d mcg_wms -c \"SELECT * FROM pg_replication_slots;\" to verify the replication slot is active.", "success"),
+    calloutBox("Verification: After all 3 CDC pipelines are running, check the Data Movement Gateway status page. You should see 3 active replication tasks with \"Full Load Complete, CDC Active\" status. Use podman exec -i mcg-postgres psql -U mcg_admin -d mcg_wms -c \"SELECT * FROM pg_replication_slots;\" to verify the replication slot is active.", "success"),
 
     // ─── 1.3 Kafka Streaming Pipelines ──────────────────────────────────
     pageBreak(),

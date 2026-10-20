@@ -282,10 +282,10 @@ function sectionInfrastructure() {
     calloutBox("The Register Gateway / Get Token button lives in Local Stack & Gateway, not in the Tenant Deployment wizard. It targets the running mcg-qlik-dmg container and prints the token to the local console. If the gateway is still initializing, wait a few seconds and click again.", "info"),
 
     para("Manual path — retrieve the token from the container terminal:"),
-    numberedItem(1, "Open Docker Desktop and locate the gateway container (it appears as mcg-qlik-dmg)."),
-    numberedItem(2, "Open that container's terminal (Docker Desktop → Containers → mcg-qlik-dmg → Exec / Terminal tab), or run the command below from any shell."),
+    numberedItem(1, "Confirm the gateway container is up: podman ps should list mcg-qlik-dmg."),
+    numberedItem(2, "Open a shell in it with the command below, or use Podman Desktop → Containers → mcg-qlik-dmg → Terminal."),
     numberedItem(3, "Run the registration command to print the token:"),
-    cmd('docker exec -it mcg-qlik-dmg bash -lc "cd /opt/qlik/gateway/movement/bin && ./agentctl qcs get_registration"'),
+    cmd('podman exec -it mcg-qlik-dmg bash -lc "cd /opt/qlik/gateway/movement/bin && ./agentctl qcs get_registration"'),
     numberedItem(4, "Copy the JSON token string it outputs (it begins with {\"agentType\"...})."),
 
     para("Register the token in your tenant:"),
@@ -866,7 +866,7 @@ function sectionTroubleshooting() {
         [
           "npm run db:schema fails with connection error",
           "PostgreSQL not fully initialized",
-          "Wait 15-20 seconds after docker:up, then retry. Check container logs: docker logs mcg-postgres",
+          "Wait 15-20 seconds after docker:up, then retry. Check container logs: podman logs mcg-postgres",
         ],
         [
           "API key rejected by Qlik Cloud",

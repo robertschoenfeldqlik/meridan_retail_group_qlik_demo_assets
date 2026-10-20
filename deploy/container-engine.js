@@ -147,9 +147,38 @@ function resolveEngine(override) {
   return cached;
 }
 
+// One Compose project for every MCG stack.
+//
+// Compose derives the project name from the compose file's directory, so
+// `-f docker-compose.full-stack.yml` ran as project "infrastructure" while
+// `-f kafka/docker-compose.yml` ran as project "kafka". The compose files pin
+// `container_name:` (mcg-zookeeper, mcg-kafka-broker, …), and a pinned name is
+// NOT namespaced by project — so the two projects fought over the same names:
+//
+//   Error: the container name "mcg-zookeeper" is already in use by <id>
+//
+// whichever stack started second simply failed, and `mcg-kafka-net` warned it
+// "was not created for project". Pinning it means every stack adopts the same
+// containers and network instead of colliding with them.
+//
+// The name is "infrastructure" rather than something tidier like "mcg" because
+// that is what the already-created containers, network and volumes are labelled
+// with. Keeping it means Compose adopts the existing resources; renaming would
+// orphan them and force a destructive cleanup first.
+//
+// This lives in composeCmd (not in compose.js) because the deploy UI builds its
+// own invocations through here and would otherwise still split the project.
+const PROJECT_NAME = process.env.MCG_COMPOSE_PROJECT || 'infrastructure';
+
+function hasProjectFlag(args) {
+  return args.some((a) => a === '-p' || a === '--project-name' || String(a).startsWith('--project-name='));
+}
+
 // Build a Compose invocation: composeCmd(engine, '-f', file, 'up', '-d')
 function composeCmd(engine, ...rest) {
-  return { cmd: engine.compose.cmd, args: [...engine.compose.args, ...rest] };
+  // -p has to precede the subcommand, which is where it lands here.
+  const project = hasProjectFlag(rest) ? [] : ['-p', PROJECT_NAME];
+  return { cmd: engine.compose.cmd, args: [...engine.compose.args, ...project, ...rest] };
 }
 
 // Build a direct engine invocation: engineCmd(engine, 'exec', name, ...)
@@ -163,4 +192,4 @@ function engineEnv(engine, extra) {
   return { ...process.env, ...(engine.env || {}), ...(extra || {}) };
 }
 
-module.exports = { resolveEngine, composeCmd, engineCmd, engineEnv };
+module.exports = { resolveEngine, composeCmd, engineCmd, engineEnv, PROJECT_NAME };

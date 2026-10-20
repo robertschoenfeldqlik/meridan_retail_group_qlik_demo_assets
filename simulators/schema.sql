@@ -12,7 +12,7 @@
 --   psql -h localhost -U mcg_admin -d mcg_wms -f simulators/schema.sql
 --
 -- Or via Docker:
---   docker exec -i mcg-postgres psql -U mcg_admin -d mcg_wms < simulators/schema.sql
+--   podman exec -i mcg-postgres psql -U mcg_admin -d mcg_wms < simulators/schema.sql
 -- =============================================================================
 
 -- ---------------------------------------------------------------------------

@@ -8,9 +8,9 @@
 #   - seed_data.py            : one-shot initial load for both databases
 #
 # Usage:
-#   docker build -t mcg-simulators .
-#   docker run mcg-simulators python postgres_simulator.py --help
-#   docker run mcg-simulators python kafka_iot_simulator.py --help
+#   podman build -t mcg-simulators .
+#   podman run mcg-simulators python postgres_simulator.py --help
+#   podman run mcg-simulators python kafka_iot_simulator.py --help
 # =============================================================================
 
 FROM python:3.12-slim

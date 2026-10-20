@@ -29,6 +29,10 @@ const { resolveEngine, composeCmd, engineCmd, engineEnv } = require('./container
 
 const INFRA_DIR = path.resolve(__dirname, '..', 'infrastructure');
 
+// The Compose project name is pinned in container-engine.js (composeCmd), so
+// the npm scripts and the deploy UI land in the same project. See the note
+// there for why it is "infrastructure"; override with MCG_COMPOSE_PROJECT.
+
 function main() {
   const argv = process.argv.slice(2);
 

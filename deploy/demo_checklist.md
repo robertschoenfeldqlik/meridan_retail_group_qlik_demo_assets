@@ -22,13 +22,13 @@ Master checklist of everything required to stand up the full Meridian Commerce G
 
 ### Apache Kafka (Confluent)
 
-**Option A — Docker Compose (recommended for demos):**
-- [ ] Docker Desktop installed and running
-- [ ] Start Confluent stack: `cd infrastructure/kafka && docker compose up -d`
-- [ ] Verify broker healthy: `docker compose ps` (should show `kafka` as healthy)
-- [ ] Verify topics created: `docker compose exec kafka kafka-topics --bootstrap-server kafka:9092 --list`
+**Option A — container stack (recommended for demos):**
+- [ ] Container engine ready: `npm run engine` prints an engine and a compose provider (Podman on the reference host; `podman machine start` if it is not running)
+- [ ] Start Confluent stack: `npm run docker:up:kafka`
+- [ ] Verify broker healthy: `npm run docker:status` (should show `kafka` as healthy)
+- [ ] Verify topics created: `podman exec mcg-kafka kafka-topics --bootstrap-server kafka:9092 --list`
 - [ ] Control Center accessible at http://localhost:9021
-- [ ] Note: deploy script prompts to start Docker automatically during deployment
+- [ ] Note: the deploy script offers to start the stack for you during deployment
 
 **Option B — External Kafka cluster (Confluent Cloud, MSK, self-managed):**
 - [ ] Kafka cluster running and accessible

@@ -9,11 +9,10 @@
 #   mysql     — Meridian CRM, on host port 3307, CDC via the binary log
 #
 # Usage (with Kafka stack):
-#   cd infrastructure
-#   docker compose -f kafka/docker-compose.yml -f docker-compose.simulators.yml up -d
+#   npm run docker:up:kafka && npm run docker:up:simulators
 #
 # Usage (standalone — simulators only, external Kafka/PG):
-#   docker compose -f docker-compose.simulators.yml up -d
+#   npm run docker:up:simulators
 #
 #   PREREQUISITE: the Kafka stack must already be running and reachable on
 #   the "mcg-kafka-net" external network before starting kafka-iot-simulator
@@ -24,7 +23,10 @@
 #   depends_on (Compose cannot depend_on a service undefined in this file).
 #
 # Usage (full stack — everything in one command):
-#   docker compose -f docker-compose.full-stack.yml up -d
+#   npm run docker:up
+# (The npm scripts route through deploy/compose.js, which resolves podman or
+# docker automatically and wires DOCKER_HOST for Podman's compose provider.
+# This host has no Docker, so calling `docker compose` directly will fail.)
 #
 # Network connectivity:
 #   - All simulator containers can reach each other via service names

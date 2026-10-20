@@ -12,8 +12,10 @@
 #   - Kafka Init       : One-shot container that pre-creates demo topics
 #
 # Usage:
-#   docker compose up -d
-#   docker compose logs -f kafka-init   # watch topic creation
+#   npm run docker:up:kafka
+#   podman logs -f mcg-kafka-init      # watch topic creation
+# (The npm script routes through deploy/compose.js, which resolves podman or
+# docker automatically. This host has no Docker, so `docker compose` will fail.)
 #   open http://localhost:9021           # Control Center UI
 #
 # Topics created:
@@ -258,7 +260,7 @@ services:
 # Volumes — Persistent storage for broker and ZooKeeper data
 # =============================================================================
 # Named volumes ensure data survives container restarts. To fully reset:
-#   docker compose down -v
+#   npm run docker:down   # add -v via compose.js if volumes must go too
 # =============================================================================
 volumes:
   kafka-data:

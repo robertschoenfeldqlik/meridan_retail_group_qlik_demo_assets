@@ -9,12 +9,14 @@
 # so all simulators connect transparently to qlik-dmg:5432.
 #
 # Usage (with Kafka + DMG):
-#   cd infrastructure
-#   docker compose -f docker-compose.full-stack-dmg.yml up -d
+#   npm run docker:up:dmg
 #
 # Usage (standalone — DMG must already be running):
-#   docker compose -f docker-compose.dmg.yml up -d
-#   docker compose -f docker-compose.simulators-dmg.yml up -d
+#   npm run docker:up:dmg-only
+#   npm run docker:up:simulators-dmg
+# (The npm scripts route through deploy/compose.js, which resolves podman or
+# docker automatically and wires DOCKER_HOST for Podman's compose provider.
+# This host has no Docker, so calling `docker compose` directly will fail.)
 #
 #   PREREQUISITE: the "qlik-dmg" container (from docker-compose.dmg.yml /
 #   `npm run docker:up:dmg-only`) must already be up and healthy before

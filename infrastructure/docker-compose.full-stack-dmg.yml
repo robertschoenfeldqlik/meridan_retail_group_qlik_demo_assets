@@ -32,11 +32,13 @@
 #   9021  — Confluent Control Center UI
 #
 # Usage:
-#   cd infrastructure
-#   docker compose -f docker-compose.full-stack-dmg.yml up -d --build
+#   npm run docker:up:dmg
+# (The npm scripts route through deploy/compose.js, which resolves podman or
+# docker automatically and wires DOCKER_HOST for Podman's compose provider.
+# This host has no Docker, so calling `docker compose` directly will fail.)
 #
 # After startup, register the gateway:
-#   docker logs mcg-qlik-dmg 2>&1 | grep -A2 "Registration Token"
+#   podman logs mcg-qlik-dmg 2>&1 | grep -A2 "Registration Token"
 #   → Paste token into Qlik Cloud: Administration → Data Gateways → Register
 # =============================================================================
 

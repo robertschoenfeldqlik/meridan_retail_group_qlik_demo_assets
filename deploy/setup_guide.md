@@ -83,7 +83,7 @@ The Data Movement Gateway enables CDC from on-prem or cloud-hosted databases. In
 **Registration (manual — container terminal):**
 1. In Docker Desktop, find the gateway container (shown as **`mcg-qlik-dmg`**) and open its terminal (**Containers → mcg-qlik-dmg → Exec**), or run the command below from any shell:
    ```bash
-   docker exec -it mcg-qlik-dmg bash -lc "cd /opt/qlik/gateway/movement/bin && ./agentctl qcs get_registration"
+   podman exec -it mcg-qlik-dmg bash -lc "cd /opt/qlik/gateway/movement/bin && ./agentctl qcs get_registration"
    ```
 2. Copy the JSON token it prints (begins with `{"agentType"...}`).
 3. In Qlik Cloud: **Administration** → **Data Gateways** → **Register**, paste the token, and confirm.
@@ -110,9 +110,9 @@ The database source connections are created **inside a Qlik Talend Data Integrat
 
 ### 1.3 PostgreSQL Setup
 
-**Option A: Docker (recommended for demos)**
+**Option A: container (recommended for demos)**
 ```bash
-docker run -d --name mcg-wms-db \
+podman run -d --name mcg-wms-db \
   -e POSTGRES_DB=mcg_wms \
   -e POSTGRES_USER=mcg_admin \
   -e POSTGRES_PASSWORD=mcg_demo_2025 \
@@ -163,17 +163,21 @@ Two topics are required:
 The repo includes a full Confluent Platform stack (ZooKeeper, Broker, Schema Registry, Control Center) with topics pre-created automatically:
 
 ```bash
-cd infrastructure/kafka
-docker compose up -d          # Starts all services + auto-creates topics
-docker compose ps             # Verify all services are healthy
+npm run docker:up:kafka       # Starts all services + auto-creates topics
+npm run docker:status         # Verify all services are healthy
 ```
+
+The npm scripts route through `deploy/compose.js`, which resolves Podman or
+Docker and wires `DOCKER_HOST` for Podman's compose provider. The reference host
+has no Docker, so calling `docker compose` by hand will fail — run
+`npm run engine` to see what resolved.
 
 Access Confluent Control Center at `http://localhost:9021` to inspect topics and messages.
 
 To tear down:
 ```bash
-docker compose down           # Stop containers (keeps data)
-docker compose down -v        # Stop containers + delete data volumes
+npm run docker:down           # Stop containers (keeps data)
+podman volume prune           # Then delete data volumes, if you want a clean slate
 ```
 
 **Option B: External Kafka (Confluent Cloud / Amazon MSK / self-managed)**

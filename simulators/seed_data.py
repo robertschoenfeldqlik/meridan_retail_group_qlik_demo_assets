@@ -269,7 +269,7 @@ def seed_postgres(host, port, db, user, password, counts, dry_run=False):
 
     # --- Idempotency guard ---
     # This seeder is meant to run once. Every re-run (e.g. a restarted
-    # "docker compose up" for the seed container) would otherwise insert
+    # "npm run docker:up" for the seed container) would otherwise insert
     # another full batch on top of existing rows, silently duplicating the
     # dataset. Bail out if the main table is already populated.
     with conn.cursor() as cur:
