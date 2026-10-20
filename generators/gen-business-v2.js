@@ -510,7 +510,7 @@ function incRotterdam() {
     labelValue("Primary Cause", "TLS certificate on the Qlik Replicate CDC server expired on 31 August 2025. The certificate was issued 12 months prior and was not included in the IT certificate renewal tracking system."),
     labelValue("Contributing Cause", "No automated pipeline health monitoring. The CDC pipeline had no heartbeat check, no row-count reconciliation, and no alerting on sync lag."),
     labelValue("Detection Gap", "The failure was only detected because Rotterdam DC has implemented the daily manual sync check procedure (TRN-2025-001 Section 5). Other DCs do NOT have this check — similar silent failures may be occurring undetected."),
-    calloutBox("This incident validates the $48M annual cost estimate for Nightmare #1 (Phantom Inventory). If a single 72-hour outage at one DC creates 847 phantom units and costs €30,500, the cumulative impact across 28 DCs with no monitoring is catastrophic. Pipeline health monitoring is Priority #1 for Project Qlarity Phase 1.", "critical"),
+    calloutBox("This incident validates the $48M annual cost estimate for Nightmare #1 (Phantom Inventory) — a figure built from estate-wide stockouts, write-offs and expedite fees, not from scaling up one outage. Rotterdam is the shape of the problem rather than its arithmetic: one 72-hour CDC failure at one DC produced 847 phantom units and EUR 30,500 of write-off, with no alert for three days. Across 28 DCs with no monitoring, that exposure is unbounded. Pipeline health monitoring is Priority #1 for Project Qlarity Phase 1.", "critical"),
 
     heading("5. Corrective Actions"),
     dataTable(

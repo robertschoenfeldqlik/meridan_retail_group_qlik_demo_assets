@@ -24,23 +24,18 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
+        # Puppeteer is only needed to drive a real browser (tenant screenshots);
+        # this job just parses and validates files, so skip the Chromium download.
+        env:
+          PUPPETEER_SKIP_DOWNLOAD: '1'
         run: npm ci
 
-      - name: Syntax check — deploy scripts
-        run: |
-          echo "Checking deploy-to-qlik.js..."
-          node -c deploy/deploy-to-qlik.js
-          echo "Checking deploy-ui.js..."
-          node -c deploy/deploy-ui.js
-          echo "Checking zip-utils.js..."
-          node -c deploy/zip-utils.js
-
-      - name: Syntax check — generators
-        run: |
-          for f in generators/*.js; do
-            echo "Checking $f..."
-            node -c "$f"
-          done
+      # One command, so CI and a local run can never check different file sets.
+      # lint:syntax walks every tracked .js (including generators/lib, which the
+      # old generators/*.js glob skipped); lint:app-fields proves every app
+      # measure names a field a load script actually creates.
+      - name: Lint — syntax + app field references
+        run: npm run lint
 
       - name: Validate JSON configs
         run: |
@@ -75,13 +70,30 @@ jobs:
           done
 
       - name: Validate Docker Compose files
+        # This step used to pipe every failure into `|| echo Warning`, so it could
+        # not fail. Now a malformed compose file fails the build; the only
+        # tolerated error is an unresolved ${VAR}, which is expected because the
+        # DMG stack reads TENANT_URL and friends from infrastructure/.env at run time.
+        #
+        # `docker compose` here is the GitHub runner's own Docker, used purely to
+        # PARSE the files. It is not how the stacks are started: the reference dev
+        # host has no Docker and runs Podman, driven through deploy/compose.js
+        # (see `npm run engine`). Compose file syntax is identical either way.
         run: |
+          status=0
           for f in infrastructure/docker-compose*.yml infrastructure/kafka/docker-compose.yml; do
-            if [ -f "$f" ]; then
-              echo "Validating $f..."
-              docker compose -f "$f" config --quiet 2>/dev/null || echo "  Warning: $f may have external dependencies"
+            [ -f "$f" ] || continue
+            echo "Validating $f..."
+            if err=$(docker compose -f "$f" config --quiet 2>&1); then
+              echo "  OK"
+            elif echo "$err" | grep -qiE 'variable is not set|required variable'; then
+              echo "  OK (unset env var, resolved at run time from infrastructure/.env)"
+            else
+              echo "  FAILED: $err"
+              status=1
             fi
           done
+          exit $status
 
       - name: Check for secrets in code
         run: |

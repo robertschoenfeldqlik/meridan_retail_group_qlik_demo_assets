@@ -88,7 +88,16 @@ LOAD
     shipment_id           AS [Shipment ID],
     carrier_status_raw    AS [Carrier Status],
     delivery_attempts     AS [Delivery Attempts],
-    exception_code        AS [Exception Code]
+    exception_code        AS [Exception Code],
+    // Derived here, not in a chart expression. The on-time rate, the SLA test
+    // and elapsed delivery time are all quoted by the demo narration, and a
+    // measure that recomputes them per chart drifts the moment one is edited.
+    // delivered_late is the canonical late flag, so on-time is its complement;
+    // rows with no actual_delivery are still open and count as neither.
+    IF(Len(Trim(actual_delivery)) = 0, NULL(),
+       IF(delivered_late = 1, 0, 1))          AS [On-Time Delivery Flag],
+    IF(Len(Trim(actual_delivery)) = 0, NULL(),
+       (actual_delivery - order_date) * 24)    AS [Delivery Hours]
 // SELECT order_id, contact_id, order_date, sku, product_name,
 //        fulfillment_method, carrier_code, tracking_number, order_status,
 //        promised_delivery, actual_delivery, tracking_missing, delivered_late,
@@ -148,7 +157,11 @@ LOAD
     state_region            AS [Customer Region],
     postal_code             AS [Postal Code],
     country_iso             AS [Customer Country],
-    address_quality_score   AS [Address Quality Score]
+    address_quality_score   AS [Address Quality Score],
+    // Carrier-reject threshold for Nightmare #2. Below 0.5 the address is
+    // missing or malformed enough that the carrier bounces the label, which is
+    // the 4.7% rejection rate the narration quotes.
+    IF(address_quality_score < 0.5, 1, 0)   AS [Address Rejected Flag]
 // SELECT contact_id, first_name, last_name, email, city, state_region,
 //        postal_code, country_iso, address_quality_score
 // FROM silver.addresses_standardized;

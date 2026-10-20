@@ -7,14 +7,14 @@ A complete, deployable demo environment showcasing the full Qlik platform — fr
 | Layer | Components |
 |---|---|
 | **Data Sources** | PostgreSQL WMS simulator, Kafka IoT sensors, Meridian CRM simulator |
-| **Infrastructure** | Docker Compose stacks for Kafka (Confluent 7.7), PostgreSQL, and the Qlik Data Movement Gateway |
+| **Infrastructure** | Compose stacks (Podman on the reference host) for Kafka (Confluent 7.7), PostgreSQL, and the Qlik Data Movement Gateway |
 | **Deployment** | Automated scripts (Python + Node.js + Web UI) to provision a full Qlik Cloud tenant |
 | **Analytics** | Dashboard mockups, Qlik theme, app definitions for Supply Chain & Delivery |
 | **AI / NLP** | Qlik Answers knowledge base with 25 operational documents + AI assistant |
 | **Governance** | Business glossary (25 terms), 2 Gold-layer data products, data lineage |
 | **Data Pipelines** | Declarative QTCP pipeline (YAML) — bronze/silver/gold tasks imported via the DI Projects API |
 | **Automations** | Teams alerting for cold-chain breaches and pipeline health |
-| **Content Generation** | 18 Node.js generators for documents, presentations, SOPs, and glossaries |
+| **Content Generation** | 16 Node.js generators for documents, presentations, SOPs, and glossaries (`npm run generate:list`) |
 | **Demo Scripts** | 18 guided walkthrough scripts covering every platform capability |
 
 ## Quick Start
@@ -80,7 +80,7 @@ MCG Full Stack/
 │   ├── mysql_crm_simulator.py # CRM data generation
 │   └── seed_data.py            # Initial database population
 │
-├── infrastructure/             # Docker Compose configurations
+├── infrastructure/             # Compose configurations (Podman/Docker)
 │   ├── kafka/                  # Confluent Kafka 7.7 stack
 │   ├── dmg/gateway/            # Qlik Data Movement Gateway (submodule)
 │   ├── docker-compose.full-stack.yml
@@ -181,31 +181,83 @@ gh release upload assets-2026-09-25 <files> --clobber
 | `npm run generate:docs` | Run only the `documents` generator group |
 | `npm run generate:presentations` | Run only the `presentations` generator group |
 | `npm run generate:demos` | Run only the `demos` generator group |
-| `npm run docker:up` | Start full stack (Kafka + simulators) |
-| `npm run docker:up:dmg` | Start full stack with DMG gateway |
+| `npm run engine` | Show the resolved container engine and compose provider; non-zero if either is missing |
+| `npm run docker:up` | Start full stack (Kafka + simulators). Alias: `stack:up` |
+| `npm run docker:up:dmg` | Start full stack with DMG gateway. Alias: `stack:up:dmg` |
 | `npm run docker:up:kafka` | Start Kafka only |
 | `npm run docker:up:simulators` | Start simulators only |
 | `npm run docker:up:simulators-dmg` | Start simulators + DMG gateway |
 | `npm run docker:up:dmg-only` | Start DMG gateway only |
-| `npm run docker:down` | Stop the full-stack containers |
+| `npm run docker:down` | Stop the full-stack containers. Alias: `stack:down` |
 | `npm run docker:down:dmg` | Stop the full-stack + DMG containers |
-| `npm run docker:status` | Show running container status |
-| `npm run docker:logs` | Tail the last 50 lines of container logs |
+| `npm run docker:status` | Show running container status. Alias: `stack:status` |
+| `npm run docker:logs` | Tail the last 50 lines of container logs. Alias: `stack:logs` |
 | `npm run db:schema` | Load `simulators/schema.sql` into the Postgres container |
 | `npm run db:seed` | Seed the Postgres container via `seed_data.py` |
-| `npm run lint` | Syntax-check (`node -c`) the deploy/ scripts |
+| `npm run lint` | Both checks below — the one command CI runs |
+| `npm run lint:syntax` | `node -c` every `.js` in the repo (walks the tree; no file list to drift) |
+| `npm run lint:app-fields` | Prove every app measure/dimension names a field a load script actually creates — a mismatch reads as zero in Qlik, with no error. Add `-- --list` to print the available field names |
+| `npm run deploy:qvd` | Deploy in QVD mode (analytics read uploaded QVDs; no gateway needed) |
+| `npm run deploy:gateway` | Deploy in gateway mode (analytics read live Postgres/MySQL via the DMG) |
+| `npm run data:qvd` | Regenerate the lakehouse CSVs, upload them, and repoint the load scripts at QVDs |
+| `npm run talend:zip` / `:dry-run` | Build the Talend job import package |
+| `npm run stewardship:sprint` | Run a data-stewardship sprint against the tenant (`:dry-run`, `:list`) |
+| `npm run automations:workspaces` | Create the automation workspaces and the API Key connection (`:dry-run`) |
+| `npm run screenshots` | Capture tenant screenshots with Puppeteer (`:login` to sign in first, `:report` for the summary) |
+| `npm run db:crm` | Open a MySQL shell on the CRM container |
+| `npm run review:video` | Score the videos against the rubric and publish the CEO review (`:dry`, `:replay`) |
 
-## Docker Infrastructure
+## Container Infrastructure
+
+### Container engine — Podman
+
+Docker Desktop is **not** installed on the reference host. The stacks run on
+**Podman** (5.8.x), with the standalone **Docker Compose v2 CLI** as the compose
+provider — `podman compose` delegates to it, and that binary ships on its own,
+independent of Docker Desktop.
+
+Nothing calls `docker` directly. Every stack command goes through
+`deploy/compose.js` → `deploy/container-engine.js`, which probes for
+`podman` then `docker`, falls back to the known install paths when the parent
+shell's PATH predates the install, and points `DOCKER_HOST` at Podman's
+Docker-compatible socket when it has to drive the compose binary itself.
+
+Check what it resolved:
+
+```bash
+npm run engine
+```
+
+```
+engine:    podman (podman version 5.8.3)
+binary:    podman
+compose:   podman compose
+```
+
+It exits non-zero if either the engine or a compose provider is missing, so it
+works as a pre-flight check. Force a specific engine with
+`MCG_CONTAINER_ENGINE=podman` (or `docker`).
+
+The `docker:*` script names are kept for compatibility — they are engine-neutral
+despite the name. `stack:up`, `stack:up:dmg`, `stack:down`, `stack:status` and
+`stack:logs` are aliases for the five you actually type. Do **not** run
+`docker compose` or `podman compose` by hand: the stacks use `include:`,
+`depends_on.condition` and profiles, which `podman-compose` (the Python one)
+does not implement faithfully.
+
+**Podman prerequisites on Windows:** WSL 2.7+ with systemd, an initialised
+rootful machine (`podman machine init --rootful`), and the compose CLI
+(`winget install Docker.DockerCompose`).
 
 ### Simulator Stack (no gateway)
 ```bash
-npm run docker:up
+npm run docker:up        # or: npm run stack:up
 ```
 Starts: Kafka broker, ZooKeeper, Schema Registry, Control Center, PostgreSQL, PG simulator, Kafka IoT simulator.
 
 ### Full Stack + Data Movement Gateway
 ```bash
-npm run docker:up:dmg
+npm run docker:up:dmg    # or: npm run stack:up:dmg
 ```
 Adds: Qlik Data Movement Gateway container with PostgreSQL 15, MySQL 8.0, and SQL Server 2022. (Note: the standalone simulator stack above runs Postgres 16 on the `postgres:16-alpine` image, whereas this DMG co-located container ships Postgres 15.)
 
@@ -251,7 +303,7 @@ See [`deploy/README.md`](deploy/README.md) for detailed deployment documentation
 
 ## The MCG Story
 
-Meridian Commerce Group is a fictional European logistics company operating 12 warehouses across 6 countries. The demo is structured around **seven data quality "nightmares"** that showcase Qlik's platform capabilities:
+Meridian Commerce Group is a fictional European logistics company. The demo is structured around **seven data quality "nightmares"** that showcase Qlik's platform capabilities:
 
 1. **The Phantom Inventory Problem** — A silent batch-job failure leaves SAP, WMS, and physical counts disagreeing for weeks
 2. **The Address Catastrophe** — Inconsistent, truncated, and duplicate addresses across 5+ systems drive carrier rejections
@@ -260,6 +312,34 @@ Meridian Commerce Group is a fictional European logistics company operating 12 w
 5. **The Timestamp Tower of Babel** — 14 time zones and inconsistent timestamp conventions corrupt cross-system metrics
 6. **The Carrier Data Black Hole** — 42 carriers with no standard status codes and only 58% real-time tracking visibility
 7. **The Compliance Traceability Gap** — Broken farm-to-shelf lineage and unknown sub-tier suppliers stall food recalls
+
+### The company profile vs. what is in the tenant
+
+The nightmares above describe MCG the **business**: 28 distribution centres, 42
+carriers, 1,140 stores, 38 countries. Those figures live in the narrative
+documents and the decks, and they are what an executive hears.
+
+The data loaded into the tenant is a **sample of that estate**, and it is
+deliberately smaller so a demo reloads in seconds:
+
+| | Company profile | In the tenant |
+|---|---|---|
+| Distribution centres | 28 | **12** (NL, DE, FR, ES, IT, PL) |
+| Carriers | 42 | **6** (DPD, DHL, FedEx, GLS, NinjaVan, TransFrio) |
+| SKU positions | — | 45,000 |
+| Contacts / orders | — | 20,000 each |
+
+Say "28 DCs" over a chart that shows 12 and the room notices. The app and data
+product descriptions quote the **tenant** figures; the business case documents
+quote the company profile. Both are correct — they are answering different
+questions.
+
+Two separate DC sets also exist across the two data paths: the QVD/lakehouse
+path (`deploy/mockdata/gen-lakehouse-csv.js`) ships the 12 European centres
+above, while the live Postgres/Kafka simulators ship 9 global ones
+(`DC-RTD-01`, `DC-ATL-01`, `DC-SIN-01` …). Only `DC-RTD-01` — Rotterdam, the
+hero of nightmares #1 and #4 — exists in both, which is why every scripted
+walkthrough uses Rotterdam.
 
 ## License
 

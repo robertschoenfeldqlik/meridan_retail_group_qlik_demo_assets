@@ -2,7 +2,7 @@
   "dataProducts": [
     {
       "name": "Supply Chain Health",
-      "description": "Real-time inventory accuracy, phantom inventory detection, and pipeline health status across all 28 distribution centers. Updated every 15 minutes from PostgreSQL CDC.",
+      "description": "Inventory record accuracy, phantom inventory detection and position trust scores across all 12 distribution centers in the governed estate. Updated every 15 minutes from PostgreSQL CDC.",
       "sourceTable": "gold.supply_chain_health",
       "owner": "Henrik Jansen",
       "ownerTitle": "VP Warehouse Operations",

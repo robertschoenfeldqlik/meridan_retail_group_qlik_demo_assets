@@ -345,7 +345,7 @@ slide.addText("Impact: 855 hours of manual reconciliation daily across 1,140 sto
 });
 
 // Quote
-slide.addText("\"We're asking warehouse staff to do a 15-20 minute manual sync check every morning. That's 855 hours of labor across our DC network, every day.\"\n— Henrik Jansen, VP Warehouse Operations", {
+slide.addText("\"We're asking warehouse staff to do a 15-20 minute manual sync check every morning, and store managers to reconcile inventory by hand for 45. That's 869 hours of labor a day — 855 of it in the stores alone.\"\n— Henrik Jansen, VP Warehouse Operations", {
   x: 0.5, y: 5.5, w: 12.3, h: 0.8,
   fontSize: 12, color: MCG.navy, fontFace: "Calibri", italic: true,
 });

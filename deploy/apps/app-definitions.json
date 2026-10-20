@@ -2,11 +2,11 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "_version": "1.0.0",
   "_description": "Complete Qlik Analytics app definitions for Meridian Commerce Group demo. Contains master items, sheet layouts, and visualization specifications for both MCG demo apps.",
-  "_generator": "Manual specification from HTML mockups",
+  "_generator": "Manual specification from HTML mockups; field names validated against deploy/apps/load-scripts/*.qvs",
   "apps": [
     {
       "name": "MCG Supply Chain Operations",
-      "description": "End-to-end supply chain visibility across 28 distribution centers. Covers inventory accuracy, cold chain compliance, product data quality, regulatory readiness, and executive cost impact from the 7 Data Nightmares.",
+      "description": "End-to-end supply chain visibility across 12 distribution centers. Covers inventory accuracy, cold chain compliance, product data quality, regulatory readiness, and executive cost impact from the 7 Data Nightmares.",
       "appId": null,
       "loadScript": "load-scripts/app1-supply-chain.qvs",
       "theme": "MCG Dark Theme",
@@ -29,246 +29,303 @@
         {
           "id": "dim_dc",
           "title": "Distribution Center",
-          "field": "dc_id",
+          "field": "[Distribution Center]",
           "label": "Distribution Center",
-          "tags": ["inventory", "pipeline"]
+          "tags": [
+            "inventory",
+            "pipeline"
+          ]
         },
         {
           "id": "dim_region",
           "title": "Region",
-          "field": "region",
+          "field": "[Country of Origin]",
           "label": "Region",
-          "tags": ["geography"]
+          "tags": [
+            "geography"
+          ]
         },
         {
           "id": "dim_sku",
           "title": "SKU",
-          "field": "sku",
+          "field": "[SKU]",
           "label": "SKU",
-          "tags": ["product"]
+          "tags": [
+            "product"
+          ]
         },
         {
           "id": "dim_category",
           "title": "Category",
-          "field": "category",
+          "field": "[Category]",
           "label": "Category",
-          "tags": ["product"]
+          "tags": [
+            "product"
+          ]
         },
         {
           "id": "dim_product_name",
           "title": "Product Name",
-          "field": "product_name",
+          "field": "[Product Name]",
           "label": "Product Name",
-          "tags": ["product"]
+          "tags": [
+            "product"
+          ]
         },
         {
           "id": "dim_route",
           "title": "Route",
-          "field": "route",
+          "field": "[Route]",
           "label": "Route",
-          "tags": ["cold-chain", "logistics"]
+          "tags": [
+            "cold-chain",
+            "logistics"
+          ]
         },
         {
           "id": "dim_carrier",
           "title": "Carrier",
-          "field": "carrier",
+          "field": "[carrier_code]",
           "label": "Carrier",
-          "tags": ["cold-chain", "logistics"]
+          "tags": [
+            "cold-chain",
+            "logistics"
+          ]
         },
         {
           "id": "dim_product_type",
           "title": "Product Type",
-          "field": "product_type",
+          "field": "[Category]",
           "label": "Product Type",
-          "tags": ["cold-chain"]
+          "tags": [
+            "cold-chain"
+          ]
         },
         {
           "id": "dim_nightmare_id",
           "title": "Nightmare #",
-          "field": "nightmare_id",
+          "field": "[NightmareID]",
           "label": "Nightmare #",
-          "tags": ["executive", "cost"]
+          "tags": [
+            "executive",
+            "cost"
+          ]
         },
         {
           "id": "dim_nightmare_name",
           "title": "Nightmare Name",
-          "field": "nightmare_name",
+          "field": "[NightmareName]",
           "label": "Nightmare Name",
-          "tags": ["executive", "cost"]
-        },
-        {
-          "id": "dim_pipeline_status",
-          "title": "Pipeline Status",
-          "field": "pipeline_status",
-          "label": "Pipeline Status",
-          "tags": ["inventory", "pipeline"]
+          "tags": [
+            "executive",
+            "cost"
+          ]
         },
         {
           "id": "dim_storage_zone",
           "title": "Storage Zone",
-          "field": "storage_zone_standard",
+          "field": "[Storage Zone]",
           "label": "Storage Zone",
-          "tags": ["inventory"]
+          "tags": [
+            "inventory"
+          ]
         }
       ],
       "masterMeasures": [
         {
           "id": "msr_ira_pct",
           "title": "IRA %",
-          "expression": "Sum(IF(phantom_inventory=0,1,0))/Count(sku)",
+          "expression": "Sum(IF([Phantom Suspect Flag]=0,1,0))/Count([SKU])",
           "numberFormat": "#,##0.0%",
           "label": "IRA %",
           "description": "Inventory Record Accuracy: percentage of SKUs with no phantom inventory",
-          "tags": ["inventory", "kpi"]
+          "tags": [
+            "inventory",
+            "kpi"
+          ]
         },
         {
           "id": "msr_phantom_units",
           "title": "Phantom Units",
-          "expression": "Sum(IF(phantom_inventory=1,1,0))",
+          "expression": "Sum(IF([Phantom Suspect Flag]=1,1,0))",
           "numberFormat": "#,##0",
           "label": "Phantom Units",
           "description": "Count of SKU-DC combinations flagged as phantom inventory",
-          "tags": ["inventory", "kpi"]
+          "tags": [
+            "inventory",
+            "kpi"
+          ]
         },
         {
           "id": "msr_avg_trust_score",
           "title": "Avg Trust Score",
-          "expression": "Avg(trust_score)",
+          "expression": "Avg([Position Trust Score])",
           "numberFormat": "0.00",
           "label": "Avg Trust Score",
           "description": "Average Qlik Trust Score across all records in selection",
-          "tags": ["trust", "kpi"]
+          "tags": [
+            "trust",
+            "kpi"
+          ]
         },
         {
-          "id": "msr_active_pipelines",
-          "title": "Active Pipelines",
-          "expression": "Count(DISTINCT IF(pipeline_status='HEALTHY', dc_id))",
+          "id": "msr_total_dcs",
+          "title": "Distribution Centers",
+          "expression": "Count(DISTINCT [Distribution Center])",
           "numberFormat": "#,##0",
-          "label": "Active Pipelines",
-          "description": "Number of DCs with HEALTHY pipeline status",
-          "tags": ["pipeline", "kpi"]
-        },
-        {
-          "id": "msr_total_pipelines",
-          "title": "Total Pipelines",
-          "expression": "Count(DISTINCT dc_id)",
-          "numberFormat": "#,##0",
-          "label": "Total Pipelines",
-          "description": "Total number of distinct distribution centers",
-          "tags": ["pipeline", "kpi"]
+          "label": "Distribution Centers",
+          "description": "Count of distinct distribution centers in the model. (Was \"Total Pipelines\"; per-pipeline status is not landed in the lakehouse, so it counted DCs regardless.)",
+          "tags": [
+            "pipeline",
+            "kpi"
+          ]
         },
         {
           "id": "msr_max_temperature",
           "title": "Max Temperature",
-          "expression": "Max(max_temp_celsius)",
+          "expression": "Max([Temperature (°C)])",
           "numberFormat": "#,##0.0",
-          "label": "Max Temperature (\u00b0C)",
+          "label": "Max Temperature (°C)",
           "description": "Highest recorded temperature across selection",
-          "tags": ["cold-chain"]
+          "tags": [
+            "cold-chain"
+          ]
         },
         {
           "id": "msr_exceedance_count",
           "title": "Exceedance Count",
-          "expression": "Sum(IF(exceedance_flag=1,1,0))",
+          "expression": "Sum(IF([Temp Alert Flag]=1,1,0))",
           "numberFormat": "#,##0",
           "label": "Exceedance Count",
           "description": "Number of shipments with temperature exceedance",
-          "tags": ["cold-chain", "kpi"]
-        },
-        {
-          "id": "msr_spoilage_probability",
-          "title": "Spoilage Probability",
-          "expression": "Avg(spoilage_probability)",
-          "numberFormat": "#,##0.0%",
-          "label": "Spoilage Probability",
-          "description": "Average predicted spoilage probability from AutoML model",
-          "tags": ["cold-chain", "kpi"]
+          "tags": [
+            "cold-chain",
+            "kpi"
+          ]
         },
         {
           "id": "msr_sensor_count",
           "title": "Sensor Count",
-          "expression": "Count(DISTINCT sensor_id)",
+          "expression": "Count(DISTINCT [Sensor ID])",
           "numberFormat": "#,##0",
           "label": "Active Sensors",
           "description": "Number of distinct IoT sensors reporting data",
-          "tags": ["cold-chain"]
+          "tags": [
+            "cold-chain"
+          ]
         },
         {
           "id": "msr_product_completeness",
           "title": "Product Completeness",
-          "expression": "1 - (Sum(IF(weight_missing_flag=1,1,0))/Count(canonical_sku))",
+          "expression": "1 - (Sum(IF([Weight Imputed Flag]=1,1,0))/Count([SKU]))",
           "numberFormat": "#,##0.0%",
           "label": "Product Completeness",
           "description": "Percentage of products with complete weight data",
-          "tags": ["product", "kpi"]
+          "tags": [
+            "product",
+            "kpi"
+          ]
         },
         {
           "id": "msr_missing_weights",
           "title": "Missing Weights",
-          "expression": "Sum(IF(weight_missing_flag=1,1,0))",
+          "expression": "Sum(IF([Weight Imputed Flag]=1,1,0))",
           "numberFormat": "#,##0",
           "label": "Missing Weights",
           "description": "Count of products with missing or zero weight",
-          "tags": ["product", "kpi"]
+          "tags": [
+            "product",
+            "kpi"
+          ]
         },
         {
           "id": "msr_trace_complete_rate",
           "title": "Trace Complete Rate",
-          "expression": "Sum(IF(trace_complete_flag=1,1,0))/Count(sku)",
+          "expression": "Sum(IF([Lot Missing Flag]=0,1,0))/Count([SKU])",
           "numberFormat": "#,##0.0%",
           "label": "Trace-Complete Rate",
           "description": "Percentage of SKUs with complete farm-to-shelf traceability",
-          "tags": ["compliance", "kpi"]
+          "tags": [
+            "compliance",
+            "kpi"
+          ]
         },
         {
           "id": "msr_missing_lot_numbers",
           "title": "Missing Lot Numbers",
-          "expression": "Sum(IF(lot_missing=1,1,0))",
+          "expression": "Sum(IF([Lot Missing Flag]=1,1,0))",
           "numberFormat": "#,##0",
           "label": "Missing Lot Numbers",
           "description": "Count of products missing lot/batch identifiers",
-          "tags": ["compliance", "kpi"]
+          "tags": [
+            "compliance",
+            "kpi"
+          ]
         },
         {
           "id": "msr_total_annual_cost",
           "title": "Total Annual Cost",
-          "expression": "Sum(cost_usd)",
+          "expression": "Sum([AnnualCost])",
           "numberFormat": "$#,##0,,M",
           "label": "Total Annual Cost Impact",
           "description": "Total cost attributed to all 7 Data Nightmares",
-          "tags": ["executive", "cost", "kpi"]
+          "tags": [
+            "executive",
+            "cost",
+            "kpi"
+          ]
         },
         {
           "id": "msr_cost_by_nightmare",
           "title": "Cost by Nightmare",
-          "expression": "Sum(cost_usd)",
+          "expression": "Sum([AnnualCost])",
           "numberFormat": "$#,##0,,M",
           "label": "Cost by Nightmare",
           "description": "Cost aggregated per nightmare_id dimension",
-          "tags": ["executive", "cost"]
+          "tags": [
+            "executive",
+            "cost"
+          ]
         }
       ],
       "sheets": [
         {
           "id": "app1_sheet1",
           "title": "Inventory Health Overview",
-          "description": "Real-time inventory accuracy, phantom inventory detection, and CDC pipeline health across all 28 distribution centers",
+          "description": "Inventory record accuracy, phantom inventory detection and position trust scores across all 12 distribution centers",
           "rank": 1,
           "filters": [
-            { "field": "region", "label": "Region", "type": "listbox" },
-            { "field": "dc_id", "label": "Distribution Center", "type": "listbox" },
-            { "field": "category", "label": "Category", "type": "listbox" }
+            {
+              "field": "[Country of Origin]",
+              "label": "Country of Origin",
+              "type": "listbox"
+            },
+            {
+              "field": "[Distribution Center]",
+              "label": "Distribution Center",
+              "type": "listbox"
+            },
+            {
+              "field": "[Category]",
+              "label": "Category",
+              "type": "listbox"
+            }
           ],
           "objects": [
             {
               "id": "app1_s1_obj1",
               "qType": "gauge",
               "title": "Inventory Record Accuracy",
-              "position": { "row": 0, "col": 0, "width": 4, "height": 3 },
+              "position": {
+                "row": 0,
+                "col": 0,
+                "width": 4,
+                "height": 3
+              },
               "props": {
                 "measures": [
                   {
-                    "expression": "Sum(IF(phantom_inventory=0,1,0))/Count(sku)",
+                    "expression": "Sum(IF([Phantom Suspect Flag]=0,1,0))/Count([SKU])",
                     "label": "IRA %",
                     "numberFormat": "#,##0.0%"
                   }
@@ -276,9 +333,24 @@
                 "target": 0.97,
                 "orientation": "circular",
                 "segments": [
-                  { "min": 0, "max": 0.85, "color": "#DC2626", "label": "Critical" },
-                  { "min": 0.85, "max": 0.97, "color": "#C4922E", "label": "At Risk" },
-                  { "min": 0.97, "max": 1.0, "color": "#059669", "label": "Healthy" }
+                  {
+                    "min": 0,
+                    "max": 0.85,
+                    "color": "#DC2626",
+                    "label": "Critical"
+                  },
+                  {
+                    "min": 0.85,
+                    "max": 0.97,
+                    "color": "#C4922E",
+                    "label": "At Risk"
+                  },
+                  {
+                    "min": 0.97,
+                    "max": 1,
+                    "color": "#059669",
+                    "label": "Healthy"
+                  }
                 ],
                 "rangeMin": 0,
                 "rangeMax": 1,
@@ -290,22 +362,36 @@
               "id": "app1_s1_obj2",
               "qType": "kpi",
               "title": "Phantom Units",
-              "position": { "row": 0, "col": 4, "width": 3, "height": 1 },
+              "position": {
+                "row": 0,
+                "col": 4,
+                "width": 3,
+                "height": 1
+              },
               "props": {
                 "measures": [
                   {
-                    "expression": "Sum(IF(phantom_inventory=1,1,0))",
+                    "expression": "Sum(IF([Phantom Suspect Flag]=1,1,0))",
                     "label": "Phantom Units",
                     "numberFormat": "#,##0"
                   }
                 ],
-                "expectedValue": 847,
+                "expectedValue": 1667,
                 "color": "#DC2626",
                 "icon": "warning-triangle",
                 "conditionalColors": [
-                  { "condition": "> 500", "color": "#DC2626" },
-                  { "condition": "> 200", "color": "#C4922E" },
-                  { "condition": "<= 200", "color": "#059669" }
+                  {
+                    "condition": "> 500",
+                    "color": "#DC2626"
+                  },
+                  {
+                    "condition": "> 200",
+                    "color": "#C4922E"
+                  },
+                  {
+                    "condition": "<= 200",
+                    "color": "#059669"
+                  }
                 ]
               }
             },
@@ -313,11 +399,16 @@
               "id": "app1_s1_obj3",
               "qType": "kpi",
               "title": "Avg Trust Score",
-              "position": { "row": 0, "col": 7, "width": 3, "height": 1 },
+              "position": {
+                "row": 0,
+                "col": 7,
+                "width": 3,
+                "height": 1
+              },
               "props": {
                 "measures": [
                   {
-                    "expression": "Avg(trust_score)",
+                    "expression": "Avg([Position Trust Score])",
                     "label": "Avg Trust Score",
                     "numberFormat": "0.00"
                   }
@@ -325,31 +416,18 @@
                 "expectedValue": 0.89,
                 "color": "#0D7C8F",
                 "conditionalColors": [
-                  { "condition": "< 0.70", "color": "#DC2626" },
-                  { "condition": "< 0.85", "color": "#C4922E" },
-                  { "condition": ">= 0.85", "color": "#0D7C8F" }
-                ]
-              }
-            },
-            {
-              "id": "app1_s1_obj4",
-              "qType": "kpi",
-              "title": "Pipeline Status",
-              "position": { "row": 0, "col": 10, "width": 2, "height": 1 },
-              "props": {
-                "measures": [
                   {
-                    "expression": "Count(DISTINCT IF(pipeline_status='HEALTHY', dc_id)) & '/' & Count(DISTINCT dc_id)",
-                    "label": "Active / Total",
-                    "numberFormat": "text"
+                    "condition": "< 0.70",
+                    "color": "#DC2626"
+                  },
+                  {
+                    "condition": "< 0.85",
+                    "color": "#C4922E"
+                  },
+                  {
+                    "condition": ">= 0.85",
+                    "color": "#0D7C8F"
                   }
-                ],
-                "supplementaryExpression": "Count(DISTINCT IF(pipeline_status='HEALTHY', dc_id)) / Count(DISTINCT dc_id)",
-                "color": "#10CFC9",
-                "conditionalColors": [
-                  { "condition": "ratio < 0.80", "color": "#DC2626" },
-                  { "condition": "ratio < 0.95", "color": "#C4922E" },
-                  { "condition": "ratio >= 0.95", "color": "#10CFC9" }
                 ]
               }
             },
@@ -357,21 +435,32 @@
               "id": "app1_s1_obj5",
               "qType": "barchart",
               "title": "Phantom Inventory by DC",
-              "position": { "row": 1, "col": 4, "width": 4, "height": 4 },
+              "position": {
+                "row": 1,
+                "col": 4,
+                "width": 4,
+                "height": 4
+              },
               "props": {
                 "dimensions": [
-                  { "field": "dc_id", "label": "Distribution Center" }
+                  {
+                    "field": "[Distribution Center]",
+                    "label": "Distribution Center"
+                  }
                 ],
                 "measures": [
                   {
-                    "expression": "Sum(IF(phantom_inventory=1,1,0))",
+                    "expression": "Sum(IF([Phantom Suspect Flag]=1,1,0))",
                     "label": "Phantom Units",
                     "numberFormat": "#,##0",
                     "color": "#DC2626"
                   }
                 ],
                 "orientation": "horizontal",
-                "sorting": { "by": "measure", "order": "descending" },
+                "sorting": {
+                  "by": "measure",
+                  "order": "descending"
+                },
                 "barColor": "#DC2626",
                 "barColorExpression": "IF(Sum(IF(phantom_inventory=1,1,0)) > 80, '#DC2626', IF(Sum(IF(phantom_inventory=1,1,0)) > 40, '#C4922E', '#059669'))",
                 "showLabels": true,
@@ -382,14 +471,22 @@
               "id": "app1_s1_obj6",
               "qType": "linechart",
               "title": "IRA Trend (Monthly)",
-              "position": { "row": 1, "col": 8, "width": 4, "height": 4 },
+              "position": {
+                "row": 1,
+                "col": 8,
+                "width": 4,
+                "height": 4
+              },
               "props": {
                 "dimensions": [
-                  { "field": "=MonthName(snapshot_utc)", "label": "Month" }
+                  {
+                    "field": "=MonthName([Snapshot Date])",
+                    "label": "Month"
+                  }
                 ],
                 "measures": [
                   {
-                    "expression": "Sum(IF(phantom_inventory=0,1,0))/Count(sku)",
+                    "expression": "Sum(IF([Phantom Suspect Flag]=0,1,0))/Count([SKU])",
                     "label": "IRA %",
                     "numberFormat": "#,##0.0%",
                     "color": "#0D7C8F",
@@ -408,8 +505,8 @@
                 "showDataPoints": true,
                 "dataPointSize": 6,
                 "showArea": false,
-                "yAxisMin": 0.80,
-                "yAxisMax": 1.0,
+                "yAxisMin": 0.8,
+                "yAxisMax": 1,
                 "gridLines": true
               }
             },
@@ -417,42 +514,39 @@
               "id": "app1_s1_obj7",
               "qType": "table",
               "title": "Pipeline Status",
-              "position": { "row": 5, "col": 0, "width": 12, "height": 3 },
+              "position": {
+                "row": 5,
+                "col": 0,
+                "width": 12,
+                "height": 3
+              },
               "props": {
                 "dimensions": [
-                  { "field": "dc_id", "label": "Distribution Center" }
-                ],
-                "columns": [
-                  { "field": "dc_id", "label": "DC", "width": 140 },
                   {
-                    "expression": "Only(pipeline_status)",
-                    "label": "Status",
-                    "width": 120,
-                    "conditionalColors": {
-                      "HEALTHY": "#059669",
-                      "DEGRADED": "#C4922E",
-                      "FAILED": "#DC2626"
-                    },
-                    "badgeStyle": true
-                  },
-                  {
-                    "expression": "Max(last_sync_utc)",
-                    "label": "Last Sync",
-                    "numberFormat": "YYYY-MM-DD HH:mm",
-                    "width": 160
-                  },
-                  {
-                    "expression": "Max(sync_lag_minutes)",
-                    "label": "Lag (min)",
-                    "numberFormat": "#,##0",
-                    "width": 100,
-                    "conditionalColors": {
-                      "expression": "IF(Max(sync_lag_minutes) > 30, '#DC2626', IF(Max(sync_lag_minutes) > 10, '#C4922E', '#059669'))"
-                    }
+                    "field": "[Distribution Center]",
+                    "label": "Distribution Center"
                   }
                 ],
-                "sorting": { "by": "pipeline_status", "order": "ascending", "customOrder": ["FAILED", "DEGRADED", "HEALTHY"] },
-                "headerStyle": { "fontWeight": 600, "color": "#C4922E" },
+                "columns": [
+                  {
+                    "field": "[Distribution Center]",
+                    "label": "DC",
+                    "width": 140
+                  }
+                ],
+                "sorting": {
+                  "by": "pipeline_status",
+                  "order": "ascending",
+                  "customOrder": [
+                    "FAILED",
+                    "DEGRADED",
+                    "HEALTHY"
+                  ]
+                },
+                "headerStyle": {
+                  "fontWeight": 600,
+                  "color": "#C4922E"
+                },
                 "alternateRowShading": true,
                 "rowHeight": 32
               }
@@ -465,20 +559,37 @@
           "description": "Real-time IoT temperature monitoring, exceedance alerts, and spoilage risk prediction for cold chain shipments",
           "rank": 2,
           "filters": [
-            { "field": "route", "label": "Route", "type": "listbox" },
-            { "field": "carrier", "label": "Carrier", "type": "listbox" },
-            { "field": "product_type", "label": "Product Category", "type": "listbox" }
+            {
+              "field": "[Route]",
+              "label": "Route",
+              "type": "listbox"
+            },
+            {
+              "field": "[carrier_code]",
+              "label": "Carrier",
+              "type": "listbox"
+            },
+            {
+              "field": "[Category]",
+              "label": "Product Category",
+              "type": "listbox"
+            }
           ],
           "objects": [
             {
               "id": "app1_s2_obj1",
               "qType": "kpi",
               "title": "Active Exceedances",
-              "position": { "row": 0, "col": 0, "width": 4, "height": 1 },
+              "position": {
+                "row": 0,
+                "col": 0,
+                "width": 4,
+                "height": 1
+              },
               "props": {
                 "measures": [
                   {
-                    "expression": "Sum(IF(exceedance_flag=1,1,0))",
+                    "expression": "Sum(IF([Temp Alert Flag]=1,1,0))",
                     "label": "Active Exceedances",
                     "numberFormat": "#,##0"
                   }
@@ -486,30 +597,18 @@
                 "color": "#DC2626",
                 "icon": "alert-triangle",
                 "conditionalColors": [
-                  { "condition": "> 10", "color": "#DC2626" },
-                  { "condition": "> 5", "color": "#C4922E" },
-                  { "condition": "<= 5", "color": "#059669" }
-                ]
-              }
-            },
-            {
-              "id": "app1_s2_obj2",
-              "qType": "kpi",
-              "title": "Spoilage Risk %",
-              "position": { "row": 0, "col": 4, "width": 4, "height": 1 },
-              "props": {
-                "measures": [
                   {
-                    "expression": "Avg(spoilage_probability)",
-                    "label": "Spoilage Risk",
-                    "numberFormat": "#,##0.0%"
+                    "condition": "> 10",
+                    "color": "#DC2626"
+                  },
+                  {
+                    "condition": "> 5",
+                    "color": "#C4922E"
+                  },
+                  {
+                    "condition": "<= 5",
+                    "color": "#059669"
                   }
-                ],
-                "color": "#DC2626",
-                "conditionalColors": [
-                  { "condition": "> 0.15", "color": "#DC2626" },
-                  { "condition": "> 0.08", "color": "#C4922E" },
-                  { "condition": "<= 0.08", "color": "#059669" }
                 ]
               }
             },
@@ -517,11 +616,16 @@
               "id": "app1_s2_obj3",
               "qType": "kpi",
               "title": "Sensor Count",
-              "position": { "row": 0, "col": 8, "width": 4, "height": 1 },
+              "position": {
+                "row": 0,
+                "col": 8,
+                "width": 4,
+                "height": 1
+              },
               "props": {
                 "measures": [
                   {
-                    "expression": "Count(DISTINCT sensor_id)",
+                    "expression": "Count(DISTINCT [Sensor ID])",
                     "label": "Active Sensors",
                     "numberFormat": "#,##0"
                   }
@@ -534,15 +638,23 @@
               "id": "app1_s2_obj4",
               "qType": "linechart",
               "title": "Live Temperature Feed (Last 2 Hours)",
-              "position": { "row": 1, "col": 0, "width": 7, "height": 4 },
+              "position": {
+                "row": 1,
+                "col": 0,
+                "width": 7,
+                "height": 4
+              },
               "props": {
                 "dimensions": [
-                  { "field": "reading_timestamp", "label": "Time" }
+                  {
+                    "field": "[Reading Time]",
+                    "label": "Time"
+                  }
                 ],
                 "measures": [
                   {
-                    "expression": "Avg(temp_celsius)",
-                    "label": "Temperature (\u00b0C)",
+                    "expression": "Avg([Temperature (°C)])",
+                    "label": "Temperature (°C)",
                     "numberFormat": "#,##0.0",
                     "color": "#0D7C8F",
                     "lineWidth": 2
@@ -552,7 +664,7 @@
                 "colorByDimension": "sensor_id",
                 "referenceLines": [
                   {
-                    "label": "8\u00b0C Threshold",
+                    "label": "8°C Threshold",
                     "value": 8,
                     "color": "#DC2626",
                     "style": "dashed",
@@ -560,7 +672,7 @@
                   }
                 ],
                 "xAxisFormat": "HH:mm",
-                "yAxisLabel": "Temperature (\u00b0C)",
+                "yAxisLabel": "Temperature (°C)",
                 "showDataPoints": false,
                 "showArea": false,
                 "gridLines": true,
@@ -572,21 +684,32 @@
               "id": "app1_s2_obj5",
               "qType": "barchart",
               "title": "Exceedance Rate by Route",
-              "position": { "row": 1, "col": 7, "width": 5, "height": 4 },
+              "position": {
+                "row": 1,
+                "col": 7,
+                "width": 5,
+                "height": 4
+              },
               "props": {
                 "dimensions": [
-                  { "field": "route", "label": "Route" }
+                  {
+                    "field": "[Route]",
+                    "label": "Route"
+                  }
                 ],
                 "measures": [
                   {
-                    "expression": "Sum(IF(exceedance_flag=1,1,0))/Count(shipment_id)",
+                    "expression": "Sum(IF([Temp Alert Flag]=1,1,0))/Count([IoT Shipment ID])",
                     "label": "Exceedance Rate",
                     "numberFormat": "#,##0.0%",
                     "color": "#C4922E"
                   }
                 ],
                 "orientation": "vertical",
-                "sorting": { "by": "measure", "order": "descending" },
+                "sorting": {
+                  "by": "measure",
+                  "order": "descending"
+                },
                 "barColorExpression": "IF(Sum(IF(exceedance_flag=1,1,0))/Count(shipment_id) > 0.15, '#DC2626', IF(Sum(IF(exceedance_flag=1,1,0))/Count(shipment_id) > 0.08, '#C4922E', '#0D7C8F'))",
                 "showLabels": true,
                 "gridLines": true
@@ -596,42 +719,47 @@
               "id": "app1_s2_obj6",
               "qType": "table",
               "title": "At-Risk Shipments",
-              "position": { "row": 5, "col": 0, "width": 12, "height": 3 },
+              "position": {
+                "row": 5,
+                "col": 0,
+                "width": 12,
+                "height": 3
+              },
               "props": {
                 "columns": [
-                  { "field": "shipment_id", "label": "Shipment ID", "width": 160 },
-                  { "field": "route", "label": "Route", "width": 120 },
-                  { "field": "carrier", "label": "Carrier", "width": 100 },
                   {
-                    "expression": "Max(max_temp_celsius)",
-                    "label": "Max Temp (\u00b0C)",
+                    "field": "[IoT Shipment ID]",
+                    "label": "Shipment ID",
+                    "width": 160
+                  },
+                  {
+                    "field": "[Route]",
+                    "label": "Route",
+                    "width": 120
+                  },
+                  {
+                    "field": "[carrier_code]",
+                    "label": "Carrier",
+                    "width": 100
+                  },
+                  {
+                    "expression": "Max([Temperature (°C)])",
+                    "label": "Max Temp (°C)",
                     "numberFormat": "#,##0.0",
                     "width": 100,
                     "conditionalColors": {
-                      "expression": "IF(Max(max_temp_celsius) > 8, '#DC2626', IF(Max(max_temp_celsius) > 5, '#C4922E', '#059669'))"
-                    }
-                  },
-                  {
-                    "expression": "Max(spoilage_probability)",
-                    "label": "Risk Score",
-                    "numberFormat": "#,##0.0%",
-                    "width": 100,
-                    "conditionalColors": {
-                      "expression": "IF(Max(spoilage_probability) > 0.50, '#DC2626', IF(Max(spoilage_probability) > 0.25, '#C4922E', '#059669'))"
-                    }
-                  },
-                  {
-                    "expression": "Sum(estimated_loss_usd)",
-                    "label": "Est. Loss ($)",
-                    "numberFormat": "$#,##0",
-                    "width": 120,
-                    "conditionalColors": {
-                      "expression": "IF(Sum(estimated_loss_usd) > 5000, '#DC2626', IF(Sum(estimated_loss_usd) > 1000, '#C4922E', '#059669'))"
+                      "expression": "IF(Max([Temperature (°C)]) > 8, '#DC2626', IF(Max([Temperature (°C)]) > 5, '#C4922E', '#059669'))"
                     }
                   }
                 ],
-                "sorting": { "by": "spoilage_probability", "order": "descending" },
-                "headerStyle": { "fontWeight": 600, "color": "#C4922E" },
+                "sorting": {
+                  "by": "spoilage_probability",
+                  "order": "descending"
+                },
+                "headerStyle": {
+                  "fontWeight": 600,
+                  "color": "#C4922E"
+                },
                 "alternateRowShading": true,
                 "rowHeight": 32
               }
@@ -644,20 +772,32 @@
           "description": "Product master data completeness, SKU resolution status, and category-level trust scoring for the harmonized product catalog",
           "rank": 3,
           "filters": [
-            { "field": "category", "label": "Category", "type": "listbox" },
-            { "field": "supplier_name", "label": "Supplier", "type": "listbox" },
-            { "field": "perishable_flag", "label": "Perishable", "type": "listbox" }
+            {
+              "field": "[Category]",
+              "label": "Category",
+              "type": "listbox"
+            },
+            {
+              "field": "[Supplier]",
+              "label": "Supplier",
+              "type": "listbox"
+            }
           ],
           "objects": [
             {
               "id": "app1_s3_obj1",
               "qType": "kpi",
               "title": "Product Completeness",
-              "position": { "row": 0, "col": 0, "width": 4, "height": 1 },
+              "position": {
+                "row": 0,
+                "col": 0,
+                "width": 4,
+                "height": 1
+              },
               "props": {
                 "measures": [
                   {
-                    "expression": "1 - (Sum(IF(weight_missing_flag=1,1,0))/Count(canonical_sku))",
+                    "expression": "1 - (Sum(IF([Weight Imputed Flag]=1,1,0))/Count([SKU]))",
                     "label": "Product Completeness",
                     "numberFormat": "#,##0.0%"
                   }
@@ -665,9 +805,18 @@
                 "expectedValue": 0.87,
                 "color": "#C4922E",
                 "conditionalColors": [
-                  { "condition": "< 0.80", "color": "#DC2626" },
-                  { "condition": "< 0.95", "color": "#C4922E" },
-                  { "condition": ">= 0.95", "color": "#059669" }
+                  {
+                    "condition": "< 0.80",
+                    "color": "#DC2626"
+                  },
+                  {
+                    "condition": "< 0.95",
+                    "color": "#C4922E"
+                  },
+                  {
+                    "condition": ">= 0.95",
+                    "color": "#059669"
+                  }
                 ]
               }
             },
@@ -675,11 +824,16 @@
               "id": "app1_s3_obj2",
               "qType": "kpi",
               "title": "Missing Weights",
-              "position": { "row": 0, "col": 4, "width": 4, "height": 1 },
+              "position": {
+                "row": 0,
+                "col": 4,
+                "width": 4,
+                "height": 1
+              },
               "props": {
                 "measures": [
                   {
-                    "expression": "Sum(IF(weight_missing_flag=1,1,0))",
+                    "expression": "Sum(IF([Weight Imputed Flag]=1,1,0))",
                     "label": "Missing Weights",
                     "numberFormat": "#,##0"
                   }
@@ -688,9 +842,18 @@
                 "color": "#C4922E",
                 "icon": "warning",
                 "conditionalColors": [
-                  { "condition": "> 5000", "color": "#C4922E" },
-                  { "condition": "> 10000", "color": "#DC2626" },
-                  { "condition": "<= 5000", "color": "#059669" }
+                  {
+                    "condition": "> 5000",
+                    "color": "#C4922E"
+                  },
+                  {
+                    "condition": "> 10000",
+                    "color": "#DC2626"
+                  },
+                  {
+                    "condition": "<= 5000",
+                    "color": "#059669"
+                  }
                 ]
               }
             },
@@ -698,11 +861,16 @@
               "id": "app1_s3_obj3",
               "qType": "kpi",
               "title": "Product Trust Score",
-              "position": { "row": 0, "col": 8, "width": 4, "height": 1 },
+              "position": {
+                "row": 0,
+                "col": 8,
+                "width": 4,
+                "height": 1
+              },
               "props": {
                 "measures": [
                   {
-                    "expression": "Avg(trust_score)",
+                    "expression": "Avg([Position Trust Score])",
                     "label": "Product Trust Score",
                     "numberFormat": "0.00"
                   }
@@ -710,9 +878,18 @@
                 "expectedValue": 0.91,
                 "color": "#0D7C8F",
                 "conditionalColors": [
-                  { "condition": "< 0.70", "color": "#DC2626" },
-                  { "condition": "< 0.85", "color": "#C4922E" },
-                  { "condition": ">= 0.85", "color": "#0D7C8F" }
+                  {
+                    "condition": "< 0.70",
+                    "color": "#DC2626"
+                  },
+                  {
+                    "condition": "< 0.85",
+                    "color": "#C4922E"
+                  },
+                  {
+                    "condition": ">= 0.85",
+                    "color": "#0D7C8F"
+                  }
                 ]
               }
             },
@@ -720,14 +897,17 @@
               "id": "app1_s3_obj4",
               "qType": "piechart",
               "title": "SKU Resolution Status",
-              "position": { "row": 1, "col": 0, "width": 5, "height": 4 },
+              "position": {
+                "row": 1,
+                "col": 0,
+                "width": 5,
+                "height": 4
+              },
               "props": {
-                "dimensions": [
-                  { "field": "resolution_status", "label": "Status" }
-                ],
+                "dimensions": [],
                 "measures": [
                   {
-                    "expression": "Count(canonical_sku)",
+                    "expression": "Count([SKU])",
                     "label": "SKU Count",
                     "numberFormat": "#,##0"
                   }
@@ -744,7 +924,7 @@
                 "expectedBreakdown": {
                   "Resolved": 0.72,
                   "Legacy": 0.18,
-                  "Unmapped": 0.10
+                  "Unmapped": 0.1
                 },
                 "legendPosition": "right"
               }
@@ -753,21 +933,32 @@
               "id": "app1_s3_obj5",
               "qType": "barchart",
               "title": "Trust Score by Category",
-              "position": { "row": 1, "col": 5, "width": 7, "height": 4 },
+              "position": {
+                "row": 1,
+                "col": 5,
+                "width": 7,
+                "height": 4
+              },
               "props": {
                 "dimensions": [
-                  { "field": "category", "label": "Category" }
+                  {
+                    "field": "[Category]",
+                    "label": "Category"
+                  }
                 ],
                 "measures": [
                   {
-                    "expression": "Avg(trust_score)",
+                    "expression": "Avg([Position Trust Score])",
                     "label": "Trust Score",
                     "numberFormat": "0.00",
                     "color": "#0D7C8F"
                   }
                 ],
                 "orientation": "horizontal",
-                "sorting": { "by": "measure", "order": "descending" },
+                "sorting": {
+                  "by": "measure",
+                  "order": "descending"
+                },
                 "barColorExpression": "IF(Avg(trust_score) >= 0.85, '#0D7C8F', IF(Avg(trust_score) >= 0.70, '#C4922E', '#DC2626'))",
                 "showLabels": true,
                 "gridLines": true,
@@ -779,39 +970,54 @@
               "id": "app1_s3_obj6",
               "qType": "table",
               "title": "Product Detail",
-              "position": { "row": 5, "col": 0, "width": 12, "height": 3 },
+              "position": {
+                "row": 5,
+                "col": 0,
+                "width": 12,
+                "height": 3
+              },
               "props": {
                 "columns": [
-                  { "field": "sku", "label": "SKU", "width": 120 },
-                  { "field": "product_name", "label": "Name", "width": 200 },
-                  { "field": "category", "label": "Category", "width": 120 },
                   {
-                    "field": "weight_kg",
+                    "field": "[SKU]",
+                    "label": "SKU",
+                    "width": 120
+                  },
+                  {
+                    "field": "[Product Name]",
+                    "label": "Name",
+                    "width": 200
+                  },
+                  {
+                    "field": "[Category]",
+                    "label": "Category",
+                    "width": 120
+                  },
+                  {
+                    "field": "[Weight (kg)]",
                     "label": "Weight (kg)",
                     "numberFormat": "#,##0.00",
                     "width": 100,
                     "conditionalColors": {
-                      "expression": "IF(IsNull(weight_kg) OR weight_kg=0, '#DC2626', '#E8ECF1')"
+                      "expression": "IF(IsNull([Weight (kg)]) OR [Weight (kg)]=0, '#DC2626', '#E8ECF1')"
                     }
                   },
-                  { "field": "uom_standard", "label": "UoM", "width": 60 },
                   {
-                    "field": "supplier_count",
-                    "label": "Suppliers",
-                    "numberFormat": "#,##0",
-                    "width": 80
+                    "field": "[Unit of Measure]",
+                    "label": "UoM",
+                    "width": 60
                   },
                   {
-                    "field": "trust_score",
+                    "field": "[Position Trust Score]",
                     "label": "Trust Score",
                     "numberFormat": "0.00",
                     "width": 100,
                     "conditionalColors": {
-                      "expression": "IF(trust_score >= 0.85, '#059669', IF(trust_score >= 0.70, '#C4922E', '#DC2626'))"
+                      "expression": "IF([Position Trust Score] >= 0.85, '#059669', IF([Position Trust Score] >= 0.70, '#C4922E', '#DC2626'))"
                     }
                   },
                   {
-                    "expression": "IF(weight_missing_flag=1, 'INCOMPLETE', IF(trust_score < 0.70, 'LOW TRUST', 'OK'))",
+                    "expression": "IF([Weight Imputed Flag]=1, 'INCOMPLETE', IF([Position Trust Score] < 0.70, 'LOW TRUST', 'OK'))",
                     "label": "Quality Flag",
                     "width": 120,
                     "conditionalColors": {
@@ -822,8 +1028,14 @@
                     "badgeStyle": true
                   }
                 ],
-                "sorting": { "by": "trust_score", "order": "ascending" },
-                "headerStyle": { "fontWeight": 600, "color": "#C4922E" },
+                "sorting": {
+                  "by": "trust_score",
+                  "order": "ascending"
+                },
+                "headerStyle": {
+                  "fontWeight": 600,
+                  "color": "#C4922E"
+                },
                 "alternateRowShading": true,
                 "rowHeight": 32
               }
@@ -836,20 +1048,37 @@
           "description": "Farm-to-shelf traceability completeness, lot capture rates, and NVWA compliance readiness for food safety regulatory requirements",
           "rank": 4,
           "filters": [
-            { "field": "category", "label": "Category", "type": "listbox" },
-            { "field": "dc_id", "label": "DC", "type": "listbox" },
-            { "field": "nvwa_applicable", "label": "NVWA Applicable", "type": "listbox" }
+            {
+              "field": "[Category]",
+              "label": "Category",
+              "type": "listbox"
+            },
+            {
+              "field": "[Distribution Center]",
+              "label": "DC",
+              "type": "listbox"
+            },
+            {
+              "field": "[Origin Compliance Risk]",
+              "label": "NVWA Applicable",
+              "type": "listbox"
+            }
           ],
           "objects": [
             {
               "id": "app1_s4_obj1",
               "qType": "kpi",
               "title": "Trace-Complete Rate",
-              "position": { "row": 0, "col": 0, "width": 4, "height": 1 },
+              "position": {
+                "row": 0,
+                "col": 0,
+                "width": 4,
+                "height": 1
+              },
               "props": {
                 "measures": [
                   {
-                    "expression": "Sum(IF(trace_complete_flag=1,1,0))/Count(sku)",
+                    "expression": "Sum(IF([Lot Missing Flag]=0,1,0))/Count([SKU])",
                     "label": "Trace-Complete Rate",
                     "numberFormat": "#,##0.0%"
                   }
@@ -857,9 +1086,18 @@
                 "expectedValue": 0.85,
                 "color": "#C4922E",
                 "conditionalColors": [
-                  { "condition": "< 0.80", "color": "#DC2626" },
-                  { "condition": "< 0.90", "color": "#C4922E" },
-                  { "condition": ">= 0.90", "color": "#059669" }
+                  {
+                    "condition": "< 0.80",
+                    "color": "#DC2626"
+                  },
+                  {
+                    "condition": "< 0.90",
+                    "color": "#C4922E"
+                  },
+                  {
+                    "condition": ">= 0.90",
+                    "color": "#059669"
+                  }
                 ]
               }
             },
@@ -867,11 +1105,16 @@
               "id": "app1_s4_obj2",
               "qType": "kpi",
               "title": "Missing Lot Numbers",
-              "position": { "row": 0, "col": 4, "width": 4, "height": 1 },
+              "position": {
+                "row": 0,
+                "col": 4,
+                "width": 4,
+                "height": 1
+              },
               "props": {
                 "measures": [
                   {
-                    "expression": "Sum(IF(lot_missing=1,1,0))",
+                    "expression": "Sum(IF([Lot Missing Flag]=1,1,0))",
                     "label": "Missing Lot Numbers",
                     "numberFormat": "#,##0"
                   }
@@ -880,9 +1123,18 @@
                 "color": "#DC2626",
                 "icon": "alert-circle",
                 "conditionalColors": [
-                  { "condition": "> 1000", "color": "#DC2626" },
-                  { "condition": "> 500", "color": "#C4922E" },
-                  { "condition": "<= 500", "color": "#059669" }
+                  {
+                    "condition": "> 1000",
+                    "color": "#DC2626"
+                  },
+                  {
+                    "condition": "> 500",
+                    "color": "#C4922E"
+                  },
+                  {
+                    "condition": "<= 500",
+                    "color": "#059669"
+                  }
                 ]
               }
             },
@@ -890,11 +1142,16 @@
               "id": "app1_s4_obj3",
               "qType": "kpi",
               "title": "NVWA Findings",
-              "position": { "row": 0, "col": 8, "width": 4, "height": 1 },
+              "position": {
+                "row": 0,
+                "col": 8,
+                "width": 4,
+                "height": 1
+              },
               "props": {
                 "measures": [
                   {
-                    "expression": "Count(DISTINCT IF(nvwa_finding_flag=1, sku))",
+                    "expression": "Count(DISTINCT IF([Origin Compliance Risk]=1, [SKU]))",
                     "label": "NVWA Findings",
                     "numberFormat": "#,##0"
                   }
@@ -902,9 +1159,18 @@
                 "expectedValue": 5,
                 "color": "#DC2626",
                 "conditionalColors": [
-                  { "condition": "> 3", "color": "#DC2626" },
-                  { "condition": "> 0", "color": "#C4922E" },
-                  { "condition": "= 0", "color": "#059669" }
+                  {
+                    "condition": "> 3",
+                    "color": "#DC2626"
+                  },
+                  {
+                    "condition": "> 0",
+                    "color": "#C4922E"
+                  },
+                  {
+                    "condition": "= 0",
+                    "color": "#059669"
+                  }
                 ]
               }
             },
@@ -912,25 +1178,36 @@
               "id": "app1_s4_obj4",
               "qType": "barchart",
               "title": "Recall Readiness by Category",
-              "position": { "row": 1, "col": 0, "width": 6, "height": 4 },
+              "position": {
+                "row": 1,
+                "col": 0,
+                "width": 6,
+                "height": 4
+              },
               "props": {
                 "dimensions": [
-                  { "field": "category", "label": "Category" }
+                  {
+                    "field": "[Category]",
+                    "label": "Category"
+                  }
                 ],
                 "measures": [
                   {
-                    "expression": "Sum(IF(trace_complete_flag=1,1,0))/Count(sku)",
+                    "expression": "Sum(IF([Lot Missing Flag]=0,1,0))/Count([SKU])",
                     "label": "Recall Readiness %",
                     "numberFormat": "#,##0.0%",
                     "color": "#0D7C8F"
                   }
                 ],
                 "orientation": "vertical",
-                "sorting": { "by": "measure", "order": "descending" },
+                "sorting": {
+                  "by": "measure",
+                  "order": "descending"
+                },
                 "referenceLines": [
                   {
                     "label": "90% Target",
-                    "value": 0.90,
+                    "value": 0.9,
                     "color": "#C4922E",
                     "style": "dashed",
                     "lineWidth": 2
@@ -945,14 +1222,22 @@
               "id": "app1_s4_obj5",
               "qType": "linechart",
               "title": "Lot Capture Rate Trend (Monthly)",
-              "position": { "row": 1, "col": 6, "width": 6, "height": 4 },
+              "position": {
+                "row": 1,
+                "col": 6,
+                "width": 6,
+                "height": 4
+              },
               "props": {
                 "dimensions": [
-                  { "field": "=MonthName(dc_receipt_utc)", "label": "Month" }
+                  {
+                    "field": "=MonthName([Snapshot Date])",
+                    "label": "Month"
+                  }
                 ],
                 "measures": [
                   {
-                    "expression": "1 - (Sum(IF(lot_missing=1,1,0))/Count(sku))",
+                    "expression": "1 - (Sum(IF([Lot Missing Flag]=1,1,0))/Count([SKU]))",
                     "label": "Lot Capture Rate",
                     "numberFormat": "#,##0.0%",
                     "color": "#10CFC9",
@@ -972,22 +1257,39 @@
                 "dataPointSize": 6,
                 "showArea": false,
                 "gridLines": true,
-                "yAxisMin": 0.60,
-                "yAxisMax": 1.0
+                "yAxisMin": 0.6,
+                "yAxisMax": 1
               }
             },
             {
               "id": "app1_s4_obj6",
               "qType": "table",
               "title": "NVWA Risk Assessment",
-              "position": { "row": 5, "col": 0, "width": 12, "height": 3 },
+              "position": {
+                "row": 5,
+                "col": 0,
+                "width": 12,
+                "height": 3
+              },
               "props": {
                 "columns": [
-                  { "field": "product_name", "label": "Product", "width": 200 },
-                  { "field": "category", "label": "Category", "width": 120 },
-                  { "field": "dc_id", "label": "DC", "width": 120 },
                   {
-                    "expression": "IF(IsNull(lot_number), 'MISSING', 'CAPTURED')",
+                    "field": "[Product Name]",
+                    "label": "Product",
+                    "width": 200
+                  },
+                  {
+                    "field": "[Category]",
+                    "label": "Category",
+                    "width": 120
+                  },
+                  {
+                    "field": "[Distribution Center]",
+                    "label": "DC",
+                    "width": 120
+                  },
+                  {
+                    "expression": "IF(IsNull([Lot Number]), 'MISSING', 'CAPTURED')",
                     "label": "Lot Status",
                     "width": 120,
                     "conditionalColors": {
@@ -997,16 +1299,16 @@
                     "badgeStyle": true
                   },
                   {
-                    "field": "trace_completeness_pct",
+                    "field": "=Sum(IF([Lot Missing Flag]=0,1,0))/Count([SKU])",
                     "label": "Trace %",
                     "numberFormat": "#,##0.0%",
                     "width": 100,
                     "conditionalColors": {
-                      "expression": "IF(trace_completeness_pct >= 0.90, '#059669', IF(trace_completeness_pct >= 0.75, '#C4922E', '#DC2626'))"
+                      "expression": "IF(=Sum(IF([Lot Missing Flag]=0,1,0))/Count([SKU]) >= 0.90, '#059669', IF(=Sum(IF([Lot Missing Flag]=0,1,0))/Count([SKU]) >= 0.75, '#C4922E', '#DC2626'))"
                     }
                   },
                   {
-                    "expression": "IF(trace_completeness_pct < 0.75, 'HIGH', IF(trace_completeness_pct < 0.90, 'MEDIUM', 'LOW'))",
+                    "expression": "IF(=Sum(IF([Lot Missing Flag]=0,1,0))/Count([SKU]) < 0.75, 'HIGH', IF(=Sum(IF([Lot Missing Flag]=0,1,0))/Count([SKU]) < 0.90, 'MEDIUM', 'LOW'))",
                     "label": "Risk Level",
                     "width": 120,
                     "conditionalColors": {
@@ -1017,8 +1319,14 @@
                     "badgeStyle": true
                   }
                 ],
-                "sorting": { "by": "trace_completeness_pct", "order": "ascending" },
-                "headerStyle": { "fontWeight": 600, "color": "#C4922E" },
+                "sorting": {
+                  "by": "trace_completeness_pct",
+                  "order": "ascending"
+                },
+                "headerStyle": {
+                  "fontWeight": 600,
+                  "color": "#C4922E"
+                },
                 "alternateRowShading": true,
                 "rowHeight": 32
               }
@@ -1031,20 +1339,37 @@
           "description": "Cross-nightmare cost attribution linking each of the 7 Data Nightmares to financial impact, with remediation progress tracking",
           "rank": 5,
           "filters": [
-            { "field": "nightmare_id", "label": "Nightmare #", "type": "listbox" },
-            { "field": "region", "label": "Region", "type": "listbox" },
-            { "field": "dc_id", "label": "DC", "type": "listbox" }
+            {
+              "field": "[NightmareID]",
+              "label": "Nightmare #",
+              "type": "listbox"
+            },
+            {
+              "field": "[Country of Origin]",
+              "label": "Country of Origin",
+              "type": "listbox"
+            },
+            {
+              "field": "[Distribution Center]",
+              "label": "DC",
+              "type": "listbox"
+            }
           ],
           "objects": [
             {
               "id": "app1_s5_obj1",
               "qType": "kpi",
               "title": "Total Annual Impact",
-              "position": { "row": 0, "col": 0, "width": 4, "height": 1 },
+              "position": {
+                "row": 0,
+                "col": 0,
+                "width": 4,
+                "height": 1
+              },
               "props": {
                 "measures": [
                   {
-                    "expression": "Sum(cost_usd)",
+                    "expression": "Sum([AnnualCost])",
                     "label": "Total Annual Impact",
                     "numberFormat": "$#,##0,,M"
                   }
@@ -1060,11 +1385,16 @@
               "id": "app1_s5_obj2",
               "qType": "kpi",
               "title": "Worst Nightmare",
-              "position": { "row": 0, "col": 4, "width": 4, "height": 1 },
+              "position": {
+                "row": 0,
+                "col": 4,
+                "width": 4,
+                "height": 1
+              },
               "props": {
                 "measures": [
                   {
-                    "expression": "FirstSortedValue(nightmare_name & ' $' & Text(Sum(cost_usd)/1000000, '#,##0') & 'M', -Aggr(Sum(cost_usd), nightmare_id))",
+                    "expression": "FirstSortedValue([NightmareName] & ' $' & Text(Sum([AnnualCost])/1000000, '#,##0') & 'M', -Aggr(Sum([AnnualCost]), [NightmareID]))",
                     "label": "Worst Nightmare",
                     "numberFormat": "text"
                   }
@@ -1078,22 +1408,36 @@
               "id": "app1_s5_obj3",
               "qType": "kpi",
               "title": "YoY Improvement",
-              "position": { "row": 0, "col": 8, "width": 4, "height": 1 },
+              "position": {
+                "row": 0,
+                "col": 8,
+                "width": 4,
+                "height": 1
+              },
               "props": {
                 "measures": [
                   {
-                    "expression": "(Sum({<period={\"$(=MaxString(period))\"}>} cost_usd) - Sum({<period={\"$(=Date(AddMonths(Date#(MaxString(period),'YYYY-MM'),-12),'YYYY-MM'))\"}>} cost_usd)) / Sum({<period={\"$(=Date(AddMonths(Date#(MaxString(period),'YYYY-MM'),-12),'YYYY-MM'))\"}>} cost_usd)",
+                    "expression": "(Sum({<[Month Name]={\"$(=MaxString([Month Name]))\"}>} [AnnualCost]) - Sum({<[Month Name]={\"$(=Date(AddMonths(Date#(MaxString([Month Name]),'YYYY-MM'),-12),'YYYY-MM'))\"}>} [AnnualCost])) / Sum({<[Month Name]={\"$(=Date(AddMonths(Date#(MaxString([Month Name]),'YYYY-MM'),-12),'YYYY-MM'))\"}>} [AnnualCost])",
                     "label": "YoY Improvement",
                     "numberFormat": "#,##0.0%"
                   }
                 ],
                 "expectedValue": -0.12,
-                "displayPrefix": "\u2193",
+                "displayPrefix": "↓",
                 "color": "#059669",
                 "conditionalColors": [
-                  { "condition": "< 0", "color": "#059669" },
-                  { "condition": "= 0", "color": "#C4922E" },
-                  { "condition": "> 0", "color": "#DC2626" }
+                  {
+                    "condition": "< 0",
+                    "color": "#059669"
+                  },
+                  {
+                    "condition": "= 0",
+                    "color": "#C4922E"
+                  },
+                  {
+                    "condition": "> 0",
+                    "color": "#DC2626"
+                  }
                 ]
               }
             },
@@ -1101,14 +1445,22 @@
               "id": "app1_s5_obj4",
               "qType": "treemap",
               "title": "Cost by Data Nightmare",
-              "position": { "row": 1, "col": 0, "width": 6, "height": 4 },
+              "position": {
+                "row": 1,
+                "col": 0,
+                "width": 6,
+                "height": 4
+              },
               "props": {
                 "dimensions": [
-                  { "field": "nightmare_name", "label": "Nightmare" }
+                  {
+                    "field": "[NightmareName]",
+                    "label": "Nightmare"
+                  }
                 ],
                 "measures": [
                   {
-                    "expression": "Sum(cost_usd)",
+                    "expression": "Sum([AnnualCost])",
                     "label": "Annual Cost",
                     "numberFormat": "$#,##0,,M"
                   }
@@ -1124,13 +1476,34 @@
                 "showLabels": true,
                 "labelExpression": "nightmare_name & Chr(10) & '$' & Text(Sum(cost_usd)/1000000, '#,##0') & 'M'",
                 "expectedValues": [
-                  { "label": "#1 Phantom Inventory", "cost": 48000000 },
-                  { "label": "#2 Address Catastrophe", "cost": 3100000 },
-                  { "label": "#3 Product Master Mess", "cost": 8200000 },
-                  { "label": "#4 Silent Pipeline Failures", "cost": 12000000 },
-                  { "label": "#5 Timestamp Tower of Babel", "cost": 6500000 },
-                  { "label": "#6 Carrier Data Black Hole", "cost": 14800000 },
-                  { "label": "#7 Compliance Gap", "cost": 4200000 }
+                  {
+                    "label": "#1 Phantom Inventory",
+                    "cost": 48000000
+                  },
+                  {
+                    "label": "#2 Address Catastrophe",
+                    "cost": 3100000
+                  },
+                  {
+                    "label": "#3 Product Master Mess",
+                    "cost": 8200000
+                  },
+                  {
+                    "label": "#4 Silent Pipeline Failures",
+                    "cost": 12000000
+                  },
+                  {
+                    "label": "#5 Timestamp Tower of Babel",
+                    "cost": 6500000
+                  },
+                  {
+                    "label": "#6 Carrier Data Black Hole",
+                    "cost": 14800000
+                  },
+                  {
+                    "label": "#7 Compliance Gap",
+                    "cost": 4200000
+                  }
                 ]
               }
             },
@@ -1138,56 +1511,34 @@
               "id": "app1_s5_obj5",
               "qType": "barchart",
               "title": "Cost by DC (Top 4)",
-              "position": { "row": 1, "col": 6, "width": 6, "height": 2 },
+              "position": {
+                "row": 1,
+                "col": 6,
+                "width": 6,
+                "height": 2
+              },
               "props": {
                 "dimensions": [
-                  { "field": "dc_id", "label": "Distribution Center" }
+                  {
+                    "field": "[Distribution Center]",
+                    "label": "Distribution Center"
+                  }
                 ],
                 "measures": [
                   {
-                    "expression": "Sum(cost_usd)",
+                    "expression": "Sum([AnnualCost])",
                     "label": "Annual Cost",
                     "numberFormat": "$#,##0,,M",
                     "color": "#0D7C8F"
                   }
                 ],
                 "orientation": "vertical",
-                "sorting": { "by": "measure", "order": "descending" },
+                "sorting": {
+                  "by": "measure",
+                  "order": "descending"
+                },
                 "maxVisibleItems": 4,
                 "barColor": "#0D7C8F",
-                "showLabels": true,
-                "gridLines": true
-              }
-            },
-            {
-              "id": "app1_s5_obj6",
-              "qType": "barchart",
-              "title": "Remediation Progress by Nightmare",
-              "position": { "row": 3, "col": 6, "width": 6, "height": 2 },
-              "props": {
-                "dimensions": [
-                  { "field": "nightmare_name", "label": "Nightmare" }
-                ],
-                "measures": [
-                  {
-                    "expression": "Avg(remediation_pct)",
-                    "label": "Progress %",
-                    "numberFormat": "#,##0.0%",
-                    "color": "#10CFC9"
-                  }
-                ],
-                "orientation": "horizontal",
-                "sorting": { "by": "dimension", "order": "ascending" },
-                "referenceLines": [
-                  {
-                    "label": "Target",
-                    "valueExpression": "Avg(remediation_target_pct)",
-                    "color": "#C4922E",
-                    "style": "dashed",
-                    "lineWidth": 2
-                  }
-                ],
-                "barColorExpression": "IF(Avg(remediation_pct) >= Avg(remediation_target_pct), '#059669', IF(Avg(remediation_pct) >= Avg(remediation_target_pct) * 0.8, '#C4922E', '#DC2626'))",
                 "showLabels": true,
                 "gridLines": true
               }
@@ -1221,182 +1572,235 @@
         {
           "id": "dim_carrier",
           "title": "Carrier",
-          "field": "carrier",
+          "field": "[Carrier]",
           "label": "Carrier",
-          "tags": ["logistics", "delivery"]
+          "tags": [
+            "logistics",
+            "delivery"
+          ]
         },
         {
           "id": "dim_dest_region",
           "title": "Region",
-          "field": "destination_region",
+          "field": "[Customer Region]",
           "label": "Region",
-          "tags": ["geography"]
+          "tags": [
+            "geography"
+          ]
         },
         {
           "id": "dim_dest_country",
           "title": "Country",
-          "field": "destination_country",
+          "field": "[Ship-To Country]",
           "label": "Country",
-          "tags": ["geography"]
+          "tags": [
+            "geography"
+          ]
         },
         {
           "id": "dim_dest_city",
           "title": "City",
-          "field": "destination_city",
+          "field": "[Ship-To City]",
           "label": "City",
-          "tags": ["geography"]
+          "tags": [
+            "geography"
+          ]
         },
         {
           "id": "dim_status_canonical",
           "title": "Shipment Status",
-          "field": "status_canonical",
+          "field": "[Status (Canonical)]",
           "label": "Shipment Status",
-          "tags": ["tracking"]
+          "tags": [
+            "tracking"
+          ]
         },
         {
           "id": "dim_exception_code",
           "title": "Exception Code",
-          "field": "exception_code_canonical",
+          "field": "[Exception Code]",
           "label": "Exception Code",
-          "tags": ["tracking", "exceptions"]
+          "tags": [
+            "tracking",
+            "exceptions"
+          ]
         },
         {
           "id": "dim_customer_id",
           "title": "Customer ID",
-          "field": "customer_id",
+          "field": "[Contact ID]",
           "label": "Customer ID",
-          "tags": ["customer"]
+          "tags": [
+            "customer"
+          ]
         },
         {
           "id": "dim_sla_status",
           "title": "SLA Status",
-          "expression": "IF(sla_met=1, 'SLA Met', 'SLA Breached')",
+          "expression": "IF([On-Time Delivery Flag]=1, 'SLA Met', 'SLA Breached')",
           "label": "SLA Status",
-          "tags": ["sla", "performance"]
+          "tags": [
+            "sla",
+            "performance"
+          ]
         },
         {
           "id": "dim_wismo_flag",
           "title": "WISMO Flag",
-          "field": "wismo_flag",
+          "field": "[WISMO Flag]",
           "label": "WISMO Flag",
-          "tags": ["customer", "wismo"]
+          "tags": [
+            "customer",
+            "wismo"
+          ]
         },
         {
           "id": "dim_address_quality_range",
           "title": "Address Quality Range",
-          "expression": "Class(address_quality_score, 0.25)",
+          "expression": "Class([Address Quality Score], 0.25)",
           "label": "Address Quality Range",
-          "tags": ["address", "quality"]
+          "tags": [
+            "address",
+            "quality"
+          ]
         }
       ],
       "masterMeasures": [
         {
           "id": "msr_on_time_rate",
           "title": "On-Time Rate",
-          "expression": "Sum(IF(on_time_flag=1,1,0))/Count(shipment_id)",
+          "expression": "Sum(IF([On-Time Delivery Flag]=1,1,0))/Count([Shipment ID])",
           "numberFormat": "#,##0.0%",
           "label": "On-Time Rate",
           "description": "Percentage of shipments delivered on time",
-          "tags": ["delivery", "kpi"]
+          "tags": [
+            "delivery",
+            "kpi"
+          ]
         },
         {
           "id": "msr_avg_delivery_days",
           "title": "Avg Delivery Days",
-          "expression": "Avg(sla_actual_hours)/24",
+          "expression": "Avg([Delivery Hours])/24",
           "numberFormat": "#,##0.0",
           "label": "Avg Delivery Days",
           "description": "Average delivery time in days",
-          "tags": ["delivery", "kpi"]
+          "tags": [
+            "delivery",
+            "kpi"
+          ]
         },
         {
           "id": "msr_failure_rate",
           "title": "Failure Rate",
-          "expression": "Sum(IF(delivery_attempts>1,1,0))/Count(shipment_id)",
+          "expression": "Sum(IF([Delivery Attempts]>1,1,0))/Count([Shipment ID])",
           "numberFormat": "#,##0.0%",
           "label": "Failure Rate",
           "description": "Percentage of shipments requiring multiple delivery attempts",
-          "tags": ["delivery", "kpi"]
+          "tags": [
+            "delivery",
+            "kpi"
+          ]
         },
         {
           "id": "msr_sla_breach_rate",
           "title": "SLA Breach Rate",
-          "expression": "Sum(IF(sla_met=0,1,0))/Count(shipment_id)",
+          "expression": "Sum(IF([On-Time Delivery Flag]=0,1,0))/Count([Shipment ID])",
           "numberFormat": "#,##0.0%",
           "label": "SLA Breach Rate",
           "description": "Percentage of shipments breaching SLA",
-          "tags": ["sla", "kpi"]
+          "tags": [
+            "sla",
+            "kpi"
+          ]
         },
         {
           "id": "msr_wismo_rate",
           "title": "WISMO Rate",
-          "expression": "Sum(wismo_count)/Sum(total_orders)",
+          "expression": "Sum([WISMO Inquiries])/Sum([Orders])",
           "numberFormat": "#,##0.0%",
           "label": "WISMO Rate",
           "description": "Where Is My Order inquiry rate as percentage of total orders",
-          "tags": ["customer", "wismo", "kpi"]
+          "tags": [
+            "customer",
+            "wismo",
+            "kpi"
+          ]
         },
         {
           "id": "msr_wismo_cost",
           "title": "WISMO Cost",
-          "expression": "Sum(wismo_count) * 2.30",
+          "expression": "Sum([WISMO Inquiries]) * 2.30",
           "numberFormat": "$#,##0,,M",
           "label": "WISMO Cost",
           "description": "Estimated cost of WISMO inquiries at $2.30 per inquiry",
-          "tags": ["customer", "wismo", "cost", "kpi"]
+          "tags": [
+            "customer",
+            "wismo",
+            "cost",
+            "kpi"
+          ]
         },
         {
           "id": "msr_active_shipments",
           "title": "Active Shipments",
-          "expression": "Count(IF(status_canonical='IN_TRANSIT' OR status_canonical='OUT_FOR_DELIVERY', shipment_id))",
+          "expression": "Count(IF([Status (Canonical)]='IN_TRANSIT' OR [Status (Canonical)]='OUT_FOR_DELIVERY', [Shipment ID]))",
           "numberFormat": "#,##0",
           "label": "Active Shipments",
           "description": "Count of shipments currently in transit or out for delivery",
-          "tags": ["tracking", "kpi"]
+          "tags": [
+            "tracking",
+            "kpi"
+          ]
         },
         {
           "id": "msr_delivery_exceptions",
           "title": "Delivery Exceptions",
-          "expression": "Count(IF(NOT IsNull(exception_code_canonical), shipment_id))",
+          "expression": "Count(IF(NOT IsNull([Exception Code]), [Shipment ID]))",
           "numberFormat": "#,##0",
           "label": "Delivery Exceptions",
           "description": "Count of shipments with active exception codes",
-          "tags": ["tracking", "exceptions", "kpi"]
+          "tags": [
+            "tracking",
+            "exceptions",
+            "kpi"
+          ]
         },
         {
           "id": "msr_avg_address_quality",
           "title": "Avg Address Quality",
-          "expression": "Avg(address_quality_score)",
+          "expression": "Avg([Address Quality Score])",
           "numberFormat": "0.00",
           "label": "Avg Address Quality Score",
           "description": "Average address quality score across all customers",
-          "tags": ["address", "kpi"]
+          "tags": [
+            "address",
+            "kpi"
+          ]
         },
         {
           "id": "msr_low_quality_addresses",
           "title": "Low Quality Addresses",
-          "expression": "Count(IF(address_quality_score < 0.5, customer_id))",
+          "expression": "Count(IF([Address Quality Score] < 0.5, [Contact ID]))",
           "numberFormat": "#,##0",
           "label": "Low Quality Addresses",
           "description": "Count of customers with address quality below 0.50",
-          "tags": ["address", "kpi"]
+          "tags": [
+            "address",
+            "kpi"
+          ]
         },
         {
           "id": "msr_avg_e2e_hours",
           "title": "Avg End-to-End Hours",
-          "expression": "Avg([End-to-End (hrs)])",
+          "expression": "Avg([Delivery Hours])",
           "numberFormat": "#,##0.0",
           "label": "Avg End-to-End Hours",
           "description": "Average total hours from order placement to delivery",
-          "tags": ["timeline", "kpi"]
-        },
-        {
-          "id": "msr_missing_promise_rate",
-          "title": "Missing Promise Rate",
-          "expression": "Sum(IF(IsNull(sla_target_hours),1,0))/Count(order_id)",
-          "numberFormat": "#,##0.0%",
-          "label": "Missing Promise Rate",
-          "description": "Percentage of orders without a delivery promise date",
-          "tags": ["timeline", "sla", "kpi"]
+          "tags": [
+            "timeline",
+            "kpi"
+          ]
         }
       ],
       "sheets": [
@@ -1406,20 +1810,37 @@
           "description": "Carrier delivery performance benchmarking with on-time rates, SLA comparison, and failed delivery analysis across all regions",
           "rank": 1,
           "filters": [
-            { "field": "carrier", "label": "Carrier", "type": "listbox" },
-            { "field": "destination_region", "label": "Region", "type": "listbox" },
-            { "field": "destination_country", "label": "Country", "type": "listbox" }
+            {
+              "field": "[Carrier]",
+              "label": "Carrier",
+              "type": "listbox"
+            },
+            {
+              "field": "[Customer Region]",
+              "label": "Region",
+              "type": "listbox"
+            },
+            {
+              "field": "[Ship-To Country]",
+              "label": "Country",
+              "type": "listbox"
+            }
           ],
           "objects": [
             {
               "id": "app2_s1_obj1",
               "qType": "kpi",
               "title": "On-Time Rate",
-              "position": { "row": 0, "col": 0, "width": 4, "height": 1 },
+              "position": {
+                "row": 0,
+                "col": 0,
+                "width": 4,
+                "height": 1
+              },
               "props": {
                 "measures": [
                   {
-                    "expression": "Sum(IF(on_time_flag=1,1,0))/Count(shipment_id)",
+                    "expression": "Sum(IF([On-Time Delivery Flag]=1,1,0))/Count([Shipment ID])",
                     "label": "On-Time Rate",
                     "numberFormat": "#,##0.0%"
                   }
@@ -1427,9 +1848,18 @@
                 "expectedValue": 0.87,
                 "color": "#C4922E",
                 "conditionalColors": [
-                  { "condition": "< 0.80", "color": "#DC2626" },
-                  { "condition": "< 0.92", "color": "#C4922E" },
-                  { "condition": ">= 0.92", "color": "#059669" }
+                  {
+                    "condition": "< 0.80",
+                    "color": "#DC2626"
+                  },
+                  {
+                    "condition": "< 0.92",
+                    "color": "#C4922E"
+                  },
+                  {
+                    "condition": ">= 0.92",
+                    "color": "#059669"
+                  }
                 ]
               }
             },
@@ -1437,11 +1867,16 @@
               "id": "app2_s1_obj2",
               "qType": "kpi",
               "title": "Avg Delivery Days",
-              "position": { "row": 0, "col": 4, "width": 4, "height": 1 },
+              "position": {
+                "row": 0,
+                "col": 4,
+                "width": 4,
+                "height": 1
+              },
               "props": {
                 "measures": [
                   {
-                    "expression": "Avg(sla_actual_hours)/24",
+                    "expression": "Avg([Delivery Hours])/24",
                     "label": "Avg Delivery Days",
                     "numberFormat": "#,##0.0"
                   }
@@ -1455,11 +1890,16 @@
               "id": "app2_s1_obj3",
               "qType": "kpi",
               "title": "Failure Rate",
-              "position": { "row": 0, "col": 8, "width": 4, "height": 1 },
+              "position": {
+                "row": 0,
+                "col": 8,
+                "width": 4,
+                "height": 1
+              },
               "props": {
                 "measures": [
                   {
-                    "expression": "Sum(IF(delivery_attempts>1,1,0))/Count(shipment_id)",
+                    "expression": "Sum(IF([Delivery Attempts]>1,1,0))/Count([Shipment ID])",
                     "label": "Failure Rate",
                     "numberFormat": "#,##0.0%"
                   }
@@ -1467,9 +1907,18 @@
                 "expectedValue": 0.047,
                 "color": "#DC2626",
                 "conditionalColors": [
-                  { "condition": "> 0.05", "color": "#DC2626" },
-                  { "condition": "> 0.03", "color": "#C4922E" },
-                  { "condition": "<= 0.03", "color": "#059669" }
+                  {
+                    "condition": "> 0.05",
+                    "color": "#DC2626"
+                  },
+                  {
+                    "condition": "> 0.03",
+                    "color": "#C4922E"
+                  },
+                  {
+                    "condition": "<= 0.03",
+                    "color": "#059669"
+                  }
                 ]
               }
             },
@@ -1477,21 +1926,32 @@
               "id": "app2_s1_obj4",
               "qType": "barchart",
               "title": "On-Time % by Carrier",
-              "position": { "row": 1, "col": 0, "width": 6, "height": 4 },
+              "position": {
+                "row": 1,
+                "col": 0,
+                "width": 6,
+                "height": 4
+              },
               "props": {
                 "dimensions": [
-                  { "field": "carrier", "label": "Carrier" }
+                  {
+                    "field": "[Carrier]",
+                    "label": "Carrier"
+                  }
                 ],
                 "measures": [
                   {
-                    "expression": "Sum(IF(on_time_flag=1,1,0))/Count(shipment_id)",
+                    "expression": "Sum(IF([On-Time Delivery Flag]=1,1,0))/Count([Shipment ID])",
                     "label": "On-Time %",
                     "numberFormat": "#,##0.0%",
                     "color": "#0D7C8F"
                   }
                 ],
                 "orientation": "vertical",
-                "sorting": { "by": "measure", "order": "descending" },
+                "sorting": {
+                  "by": "measure",
+                  "order": "descending"
+                },
                 "referenceLines": [
                   {
                     "label": "92% Benchmark",
@@ -1510,20 +1970,22 @@
               "id": "app2_s1_obj5",
               "qType": "barchart",
               "title": "Carrier SLA Comparison (Target vs Actual)",
-              "position": { "row": 1, "col": 6, "width": 6, "height": 4 },
+              "position": {
+                "row": 1,
+                "col": 6,
+                "width": 6,
+                "height": 4
+              },
               "props": {
                 "dimensions": [
-                  { "field": "carrier", "label": "Carrier" }
+                  {
+                    "field": "[Carrier]",
+                    "label": "Carrier"
+                  }
                 ],
                 "measures": [
                   {
-                    "expression": "Avg(sla_target_hours)",
-                    "label": "SLA Target (hrs)",
-                    "numberFormat": "#,##0.0",
-                    "color": "#0D7C8F"
-                  },
-                  {
-                    "expression": "Avg(sla_actual_hours)",
+                    "expression": "Avg([Delivery Hours])",
                     "label": "Actual (hrs)",
                     "numberFormat": "#,##0.0",
                     "color": "#C4922E"
@@ -1531,7 +1993,10 @@
                 ],
                 "orientation": "vertical",
                 "grouping": "grouped",
-                "sorting": { "by": "dimension", "order": "ascending" },
+                "sorting": {
+                  "by": "dimension",
+                  "order": "ascending"
+                },
                 "showLabels": true,
                 "gridLines": true,
                 "legendPosition": "top"
@@ -1541,32 +2006,51 @@
               "id": "app2_s1_obj6",
               "qType": "table",
               "title": "Failed Delivery Attempts",
-              "position": { "row": 5, "col": 0, "width": 12, "height": 3 },
+              "position": {
+                "row": 5,
+                "col": 0,
+                "width": 12,
+                "height": 3
+              },
               "props": {
                 "columns": [
-                  { "field": "carrier", "label": "Carrier", "width": 140 },
-                  { "field": "destination_region", "label": "Region", "width": 120 },
                   {
-                    "expression": "Avg(delivery_attempts)",
+                    "field": "[Carrier]",
+                    "label": "Carrier",
+                    "width": 140
+                  },
+                  {
+                    "field": "[Customer Region]",
+                    "label": "Region",
+                    "width": 120
+                  },
+                  {
+                    "expression": "Avg([Delivery Attempts])",
                     "label": "Avg Attempts",
                     "numberFormat": "#,##0.0",
                     "width": 120,
                     "conditionalColors": {
-                      "expression": "IF(Avg(delivery_attempts) > 2, '#DC2626', IF(Avg(delivery_attempts) > 1.5, '#C4922E', '#059669'))"
+                      "expression": "IF(Avg([Delivery Attempts]) > 2, '#DC2626', IF(Avg([Delivery Attempts]) > 1.5, '#C4922E', '#059669'))"
                     }
                   },
                   {
-                    "expression": "Sum(IF(delivery_attempts>1,1,0))/Count(shipment_id)",
+                    "expression": "Sum(IF([Delivery Attempts]>1,1,0))/Count([Shipment ID])",
                     "label": "Failure Rate",
                     "numberFormat": "#,##0.0%",
                     "width": 120,
                     "conditionalColors": {
-                      "expression": "IF(Sum(IF(delivery_attempts>1,1,0))/Count(shipment_id) > 0.05, '#DC2626', IF(Sum(IF(delivery_attempts>1,1,0))/Count(shipment_id) > 0.03, '#C4922E', '#059669'))"
+                      "expression": "IF(Sum(IF([Delivery Attempts]>1,1,0))/Count([Shipment ID]) > 0.05, '#DC2626', IF(Sum(IF([Delivery Attempts]>1,1,0))/Count([Shipment ID]) > 0.03, '#C4922E', '#059669'))"
                     }
                   }
                 ],
-                "sorting": { "by": "failure_rate", "order": "descending" },
-                "headerStyle": { "fontWeight": 600, "color": "#C4922E" },
+                "sorting": {
+                  "by": "failure_rate",
+                  "order": "descending"
+                },
+                "headerStyle": {
+                  "fontWeight": 600,
+                  "color": "#C4922E"
+                },
                 "alternateRowShading": true,
                 "rowHeight": 32
               }
@@ -1579,20 +2063,37 @@
           "description": "Real-time shipment status monitoring with live tracking feed, pipeline visualization, and exception alerting",
           "rank": 2,
           "filters": [
-            { "field": "carrier", "label": "Carrier", "type": "listbox" },
-            { "field": "status_canonical", "label": "Status", "type": "listbox" },
-            { "field": "exception_code_canonical", "label": "Exception Code", "type": "listbox" }
+            {
+              "field": "[Carrier]",
+              "label": "Carrier",
+              "type": "listbox"
+            },
+            {
+              "field": "[Status (Canonical)]",
+              "label": "Status",
+              "type": "listbox"
+            },
+            {
+              "field": "[Exception Code]",
+              "label": "Exception Code",
+              "type": "listbox"
+            }
           ],
           "objects": [
             {
               "id": "app2_s2_obj1",
               "qType": "kpi",
               "title": "Active Shipments",
-              "position": { "row": 0, "col": 0, "width": 4, "height": 1 },
+              "position": {
+                "row": 0,
+                "col": 0,
+                "width": 4,
+                "height": 1
+              },
               "props": {
                 "measures": [
                   {
-                    "expression": "Count(IF(status_canonical='IN_TRANSIT' OR status_canonical='OUT_FOR_DELIVERY', shipment_id))",
+                    "expression": "Count(IF([Status (Canonical)]='IN_TRANSIT' OR [Status (Canonical)]='OUT_FOR_DELIVERY', [Shipment ID]))",
                     "label": "In Transit + Out for Delivery",
                     "numberFormat": "#,##0"
                   }
@@ -1605,11 +2106,16 @@
               "id": "app2_s2_obj2",
               "qType": "kpi",
               "title": "24hr Completion Rate",
-              "position": { "row": 0, "col": 4, "width": 4, "height": 1 },
+              "position": {
+                "row": 0,
+                "col": 4,
+                "width": 4,
+                "height": 1
+              },
               "props": {
                 "measures": [
                   {
-                    "expression": "Count(IF(status_canonical='DELIVERED' AND delivery_date >= Today()-1, shipment_id)) / Count(IF(delivery_date >= Today()-1, shipment_id))",
+                    "expression": "Count(IF([Status (Canonical)]='DELIVERED' AND [Actual Delivery] >= Today()-1, [Shipment ID])) / Count(IF([Actual Delivery] >= Today()-1, [Shipment ID]))",
                     "label": "24hr Completion Rate",
                     "numberFormat": "#,##0.0%"
                   }
@@ -1617,9 +2123,18 @@
                 "expectedValue": 0.942,
                 "color": "#059669",
                 "conditionalColors": [
-                  { "condition": "< 0.85", "color": "#DC2626" },
-                  { "condition": "< 0.92", "color": "#C4922E" },
-                  { "condition": ">= 0.92", "color": "#059669" }
+                  {
+                    "condition": "< 0.85",
+                    "color": "#DC2626"
+                  },
+                  {
+                    "condition": "< 0.92",
+                    "color": "#C4922E"
+                  },
+                  {
+                    "condition": ">= 0.92",
+                    "color": "#059669"
+                  }
                 ]
               }
             },
@@ -1627,11 +2142,16 @@
               "id": "app2_s2_obj3",
               "qType": "kpi",
               "title": "Active Exceptions",
-              "position": { "row": 0, "col": 8, "width": 4, "height": 1 },
+              "position": {
+                "row": 0,
+                "col": 8,
+                "width": 4,
+                "height": 1
+              },
               "props": {
                 "measures": [
                   {
-                    "expression": "Count(IF(NOT IsNull(exception_code_canonical) AND status_canonical <> 'DELIVERED', shipment_id))",
+                    "expression": "Count(IF(NOT IsNull([Exception Code]) AND [Status (Canonical)] <> 'DELIVERED', [Shipment ID]))",
                     "label": "Active Exceptions",
                     "numberFormat": "#,##0"
                   }
@@ -1640,9 +2160,18 @@
                 "color": "#C4922E",
                 "icon": "alert-circle",
                 "conditionalColors": [
-                  { "condition": "> 50", "color": "#DC2626" },
-                  { "condition": "> 20", "color": "#C4922E" },
-                  { "condition": "<= 20", "color": "#059669" }
+                  {
+                    "condition": "> 50",
+                    "color": "#DC2626"
+                  },
+                  {
+                    "condition": "> 20",
+                    "color": "#C4922E"
+                  },
+                  {
+                    "condition": "<= 20",
+                    "color": "#059669"
+                  }
                 ]
               }
             },
@@ -1650,13 +2179,26 @@
               "id": "app2_s2_obj4",
               "qType": "table",
               "title": "Live Shipment Status Feed",
-              "position": { "row": 1, "col": 0, "width": 7, "height": 4 },
+              "position": {
+                "row": 1,
+                "col": 0,
+                "width": 7,
+                "height": 4
+              },
               "props": {
                 "columns": [
-                  { "field": "tracking_number", "label": "Tracking #", "width": 160 },
-                  { "field": "carrier", "label": "Carrier", "width": 100 },
                   {
-                    "field": "status_canonical",
+                    "field": "[Tracking Number]",
+                    "label": "Tracking #",
+                    "width": 160
+                  },
+                  {
+                    "field": "[Carrier]",
+                    "label": "Carrier",
+                    "width": 100
+                  },
+                  {
+                    "field": "[Status (Canonical)]",
                     "label": "Status",
                     "width": 140,
                     "conditionalColors": {
@@ -1669,16 +2211,26 @@
                     },
                     "badgeStyle": true
                   },
-                  { "field": "current_location", "label": "Location", "width": 160 },
                   {
-                    "field": "last_update_utc",
+                    "field": "[Ship-To City]",
+                    "label": "Location",
+                    "width": 160
+                  },
+                  {
+                    "field": "[Status Time (Raw)]",
                     "label": "Timestamp",
                     "numberFormat": "YYYY-MM-DD HH:mm",
                     "width": 160
                   }
                 ],
-                "sorting": { "by": "last_update_utc", "order": "descending" },
-                "headerStyle": { "fontWeight": 600, "color": "#C4922E" },
+                "sorting": {
+                  "by": "last_update_utc",
+                  "order": "descending"
+                },
+                "headerStyle": {
+                  "fontWeight": 600,
+                  "color": "#C4922E"
+                },
                 "alternateRowShading": true,
                 "rowHeight": 32,
                 "autoRefresh": true,
@@ -1689,17 +2241,22 @@
               "id": "app2_s2_obj5",
               "qType": "barchart",
               "title": "Shipment Pipeline",
-              "position": { "row": 1, "col": 7, "width": 5, "height": 4 },
+              "position": {
+                "row": 1,
+                "col": 7,
+                "width": 5,
+                "height": 4
+              },
               "props": {
                 "dimensions": [
                   {
-                    "expression": "Pick(Match(status_canonical, 'LABEL_CREATED','PICKED_UP','IN_TRANSIT','OUT_FOR_DELIVERY','DELIVERED'), 'Label Created', 'Picked Up', 'In Transit', 'Out for Delivery', 'Delivered')",
+                    "expression": "Pick(Match([Status (Canonical)], 'LABEL_CREATED','PICKED_UP','IN_TRANSIT','OUT_FOR_DELIVERY','DELIVERED'), 'Label Created', 'Picked Up', 'In Transit', 'Out for Delivery', 'Delivered')",
                     "label": "Stage"
                   }
                 ],
                 "measures": [
                   {
-                    "expression": "Count(shipment_id)",
+                    "expression": "Count([Shipment ID])",
                     "label": "Shipment Count",
                     "numberFormat": "#,##0"
                   }
@@ -1707,7 +2264,13 @@
                 "orientation": "horizontal",
                 "sorting": {
                   "by": "custom",
-                  "customOrder": ["Label Created", "Picked Up", "In Transit", "Out for Delivery", "Delivered"]
+                  "customOrder": [
+                    "Label Created",
+                    "Picked Up",
+                    "In Transit",
+                    "Out for Delivery",
+                    "Delivered"
+                  ]
                 },
                 "segmentColors": [
                   "#8899AD",
@@ -1725,13 +2288,26 @@
               "id": "app2_s2_obj6",
               "qType": "table",
               "title": "Exception Monitor",
-              "position": { "row": 5, "col": 0, "width": 12, "height": 3 },
+              "position": {
+                "row": 5,
+                "col": 0,
+                "width": 12,
+                "height": 3
+              },
               "props": {
                 "columns": [
-                  { "field": "tracking_number", "label": "Tracking #", "width": 160 },
-                  { "field": "carrier", "label": "Carrier", "width": 100 },
                   {
-                    "field": "exception_code_canonical",
+                    "field": "[Tracking Number]",
+                    "label": "Tracking #",
+                    "width": 160
+                  },
+                  {
+                    "field": "[Carrier]",
+                    "label": "Carrier",
+                    "width": 100
+                  },
+                  {
+                    "field": "[Exception Code]",
                     "label": "Exception Type",
                     "width": 180,
                     "conditionalColors": {
@@ -1744,13 +2320,23 @@
                     },
                     "badgeStyle": true
                   },
-                  { "field": "current_location", "label": "Location", "width": 160 }
+                  {
+                    "field": "[Ship-To City]",
+                    "label": "Location",
+                    "width": 160
+                  }
                 ],
                 "borderColor": "#DC2626",
                 "borderWidth": 2,
                 "filter": "NOT IsNull(exception_code_canonical) AND status_canonical <> 'DELIVERED'",
-                "sorting": { "by": "last_update_utc", "order": "descending" },
-                "headerStyle": { "fontWeight": 600, "color": "#DC2626" },
+                "sorting": {
+                  "by": "last_update_utc",
+                  "order": "descending"
+                },
+                "headerStyle": {
+                  "fontWeight": 600,
+                  "color": "#DC2626"
+                },
                 "alternateRowShading": true,
                 "rowHeight": 32
               }
@@ -1763,20 +2349,37 @@
           "description": "Where Is My Order (WISMO) inquiry analysis showing rates by carrier and region, cost impact, and trend analysis with monthly patterns",
           "rank": 3,
           "filters": [
-            { "field": "carrier", "label": "Carrier", "type": "listbox" },
-            { "field": "destination_region", "label": "Region", "type": "listbox" },
-            { "field": "wismo_flag", "label": "WISMO Flag", "type": "listbox" }
+            {
+              "field": "[Carrier]",
+              "label": "Carrier",
+              "type": "listbox"
+            },
+            {
+              "field": "[Customer Region]",
+              "label": "Region",
+              "type": "listbox"
+            },
+            {
+              "field": "[WISMO Flag]",
+              "label": "WISMO Flag",
+              "type": "listbox"
+            }
           ],
           "objects": [
             {
               "id": "app2_s3_obj1",
               "qType": "kpi",
               "title": "WISMO Rate",
-              "position": { "row": 0, "col": 0, "width": 3, "height": 1 },
+              "position": {
+                "row": 0,
+                "col": 0,
+                "width": 3,
+                "height": 1
+              },
               "props": {
                 "measures": [
                   {
-                    "expression": "Sum(wismo_count)/Sum(total_orders)",
+                    "expression": "Sum([WISMO Inquiries])/Sum([Orders])",
                     "label": "WISMO Rate",
                     "numberFormat": "#,##0.0%"
                   }
@@ -1784,9 +2387,18 @@
                 "expectedValue": 0.41,
                 "color": "#DC2626",
                 "conditionalColors": [
-                  { "condition": "> 0.40", "color": "#DC2626" },
-                  { "condition": "> 0.25", "color": "#C4922E" },
-                  { "condition": "<= 0.25", "color": "#059669" }
+                  {
+                    "condition": "> 0.40",
+                    "color": "#DC2626"
+                  },
+                  {
+                    "condition": "> 0.25",
+                    "color": "#C4922E"
+                  },
+                  {
+                    "condition": "<= 0.25",
+                    "color": "#059669"
+                  }
                 ]
               }
             },
@@ -1794,11 +2406,16 @@
               "id": "app2_s3_obj2",
               "qType": "kpi",
               "title": "WISMO Cost",
-              "position": { "row": 0, "col": 3, "width": 3, "height": 1 },
+              "position": {
+                "row": 0,
+                "col": 3,
+                "width": 3,
+                "height": 1
+              },
               "props": {
                 "measures": [
                   {
-                    "expression": "Sum(wismo_count) * 2.30",
+                    "expression": "Sum([WISMO Inquiries]) * 2.30",
                     "label": "WISMO Cost",
                     "numberFormat": "$#,##0,,M"
                   }
@@ -1813,11 +2430,16 @@
               "id": "app2_s3_obj3",
               "qType": "kpi",
               "title": "Highest WISMO Carrier",
-              "position": { "row": 0, "col": 6, "width": 3, "height": 1 },
+              "position": {
+                "row": 0,
+                "col": 6,
+                "width": 3,
+                "height": 1
+              },
               "props": {
                 "measures": [
                   {
-                    "expression": "FirstSortedValue(carrier & ' ' & Text(Sum(wismo_count)/Sum(total_orders), '#,##0%'), -Aggr(Sum(wismo_count)/Sum(total_orders), carrier))",
+                    "expression": "FirstSortedValue([Carrier] & ' ' & Text(Sum([WISMO Inquiries])/Sum([Orders]), '#,##0%'), -Aggr(Sum([WISMO Inquiries])/Sum([Orders]), [Carrier]))",
                     "label": "Highest WISMO Carrier",
                     "numberFormat": "text"
                   }
@@ -1831,11 +2453,16 @@
               "id": "app2_s3_obj4",
               "qType": "kpi",
               "title": "Monthly Inquiries",
-              "position": { "row": 0, "col": 9, "width": 3, "height": 1 },
+              "position": {
+                "row": 0,
+                "col": 9,
+                "width": 3,
+                "height": 1
+              },
               "props": {
                 "measures": [
                   {
-                    "expression": "Sum({<period={\"$(=MaxString(period))\"}>} wismo_count)",
+                    "expression": "Sum({<[Month Name]={\"$(=MaxString([Month Name]))\"}>} [WISMO Inquiries])",
                     "label": "Monthly Inquiries",
                     "numberFormat": "#,##0"
                   }
@@ -1848,24 +2475,35 @@
               "id": "app2_s3_obj5",
               "qType": "barchart",
               "title": "WISMO Rate by Carrier",
-              "position": { "row": 1, "col": 0, "width": 6, "height": 3 },
+              "position": {
+                "row": 1,
+                "col": 0,
+                "width": 6,
+                "height": 3
+              },
               "props": {
                 "dimensions": [
-                  { "field": "carrier", "label": "Carrier" }
+                  {
+                    "field": "[Carrier]",
+                    "label": "Carrier"
+                  }
                 ],
                 "measures": [
                   {
-                    "expression": "Sum(wismo_count)/Sum(total_orders)",
+                    "expression": "Sum([WISMO Inquiries])/Sum([Orders])",
                     "label": "WISMO Rate",
                     "numberFormat": "#,##0.0%"
                   }
                 ],
                 "orientation": "horizontal",
-                "sorting": { "by": "measure", "order": "descending" },
+                "sorting": {
+                  "by": "measure",
+                  "order": "descending"
+                },
                 "referenceLines": [
                   {
                     "label": "40% Threshold",
-                    "value": 0.40,
+                    "value": 0.4,
                     "color": "#DC2626",
                     "style": "dashed",
                     "lineWidth": 2
@@ -1880,14 +2518,22 @@
               "id": "app2_s3_obj6",
               "qType": "areachart",
               "title": "WISMO Rate Trend (Monthly)",
-              "position": { "row": 1, "col": 6, "width": 6, "height": 3 },
+              "position": {
+                "row": 1,
+                "col": 6,
+                "width": 6,
+                "height": 3
+              },
               "props": {
                 "dimensions": [
-                  { "field": "=MonthName(order_date)", "label": "Month" }
+                  {
+                    "field": "=MonthName([Order Date])",
+                    "label": "Month"
+                  }
                 ],
                 "measures": [
                   {
-                    "expression": "Sum(wismo_count)/Sum(total_orders)",
+                    "expression": "Sum([WISMO Inquiries])/Sum([Orders])",
                     "label": "WISMO Rate",
                     "numberFormat": "#,##0.0%",
                     "color": "#DC2626",
@@ -1909,31 +2555,42 @@
                 ],
                 "gridLines": true,
                 "yAxisMin": 0,
-                "yAxisMax": 0.60
+                "yAxisMax": 0.6
               }
             },
             {
               "id": "app2_s3_obj7",
               "qType": "barchart",
               "title": "WISMO Rate by Region",
-              "position": { "row": 4, "col": 0, "width": 6, "height": 2 },
+              "position": {
+                "row": 4,
+                "col": 0,
+                "width": 6,
+                "height": 2
+              },
               "props": {
                 "dimensions": [
-                  { "field": "destination_region", "label": "Region" }
+                  {
+                    "field": "[Customer Region]",
+                    "label": "Region"
+                  }
                 ],
                 "measures": [
                   {
-                    "expression": "Sum(wismo_count)/Sum(total_orders)",
+                    "expression": "Sum([WISMO Inquiries])/Sum([Orders])",
                     "label": "WISMO Rate",
                     "numberFormat": "#,##0.0%"
                   }
                 ],
                 "orientation": "vertical",
-                "sorting": { "by": "measure", "order": "descending" },
+                "sorting": {
+                  "by": "measure",
+                  "order": "descending"
+                },
                 "referenceLines": [
                   {
                     "label": "40% Threshold",
-                    "value": 0.40,
+                    "value": 0.4,
                     "color": "#DC2626",
                     "style": "dashed",
                     "lineWidth": 2
@@ -1948,29 +2605,48 @@
               "id": "app2_s3_obj8",
               "qType": "table",
               "title": "High-WISMO Combinations",
-              "position": { "row": 4, "col": 6, "width": 6, "height": 4 },
+              "position": {
+                "row": 4,
+                "col": 6,
+                "width": 6,
+                "height": 4
+              },
               "props": {
                 "columns": [
-                  { "field": "carrier", "label": "Carrier", "width": 120 },
-                  { "field": "destination_region", "label": "Region", "width": 100 },
                   {
-                    "expression": "Sum(wismo_count)/Sum(total_orders)",
+                    "field": "[Carrier]",
+                    "label": "Carrier",
+                    "width": 120
+                  },
+                  {
+                    "field": "[Customer Region]",
+                    "label": "Region",
+                    "width": 100
+                  },
+                  {
+                    "expression": "Sum([WISMO Inquiries])/Sum([Orders])",
                     "label": "WISMO Rate",
                     "numberFormat": "#,##0.0%",
                     "width": 120,
                     "conditionalColors": {
-                      "expression": "IF(Sum(wismo_count)/Sum(total_orders) > 0.40, '#DC2626', IF(Sum(wismo_count)/Sum(total_orders) > 0.25, '#C4922E', '#059669'))"
+                      "expression": "IF(Sum([WISMO Inquiries])/Sum([Orders]) > 0.40, '#DC2626', IF(Sum([WISMO Inquiries])/Sum([Orders]) > 0.25, '#C4922E', '#059669'))"
                     }
                   },
                   {
-                    "expression": "Count(DISTINCT customer_id)",
+                    "expression": "Count(DISTINCT [Contact ID])",
                     "label": "Customer Count",
                     "numberFormat": "#,##0",
                     "width": 120
                   }
                 ],
-                "sorting": { "by": "wismo_rate", "order": "descending" },
-                "headerStyle": { "fontWeight": 600, "color": "#C4922E" },
+                "sorting": {
+                  "by": "wismo_rate",
+                  "order": "descending"
+                },
+                "headerStyle": {
+                  "fontWeight": 600,
+                  "color": "#C4922E"
+                },
                 "alternateRowShading": true,
                 "rowHeight": 32
               }
@@ -1983,20 +2659,37 @@
           "description": "End-to-end order lifecycle from placement to delivery, with SLA breach heatmap analysis and phase-level timing breakdown",
           "rank": 4,
           "filters": [
-            { "field": "carrier", "label": "Carrier", "type": "listbox" },
-            { "field": "destination_region", "label": "Region", "type": "listbox" },
-            { "expression": "IF(sla_met=1, 'SLA Met', 'SLA Breached')", "label": "SLA Status", "type": "listbox" }
+            {
+              "field": "[Carrier]",
+              "label": "Carrier",
+              "type": "listbox"
+            },
+            {
+              "field": "[Customer Region]",
+              "label": "Region",
+              "type": "listbox"
+            },
+            {
+              "expression": "IF([On-Time Delivery Flag]=1, 'SLA Met', 'SLA Breached')",
+              "label": "SLA Status",
+              "type": "listbox"
+            }
           ],
           "objects": [
             {
               "id": "app2_s4_obj1",
               "qType": "kpi",
               "title": "Avg End-to-End Time",
-              "position": { "row": 0, "col": 0, "width": 4, "height": 1 },
+              "position": {
+                "row": 0,
+                "col": 0,
+                "width": 4,
+                "height": 1
+              },
               "props": {
                 "measures": [
                   {
-                    "expression": "Avg([End-to-End (hrs)])",
+                    "expression": "Avg([Delivery Hours])",
                     "label": "Avg End-to-End Time",
                     "numberFormat": "#,##0.0"
                   }
@@ -2007,166 +2700,89 @@
               }
             },
             {
-              "id": "app2_s4_obj2",
-              "qType": "kpi",
-              "title": "Missing Delivery Promise",
-              "position": { "row": 0, "col": 4, "width": 4, "height": 1 },
-              "props": {
-                "measures": [
-                  {
-                    "expression": "Sum(IF(IsNull(sla_target_hours),1,0))/Count(order_id)",
-                    "label": "Missing Delivery Promise",
-                    "numberFormat": "#,##0.0%"
-                  }
-                ],
-                "expectedValue": 0.112,
-                "color": "#DC2626",
-                "conditionalColors": [
-                  { "condition": "> 0.10", "color": "#DC2626" },
-                  { "condition": "> 0.05", "color": "#C4922E" },
-                  { "condition": "<= 0.05", "color": "#059669" }
-                ]
-              }
-            },
-            {
               "id": "app2_s4_obj3",
               "qType": "kpi",
               "title": "MoM Improvement",
-              "position": { "row": 0, "col": 8, "width": 4, "height": 1 },
+              "position": {
+                "row": 0,
+                "col": 8,
+                "width": 4,
+                "height": 1
+              },
               "props": {
                 "measures": [
                   {
-                    "expression": "(Avg({<period={\"$(=MaxString(period))\"}>} [End-to-End (hrs)]) - Avg({<period={\"$(=Date(AddMonths(Date#(MaxString(period),'YYYY-MM'),-1),'YYYY-MM'))\"}>} [End-to-End (hrs)])) / Avg({<period={\"$(=Date(AddMonths(Date#(MaxString(period),'YYYY-MM'),-1),'YYYY-MM'))\"}>} [End-to-End (hrs)])",
+                    "expression": "(Avg({<[Month Name]={\"$(=MaxString([Month Name]))\"}>} [Delivery Hours]) - Avg({<[Month Name]={\"$(=Date(AddMonths(Date#(MaxString([Month Name]),'YYYY-MM'),-1),'YYYY-MM'))\"}>} [Delivery Hours])) / Avg({<[Month Name]={\"$(=Date(AddMonths(Date#(MaxString([Month Name]),'YYYY-MM'),-1),'YYYY-MM'))\"}>} [Delivery Hours])",
                     "label": "MoM Improvement",
                     "numberFormat": "#,##0.0%"
                   }
                 ],
                 "expectedValue": -0.031,
-                "displayPrefix": "\u2193",
+                "displayPrefix": "↓",
                 "color": "#059669",
                 "conditionalColors": [
-                  { "condition": "< 0", "color": "#059669" },
-                  { "condition": "= 0", "color": "#C4922E" },
-                  { "condition": "> 0", "color": "#DC2626" }
-                ]
-              }
-            },
-            {
-              "id": "app2_s4_obj4",
-              "qType": "barchart",
-              "title": "Order-to-Delivery Timeline",
-              "position": { "row": 1, "col": 0, "width": 6, "height": 4 },
-              "props": {
-                "type": "stacked",
-                "dimensions": [
-                  { "field": "carrier", "label": "Carrier" }
-                ],
-                "measures": [
                   {
-                    "expression": "Avg([Order Processing (hrs)])",
-                    "label": "Order Processing",
-                    "numberFormat": "#,##0.0",
-                    "color": "#8899AD"
+                    "condition": "< 0",
+                    "color": "#059669"
                   },
                   {
-                    "expression": "Avg([Warehouse Handling (hrs)])",
-                    "label": "Warehouse Handling",
-                    "numberFormat": "#,##0.0",
+                    "condition": "= 0",
                     "color": "#C4922E"
                   },
                   {
-                    "expression": "Avg([Carrier Pickup (hrs)])",
-                    "label": "Carrier Pickup",
-                    "numberFormat": "#,##0.0",
-                    "color": "#0D7C8F"
-                  },
-                  {
-                    "expression": "Avg([In Transit (hrs)])",
-                    "label": "In Transit",
-                    "numberFormat": "#,##0.0",
-                    "color": "#10CFC9"
-                  },
-                  {
-                    "expression": "Avg([Last Mile (hrs)])",
-                    "label": "Last Mile",
-                    "numberFormat": "#,##0.0",
-                    "color": "#059669"
+                    "condition": "> 0",
+                    "color": "#DC2626"
                   }
-                ],
-                "orientation": "horizontal",
-                "stacking": "normal",
-                "showLabels": true,
-                "gridLines": true,
-                "legendPosition": "bottom"
+                ]
               }
             },
             {
               "id": "app2_s4_obj5",
               "qType": "heatmap",
               "title": "SLA Breach Rate: Carrier x Region",
-              "position": { "row": 1, "col": 6, "width": 6, "height": 4 },
+              "position": {
+                "row": 1,
+                "col": 6,
+                "width": 6,
+                "height": 4
+              },
               "props": {
                 "dimensions": [
-                  { "field": "carrier", "label": "Carrier", "axis": "y" },
-                  { "field": "destination_region", "label": "Region", "axis": "x" }
+                  {
+                    "field": "[Carrier]",
+                    "label": "Carrier",
+                    "axis": "y"
+                  },
+                  {
+                    "field": "[Customer Region]",
+                    "label": "Region",
+                    "axis": "x"
+                  }
                 ],
                 "measures": [
                   {
-                    "expression": "Sum(IF(sla_met=0,1,0))/Count(shipment_id)",
+                    "expression": "Sum(IF([On-Time Delivery Flag]=0,1,0))/Count([Shipment ID])",
                     "label": "SLA Breach Rate",
                     "numberFormat": "#,##0.0%"
                   }
                 ],
                 "colorRange": {
-                  "min": { "value": 0, "color": "#059669" },
-                  "mid": { "value": 0.10, "color": "#C4922E" },
-                  "max": { "value": 0.25, "color": "#DC2626" }
+                  "min": {
+                    "value": 0,
+                    "color": "#059669"
+                  },
+                  "mid": {
+                    "value": 0.1,
+                    "color": "#C4922E"
+                  },
+                  "max": {
+                    "value": 0.25,
+                    "color": "#DC2626"
+                  }
                 },
                 "showValues": true,
                 "cellBorderColor": "#0D2137",
                 "cellBorderWidth": 2
-              }
-            },
-            {
-              "id": "app2_s4_obj6",
-              "qType": "table",
-              "title": "Late Orders Detail",
-              "position": { "row": 5, "col": 0, "width": 12, "height": 3 },
-              "props": {
-                "columns": [
-                  { "field": "order_id", "label": "Order ID", "width": 140 },
-                  { "field": "carrier", "label": "Carrier", "width": 100 },
-                  { "field": "destination_region", "label": "Region", "width": 100 },
-                  {
-                    "field": "sla_target_hours",
-                    "label": "Promised (hrs)",
-                    "numberFormat": "#,##0.0",
-                    "width": 120
-                  },
-                  {
-                    "field": "sla_actual_hours",
-                    "label": "Actual (hrs)",
-                    "numberFormat": "#,##0.0",
-                    "width": 120,
-                    "conditionalColors": {
-                      "expression": "IF(sla_actual_hours > sla_target_hours * 1.5, '#DC2626', IF(sla_actual_hours > sla_target_hours, '#C4922E', '#059669'))"
-                    }
-                  },
-                  {
-                    "expression": "sla_actual_hours - sla_target_hours",
-                    "label": "Delta (hrs)",
-                    "numberFormat": "+#,##0.0;-#,##0.0",
-                    "width": 100,
-                    "conditionalColors": {
-                      "expression": "IF(sla_actual_hours - sla_target_hours > 24, '#DC2626', IF(sla_actual_hours - sla_target_hours > 0, '#C4922E', '#059669'))"
-                    }
-                  }
-                ],
-                "filter": "sla_met = 0",
-                "sorting": { "by": "delta", "order": "descending", "expression": "sla_actual_hours - sla_target_hours" },
-                "headerStyle": { "fontWeight": 600, "color": "#C4922E" },
-                "alternateRowShading": true,
-                "rowHeight": 32
               }
             }
           ]
@@ -2177,20 +2793,37 @@
           "description": "Address quality scoring analysis showing correlation with delivery success, score distribution, and carrier-level quality breakdowns",
           "rank": 5,
           "filters": [
-            { "field": "destination_country", "label": "Country", "type": "listbox" },
-            { "expression": "Class(address_quality_score, 0.25)", "label": "Quality Score Range", "type": "listbox" },
-            { "field": "carrier", "label": "Carrier", "type": "listbox" }
+            {
+              "field": "[Ship-To Country]",
+              "label": "Country",
+              "type": "listbox"
+            },
+            {
+              "expression": "Class([Address Quality Score], 0.25)",
+              "label": "Quality Score Range",
+              "type": "listbox"
+            },
+            {
+              "field": "[Carrier]",
+              "label": "Carrier",
+              "type": "listbox"
+            }
           ],
           "objects": [
             {
               "id": "app2_s5_obj1",
               "qType": "kpi",
               "title": "Avg Address Quality Score",
-              "position": { "row": 0, "col": 0, "width": 4, "height": 1 },
+              "position": {
+                "row": 0,
+                "col": 0,
+                "width": 4,
+                "height": 1
+              },
               "props": {
                 "measures": [
                   {
-                    "expression": "Avg(address_quality_score)",
+                    "expression": "Avg([Address Quality Score])",
                     "label": "Avg Address Quality Score",
                     "numberFormat": "0.00"
                   }
@@ -2198,9 +2831,18 @@
                 "expectedValue": 0.72,
                 "color": "#C4922E",
                 "conditionalColors": [
-                  { "condition": "< 0.60", "color": "#DC2626" },
-                  { "condition": "< 0.80", "color": "#C4922E" },
-                  { "condition": ">= 0.80", "color": "#059669" }
+                  {
+                    "condition": "< 0.60",
+                    "color": "#DC2626"
+                  },
+                  {
+                    "condition": "< 0.80",
+                    "color": "#C4922E"
+                  },
+                  {
+                    "condition": ">= 0.80",
+                    "color": "#059669"
+                  }
                 ]
               }
             },
@@ -2208,11 +2850,16 @@
               "id": "app2_s5_obj2",
               "qType": "kpi",
               "title": "Low Quality Addresses",
-              "position": { "row": 0, "col": 4, "width": 4, "height": 1 },
+              "position": {
+                "row": 0,
+                "col": 4,
+                "width": 4,
+                "height": 1
+              },
               "props": {
                 "measures": [
                   {
-                    "expression": "Count(IF(address_quality_score < 0.5, customer_id))",
+                    "expression": "Count(IF([Address Quality Score] < 0.5, [Contact ID]))",
                     "label": "Low Quality Addresses",
                     "numberFormat": "#,##0,,M"
                   }
@@ -2227,11 +2874,16 @@
               "id": "app2_s5_obj3",
               "qType": "kpi",
               "title": "Rejection Rate",
-              "position": { "row": 0, "col": 8, "width": 4, "height": 1 },
+              "position": {
+                "row": 0,
+                "col": 8,
+                "width": 4,
+                "height": 1
+              },
               "props": {
                 "measures": [
                   {
-                    "expression": "Sum(IF(address_rejected=1,1,0))/Count(shipment_id)",
+                    "expression": "Sum(IF([Address Rejected Flag]=1,1,0))/Count([Shipment ID])",
                     "label": "Rejection Rate",
                     "numberFormat": "#,##0.0%"
                   }
@@ -2239,9 +2891,18 @@
                 "expectedValue": 0.047,
                 "color": "#DC2626",
                 "conditionalColors": [
-                  { "condition": "> 0.05", "color": "#DC2626" },
-                  { "condition": "> 0.03", "color": "#C4922E" },
-                  { "condition": "<= 0.03", "color": "#059669" }
+                  {
+                    "condition": "> 0.05",
+                    "color": "#DC2626"
+                  },
+                  {
+                    "condition": "> 0.03",
+                    "color": "#C4922E"
+                  },
+                  {
+                    "condition": "<= 0.03",
+                    "color": "#059669"
+                  }
                 ]
               }
             },
@@ -2249,27 +2910,35 @@
               "id": "app2_s5_obj4",
               "qType": "scatterplot",
               "title": "Delivery Success vs Address Quality Score",
-              "position": { "row": 1, "col": 0, "width": 6, "height": 4 },
+              "position": {
+                "row": 1,
+                "col": 0,
+                "width": 6,
+                "height": 4
+              },
               "props": {
                 "dimensions": [
-                  { "field": "destination_country", "label": "Country" }
+                  {
+                    "field": "[Ship-To Country]",
+                    "label": "Country"
+                  }
                 ],
                 "measures": [
                   {
-                    "expression": "Avg(address_quality_score)",
+                    "expression": "Avg([Address Quality Score])",
                     "label": "Address Quality Score",
                     "numberFormat": "0.00",
                     "axis": "x"
                   },
                   {
-                    "expression": "Sum(IF(status_canonical='DELIVERED',1,0))/Count(shipment_id)",
+                    "expression": "Sum(IF([Status (Canonical)]='DELIVERED',1,0))/Count([Shipment ID])",
                     "label": "Delivery Success Rate",
                     "numberFormat": "#,##0.0%",
                     "axis": "y"
                   }
                 ],
                 "bubbleSize": {
-                  "expression": "Count(shipment_id)",
+                  "expression": "Count([Shipment ID])",
                   "label": "Shipment Volume"
                 },
                 "trendline": {
@@ -2280,12 +2949,12 @@
                   "rSquared": 0.83,
                   "showEquation": false,
                   "showRSquared": true,
-                  "label": "R\u00b2 = 0.83"
+                  "label": "R² = 0.83"
                 },
                 "xAxisMin": 0,
                 "xAxisMax": 1,
-                "yAxisMin": 0.70,
-                "yAxisMax": 1.0,
+                "yAxisMin": 0.7,
+                "yAxisMax": 1,
                 "pointColor": "#0D7C8F",
                 "pointSize": 8,
                 "gridLines": true
@@ -2295,17 +2964,22 @@
               "id": "app2_s5_obj5",
               "qType": "histogram",
               "title": "Address Quality Score Distribution",
-              "position": { "row": 1, "col": 6, "width": 6, "height": 4 },
+              "position": {
+                "row": 1,
+                "col": 6,
+                "width": 6,
+                "height": 4
+              },
               "props": {
                 "dimensions": [
                   {
-                    "expression": "Class(address_quality_score, 0.05)",
+                    "expression": "Class([Address Quality Score], 0.05)",
                     "label": "Score Bucket"
                   }
                 ],
                 "measures": [
                   {
-                    "expression": "Count(customer_id)",
+                    "expression": "Count([Contact ID])",
                     "label": "Customer Count",
                     "numberFormat": "#,##0"
                   }
@@ -2324,13 +2998,19 @@
                   {
                     "type": "text",
                     "label": "Low-quality cluster",
-                    "position": { "x": 0.25, "y": "peak" },
+                    "position": {
+                      "x": 0.25,
+                      "y": "peak"
+                    },
                     "color": "#DC2626"
                   },
                   {
                     "type": "text",
                     "label": "High-quality cluster",
-                    "position": { "x": 0.85, "y": "peak" },
+                    "position": {
+                      "x": 0.85,
+                      "y": "peak"
+                    },
                     "color": "#059669"
                   }
                 ]
@@ -2340,58 +3020,73 @@
               "id": "app2_s5_obj6",
               "qType": "table",
               "title": "Address Quality vs Delivery by Carrier",
-              "position": { "row": 5, "col": 0, "width": 12, "height": 3 },
+              "position": {
+                "row": 5,
+                "col": 0,
+                "width": 12,
+                "height": 3
+              },
               "props": {
                 "columns": [
-                  { "field": "carrier", "label": "Carrier", "width": 120 },
                   {
-                    "expression": "Avg(address_quality_score)",
+                    "field": "[Carrier]",
+                    "label": "Carrier",
+                    "width": 120
+                  },
+                  {
+                    "expression": "Avg([Address Quality Score])",
                     "label": "Avg Quality",
                     "numberFormat": "0.00",
                     "width": 100,
                     "conditionalColors": {
-                      "expression": "IF(Avg(address_quality_score) >= 0.80, '#059669', IF(Avg(address_quality_score) >= 0.60, '#C4922E', '#DC2626'))"
+                      "expression": "IF(Avg([Address Quality Score]) >= 0.80, '#059669', IF(Avg([Address Quality Score]) >= 0.60, '#C4922E', '#DC2626'))"
                     }
                   },
                   {
-                    "expression": "Count(IF(address_quality_score < 0.5, customer_id))",
+                    "expression": "Count(IF([Address Quality Score] < 0.5, [Contact ID]))",
                     "label": "Low Quality Count",
                     "numberFormat": "#,##0",
                     "width": 130,
                     "conditionalColors": {
-                      "expression": "IF(Count(IF(address_quality_score < 0.5, customer_id)) > 500000, '#DC2626', '#C4922E')"
+                      "expression": "IF(Count(IF([Address Quality Score] < 0.5, [Contact ID])) > 500000, '#DC2626', '#C4922E')"
                     }
                   },
                   {
-                    "expression": "Sum(IF(on_time_flag=1 AND address_quality_score >= 0.75,1,0))/Count(IF(address_quality_score >= 0.75, shipment_id))",
+                    "expression": "Sum(IF([On-Time Delivery Flag]=1 AND [Address Quality Score] >= 0.75,1,0))/Count(IF([Address Quality Score] >= 0.75, [Shipment ID]))",
                     "label": "On-Time (High Qual)",
                     "numberFormat": "#,##0.0%",
                     "width": 140,
                     "conditionalColors": {
-                      "expression": "IF(Sum(IF(on_time_flag=1 AND address_quality_score >= 0.75,1,0))/Count(IF(address_quality_score >= 0.75, shipment_id)) >= 0.92, '#059669', '#C4922E')"
+                      "expression": "IF(Sum(IF([On-Time Delivery Flag]=1 AND [Address Quality Score] >= 0.75,1,0))/Count(IF([Address Quality Score] >= 0.75, [Shipment ID])) >= 0.92, '#059669', '#C4922E')"
                     }
                   },
                   {
-                    "expression": "Sum(IF(on_time_flag=1 AND address_quality_score < 0.5,1,0))/Count(IF(address_quality_score < 0.5, shipment_id))",
+                    "expression": "Sum(IF([On-Time Delivery Flag]=1 AND [Address Quality Score] < 0.5,1,0))/Count(IF([Address Quality Score] < 0.5, [Shipment ID]))",
                     "label": "On-Time (Low Qual)",
                     "numberFormat": "#,##0.0%",
                     "width": 140,
                     "conditionalColors": {
-                      "expression": "IF(Sum(IF(on_time_flag=1 AND address_quality_score < 0.5,1,0))/Count(IF(address_quality_score < 0.5, shipment_id)) >= 0.80, '#C4922E', '#DC2626')"
+                      "expression": "IF(Sum(IF([On-Time Delivery Flag]=1 AND [Address Quality Score] < 0.5,1,0))/Count(IF([Address Quality Score] < 0.5, [Shipment ID])) >= 0.80, '#C4922E', '#DC2626')"
                     }
                   },
                   {
-                    "expression": "Sum(IF(on_time_flag=1 AND address_quality_score >= 0.75,1,0))/Count(IF(address_quality_score >= 0.75, shipment_id)) - Sum(IF(on_time_flag=1 AND address_quality_score < 0.5,1,0))/Count(IF(address_quality_score < 0.5, shipment_id))",
+                    "expression": "Sum(IF([On-Time Delivery Flag]=1 AND [Address Quality Score] >= 0.75,1,0))/Count(IF([Address Quality Score] >= 0.75, [Shipment ID])) - Sum(IF([On-Time Delivery Flag]=1 AND [Address Quality Score] < 0.5,1,0))/Count(IF([Address Quality Score] < 0.5, [Shipment ID]))",
                     "label": "Quality Gap",
                     "numberFormat": "+#,##0.0%;-#,##0.0%",
                     "width": 120,
                     "conditionalColors": {
-                      "expression": "IF(Sum(IF(on_time_flag=1 AND address_quality_score >= 0.75,1,0))/Count(IF(address_quality_score >= 0.75, shipment_id)) - Sum(IF(on_time_flag=1 AND address_quality_score < 0.5,1,0))/Count(IF(address_quality_score < 0.5, shipment_id)) > 0.15, '#DC2626', '#C4922E')"
+                      "expression": "IF(Sum(IF([On-Time Delivery Flag]=1 AND [Address Quality Score] >= 0.75,1,0))/Count(IF([Address Quality Score] >= 0.75, [Shipment ID])) - Sum(IF([On-Time Delivery Flag]=1 AND [Address Quality Score] < 0.5,1,0))/Count(IF([Address Quality Score] < 0.5, [Shipment ID])) > 0.15, '#DC2626', '#C4922E')"
                     }
                   }
                 ],
-                "sorting": { "by": "quality_gap", "order": "descending" },
-                "headerStyle": { "fontWeight": 600, "color": "#C4922E" },
+                "sorting": {
+                  "by": "quality_gap",
+                  "order": "descending"
+                },
+                "headerStyle": {
+                  "fontWeight": 600,
+                  "color": "#C4922E"
+                },
                 "alternateRowShading": true,
                 "rowHeight": 32,
                 "matrixStyle": true
@@ -2401,5 +3096,6 @@
         }
       ]
     }
-  ]
+  ],
+  "_fieldContract": "Every `expression` and `field` here must name a field one of the load scripts creates. The load scripts alias raw lakehouse columns to display names (location_id AS [Distribution Center]), so a raw column name resolves to NULL in Qlik with no error and the KPI silently reads zero. Run `npm run lint:app-fields` after any edit; `node deploy/validate-app-fields.js --list` prints the available names. build-apps.js PREFERS this file over its own embedded spec whenever it exists."
 }

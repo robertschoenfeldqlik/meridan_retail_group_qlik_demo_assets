@@ -290,10 +290,10 @@ function module01() {
     calloutBox("Talking point: The PostgreSQL simulator injects intentional data quality issues — phantom inventory (ERP says 50, WMS says 42), missing lot numbers on 15% of perishables, and timestamp drift between systems.", "warning"),
 
     heading("Step 2: Start Kafka & IoT Simulator", 3),
-    numberedItem(1, "Start the Confluent Platform Docker stack:"),
-    promptBox("cd infrastructure/kafka && docker compose up -d", "Terminal Command"),
+    numberedItem(1, "Start the Confluent Platform container stack (the npm script resolves the engine — Podman on this host — so never call compose directly):"),
+    promptBox("npm run docker:up:kafka", "Terminal Command"),
     numberedItem(2, "Verify all services are healthy:"),
-    promptBox("docker compose ps", "Terminal Command"),
+    promptBox("npm run docker:status", "Terminal Command"),
     expectedBox("kafka, zookeeper, schema-registry, control-center should all show 'healthy' or 'running'"),
     numberedItem(3, "Open Confluent Control Center at http://localhost:9021 to visually verify topics"),
     numberedItem(4, "Start the IoT simulator:"),
@@ -326,9 +326,9 @@ function module01() {
     dataTable(
       ["Issue", "Cause", "Fix"],
       [
-        ["Docker compose fails", "Docker Desktop not running", "Start Docker Desktop, wait 30s, retry"],
+        ["Compose command fails", "Podman machine not running", "Run: podman machine start, wait 30s, retry"],
         ["PostgreSQL connection refused", "Wrong host/port or database not created", "Verify with: psql -h localhost -U mcg_admin -d mcg_wms"],
-        ["Kafka topics not created", "Init container failed", "Run: docker compose exec kafka kafka-topics --bootstrap-server kafka:9092 --list"],
+        ["Kafka topics not created", "Init container failed", "Run: podman exec mcg-kafka kafka-topics --bootstrap-server kafka:9092 --list"],
         ["CRM connection refused", "MySQL container still starting", "Wait for the healthcheck: podman ps shows mcg-mysql (healthy)"],
       ]
     ),
@@ -1297,17 +1297,17 @@ function module13() {
     heading("MCP Demo Scenario 1: Rotterdam Inventory", 3),
     clarityContext("Project Qlarity Phase 3 MCP querying Phase 1 monitoring outputs — phantom inventory (Nightmare #1) from the Rotterdam silent pipeline failure (Nightmare #4)."),
     promptBox("What is the current inventory accuracy rate at Rotterdam DC, and what is causing the issues?", "Ask Claude"),
-    expectedBox("Claude uses MCP to query gold.supply_chain_health filtered by dc = DC-RTD-01. Gets: IRA = 74%, phantom_units = 847, pipeline_status = RECOVERED. Then queries silver.order_delivery_timeline for affected orders. Finally pulls context from INC-2025-04872 (Rotterdam Pipeline Failure) via Qlik Answers.\n\nResponse: Rotterdam DC IRA is 74%, significantly below the 97% target. Root cause: silent pipeline failure INC-2025-04872 where WMS-to-SAP CDC sync stopped for 72 hours due to an expired TLS certificate. Created 847 phantom units across 143 SKUs, costing EUR 30,500. Pipeline recovered; Project Qlarity Phase 1 will extend monitoring to all 28 DCs."),
+    expectedBox("Claude uses MCP to query gold.supply_chain_health filtered by location_id = 'DC-RTD-01'. Gets: phantom_suspect_count = 1,667 of sku_positions = 3,710, avg_trust_score = 0.31 — so IRA = 1 - 1667/3710 = 55%. Then queries silver.inventory_reconciled for the affected positions. Finally pulls context from INC-2025-04872 (Rotterdam Pipeline Failure) via Qlik Answers.\n\nResponse: Rotterdam DC inventory record accuracy is 55%, far below the 97% target and the worst of the 12 DCs — the estate average is 74%. Trust score on those positions is 0.31 against 0.89 elsewhere. Root cause: silent pipeline failure INC-2025-04872, where the WMS-to-SAP CDC sync stopped for 72 hours on an expired TLS certificate. The incident report records 847 overstated units across 143 SKUs and EUR 30,500 of write-off. Pipeline has recovered; Project Qlarity Phase 1 extends monitoring to all 12 DCs."),
 
     heading("MCP Demo Scenario 2: Cold Chain Risk", 3),
     clarityContext("Project Qlarity Phase 3 MCP combining the Phase 2 spoilage prediction with live IoT data — the cold-chain carrier risk of Nightmare #6."),
     promptBox("What is the current spoilage risk for active TransFrio shipments on the Sao Paulo to Buenos Aires route?", "Ask Claude"),
-    expectedBox("Claude queries silver.iot_normalized for route=GRU-BA and carrier=TransFrio with active shipments. Returns: 4 active shipments, 2 with exceedance_minutes > 30. Pulls INC-2025-05102 for context about the fleet change and TRN-2025-002 for the Thermo King X4 7500 startup procedure."),
+    expectedBox("Claude queries silver.iot_normalized filtered by route_id = 'GRU-BA-001' (TransFrio's Sao Paulo to Buenos Aires lane — the carrier lives on silver.shipments_canonical, this table carries the route). Returns: 250 of 2,724 readings with alert_flag = 1, a 9.2% temperature-exceedance rate against roughly 2% on the comparable DPD lane. Pulls INC-2025-05102 for context about the fleet change and TRN-2025-002 for the Thermo King X4 7500 startup procedure."),
 
     heading("MCP Demo Scenario 3: Carrier SLA Analysis", 3),
     clarityContext("Project Qlarity Phase 3 MCP across the canonicalized carrier data — resolving Nightmare #6 (Carrier Data Black Hole) into a single APAC SLA comparison."),
-    promptBox("Compare carrier on-time delivery performance across APAC. Which carrier is worst and why?", "Ask Claude"),
-    expectedBox("Claude queries gold.last_mile_performance filtered by destination_region=APAC. Returns: NinjaVan at 69% on-time (worst), vs FedEx 94%, DHL 91%. Pulls CARRIER-NV-2025 for context: AMD3 reclassification effective Oct 1 changed 5-10 kg parcels from 2-day to 3-day delivery. 14,000 customers/month affected."),
+    promptBox("Compare carrier on-time delivery performance across the estate. Which carrier is worst and why?", "Ask Claude"),
+    expectedBox("Claude queries gold.last_mile_performance, whose grain is carrier_code x destination_country across the six countries MCG ships into (NL, DE, FR, ES, IT, PL). Returns: NinjaVan at 69% on-time — the clear worst — against GLS 93%, FedEx 92%, DHL 92%, TransFrio 92%, DPD 92%, on an estate average of 88%. NinjaVan also carries the highest WISMO rate at 31% versus 24-26% for the rest. Pulls CARRIER-NV-2025 for context: AMD3 reclassification effective Oct 1 changed 5-10 kg parcels from 2-day to 3-day delivery. 14,000 customers/month affected."),
 
     heading("MCP Demo Scenario 4: Customer WISMO Impact", 3),
     clarityContext("Project Qlarity Phase 3: WISMO deflection — quantifying the carrier-visibility cost (Nightmare #6) the conversational layer is designed to reduce."),

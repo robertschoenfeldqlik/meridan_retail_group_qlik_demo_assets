@@ -39,14 +39,22 @@ const path = require('path');
 const https = require('https');
 const WebSocket = require('ws');
 
-const cfg = JSON.parse(fs.readFileSync(path.join(__dirname, 'config.json'), 'utf8'));
+const CFG_PATH = path.join(__dirname, 'config.json');
+if (!fs.existsSync(CFG_PATH)) {
+  console.error(`No deploy/config.json. Copy config.example.json to config.json and fill in your tenant first.`);
+  process.exit(1);
+}
+const cfg = JSON.parse(fs.readFileSync(CFG_PATH, 'utf8'));
 const BASE = `https://${cfg.tenant.hostname}.${cfg.tenant.region}`;
 const TOKEN = cfg.auth.apiKey;
 const DRY = process.argv.includes('--dry-run');
 
-const APPS = [
-  ['MCG Supply Chain Operations', '330f03eb-436e-4d43-aa73-9991990d1bc6'],
-  ['MCG Delivery & Customer Experience', '2637a115-9347-4801-bea6-7125b934e7a4'],
+// Apps are resolved BY NAME at run time. They used to be two hardcoded GUIDs,
+// which meant this script only ever worked on the tenant it was written against
+// — every other deployment of this repo gets different app ids.
+const APP_NAMES = [
+  'MCG Supply Chain Operations',
+  'MCG Delivery & Customer Experience',
 ];
 
 // Rewrites keyed by the exact broken expression. Each entry says what the
@@ -116,13 +124,40 @@ function engine(appId) {
   });
 }
 
+/**
+ * Resolve an app name to its id on THIS tenant. /api/v1/items is the endpoint
+ * the deployer already uses for dataset lookup, so it is known to exist here.
+ */
+async function resolveApp(name) {
+  const res = await api('GET', `/api/v1/items?resourceType=app&name=${encodeURIComponent(name)}&limit=50`);
+  if (res.s !== 200) return null;
+  let data;
+  try { data = JSON.parse(res.b).data || []; } catch (_) { return null; }
+  const exact = data.find((d) => (d.name || d.resourceAttributes?.name) === name);
+  const hit = exact || data[0];
+  return hit ? (hit.resourceId || hit.id) : null;
+}
+
 (async () => {
   let fixed = 0;
   let audited = 0;
   const zeros = [];
 
+  const APPS = [];
+  for (const name of APP_NAMES) {
+    const id = await resolveApp(name);
+    if (!id) { console.error(`  SKIP "${name}" — no app of that name on ${cfg.tenant.hostname}`); continue; }
+    APPS.push([name, id]);
+  }
+  if (!APPS.length) {
+    console.error('No MCG apps found on this tenant. Run build-apps first.');
+    process.exit(1);
+  }
+
   for (const [appName, appId] of APPS) {
     console.log(`\n=== ${appName}`);
+    // Per-app, so the second app is not saved just because the first changed.
+    const fixedBefore = fixed;
     const ses = await engine(appId);
     const doc = (await ses.send(-1, 'OpenDoc', [appId])).qReturn.qHandle;
 
@@ -170,13 +205,43 @@ function engine(appId) {
         if (dirty && !DRY) {
           await ses.send(ch, 'SetProperties', [prop]);
         }
+
+        // The audit the header promises: after any rewrite, read the object's
+        // LAYOUT (not its properties) and look at what each measure actually
+        // evaluates to. qMeasureInfo carries qMin/qMax for the rendered
+        // hypercube, so a measure that is flat zero across every row is a
+        // silent-zero KPI — the exact failure this script exists to catch.
+        try {
+          const lay = await ses.send(ch, 'GetLayout', []);
+          const cube = lay && lay.qLayout && lay.qLayout.qHyperCube;
+          const info = (cube && cube.qMeasureInfo) || [];
+          info.forEach((mi, idx) => {
+            const label = mi.qFallbackTitle || (hc.qMeasures[idx] && hc.qMeasures[idx].qDef.qLabel) || `measure ${idx}`;
+            const allZero = mi.qMin === 0 && mi.qMax === 0;
+            const noRows = cube && cube.qSize && cube.qSize.qcy === 0;
+            if (allZero || noRows) {
+              zeros.push(`${appName} / ${prop.title || prop.qInfo.qId} / ${label}`
+                + (noRows ? ' (no rows)' : ' (min=max=0)'));
+            }
+          });
+        } catch (err) {
+          console.log(`  warn  could not read layout for "${prop.title || childId}": ${err.message}`);
+        }
       }
     }
 
-    if (!DRY && fixed) await ses.send(doc, 'DoSave', []);
+    if (!DRY && fixed > fixedBefore) await ses.send(doc, 'DoSave', []);
     await ses.close();
   }
 
   console.log(`\n${DRY ? 'DRY RUN — ' : ''}${fixed} measure(s) rewritten, ${audited} audited.`);
-  if (zeros.length) console.log('KPIs still reading zero:', zeros.join(', '));
+  if (zeros.length) {
+    console.log(`\n${zeros.length} measure(s) still reading zero or returning no rows:`);
+    zeros.forEach((z) => console.log('  ' + z));
+    console.log('\nA zero here is usually a field name the load script renamed away.');
+    console.log('Check it with:  node deploy/validate-app-fields.js');
+    process.exitCode = 1;
+  } else {
+    console.log('No silent-zero measures found.');
+  }
 })().catch((e) => { console.error('FAILED:', e.message); process.exit(1); });

@@ -79,7 +79,7 @@ function trnWmsSap() {
     numberedItem(4, "Record results in the Daily Sync Check spreadsheet (SharePoint > Operations > Sync Checks > [DC Name])."),
     numberedItem(5, "If ANY transaction is missing from SAP after 60+ minutes, escalate to IT Operations IMMEDIATELY (see Section 7)."),
     para("Estimated time: 15-20 minutes per day."),
-    calloutBox("This check costs MCG approximately 855 person-hours per day across all 28 DCs (28 supervisors × ~30 min including login/navigation). This manual effort will be eliminated by Project Qlarity's automated pipeline health monitoring.", "info"),
+    calloutBox("This check costs MCG approximately 14 person-hours per day across all 28 DCs (28 supervisors × ~30 min including login/navigation) — about 3,640 person-hours a year on 260 working days. This manual effort will be eliminated by Project Qlarity's automated pipeline health monitoring.", "info"),
 
     heading("6. Phantom Inventory — How It Happens"),
     para("Phantom inventory occurs when SAP shows stock that doesn't physically exist in the warehouse. This is MCG's #1 data quality nightmare (Nightmare #1), with an estimated annual cost of $48M."),
@@ -236,8 +236,8 @@ function mtgQ3Review() {
 
     heading("2.1 Phantom Inventory Update (Henrik Jansen)", 2),
     para("IRA (Inventory Record Accuracy) remains at 74%, unchanged from Q2 and well below the 97% target. The Rotterdam pipeline failure (INC-2025-04872) demonstrated that a single undetected 72-hour sync failure can create 847 units of phantom inventory across 143 SKUs, costing €30,500 in emergency transfers and expedited shipping."),
-    para("Pipeline monitoring has been implemented at Rotterdam DC following the incident but is NOT yet deployed at the remaining 27 DCs. Henrik emphasized that the daily manual sync check is the only defense at other sites, costing 855 person-hours per day across the network."),
-    calloutBox("Henrik: \"We're spending 855 hours of human labor every single day on manual sync checks that a simple automated heartbeat monitor could replace. That's the equivalent of 107 full-time employees doing nothing but checking whether our data pipelines are working.\"", "info"),
+    para("Pipeline monitoring has been implemented at Rotterdam DC following the incident but is NOT yet deployed at the remaining 27 DCs. Henrik emphasized that the daily manual sync check is the only defense at other sites, costing 14 person-hours per day across the 28 DCs (28 supervisors × ~30 min) — and that the DC check is the smaller half of the problem: the 1,140 stores spend a further 855 person-hours a day reconciling inventory by hand, 45 minutes per store, every morning."),
+    calloutBox("Henrik: \"Between the DCs and the stores we're spending 869 hours of human labour every single day on manual reconciliation that an automated heartbeat monitor could replace. The store half alone is 855 hours — the equivalent of 107 full-time employees doing nothing but checking whether our data pipelines are working.\"", "info"),
 
     heading("2.2 APAC SLA Crisis (Wei Lin Tan)", 2),
     para("Singapore delivery promise accuracy dropped to 69% (from 88% in Q2). Root cause: NinjaVan contract amendment AMD3 reclassified 5-10 kg parcels from 2-day to 3-day delivery, effective 01 October 2025. However, this change was not communicated to the e-commerce fulfillment team for 3+ weeks after contract execution."),
