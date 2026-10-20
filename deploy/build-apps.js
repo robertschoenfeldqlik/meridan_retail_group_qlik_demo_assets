@@ -33,10 +33,9 @@
 
 'use strict';
 
-const https = require('https');
-const http  = require('http');
 const fs    = require('fs');
 const path  = require('path');
+const { request } = require('./http-client');
 
 // Attempt to load 'ws' — gracefully degrade if not installed
 let WebSocket;
@@ -212,87 +211,6 @@ function applyEnvOverrides(cfg) {
   if (process.env.QLIK_AUTH_METHOD) cfg.auth.method     = process.env.QLIK_AUTH_METHOD;
   return cfg;
 }
-
-// ---------------------------------------------------------------------------
-//  HTTP client  (zero-dependency)
-// ---------------------------------------------------------------------------
-
-function requestOnce(method, reqUrl, { headers = {}, body = null, rawBody = null, timeout = 60000 } = {}) {
-  return new Promise((resolve, reject) => {
-    const parsed = new URL(reqUrl);
-    const transport = parsed.protocol === 'https:' ? https : http;
-
-    const opts = {
-      method,
-      hostname: parsed.hostname,
-      port:     parsed.port || (parsed.protocol === 'https:' ? 443 : 80),
-      path:     parsed.pathname + parsed.search,
-      headers:  { ...headers },
-      timeout,
-    };
-
-    let payload = rawBody || null;
-    if (body && !rawBody) {
-      payload = JSON.stringify(body);
-      opts.headers['Content-Type']   = opts.headers['Content-Type'] || 'application/json';
-      opts.headers['Content-Length'] = Buffer.byteLength(payload);
-    }
-
-    const req = transport.request(opts, (res) => {
-      // Follow 301/302/307/308 redirects (max 10)
-      if ([301, 302, 307, 308].includes(res.statusCode) && res.headers.location) {
-        const rc = (opts._redirectCount || 0) + 1;
-        if (rc > 10) { res.resume(); reject(new Error(`Too many redirects (>10): ${reqUrl}`)); return; }
-        const redirectUrl = new URL(res.headers.location, reqUrl).toString();
-        res.resume(); // drain response
-        resolve(requestOnce(method, redirectUrl, { headers, body, rawBody, timeout, _redirectCount: rc }));
-        return;
-      }
-      const chunks = [];
-      res.on('data', (chunk) => chunks.push(chunk));
-      res.on('end', () => {
-        const raw = Buffer.concat(chunks).toString('utf-8');
-        let parsed = raw;
-        const ct = (res.headers['content-type'] || '').toLowerCase();
-        if (ct.includes('application/json') && raw.length > 0) {
-          try { parsed = JSON.parse(raw); } catch (_) { /* keep raw string */ }
-        }
-        resolve({ statusCode: res.statusCode, headers: res.headers, body: parsed });
-      });
-    });
-
-    req.on('timeout', () => { req.destroy(); reject(new Error(`Request timed out: ${method} ${reqUrl}`)); });
-    req.on('error', reject);
-
-    if (payload) req.write(payload);
-    req.end();
-  });
-}
-
-async function request(method, reqUrl, opts = {}, { maxRetries = 3, backoff = 2.0 } = {}) {
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    try {
-      const res = await requestOnce(method, reqUrl, opts);
-      if ([429, 502, 503, 504].includes(res.statusCode) && attempt < maxRetries) {
-        const retryAfter = parseFloat(res.headers['retry-after']) || backoff * Math.pow(2, attempt);
-        console.warn(`  WARN  HTTP ${res.statusCode} — retrying in ${retryAfter.toFixed(1)}s (attempt ${attempt + 1}/${maxRetries})`);
-        await sleep(retryAfter * 1000);
-        continue;
-      }
-      return res;
-    } catch (err) {
-      if (attempt < maxRetries && (err.code === 'ECONNRESET' || err.code === 'ECONNREFUSED' || err.code === 'ETIMEDOUT' || err.message.includes('timed out'))) {
-        const wait = backoff * Math.pow(2, attempt);
-        console.warn(`  WARN  ${err.code || 'Timeout'} — retrying in ${wait.toFixed(1)}s (attempt ${attempt + 1}/${maxRetries})`);
-        await sleep(wait * 1000);
-        continue;
-      }
-      throw err;
-    }
-  }
-}
-
-function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
 
 // ---------------------------------------------------------------------------
 //  App Definitions  (embedded — the canonical source of truth)

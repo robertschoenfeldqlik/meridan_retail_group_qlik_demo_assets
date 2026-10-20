@@ -21,13 +21,12 @@
 
 'use strict';
 
-const https = require('https');
-const http  = require('http');
 const fs    = require('fs');
 const path  = require('path');
 const url   = require('url');
 const { spawn, spawnSync } = require('child_process');
 const { zipDirectory, unzipToDirectory } = require('./zip-utils');
+const { request, sleep } = require('./http-client');
 const { resolveEngine, composeCmd, engineEnv } = require('./container-engine');
 const stewardship = require('./stewardship');
 const automationWorkspaces = require('./automation-workspaces');
@@ -186,119 +185,6 @@ function applyEnvOverrides(cfg) {
                                             cfg.auth.oauth.tokenUrl     = process.env.QLIK_OAUTH_TOKEN_URL;
   return cfg;
 }
-
-// ---------------------------------------------------------------------------
-//  HTTP client  (zero-dependency — uses built-in https/http)
-// ---------------------------------------------------------------------------
-
-/**
- * Make an HTTP(S) request and return { statusCode, headers, body }.
- * `body` is parsed as JSON when the response Content-Type is application/json.
- */
-function requestOnce(method, reqUrl, { headers = {}, body = null, rawBody = null, timeout = 60000, binary = false, _redirectCount = 0 } = {}) {
-  return new Promise((resolve, reject) => {
-    const parsed = new URL(reqUrl);
-    const transport = parsed.protocol === 'https:' ? https : http;
-
-    const opts = {
-      method,
-      hostname: parsed.hostname,
-      port:     parsed.port || (parsed.protocol === 'https:' ? 443 : 80),
-      path:     parsed.pathname + parsed.search,
-      headers:  { ...headers },
-      timeout,
-    };
-
-    // Serialize body
-    let payload = rawBody || null;
-    if (body && !rawBody) {
-      payload = JSON.stringify(body);
-      opts.headers['Content-Type']   = opts.headers['Content-Type'] || 'application/json';
-      opts.headers['Content-Length'] = Buffer.byteLength(payload);
-    } else if (payload != null && opts.headers['Content-Length'] == null) {
-      // rawBody path (OAuth token POST, multipart uploads): set Content-Length so
-      // Node doesn't fall back to chunked Transfer-Encoding, which some
-      // multipart/form-data and token endpoints reject.
-      opts.headers['Content-Length'] = Buffer.byteLength(payload);
-    }
-
-    const req = transport.request(opts, (res) => {
-      // Follow 301/302/307/308 redirects (max 10)
-      if ([301, 302, 307, 308].includes(res.statusCode) && res.headers.location) {
-        const rc = _redirectCount + 1;
-        if (rc > 10) { res.resume(); reject(new Error(`Too many redirects (>10): ${reqUrl}`)); return; }
-        const redirectUrl = new URL(res.headers.location, reqUrl).toString();
-        res.resume(); // drain response
-        resolve(requestOnce(method, redirectUrl, { headers, body, rawBody, timeout, binary, _redirectCount: rc }));
-        return;
-      }
-      const chunks = [];
-      res.on('data', (chunk) => chunks.push(chunk));
-      res.on('end', () => {
-        if (binary) {
-          resolve({ statusCode: res.statusCode, headers: res.headers, body: Buffer.concat(chunks) });
-          return;
-        }
-        const raw = Buffer.concat(chunks).toString('utf-8');
-        let parsed = raw;
-        const ct = (res.headers['content-type'] || '').toLowerCase();
-        if (ct.includes('application/json') && raw.length > 0) {
-          try { parsed = JSON.parse(raw); } catch (_) { /* keep raw string */ }
-        }
-        resolve({ statusCode: res.statusCode, headers: res.headers, body: parsed });
-      });
-    });
-
-    req.on('timeout', () => { req.destroy(); reject(new Error(`Request timed out: ${method} ${reqUrl}`)); });
-    req.on('error', reject);
-
-    if (payload) req.write(payload);
-    req.end();
-  });
-}
-
-/**
- * HTTP request with retry on transient failures (429, 502, 503, 504).
- * 502/504 (gateway errors) are only auto-retried for GET — retrying a
- * POST/PUT/PATCH/DELETE behind a flaky gateway risks re-submitting a request
- * that already succeeded server-side, creating a duplicate resource.
- */
-async function request(method, reqUrl, opts = {}, { maxRetries = 3, backoff = 2.0 } = {}) {
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    try {
-      const res = await requestOnce(method, reqUrl, opts);
-
-      // Dry runs authenticate with a placeholder OAuth token, so existence-check
-      // GETs made before a step's own dry-run short-circuit get a real 401 from
-      // the tenant. Treat that as "can't verify — assume not present" instead of
-      // letting it throw and cascade the whole dry run to failure.
-      if (opts.dryRun && res.statusCode === 401) {
-        console.warn(`  WARN  dry run: cannot verify existing state without valid OAuth token — assuming not present (${method} ${reqUrl})`);
-        return { statusCode: 200, headers: {}, body: {} };
-      }
-
-      const retryableStatuses = method === 'GET' ? [429, 502, 503, 504] : [429, 503];
-      if (retryableStatuses.includes(res.statusCode) && attempt < maxRetries) {
-        const retryAfter = parseFloat(res.headers['retry-after']) || backoff * Math.pow(2, attempt);
-        console.warn(`  WARN  HTTP ${res.statusCode} — retrying in ${retryAfter.toFixed(1)}s (attempt ${attempt + 1}/${maxRetries})`);
-        await sleep(retryAfter * 1000);
-        continue;
-      }
-      return res;
-    } catch (err) {
-      if (attempt < maxRetries && (err.code === 'ECONNRESET' || err.code === 'ECONNREFUSED' || err.code === 'ETIMEDOUT' || err.message.includes('timed out'))) {
-        const wait = backoff * Math.pow(2, attempt);
-        console.warn(`  WARN  ${err.code || 'Timeout'} — retrying in ${wait.toFixed(1)}s (attempt ${attempt + 1}/${maxRetries})`);
-        await sleep(wait * 1000);
-        continue;
-      }
-      throw err;
-    }
-  }
-  throw new Error(`Request failed after ${maxRetries} retries: ${method} ${reqUrl}`);
-}
-
-function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
 
 // ---------------------------------------------------------------------------
 //  Multipart form-data builder (zero-dependency)
