@@ -265,7 +265,7 @@ function module01() {
 
     heading("Prerequisites", 2),
     para("Before starting, ensure you have:"),
-    numberedItem(1, "Docker Desktop installed and running (for Kafka and PostgreSQL containers)"),
+    numberedItem(1, "Podman (rootful machine) with the Docker Compose v2 CLI — npm run engine confirms both (runs the Kafka, PostgreSQL and MySQL containers)"),
     numberedItem(2, "Python 3.9+ with pip installed"),
     numberedItem(3, "Node.js 18+ (for deploy scripts)"),
     numberedItem(4, "Nothing external — the CRM is a MySQL container in this repo's own stack"),

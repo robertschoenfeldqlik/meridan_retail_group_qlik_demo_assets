@@ -137,7 +137,7 @@ function sectionPrerequisites() {
       [
         ["Node.js", "18+ (LTS recommended)", "Runs generator scripts and the deployment UI"],
         ["npm", "9+ (included with Node.js)", "Package management"],
-        ["Docker Desktop", "4.x+", "Runs Kafka, PostgreSQL, and simulator containers"],
+        ["Podman + Docker Compose v2 CLI", "Podman 5.x (rootful machine)", "Runs Kafka, PostgreSQL, MySQL, and simulator containers — check with npm run engine"],
         ["Git", "2.x+", "Clone and manage the demo repository"],
         ["Visual Studio Code", "Latest (recommended)", "Code editing \u2014 optional but recommended"],
       ]
@@ -253,8 +253,8 @@ function sectionInfrastructure() {
     heading("3.4 Verify Services", 2),
     para("Check that all containers are running:"),
     cmd("npm run docker:status"),
-    para("All containers should show status 'Up' with healthy health checks. If any container is restarting or exited, check the Docker Desktop logs for that container."),
-    screenshot("Docker Desktop showing all MCG containers in 'Running' state with green status indicators"),
+    para("All containers should show status 'Up' with healthy health checks. If any container is restarting or exited, check its logs with npm run docker:logs, or podman logs <container> for one container."),
+    screenshot("npm run docker:status output with every MCG container Up and healthy"),
 
     heading("3.5 Seed the Database", 2),
     para("Once PostgreSQL is running, create the schema and populate sample data:"),
@@ -535,13 +535,13 @@ function sectionLakehouse() {
     ),
 
     heading("CRM Pipelines (MySQL \u2192 Bronze)", 3),
-    para("These pipelines use REST API extraction to pull Meridian CRM data on a schedule. A rename rule maps the CRM tables to the bronze table names:"),
+    para("The MCG CRM Landing task reads Meridian CRM through the gateway-bound MCG CRM Database connection with log-based CDC (MySQL binlog), on a 15-minute incremental cycle. The source tables already carry the bronze names, so no rename rule is needed:"),
     dataTable(
-      ["Pipeline Name", "Source Object", "Target Table", "Sync Method"],
+      ["Pipeline Name", "Source Table", "Target Table", "Sync Method"],
       [
-        ["SF-Contacts", "Contact", "bronze.crm_contacts", "API (every 15 min)"],
-        ["SF-Orders", "crm_orders", "bronze.crm_orders", "API (every 15 min)"],
-        ["SF-Products", "crm_products", "bronze.crm_products", "API (every 15 min)"],
+        ["CRM-Contacts", "mcg_crm.crm_contacts", "bronze.crm_contacts", "CDC (binlog, 15-min cycle)"],
+        ["CRM-Orders", "mcg_crm.crm_orders", "bronze.crm_orders", "CDC (binlog, 15-min cycle)"],
+        ["CRM-Products", "mcg_crm.crm_products", "bronze.crm_products", "CDC (binlog, 15-min cycle)"],
       ]
     ),
 
@@ -916,7 +916,7 @@ function sectionTroubleshooting() {
         [
           "Docker images fail to pull",
           "Network/proxy restrictions",
-          "Configure Docker Desktop proxy settings. Alternatively, pre-pull images: docker-compose pull",
+          "Set HTTP_PROXY/HTTPS_PROXY inside the Podman machine (podman machine ssh). Alternatively, pre-pull images: node deploy/compose.js -f docker-compose.full-stack.yml pull",
         ],
       ]
     ),

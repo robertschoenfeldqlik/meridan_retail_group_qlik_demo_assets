@@ -1062,7 +1062,7 @@ dividerSlide("The 7 Nightmares", "$127M in annual data quality costs");
     { category: "Analytics", items: "2 Qlik Analytics apps (10 sheets)  •  MCG Dark Theme  •  Streaming IoT  •  Alerts  •  Reports", color: C.qlikBlue },
     { category: "AI / ML", items: "2 Predict models (Exceedance + Late Delivery)  •  Qlik Answers (25 docs)  •  Discovery Agent  •  MCP Server", color: C.qlikLightGreen },
     { category: "Automation", items: "5 automations: App Reload, Cold Chain Alert, Pipeline Health, Sprint Summary, Address Correction", color: C.qlikGreen },
-    { category: "Infrastructure", items: "Docker Compose (Confluent)  •  3 simulators (PG, Kafka, SF)  •  Deploy script  •  Setup guide", color: C.qlikGray },
+    { category: "Infrastructure", items: "Docker Compose (Confluent)  •  3 simulators (PG, Kafka, MySQL CRM)  •  Deploy script  •  Setup guide", color: C.qlikGray },
   ];
 
   components.forEach((c, i) => {
