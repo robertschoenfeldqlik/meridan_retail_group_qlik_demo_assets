@@ -1,0 +1,110 @@
+// ---------------------------------------------------------------------------
+//  MCG Open Lakehouse Ingest
+//  Lands the bronze, silver and gold tables into the MCG Open Lakehouse connection
+//  and stores each one in columnar form for the analytics apps to consume.
+//  One LOAD + STORE per table; table names, columns and grain match the catalog.
+// ---------------------------------------------------------------------------
+
+[bronze_iot_carrier_events]:
+LOAD *
+FROM [lib://MCG Demo - Development:MCG Open Lakehouse/bronze_iot_carrier_events.csv]
+(txt, utf8, embedded labels, delimiter is ',', msq);
+STORE [bronze_iot_carrier_events] INTO [lib://MCG Demo - Development:MCG Open Lakehouse/bronze_iot_carrier_events.qvd] (qvd);
+DROP TABLE [bronze_iot_carrier_events];
+TRACE Landed bronze_iot_carrier_events;
+
+[gold_last_mile_performance]:
+LOAD *
+FROM [lib://MCG Demo - Development:MCG Open Lakehouse/gold_last_mile_performance.csv]
+(txt, utf8, embedded labels, delimiter is ',', msq);
+STORE [gold_last_mile_performance] INTO [lib://MCG Demo - Development:MCG Open Lakehouse/gold_last_mile_performance.qvd] (qvd);
+DROP TABLE [gold_last_mile_performance];
+TRACE Landed gold_last_mile_performance;
+
+[gold_supply_chain_health]:
+LOAD *
+FROM [lib://MCG Demo - Development:MCG Open Lakehouse/gold_supply_chain_health.csv]
+(txt, utf8, embedded labels, delimiter is ',', msq);
+STORE [gold_supply_chain_health] INTO [lib://MCG Demo - Development:MCG Open Lakehouse/gold_supply_chain_health.qvd] (qvd);
+DROP TABLE [gold_supply_chain_health];
+TRACE Landed gold_supply_chain_health;
+
+[gold_supply_chain_health_monthly]:
+LOAD *
+FROM [lib://MCG Demo - Development:MCG Open Lakehouse/gold_supply_chain_health_monthly.csv]
+(txt, utf8, embedded labels, delimiter is ',', msq);
+STORE [gold_supply_chain_health_monthly] INTO [lib://MCG Demo - Development:MCG Open Lakehouse/gold_supply_chain_health_monthly.qvd] (qvd);
+DROP TABLE [gold_supply_chain_health_monthly];
+TRACE Landed gold_supply_chain_health_monthly;
+
+[MCG_CRM_Addresses_Validated]:
+LOAD *
+FROM [lib://MCG Demo - Development:MCG Open Lakehouse/MCG_CRM_Addresses_Validated.csv]
+(txt, utf8, embedded labels, delimiter is ',', msq);
+STORE [MCG_CRM_Addresses_Validated] INTO [lib://MCG Demo - Development:MCG Open Lakehouse/MCG_CRM_Addresses_Validated.qvd] (qvd);
+DROP TABLE [MCG_CRM_Addresses_Validated];
+TRACE Landed MCG_CRM_Addresses_Validated;
+
+[silver_addresses_standardized]:
+LOAD *
+FROM [lib://MCG Demo - Development:MCG Open Lakehouse/silver_addresses_standardized.csv]
+(txt, utf8, embedded labels, delimiter is ',', msq);
+STORE [silver_addresses_standardized] INTO [lib://MCG Demo - Development:MCG Open Lakehouse/silver_addresses_standardized.qvd] (qvd);
+DROP TABLE [silver_addresses_standardized];
+TRACE Landed silver_addresses_standardized;
+
+[silver_inventory_reconciled]:
+LOAD *
+FROM [lib://MCG Demo - Development:MCG Open Lakehouse/silver_inventory_reconciled.csv]
+(txt, utf8, embedded labels, delimiter is ',', msq);
+STORE [silver_inventory_reconciled] INTO [lib://MCG Demo - Development:MCG Open Lakehouse/silver_inventory_reconciled.qvd] (qvd);
+DROP TABLE [silver_inventory_reconciled];
+TRACE Landed silver_inventory_reconciled;
+
+[silver_iot_normalized]:
+LOAD *
+FROM [lib://MCG Demo - Development:MCG Open Lakehouse/silver_iot_normalized.csv]
+(txt, utf8, embedded labels, delimiter is ',', msq);
+STORE [silver_iot_normalized] INTO [lib://MCG Demo - Development:MCG Open Lakehouse/silver_iot_normalized.qvd] (qvd);
+DROP TABLE [silver_iot_normalized];
+TRACE Landed silver_iot_normalized;
+
+[silver_order_delivery_timeline]:
+LOAD *
+FROM [lib://MCG Demo - Development:MCG Open Lakehouse/silver_order_delivery_timeline.csv]
+(txt, utf8, embedded labels, delimiter is ',', msq);
+STORE [silver_order_delivery_timeline] INTO [lib://MCG Demo - Development:MCG Open Lakehouse/silver_order_delivery_timeline.qvd] (qvd);
+DROP TABLE [silver_order_delivery_timeline];
+TRACE Landed silver_order_delivery_timeline;
+
+[silver_products_harmonized]:
+LOAD *
+FROM [lib://MCG Demo - Development:MCG Open Lakehouse/silver_products_harmonized.csv]
+(txt, utf8, embedded labels, delimiter is ',', msq);
+STORE [silver_products_harmonized] INTO [lib://MCG Demo - Development:MCG Open Lakehouse/silver_products_harmonized.qvd] (qvd);
+DROP TABLE [silver_products_harmonized];
+TRACE Landed silver_products_harmonized;
+
+[silver_shipments_canonical]:
+LOAD *
+FROM [lib://MCG Demo - Development:MCG Open Lakehouse/silver_shipments_canonical.csv]
+(txt, utf8, embedded labels, delimiter is ',', msq);
+STORE [silver_shipments_canonical] INTO [lib://MCG Demo - Development:MCG Open Lakehouse/silver_shipments_canonical.qvd] (qvd);
+DROP TABLE [silver_shipments_canonical];
+TRACE Landed silver_shipments_canonical;
+
+LakehouseTables:
+LOAD * INLINE [
+  table, landed
+  bronze_iot_carrier_events, 1
+  gold_last_mile_performance, 1
+  gold_supply_chain_health, 1
+  gold_supply_chain_health_monthly, 1
+  MCG_CRM_Addresses_Validated, 1
+  silver_addresses_standardized, 1
+  silver_inventory_reconciled, 1
+  silver_iot_normalized, 1
+  silver_order_delivery_timeline, 1
+  silver_products_harmonized, 1
+  silver_shipments_canonical, 1
+];
