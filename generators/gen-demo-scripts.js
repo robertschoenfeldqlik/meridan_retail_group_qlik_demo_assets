@@ -462,10 +462,40 @@ function module03() {
     clarityContext("Project Qlarity Phase 1 → Phase 2: the Open Lakehouse Bronze/Silver foundation (Phase 1) plus the remaining transforms and governed Gold data products (Phase 2 Analytics & Quality). The 8 Silver routes are where all Seven Data Quality Nightmares are systematically remediated."),
 
     heading("Overview", 2),
-    para("The Open Lakehouse is the heart of the MCG demo. It implements the medallion architecture (Bronze/Silver/Gold) where raw data lands, gets cleansed and transformed, and emerges as governed data products. This is where MCG's 7 data quality nightmares get resolved."),
+    para("The Open Lakehouse is the heart of the MCG demo: a fully managed Apache Iceberg lakehouse on Amazon S3 that runs inside MCG's own AWS VPC, so the data never leaves their environment. Raw data lands, gets cleansed and transformed, and emerges as governed data products. This is where MCG's 7 data quality nightmares get resolved."),
+    para("One naming note before you present: the Bronze/Silver/Gold layering in this module is MCG's own declarative pipelines, not an Open Lakehouse feature. Qlik's dataset structure underneath is landing then storage. Say \"our pipelines layer the data\" rather than \"the Lakehouse implements medallion\" — a data architect in the room will know the difference."),
     calloutBox("Key message: Without a Lakehouse, MCG had 3 disconnected data silos. With it, they have a single source of truth with full lineage from raw source to business-ready data product."),
     ...shot("lakehouse-clusters"),
     ...shot("catalog"),
+
+    heading("What the Platform Does Underneath", 2),
+    para("This is the part that differentiates Open Lakehouse from a DIY Iceberg build or a warehouse's managed-Iceberg option, and it is the part presenters most often skip. Cover it before the layers."),
+    dataTable(
+      ["Capability", "What it does", "Why the buyer cares"],
+      [
+        ["Adaptive Optimizer for Apache Iceberg", "An agent that continuously audits the data files: compaction chosen by predicted query gain and cost reduction, table stats refreshed without analyzing each table, snapshot expiration every few hours (time-travel preserved), daily dangling-file cleanup", "No table maintenance to staff. Each table is structured to its own data profile and change frequency, with no intervention"],
+        ["EC2 Spot compute", "The lakehouse cluster is an auto-scaling group with a configurable Spot / On-Demand mix, auto-healing, and fallback to On-Demand when Spot capacity is short", "Ingestion runs on the cheapest compute AWS sells, and consumes no warehouse credits"],
+        ["Zero-copy mirroring", "Mirror Iceberg tables into Snowflake (GA); Amazon Redshift and Databricks Unity Catalog also supported on AWS", "One physical copy of the data, queried by whichever engine each team already uses"],
+        ["Open catalog + any engine", "AWS Glue Data Catalog holds the schemas and file pointers; Athena, Snowflake, Trino, Presto, Dremio, SageMaker and Spark all query the same tables", "No lock-in, and no copy-per-consumer sprawl"],
+        ["Four scaling strategies", "Low cost (dev/QA), Low latency, Consistent low latency (production real-time, higher cost), No scaling (static and predictable)", "Latency and spend are one dial, chosen per cluster"],
+      ]
+    ),
+    calloutBox("Vendor-claim hygiene: Qlik claims 2.5x-5x faster queries and up to 50% lower storage cost than self-managed Iceberg, and 80-90% lower ingestion cost driven by Spot. These are Qlik claims, not audited figures, and the performance pair traces to an Upsolver benchmark. The ingestion-saving number is quoted inconsistently across Qlik assets (80%, 80-90%, 50-90%, up to 90%) — pick one source and cite it rather than blending them. Confirm anything time-sensitive with Product Management.", "warning"),
+
+    heading("Dataset Structure: Current and History Views", 3),
+    para("Worth showing when a data architect asks how the replica is actually stored. Each source table becomes a physical table with five partitions, exposed through two queryable views."),
+    dataTable(
+      ["Object", "Contents", "Use"],
+      [
+        ["Changes partition", "Inserts, updates and deletes appended near-real-time", "Feeds both views"],
+        ["Current / ODS partition", "Latest replica of the source row", "Operational reporting"],
+        ["Prior / HDS partition", "SCD Type 2 history", "Point-in-time and trend analysis"],
+        ["Asset_state / Reload partitions", "Sync tracking and reload staging", "Platform-managed"],
+        ["Current view", "Current plus Changes", "Near-real-time query surface"],
+        ["History view", "Prior plus Changes, with eight hdr__* audit fields", "Full SCD Type 2 audit trail"],
+      ]
+    ),
+    calloutBox("Do not alter this data with other tools — the platform owns the partition layout. Also note: a primary-key change is replicated as a delete of the old key plus an insert of the new one, not an update. That surprises people during a CDC demo, so say it before they spot it.", "warning"),
 
     heading("Bronze Layer: Raw Ingestion (8 Tables)", 2),
     para("Bronze tables contain raw data exactly as it arrives from source systems. No transformations, no cleanup — this preserves the original data for auditability."),
@@ -515,7 +545,7 @@ function module03() {
 
     heading("Demo Walk-Through", 2),
 
-    tellAnnotation("open", "The Lakehouse implements a medallion architecture — Bronze for raw data, Silver for cleansed data, Gold for business-ready products. What makes this different is that each transformation addresses a specific MCG nightmare. Let me show you how raw, messy data becomes trusted, governed data products."),
+    tellAnnotation("open", "Our pipelines layer the data on the Lakehouse — Bronze for raw, Silver for cleansed, Gold for business-ready. Underneath, it is Apache Iceberg on your own S3, and the Adaptive Optimizer is continuously compacting those tables and expiring snapshots so the queries stay fast without anyone maintaining them. What makes this different is that each transformation addresses a specific MCG nightmare. Let me show you how raw, messy data becomes trusted, governed data products."),
 
     numberedItem(1, "Navigate to Data Integration > Lakehouse > Show Bronze tables receiving data"),
     numberedItem(2, 'Open bronze.inventory_positions — show raw data with quality issues visible (null lot numbers, timestamp mismatches)'),
@@ -545,6 +575,10 @@ function module03() {
     talkingPoint("Gold is business-ready: governed, documented, with Trust Scores and SLAs"),
     talkingPoint("Full lineage from source record through every transformation to the Gold product"),
     talkingPoint("Streaming data (Kafka IoT) flows through Bronze and Silver in near-real-time — no batch delays"),
+    talkingPoint("The Adaptive Optimizer compacts, re-stats and expires snapshots continuously — nobody on MCG's team maintains an Iceberg table. This is the line that separates Open Lakehouse from a DIY Iceberg build"),
+    talkingPoint("Ingestion runs on EC2 Spot inside MCG's own VPC, consuming no warehouse credits — the basis of Qlik's claimed 80-90% ingestion-cost reduction (a Qlik claim; cite one source, not the range)"),
+    talkingPoint("Zero-copy mirroring means Snowflake, Redshift or Databricks teams query the same physical copy — no per-consumer duplication to govern"),
+    talkingPoint("Open Lakehouse is GA on AWS only. GCP is Private Preview (Q3 2026) and Azure is roadmap, and it is not supported in Qlik Cloud Government — know this before someone asks"),
   ];
 }
 
@@ -1150,12 +1184,12 @@ function module11() {
 // =============================================================================
 function module12() {
   return [
-    heading("Module 12: Qlik Application Automations"),
+    heading("Module 12: Qlik Automate"),
     metadataTable([
       ["Duration", "10-15 minutes"],
       ["Checklist Phase", "Phase 10"],
       ["Nightmares", "#4 (Silent Pipelines), #6 (Carrier Data Black Hole)"],
-      ["Components", "Qlik Application Automation, Microsoft Teams, Talend Job trigger"],
+      ["Components", "Qlik Automate, Microsoft Teams, Talend Job trigger"],
     ]),
 
     clarityContext("Project Qlarity Phase 1 → Phase 2: turning monitoring into action. The pipeline-health summary and cold-chain alert operationalize Phase 1 monitoring (Nightmares #4 and #6), while the Stewardship → Talend → Lakehouse correction loop closes Phase 2 data-quality remediation."),

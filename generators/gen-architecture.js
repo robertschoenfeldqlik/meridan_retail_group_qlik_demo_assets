@@ -544,10 +544,15 @@ function layerBadge(slide, y, label, color) {
 
 
 // =============================================================================
-// SLIDE 4 — OPEN LAKEHOUSE (MEDALLION ARCHITECTURE)
+// SLIDE 4 — PIPELINE LAYERS ON OPEN LAKEHOUSE
+// =============================================================================
+// The Bronze/Silver/Gold layering is MCG's declarative pipelines, NOT an Open
+// Lakehouse feature — Qlik's own dataset structure is landing then storage.
+// The title says "pipeline layers" so a data architect in the room doesn't
+// catch us attributing a Databricks-origin term to the Qlik product.
 // =============================================================================
 (function slide_lakehouse() {
-  const slide = contentSlide("Open Lakehouse — Medallion Architecture", C.qlikGreen);
+  const slide = contentSlide("Declarative Pipeline Layers — Bronze → Silver → Gold", C.qlikGreen);
 
   const cols = [
     { x: 0.5, w: 3.6, label: "BRONZE", sub: "Raw Ingestion", color: C.qlikTeal, bg: C.lightTeal,
@@ -617,6 +622,111 @@ function layerBadge(slide, y, label, color) {
   slide.addText("7 Table\nRecipes", {
     x: 8.35, y: 3.2, w: 0.8, h: 0.5,
     fontSize: 8, color: C.qlikBlue, fontFace: FONT, align: "center", bold: true,
+  });
+})();
+
+
+// =============================================================================
+// SLIDE 4.5 — OPEN LAKEHOUSE PLATFORM
+// =============================================================================
+// The differentiator slide. Everything on slide 4 is MCG's own modelling; this
+// is what Qlik actually operates underneath it, and it is the answer to "why
+// not just build Iceberg ourselves / use Snowflake's managed Iceberg".
+// Figures here are Qlik claims — the footnote labels them as such.
+// =============================================================================
+(function slide_lakehouse_platform() {
+  const slide = contentSlide("Open Lakehouse — What Qlik Runs Underneath", C.qlikGreen);
+
+  slide.addText("Apache Iceberg on Amazon S3, inside MCG's own AWS VPC — the data never leaves their environment", {
+    x: 0.5, y: 0.95, w: 12.33, h: 0.4,
+    fontSize: 12, color: C.medGray, fontFace: FONT, align: "center", valign: "middle",
+  });
+
+  const caps = [
+    {
+      x: 0.5, w: 3.9, color: C.qlikGreen, bg: C.lightGreen,
+      label: "Adaptive Optimizer",
+      sub: "for Apache Iceberg",
+      items: [
+        "Continuous compaction, chosen by predicted query gain",
+        "Table stats refreshed without analyzing each table",
+        "Snapshot expiration every few hours — time travel preserved",
+        "Daily dangling-file cleanup",
+        "Structures each table to its own data profile",
+      ],
+    },
+    {
+      x: 4.7, w: 3.9, color: C.qlikTeal, bg: C.lightTeal,
+      label: "EC2 Spot Compute",
+      sub: "auto-scaling, auto-healing",
+      items: [
+        "Configurable Spot / On-Demand mix",
+        "Falls back to On-Demand when Spot is short",
+        "Consumes no data-warehouse credits",
+        "Four scaling strategies: low cost, low latency, consistent low latency, none",
+        "Latency and spend on one dial",
+      ],
+    },
+    {
+      x: 8.9, w: 3.9, color: C.qlikBlue, bg: C.lightBlue,
+      label: "Open & Zero-Copy",
+      sub: "one copy, many engines",
+      items: [
+        "AWS Glue Data Catalog holds schemas + pointers",
+        "Athena, Snowflake, Trino, Dremio, Spark query the same tables",
+        "Zero-copy mirroring into Snowflake (GA)",
+        "Redshift + Databricks Unity on AWS",
+        "No copy-per-consumer sprawl",
+      ],
+    },
+  ];
+
+  caps.forEach(col => {
+    slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
+      x: col.x, y: 1.45, w: col.w, h: 4.35, fill: { color: col.bg }, rectRadius: 0.12,
+      line: { color: col.color, width: 1.5 },
+    });
+    slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
+      x: col.x + 0.2, y: 1.6, w: col.w - 0.4, h: 0.68,
+      fill: { color: col.color }, rectRadius: 0.06,
+    });
+    slide.addText(col.label, {
+      x: col.x + 0.2, y: 1.6, w: col.w - 0.4, h: 0.42,
+      fontSize: 14, color: C.white, fontFace: FONT, bold: true, align: "center", valign: "bottom",
+    });
+    slide.addText(col.sub, {
+      x: col.x + 0.2, y: 1.99, w: col.w - 0.4, h: 0.26,
+      fontSize: 9.5, color: "D0D4D7", fontFace: FONT, align: "center",
+    });
+
+    col.items.forEach((item, i) => {
+      const y = 2.45 + i * 0.64;
+      slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
+        x: col.x + 0.15, y, w: col.w - 0.3, h: 0.56,
+        fill: { color: C.white }, rectRadius: 0.06,
+        line: { color: col.color, width: 0.75 },
+      });
+      slide.addText(item, {
+        x: col.x + 0.28, y, w: col.w - 0.56, h: 0.56,
+        fontSize: 9.5, color: C.darkText, fontFace: FONT, valign: "middle", lineSpacingMultiple: 0.95,
+      });
+    });
+  });
+
+  // Claim bar — labeled as Qlik claims, which is how a presales deck must carry them.
+  slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
+    x: 0.5, y: 5.95, w: 12.33, h: 0.56,
+    fill: { color: C.lightBg }, rectRadius: 0.06,
+    line: { color: C.qlikGreen, width: 1 },
+  });
+  slide.addText("Qlik claims: 2.5x–5x faster queries  •  up to 50% lower storage cost vs self-managed Iceberg  •  80–90% lower ingestion cost via Spot", {
+    x: 0.7, y: 5.95, w: 12, h: 0.56,
+    fontSize: 10.5, color: C.qlikGreen, fontFace: FONT, bold: true, valign: "middle",
+  });
+  // Footnote sits between the claim bar (ends 6.51) and the footer rule (7.05).
+  slide.addText("Qlik claims, not audited benchmarks — the performance pair traces to an Upsolver benchmark; the ingestion saving is quoted inconsistently across Qlik assets, so cite one source. GA on AWS only: GCP Private Preview (Q3 2026), Azure roadmap, not supported in Qlik Cloud Government.", {
+    x: 0.6, y: 6.56, w: 12.1, h: 0.44,
+    fontSize: 8.5, color: C.medGray, fontFace: FONT, lineSpacingMultiple: 1.0,
   });
 })();
 

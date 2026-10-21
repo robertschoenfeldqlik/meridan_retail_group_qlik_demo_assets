@@ -484,13 +484,25 @@ function sectionLakehouse() {
   return [
     pageBreak(),
     heading("8. Set Up Open Lakehouse"),
-    para("The Open Lakehouse is the central data platform for the MCG demo, organizing data into bronze (raw), silver (cleansed), and gold (business-ready) layers following the medallion architecture pattern."),
+    para("The Open Lakehouse is the central data platform for the MCG demo: a fully managed Apache Iceberg lakehouse on Amazon S3 that runs inside your own AWS VPC. The bronze (raw), silver (cleansed) and gold (business-ready) schemas you create below are the demo's own layering, not a platform feature \u2014 Open Lakehouse's own dataset structure is landing then storage, with Current and History views over each replicated table."),
+    calloutBox("The Adaptive Optimizer handles Iceberg table maintenance for you once the lakehouse is running \u2014 continuous compaction, table-stat refreshes, snapshot expiration every few hours, and a daily dangling-file cleanup. There is nothing to schedule and nothing to tune. Do not alter the lakehouse data with other tools; the platform owns the partition layout.", "info"),
 
     heading("8.1 Create the Lakehouse", 2),
     numberedItem(1, "Navigate to Data Integration \u2192 Lakehouse in the left navigation"),
     numberedItem(2, "Click Create Lakehouse"),
     numberedItem(3, "Name: MCG Operations Lakehouse"),
-    numberedItem(4, "Create three schemas within the lakehouse:"),
+    numberedItem(4, "Pick a scaling strategy for the cluster \u2014 this is the one dial that sets both latency and AWS spend:"),
+    dataTable(
+      ["Scaling strategy", "Use for", "Cost behaviour"],
+      [
+        ["Low cost", "Dev, QA and demo tenants \u2014 use this one for MCG", "Fewest EC2 Spot instances; cheapest"],
+        ["Low latency", "Production workloads needing fresh data", "Scales out under load"],
+        ["Consistent low latency", "Production real-time", "Highest \u2014 holds capacity ready"],
+        ["No scaling", "Fixed, predictable billing", "Static instance count"],
+      ]
+    ),
+    calloutBox("Demo-cost note: the cluster runs on EC2 Spot in your own VPC, so a demo tenant left running bills a handful of dollars a month at MCG's data volumes. The standing cost is the always-on network integration agent instance, not the cluster \u2014 deleting the network integration is what stops it. Bring the stack up for the demo and tear it down after.", "warning"),
+    numberedItem(5, "Create three schemas within the lakehouse:"),
     dataTable(
       ["Schema", "Purpose", "Data Quality Level"],
       [

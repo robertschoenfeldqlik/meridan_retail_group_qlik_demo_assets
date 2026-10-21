@@ -591,9 +591,12 @@ slide.addText("Note: a Data Movement gateway connection is created in the Data I
 });
 
 // ─── Slide: Open Lakehouse Architecture ───
+// Bronze/Silver/Gold is MCG's own pipeline layering, not an Open Lakehouse
+// feature — the platform's dataset structure is landing then storage. The
+// subtitle attributes it correctly so the deck survives a data architect.
 slide = contentSlide("Open Lakehouse — Bronze / Silver / Gold", C.qlikTeal);
 
-slide.addText("Medallion architecture with automated data flows and table recipes", {
+slide.addText("Our pipeline layers, running on Apache Iceberg — automated data flows and table recipes", {
   x: 0.5, y: 0.85, w: 12, h: 0.4,
   fontSize: 14, color: C.medGray, fontFace: FONT, italic: true,
 });
@@ -644,6 +647,59 @@ layers.forEach((l, i) => {
       fontSize: 14, color: l.color, fontFace: FONT, align: "center",
     });
   }
+});
+
+// ─── Slide: Open Lakehouse platform differentiators ───
+// The "why not build this ourselves / why not Snowflake's managed Iceberg"
+// slide. Qlik figures are labeled as Qlik claims, per presales claim hygiene.
+slide = contentSlide("Why Open Lakehouse, Not DIY Iceberg", C.qlikTeal);
+
+slide.addText("Fully managed Iceberg inside MCG's own AWS VPC — the data never leaves their environment", {
+  x: 0.5, y: 0.85, w: 12, h: 0.4,
+  fontSize: 14, color: C.medGray, fontFace: FONT, italic: true,
+});
+
+const olhCaps = [
+  {
+    name: "ADAPTIVE OPTIMIZER", color: C.qlikGreen, bg: C.lightGreen,
+    detail: "An agent continuously audits the data files — compaction chosen by predicted query gain, table stats refreshed automatically, snapshots expired every few hours with time travel preserved, dangling files cleaned daily. Nobody maintains an Iceberg table.",
+  },
+  {
+    name: "SPOT ECONOMICS", color: C.qlikTeal, bg: C.lightTeal,
+    detail: "Ingestion runs on an EC2 Spot auto-scaling group with a configurable On-Demand mix and auto-healing, consuming no warehouse credits. Four scaling strategies put latency and spend on a single dial.",
+  },
+  {
+    name: "ZERO-COPY, ANY ENGINE", color: C.qlikBlue, bg: C.lightBlue,
+    detail: "AWS Glue Data Catalog holds the schemas; Athena, Snowflake, Trino, Dremio and Spark query one physical copy. Zero-copy mirroring into Snowflake is GA, with Redshift and Databricks Unity on AWS.",
+  },
+];
+
+olhCaps.forEach((cap, i) => {
+  const y = 1.4 + i * 1.62;
+  slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
+    x: 0.5, y, w: 12.3, h: 1.42,
+    fill: { color: cap.bg }, rectRadius: 0.1,
+    line: { color: cap.color, width: 2 },
+  });
+  slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
+    x: 0.7, y: y + 0.15, w: 2.9, h: 0.5,
+    fill: { color: cap.color }, rectRadius: 0.06,
+  });
+  slide.addText(cap.name, {
+    x: 0.7, y: y + 0.15, w: 2.9, h: 0.5,
+    fontSize: 11.5, color: C.white, fontFace: FONT, bold: true, align: "center", valign: "middle",
+  });
+  slide.addText(cap.detail, {
+    x: 0.8, y: y + 0.7, w: 11.7, h: 0.62,
+    fontSize: 10.5, color: C.darkText, fontFace: FONT, lineSpacingMultiple: 1.05,
+  });
+});
+
+// Footnote sits between the last capability card (ends 6.06) and the footer
+// rule at 7.0 — keep the bottom edge under 6.98.
+slide.addText("Qlik claims: 2.5x–5x faster queries  •  up to 50% lower storage cost vs self-managed  •  80–90% lower ingestion cost. Qlik claims, not audited benchmarks — the performance pair traces to an Upsolver benchmark and the ingestion saving is quoted inconsistently across Qlik assets. GA on AWS only; GCP Private Preview (Q3 2026), Azure roadmap, not supported in Qlik Cloud Government.", {
+  x: 0.5, y: 6.14, w: 12.3, h: 0.82,
+  fontSize: 9, color: C.medGray, fontFace: FONT, lineSpacingMultiple: 1.05,
 });
 
 // ─── Slide: Data Flows & Transformation Routes ───

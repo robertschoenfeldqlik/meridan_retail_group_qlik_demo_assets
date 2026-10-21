@@ -538,11 +538,11 @@ function buildCreationGuide() {
     // ═══════════════════════════════════════════════════════════════════════
     pageBreak(),
     heading("Part 4: Qlik Automations"),
-    para("The MCG demo includes 5 automations that demonstrate real-time alerting, scheduled operations, and closed-loop data quality workflows. All automations are built using Qlik Application Automation's no-code block-based designer."),
+    para("The MCG demo includes 5 automations that demonstrate real-time alerting, scheduled operations, and closed-loop data quality workflows. All automations are built using Qlik Automate's no-code block-based designer."),
 
     heading("4.1 Prerequisites", 2),
     para("Qlik Cloud tenant with Automations entitlement enabled", { bullet: true }),
-    para("Microsoft Teams connector configured in Qlik Application Automation", { bullet: true }),
+    para("Microsoft Teams connector configured in Qlik Automate", { bullet: true }),
     para("Teams channels created: #mcg-cold-chain-alerts, #mcg-data-engineering, #mcg-customer-ops", { bullet: true }),
     para("Teams Incoming Webhook connector configured for each channel (see Section 4.7)", { bullet: true }),
     para("All data connections active and refreshing", { bullet: true }),

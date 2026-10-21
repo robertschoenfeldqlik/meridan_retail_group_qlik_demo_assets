@@ -330,7 +330,7 @@ stories.forEach((st, i) => {
 slide = contentSlide("Architecture at a Glance", C.qlikTeal);
 slide.addNotes("One picture of the whole flow. Three source feeds — PostgreSQL WMS via CDC, Kafka IoT cold-chain streaming, and Meridian CRM every 15 minutes — land in the Open Lakehouse on Apache Iceberg, flow bronze to silver to gold, and surface as two governed gold data products that feed apps and AI. No copies; everything downstream reads trusted data.");
 
-slide.addText("Three source feeds flow through a medallion lakehouse into gold data products, apps, and AI", {
+slide.addText("Three source feeds land in the Open Lakehouse, flow through our pipeline layers, and surface as gold data products, apps, and AI", {
   x: 0.5, y: 0.86, w: 12.3, h: 0.4,
   fontSize: 13, color: C.medGray, fontFace: FONT, italic: true,
 });
@@ -369,7 +369,7 @@ feeds.forEach((f, i) => {
 // Arrow
 slide.addText("▶", { x: 3.28, y: 3.35, w: 0.5, h: 0.5, fontSize: 20, color: C.qlikGray, align: "center" });
 
-// Stage 2: Open Lakehouse medallion
+// Stage 2: Open Lakehouse (pipeline layers run on top of it — medallion is ours, not the platform's)
 slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
   x: 3.85, y: 1.6, w: 3.35, h: 4.1,
   fill: { color: C.lightTeal }, rectRadius: 0.1, line: { color: C.qlikTeal, width: 2 },
@@ -505,7 +505,7 @@ slide = contentSlide("Assets — Data & Pipelines", C.qlikTeal);
 slide.addNotes("The build layer. Two declarative QTCP pipeline projects, six tasks total, shipped as a VS Code template you can author by hand or with an AI coding agent. Two governed gold data products, and three simulators that generate the intentionally-messy demo data. Flag that declarative pipelines are a Qlik internal preview.");
 statusPill(slide, "PIPELINES: PREVIEW", C.qlikBlue);
 
-slide.addText("The data foundation: declarative pipelines, the medallion lakehouse, gold products, and messy-data simulators", {
+slide.addText("The data foundation: declarative pipelines, the Open Lakehouse, gold products, and messy-data simulators", {
   x: 0.5, y: 0.86, w: 9.2, h: 0.4,
   fontSize: 13, color: C.medGray, fontFace: FONT, italic: true,
 });
@@ -515,7 +515,7 @@ panel(slide, 0.5, 1.4, 6.05, 4.4, "Pipelines & lakehouse", C.qlikTeal, [
   "mcg-batch-pipeline (4 tasks) + mcg-streaming-pipeline (2 tasks) = 6 tasks",
   "Shipped as a VS Code template (per-project settings, CLAUDE.md, Copilot instructions)",
   "Schema kit installed locally via npm run pipeline:template",
-  "Open Lakehouse medallion — Apache Iceberg on S3",
+  "Open Lakehouse — Apache Iceberg on S3, continuously compacted by the Adaptive Optimizer",
 ], { icon: "pipeline", fs: 11.5, spacing: 0.74 });
 
 panel(slide, 6.75, 1.4, 6.05, 4.4, "Data products & simulators", C.qlikGreen, [
