@@ -17,6 +17,8 @@
 #      git submodule update --init
 #   2. Download the Gateway RPM from:
 #      https://github.com/qlik-download/hdd-replication-agent-artifacts/releases
+#      Tested: v2026.5.37 -
+#      https://github.com/qlik-download/hdd-replication-agent-artifacts/releases/download/v2026.5.37/qlik-data-gateway-data-movement-2026.5-37.x86_64.rpm
 #      (or set docker.rpmUrl in deploy/config.json for auto-download)
 #   3. Place the RPM as:
 #      infrastructure/dmg/gateway/rpmfiles/gateway.rpm

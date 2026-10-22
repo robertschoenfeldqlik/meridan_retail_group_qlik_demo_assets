@@ -43,7 +43,7 @@
     "profile": "full-stack",
     "comment_profile": "Which Compose file to run (infrastructure/). The stack is driven by deploy/compose.js through whichever engine is installed - Podman on the reference host, Docker elsewhere; run 'npm run engine' to see what resolved. Options: 'full-stack' (Kafka+simulators, docker-compose.full-stack.yml), 'full-stack-dmg' (+ DMG gateway, docker-compose.full-stack-dmg.yml), 'kafka' (Kafka only, kafka/docker-compose.yml), 'simulators' (docker-compose.simulators.yml), 'simulators-dmg' (docker-compose.simulators-dmg.yml), or 'dmg' (DMG gateway only, docker-compose.dmg.yml).",
     "rpmPath": "",
-    "rpmUrl": "",
+    "rpmUrl": "https://github.com/qlik-download/hdd-replication-agent-artifacts/releases/download/v2026.5.37/qlik-data-gateway-data-movement-2026.5-37.x86_64.rpm",
     "comment_rpm": "Only used for the 'dmg'/'full-stack-dmg' profiles: local file path or download URL for the Data Movement Gateway RPM (infrastructure/dmg/gateway/rpmfiles/gateway.rpm). Leave both empty if the RPM is already in place."
   },
   "dataGateway": {
