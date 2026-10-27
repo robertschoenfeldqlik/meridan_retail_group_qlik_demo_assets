@@ -1,8 +1,8 @@
 properties:
   name: MCG IoT Streaming Transform
   id: iot-streaming-transform-4202
-  type: STREAMING_TRANSFORM
   description: Normalizes streaming IoT telemetry — Fahrenheit to Celsius conversion, UTC timestamps, GPS gap flagging — into the silver layer.
+  type: STREAMING_TRANSFORM
 settings:
   generalSettings:
     artifactsLocation:

@@ -103,6 +103,10 @@
       "accessKeyId": "YOUR_AWS_ACCESS_KEY",
       "secretAccessKey": "YOUR_AWS_SECRET_KEY",
       "prefix": "exports/"
+    },
+    "snowflake": {
+      "name": "MCG Snowflake",
+      "comment": "Qlik Cloud Snowflake connection in the MCG Demo - DI space, created in the UI. The mirror target and the platform connection of MCG Supply Chain Pipeline."
     }
   },
   "lakehouse": {
@@ -176,7 +180,13 @@
       },
       {
         "projectName": "MCG Streaming Pipeline",
-        "sourceDir": "./pipelines/mcg-streaming-pipeline"
+        "sourceDir": "./pipelines/mcg-streaming-pipeline",
+        "platformConnection": "MCG Glue Catalog",
+        "cloudStagingConnection": "MCG S3 Landing Streaming"
+      },
+      {
+        "projectName": "MCG Supply Chain Pipeline",
+        "sourceDir": "./pipelines/mcg-snowflake-pipeline"
       }
     ],
     "platformType": "QLIK_OPEN_LAKEHOUSE",
@@ -187,7 +197,9 @@
     "attachDatasets": true,
     "publishDataProducts": false,
     "bindings": {},
-    "comment_pipelines": "Declarative QTCP pipeline project (YAML) imported via the DI Projects API (preview). Bindings for connections/schemas/clusters are resolved automatically from this config; 'bindings' holds exact-key overrides. databaseName defaults to the lakehouse name. Set prepare=true to validate+prepare tasks right after import; run=true additionally starts tasks in dependency order (landing>transform>datamart). attachDatasets resolves gold catalog datasets and attaches them to the matching data products (JSON-Patch /datasetIds); publishDataProducts activates them in the marketplace. Daily schedules live in the YAML (qtcp_tasks/*/schedule.yaml). Round-trip UI edits back to the repo with: npm run deploy:export-pipeline"
+    "comment_pipelines": "Declarative QTCP pipeline project (YAML) imported via the DI Projects API (preview). Bindings for connections/schemas/clusters are resolved automatically from this config; 'bindings' holds exact-key overrides. databaseName defaults to the lakehouse name. Set prepare=true to validate+prepare tasks right after import; run=true additionally starts tasks in dependency order (landing>transform>datamart). attachDatasets resolves gold catalog datasets and attaches them to the matching data products (JSON-Patch /datasetIds); publishDataProducts activates them in the marketplace. Daily schedules live in the YAML (qtcp_tasks/*/schedule.yaml). Round-trip UI edits back to the repo with: npm run deploy:export-pipeline",
+    "mirrorSourceProject": "MCG Batch Pipeline",
+    "upstreamWaitMinutes": 10
   },
   "reloadtasks": {
     "definitions": [
@@ -343,5 +355,13 @@
       }
     ],
     "sprintId": ""
+  },
+  "snowflake": {
+    "database": "MCG_DEMO",
+    "warehouse": "MCG_XS",
+    "mirrorExternalVolume": "",
+    "catalogIntegration": "",
+    "icebergExternalVolume": "",
+    "comment_snowflake": "Snowflake objects the pipelines bind to. The Open Lakehouse mirror needs mirrorExternalVolume (over the Iceberg bucket) and catalogIntegration; icebergExternalVolume is only needed if silver/gold are written as Snowflake-managed Iceberg. Create them in Snowflake first (Setup Guide §7)."
   }
 }

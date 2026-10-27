@@ -1,8 +1,8 @@
 properties:
   name: MCG IoT Streaming Landing
   id: iot-streaming-landing-4103
-  type: STREAMING_LAKE_LANDING
   description: Real-time Kafka ingestion of cold-chain sensor telemetry and carrier webhook events into the bronze layer.
+  type: STREAMING_LAKE_LANDING
 settings:
   taskRuntime:
     lakehouseClusterId: '{{task.iot-streaming-landing-4103.lakehouseCluster}}'

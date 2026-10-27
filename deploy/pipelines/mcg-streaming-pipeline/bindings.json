@@ -1,9 +1,19 @@
 {
   "variables": {
-    "task.iot-streaming-landing-4103.sourceConnection": "{{id(connection, MCG Demo - DI.MCG IoT Telemetry)}}",
-    "task.iot-streaming-landing-4103.lakehouseCluster": "",
+    "cloudStagingConnection": "{{id(connection, MCG Demo - DI.MCG S3 Landing Streaming)}}",
+    "platformConnection": "{{id(connection, MCG Demo - DI.MCG Glue Catalog)}}",
+    "projectName": "MCG Supply Chain Pipeline - IoT Streaming",
+    "project.current.prefixSchema": "",
+    "task.iot-streaming-landing-4103.lakehouseCluster": "{{id(lakehouseCluster, MCG Demo - DI.rgs_olh_mcg_streaming)}}",
+    "task.iot-streaming-landing-4103.sourceConnection": "{{id(connection, Default_Data_Space.MCG IoT Telemetry)}}",
     "task.iot-streaming-transform-4202.internalSchema": "silver__internal",
-    "task.iot-streaming-transform-4202.taskSchema": "silver",
-    "task.iot-streaming-transform-4202.lakehouseCluster": ""
+    "task.iot-streaming-transform-4202.lakehouseCluster": "{{id(lakehouseCluster, MCG Demo - DI.rgs_olh_mcg_streaming)}}",
+    "task.iot-streaming-transform-4202.taskSchema": "silver"
+  },
+  "connectionProperties": {
+    "task.iot-streaming-landing-4103.sourceConnection": {
+      "type": "external_data_provider",
+      "kindId": "sourcestreaming:apache-kafka"
+    }
   }
 }
