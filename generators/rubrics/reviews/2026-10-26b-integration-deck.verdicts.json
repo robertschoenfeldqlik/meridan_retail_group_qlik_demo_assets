@@ -1,0 +1,135 @@
+{
+  "reviewer": "Claude Opus 5.5, scoring as Marcus Chen",
+  "persona": "marcus",
+  "rubric": "DINT",
+  "scope": "Re-review of slides 5–22 after the 2026-10-26 fix to slides 6, 10, 15, 19, 20 and 22, which added presenter notes to the nine proof slides and the product SLAs to slide 10. Slide text and notes are read from the regenerated .pptx, and the changed slides were checked on PowerPoint renders. The deployed state comes from GET /api/v1/di-projects and /di-tasks on qppqtcenterprise (16:24 UTC). The apps' data source comes from the olh_live probe, and the Talend job from deploy/talend/mcg_crm_address_validate_bulk.zip. Storage and mirror timestamps are not scored: the lakehouse clusters run only in test windows.",
+  "note": "Ingrid, the integration slides now describe the estate we run. Two projects, eight tasks: olh_mcg_demo_cdc lands, stores and mirrors both CDC feeds, and MCG Supply Chain Pipeline builds silver and gold in Snowflake. Every proof slide is a clean tenant capture with notes telling the presenter what to point at. Where we have not finished, the deck says so in plain words: the Kafka streaming leg is built but not deployed, and the analytics apps still load QVD extracts rather than Snowflake gold. The latency, the CRM feed and the project count now agree with the captures. Both product SLAs are on the architecture slide.\n\nThe one gap left is real, not editorial. No slide can show Kafka telemetry landing until the streaming project is deployed. That and repointing the apps at Snowflake are the two things that would let this deck stop saying 'not yet'.",
+  "verdicts": [
+    {
+      "id": "DINT-01",
+      "verdict": "covered",
+      "ref": "deck#s8,s9,s11,s12,s13,s16,s17,s18,s20",
+      "evidence": "All nine proof slides embed captures from qppqtcenterprise, with no error or failed state, no browser chrome, no cursor and nothing from another demo. Slides 11 and 16 are trimmed of blank canvas only. Slide 20 now says on the slide that its image is two captures, one per project, top and bottom.",
+      "gap": ""
+    },
+    {
+      "id": "DINT-02",
+      "verdict": "covered",
+      "ref": "deck#s8,s9,s11,s12,s13,s16,s17,s18,s20",
+      "evidence": "Slide 8's capture shows Running, 4,133 changes applied and 0 datasets in error. Slide 9's shows 129 records/s, latency 00:00:05 and 0 in error. Slides 12 and 13 show 3 datasets Completed, 0 in error, with the subtitles' table names. Slide 17 shows 7 datasets with 0 in error. Slide 18 shows both gold tables Completed. Slide 20's top half shows olh_mcg_demo_cdc's landing, storage and mirror tasks, and its bottom half shows the silver and gold transforms.",
+      "gap": ""
+    },
+    {
+      "id": "DINT-03",
+      "verdict": "covered",
+      "ref": "deck#s6",
+      "evidence": "\"PostgreSQL (WMS)\" by \"CDC via Data Movement gateway\" with \"inventory_positions • warehouse_events • shipments\"; \"Apache Kafka (IoT)\" with \"mcg.iot.cold-chain • mcg.iot.carrier-events\", streamed to the lakehouse streaming cluster; \"Meridian CRM (MySQL)\" by \"MySQL CDC (binlog) via Data Movement gateway, continuous\" with \"crm_contacts • crm_orders • crm_products\".",
+      "gap": ""
+    },
+    {
+      "id": "DINT-04",
+      "verdict": "covered",
+      "ref": "deck#s7",
+      "evidence": "\"Local databases reach Qlik Cloud through a registered gateway\"; \"Paste the token, then wait for status Connected\"; \"Select the mcg-qlik-dmg gateway from the dropdown\"; \"the public REST API cannot create it\".",
+      "gap": ""
+    },
+    {
+      "id": "DINT-05",
+      "verdict": "covered",
+      "ref": "deck#s10",
+      "evidence": "\"Land once as Apache Iceberg in the Open Lakehouse, mirror zero-copy to Snowflake, build Silver and Gold there\"; silver is \"Cleaned & Transformed — built in Snowflake\"; the mirror is \"read in place by Snowflake — no copy job\". Slides 11–13 and 16 show the same shape in the tenant.",
+      "gap": ""
+    },
+    {
+      "id": "DINT-06",
+      "verdict": "covered",
+      "ref": "deck#s19,s22",
+      "evidence": "Slide 19 lists \"Declarative YAML definition\", \"Git version control + CI/CD\" and \"2 projects deployed from YAML\". Slide 22 says \"both deployed projects are declarative YAML in deploy/pipelines/ — API import, git round-trip\".",
+      "gap": ""
+    },
+    {
+      "id": "DINT-07",
+      "verdict": "covered",
+      "ref": "deck#s19,s21,s22",
+      "evidence": "\"Qlik declarative-pipeline tooling is a Qlik internal preview (June 2026)\" on slide 19, \"MCP-server tooling is in Qlik preview (June 2026)\" on slide 21, and \"(QTCP preview)\" on slide 22. The status is dated June: recheck it before the deck goes outside the company.",
+      "gap": ""
+    },
+    {
+      "id": "DINT-08",
+      "verdict": "covered",
+      "ref": "deck#s6,s10,s19,s22",
+      "evidence": "Slide 19: \"2 projects deployed from YAML: olh_mcg_demo_cdc (6 tasks) + MCG Supply Chain Pipeline (2) = 8 tasks; the streaming project is built, not yet deployed\". Slide 6: \"the Kafka stream is built, not yet deployed\". Slide 10: \"streaming iot_cold_chain • iot_carrier_events not yet deployed\" and \"the analytics apps still load QVD extracts, not Snowflake gold\". Slide 22: \"both deployed projects are declarative YAML\". This matches the tenant (olh_mcg_demo_cdc with 6 tasks, MCG Supply Chain Pipeline with 2, no streaming project) and the olh_live probe (12 lib:// .qvd reads in app1 and app2).",
+      "gap": ""
+    },
+    {
+      "id": "DINT-09",
+      "verdict": "covered",
+      "ref": "deck#s6,s9,s10,s19,s20",
+      "evidence": "Slide 6's \"seconds behind the source (5 s in the tenant capture)\" agrees with slide 9's \"5 s latency\". Slide 6's \"MySQL CDC (binlog) via Data Movement gateway, continuous\" agrees with the change-processing capture on slide 8. Slide 19's \"2 projects deployed from YAML\" agrees with slide 20's \"Both Pipeline Projects\". Slide 10's bronze \"(6 tables)\" matches the mirror's six, and silver's \"(7 tables)\" matches slide 17.",
+      "gap": ""
+    },
+    {
+      "id": "DINT-10",
+      "verdict": "covered",
+      "ref": "deck#s17,s18",
+      "evidence": "Slide 17 shows MCG Silver Transform with all 7 datasets named, Completed and 0 in error. Slide 18 shows MCG Gold Transform with last_mile_performance and supply_chain_health Completed.",
+      "gap": ""
+    },
+    {
+      "id": "DINT-11",
+      "verdict": "partial",
+      "ref": "deck#s8,s9",
+      "evidence": "Slide 8 shows the MySQL CRM feed landing and slide 9 shows the PostgreSQL WMS feed, both under change processing with nothing in error.",
+      "gap": "No slide shows the Kafka telemetry landing; the streaming project is not deployed, and the deck now says so."
+    },
+    {
+      "id": "DINT-12",
+      "verdict": "covered",
+      "ref": "deck#s14",
+      "evidence": "\"ADAPTIVE OPTIMIZER\", \"SPOT ECONOMICS\" and \"ZERO-COPY, ANY ENGINE\", with figures labelled \"Qlik claims, not audited benchmarks\" and status stated: \"Zero-copy mirroring into Snowflake is GA\", \"GA on AWS only\".",
+      "gap": ""
+    },
+    {
+      "id": "DINT-13",
+      "verdict": "covered",
+      "ref": "deck#s6,s10",
+      "evidence": "Slide 6: WMS \"seconds behind the source (5 s in the tenant capture)\" and the CRM \"MySQL CDC (binlog) via Data Movement gateway, continuous\". Slide 10: \"supply_chain_health (15-minute refresh SLA) • last_mile_performance (30-minute)\".",
+      "gap": ""
+    },
+    {
+      "id": "DINT-14",
+      "verdict": "covered",
+      "ref": "deck#s15",
+      "evidence": "\"WMS-ERP comparison, phantom detection, Trust Score\" against nightmare #1, and \"Each route maps directly to one of the 7 Data Quality Nightmares\".",
+      "gap": ""
+    },
+    {
+      "id": "DINT-15",
+      "verdict": "covered",
+      "ref": "deck#s21,s22",
+      "evidence": "Slide 21: \"repairs and scores every CRM address, bulk-geocodes the batch against OSM Nominatim, and routes on one gate\", with \"the rest to a Qlik Stewardship sprint\". Slide 22 names it: \"mcg_crm_address_validate_bulk in Talend Studio\".",
+      "gap": ""
+    },
+    {
+      "id": "DINT-16",
+      "verdict": "covered",
+      "ref": "deck#s19",
+      "evidence": "\"one underlying pipeline YAML — editable visually, programmatically, or with an AI coding agent\", laid out as Visual (UI), Code (IDE) and Agent (AI) columns.",
+      "gap": ""
+    },
+    {
+      "id": "DINT-17",
+      "verdict": "covered",
+      "ref": "deck#s22",
+      "evidence": "Each step names something that exists: \"watch the change count climb on the MCG_WMS_Lake_landing monitor\" (a tenant task), \"Open inventory_reconciled in MCG Silver Transform\" (a dataset in the deployed silver task), \"make a one-line change to an MCG Silver Transform dataset → git diff → re-import through the API\" (deploy/pipelines/mcg-snowflake-pipeline, deployed as MCG Supply Chain Pipeline), and \"Open mcg_crm_address_validate_bulk in Talend Studio\" (deploy/talend/mcg_crm_address_validate_bulk.zip).",
+      "gap": ""
+    },
+    {
+      "id": "DINT-18",
+      "verdict": "covered",
+      "ref": "deck#s8,s9,s11,s12,s13,s16,s17,s18,s20",
+      "evidence": "Every proof slide carries presenter notes saying what to point at, for example \"Point at Running in the header and the 0 under Datasets in error\" (slide 8) and \"Two tenant captures stacked, one per project\" (slide 20).",
+      "gap": ""
+    }
+  ]
+}

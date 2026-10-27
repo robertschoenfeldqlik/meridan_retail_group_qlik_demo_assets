@@ -1,0 +1,122 @@
+{
+  "id": "AI",
+  "version": "1.0",
+  "pillar": "ai",
+  "title": "AI pillar — video 05 talking-point and screen rubric",
+  "story": "s5_ai",
+  "also": ["s4_analytics"],
+  "persona": "elena",
+  "module": "ai",
+  "pass": { "must": "covered", "should_missed_max": 1 },
+  "note": "Scored by gen-ceo-video-review.js --pillar ai. `judge_on: auto` criteria are measured by the deterministic probes in generators/lib/rubric-review.js and must not be supplied as verdicts. `screen` criteria are judged on the panels the deck embeds and need a `ref` (story#scN:panel.png). Evidence quoted only from an `also` story caps a narration verdict at partial. Keep ids stable: past verdicts bind to them.",
+  "scale": {
+    "covered": "Stated explicitly and clearly enough that a first-time viewer would take the point away.",
+    "partial": "Touched, implied, or named without enough substance to land — a viewer could miss it.",
+    "missed": "Not present in the narration at all."
+  },
+  "weights": {
+    "must": "The video fails its job without this.",
+    "should": "Expected; its absence is a real gap worth fixing before the next cut.",
+    "nice": "Strengthens the story; acceptable to trade away for time."
+  },
+  "dimensions": [
+    {
+      "id": "AI",
+      "name": "AI — agents on both sides of the trust line, with a human at every gate",
+      "framing": "The AI that builds and watches the governed estate, and the AI people use to consume it. Every AI action has an accountable human, every answer has a source, and preview is called preview.",
+      "criteria": [
+        {
+          "id": "AI-01",
+          "name": "Every scene shows a real tenant capture",
+          "weight": "must",
+          "judge_on": "auto",
+          "probe": "tenant_panels",
+          "expect": "Each scene of the AI video embeds a qlik_panels/*.png captured from the live tenant. No drawn chart (QlikApp.app / barSvg), no missing file, no panel edited after capture.",
+          "source": "plan § E Probes; § Decisions — Videos",
+          "module": "ai"
+        },
+        {
+          "id": "AI-02",
+          "name": "A real AI surface is on screen",
+          "weight": "must",
+          "judge_on": "screen",
+          "expect": "At least one scene shows a real AI surface on the live tenant — an Answers response, an agent conversation, the Discovery or Insight agent configuration, or the coding agent's diff — rather than a generic panel reused from another story.",
+          "source": "plan § F captures (Answers with citations, the Insight agent, automations with blocks)",
+          "module": "ai"
+        },
+        {
+          "id": "AI-03",
+          "name": "Answers cite their sources",
+          "weight": "must",
+          "judge_on": "narration",
+          "expect": "An AI answer is shown citing its source document — the NinjaVan contract amendment behind the Singapore accuracy fall is the worked example — so the viewer sees it did not guess.",
+          "source": "agentic-video-rubric.json AAX-01; series/s4_analytics/script.md scene 3",
+          "module": "ai"
+        },
+        {
+          "id": "AI-04",
+          "name": "MCP exposes the governed tenant to any MCP client",
+          "weight": "must",
+          "judge_on": "narration",
+          "expect": "The Qlik MCP server exposes the governed tenant — data products, quality metrics, lineage, catalog — to any MCP-compatible assistant, not only Qlik's own, so this does not read as a closed vendor stack.",
+          "source": "MCG_Agentic_Data_Engineering.md § six capabilities #6; agentic-video-rubric.json ADE-08",
+          "module": "ai"
+        },
+        {
+          "id": "AI-05",
+          "name": "The insight agent has thresholds and a recipient",
+          "weight": "must",
+          "judge_on": "narration",
+          "expect": "The discovery/insight agent watches the governed products against stated thresholds — trust score below 0.7, sync lag over an hour, volume moving more than 50% — and its alert goes to a named recipient.",
+          "source": "series/s5_ai/script.md scene 4; deploy/data_products.json (owners)",
+          "module": "ai"
+        },
+        {
+          "id": "AI-06",
+          "name": "A human gate in front of every AI action",
+          "weight": "must",
+          "judge_on": "narration",
+          "expect": "Every AI action that changes data or reaches people has a named human gate — draft glossary terms await approval, low-confidence address repairs go to a steward, generated sheets and rules have an approver — on the consumption side as well as the build side.",
+          "source": "agentic-video-rubric.json AAX-06; 2026-09-24 CEO review",
+          "module": "ai"
+        },
+        {
+          "id": "AI-07",
+          "name": "Preview is said aloud",
+          "weight": "must",
+          "judge_on": "narration",
+          "expect": "The preview capabilities — the Qlik MCP server, declarative pipelines, sheet authoring over MCP — are called preview in the narration. On-screen small print does not count.",
+          "source": "MCG_Agentic_Data_Engineering.md § GA vs preview status",
+          "module": "ai"
+        },
+        {
+          "id": "AI-08",
+          "name": "Where the model runs and where the data goes",
+          "weight": "should",
+          "judge_on": "narration",
+          "expect": "Data residency is stated: the language model can run in Meridian's own tenant, and customer data does not leave its infrastructure.",
+          "source": "series/s5_ai/script.md scene 6; MCG_Agentic_Data_Engineering.md § six capabilities #5",
+          "module": "ai"
+        },
+        {
+          "id": "AI-09",
+          "name": "Trust is spent on the consumption side",
+          "weight": "should",
+          "judge_on": "narration",
+          "expect": "The build side produces trust and the consumption side spends it: the AI surfaces people use read the same governed products the build-side agents produced.",
+          "source": "agentic-video-rubric.json ADE-10, AAX-07",
+          "module": "ai"
+        },
+        {
+          "id": "AI-10",
+          "name": "The coding-agent loop ends in a git revert",
+          "weight": "should",
+          "judge_on": "narration",
+          "expect": "A coding agent edits the pipeline YAML, the schema validates it, the human owns the decision, and a wrong change is a git revert.",
+          "source": "MCG_Agentic_Data_Engineering.md § coding-agent loop; agentic-video-rubric.json ADE-03",
+          "module": "ai"
+        }
+      ]
+    }
+  ]
+}

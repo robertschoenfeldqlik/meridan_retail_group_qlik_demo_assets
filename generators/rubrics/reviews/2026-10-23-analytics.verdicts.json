@@ -1,0 +1,65 @@
+{
+  "reviewer": "Claude Opus 5.5 (claude-opus-5-5), scoring as Sophie Müller",
+  "persona": "sophie",
+  "pillar": "analytics",
+  "scope": "Narration: the spoken > lines of s4_analytics/script.md (text unchanged; now voiced in the CEO voice, en-US-AvaMultilingualNeural), with s5_ai/script.md quoted as context only, which caps a verdict at partial. Screen: the five deck_anim.html scenes of s4_analytics and the four qlik_panels they embed — v4_sheet_inventory.png (sc1, sc2), v4_answers.png (sc3), v5_predict_coldchain.png (sc4, now in the fixed-height compact frame) and v4_sheet_lastmile.png (sc5) — each opened and inspected, and checked against frames pulled from the finished 04_MCG_Analytics_1080p.mp4 (2:18) built 2026-10-23. ANA-01 and ANA-02 are measured by the tenant_panels and olh_live probes.",
+  "note": "Ingrid, this is not ready to show. The screens are real, but nobody in this video gets an alert or changes a decision before 7 a.m.: Singapore is explained, not fixed. The dashboards also load QVD files while the closing slide says every figure traces to a governed product. Before the next cut I need four things: one named role acting on one number; Supply Chain Health and Last Mile Performance named aloud as what the apps read; the MCP authoring labelled as preview; and a Predict capture of the late-delivery model, not a cold-chain screen that flags 535 shipments to catch 46.",
+  "verdicts": [
+    {
+      "id": "ANA-03",
+      "verdict": "partial",
+      "evidence": "v5_predict_coldchain.png is a live Qlik Predict ML experiment page for the cold-chain experiment only. It shows the model list (best model v03_LOGC_01_00, F1 0.144), SHAP importance for 'alert_flag' led by route_id, warehouse_id and battery_level_pct, an ROC curve, and a confusion matrix of 46 true positives against 489 false positives. An 'Auto-engineered features' toast sits across the top. The other scenes are live tenant captures too: v4_sheet_inventory.png (Inventory Health Overview: IRA 0.74, average trust 0.84, 11.73k phantom suspect positions, twelve DCs), v4_answers.png (the Singapore answer with superscript citations 1-4 and a View source pane) and v4_sheet_lastmile.png (on-time rate by carrier with NinjaVan near 0.69, WISMO 5.22k).",
+      "gap": "The Predict scene says two experiments are configured and makes the late-delivery model its point. The only Predict capture is the cold-chain experiment: no late-delivery experiment and no missing-tracking-number feature appear on screen, so the scene's claim rests on deck text. In the cut, the compact frame crops the panel to its headings, so the SHAP bars, ROC curve and confusion matrix that the caption names are never visible. The same panel is also the s5_ai title shot. In sc3 the Answers panel runs off the bottom of the frame over the footer, and its caption never appears. The source chip visible under claim 1 is the Q3 Supply Chain Review, not the NinjaVan amendment the narration says is cited; the amendment appears only as a filename in the reasoning text. In sc5, the '88.2% on-time' bullet has no matching figure on the panel.",
+      "ref": "s4_analytics#sc4:v5_predict_coldchain.png"
+    },
+    {
+      "id": "ANA-04",
+      "verdict": "partial",
+      "evidence": "Governed data products, dashboards authored in plain English, and models trained on the same trusted data.",
+      "gap": "The title lists 'governed data products' as one item in a menu; no line says the two apps read them. Neither Supply Chain Health nor Last Mile Performance is named in this video, and s5_ai says only that 'the two gold data products' feed the agents. A viewer cannot tell the sheets apart from a side extract. Per the olh_live probe they are one: both apps load lib:// .qvd files, so the sc5 bullet 'Every figure traces to a governed data product' is not true of the load path today.",
+      "ref": ""
+    },
+    {
+      "id": "ANA-05",
+      "verdict": "missed",
+      "evidence": "",
+      "gap": "No role decides anything. The Singapore answer explains a fall that has already happened (fourteen thousand customers a month, three weeks of a wrong website promise) and stops there. Nobody is named: not the APAC logistics lead, not the EU Logistics Manager, not the e-commerce team. No promise is changed, no carrier conversation is opened and no outcome is reported. The sheets show IRA 0.74 and NinjaVan near 69% with no one acting on either.",
+      "ref": ""
+    },
+    {
+      "id": "ANA-06",
+      "verdict": "partial",
+      "evidence": "What we expect that second model to confirm is the uncomfortable part: that a missing tracking number is one of the strongest predictors of a late delivery.",
+      "gap": "The next line undoes the hedge. 'The data gap itself predicts the failure.' is stated as a proven finding, with no 'would' or 'should', and it is the sentence a viewer repeats. 'The same governed data' is never named: the viewer is not told which product or tables the experiments train on. The deck footer also says '2 experiments trained' while the narration says 'configured'.",
+      "ref": ""
+    },
+    {
+      "id": "ANA-07",
+      "verdict": "partial",
+      "evidence": "A cold-chain breach posts a card to the operations channel within five minutes. A steward's correction is picked up and handed back to the pipeline.",
+      "gap": "Automations are absent from the analytics video itself; only story four describes the loop. There, the notification lands in 'the operations channel', not with a person. Nobody is named as receiving the cold-chain card or deciding what happens to the shipment, and the steward appears only at the correction step.",
+      "ref": ""
+    },
+    {
+      "id": "ANA-08",
+      "verdict": "missed",
+      "evidence": "",
+      "gap": "Every number in the video describes a problem: Singapore at sixty-nine percent, fourteen thousand customers a month, three weeks of a wrong promise. The on-screen numbers do the same: IRA 0.74, and on-time 88.2% against 92%. None of them is shown moving because of the platform: no IRA gain, no promise accuracy recovered, no WISMO contacts avoided, and no dollars of the $127M, which only story four mentions, as the starting point.",
+      "ref": ""
+    },
+    {
+      "id": "ANA-09",
+      "verdict": "missed",
+      "evidence": "",
+      "gap": "The only alert in either video is story four's Discovery Agent ('seventy-two silent hours becomes an alert'), and it has no recipient. The cold-chain card goes to a channel. Neither video says who receives an alert or what they do about it. Neither product owner (Henrik Jansen for Supply Chain Health, Sophie Müller for Last Mile Performance) is named as an alert recipient.",
+      "ref": ""
+    },
+    {
+      "id": "ANA-10",
+      "verdict": "partial",
+      "evidence": "What we expect that second model to confirm",
+      "gap": "The Predict expectation is labelled. Sheet authoring over the Qlik MCP server, a preview capability, carries no preview label in the narration or on screen. The line stresses the opposite: 'It exposes the real tenant, not a simulation'.",
+      "ref": ""
+    }
+  ]
+}

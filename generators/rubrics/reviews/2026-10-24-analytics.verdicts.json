@@ -1,0 +1,65 @@
+{
+  "reviewer": "Claude Opus 5.5 (rubric-reviewer agent), scoring as Sophie Müller",
+  "persona": "sophie",
+  "pillar": "analytics",
+  "scope": "Re-review of the re-cut. Narration: the spoken > lines of s4_analytics/script.md, text unchanged since the earlier 2026-10-23 analytics review, with s5_ai/script.md quoted as context only, which caps a verdict at partial. Screen: the five deck_anim.html scenes of s4_analytics and the four qlik_panels they embed (v4_sheet_inventory.png in sc1 and sc2, v4_answers.png in sc3, v5_predict_coldchain.png in sc4, v4_sheet_lastmile.png in sc5). Each panel was opened and inspected, then checked against frames pulled from the finished C:/Claude/MCG Demo/04_MCG_Analytics_1080p.mp4 (2:00). The re-cut changes timing only: each narration line now lands on its own slide (the earlier cut ran several seconds behind), the blank lead-in and quarter-size first frames are gone, and the closing slide holds until the last word. All three changes were confirmed in the frames. ANA-01 and ANA-02 are measured by the tenant_panels and olh_live probes.",
+  "note": "Ingrid, the re-cut fixes the timing, not the story. Each line now lands on its slide, but nobody in this video gets an alert or changes a decision before 7 a.m.: Singapore is explained, not fixed, and the dashboards still load QVD files while the closing slide says every figure traces to a governed product. Worse, the late-delivery capture we hold from 24 September shows the model dropped tracking_missing for low importance. The 'uncomfortable' finding we narrate is one our own model has not confirmed. Before the next cut I need four things: one named role acting on one number; Supply Chain Health and Last Mile Performance named aloud as what the apps read; the MCP authoring labelled as preview; and a late-delivery Predict screen that supports what we say about it.",
+  "verdicts": [
+    {
+      "id": "ANA-03",
+      "verdict": "partial",
+      "evidence": "v5_predict_coldchain.png is a live Qlik Predict page for the cold-chain experiment (target alert_flag) only. It shows the model list (best model v03_LOGC_01_00, F1 0.144), SHAP importance led by route_id, warehouse_id and battery_level_pct, an ROC curve, and a confusion matrix of 46 true positives against 489 false positives, with an 'Auto-engineered features' toast across the top. In the rendered sc4 compact frame, only the model table, the SHAP and ROC headings and the top corner of the ROC curve are visible. The other scenes are live tenant captures too: v4_sheet_inventory.png (Inventory Health Overview: IRA 0.74, trust 0.84, 11.73k phantom suspect positions, twelve DCs), v4_answers.png (the Singapore answer with superscript citations 1-4 and the View source pane) and v4_sheet_lastmile.png (on-time rate by carrier with NinjaVan near 0.69, WISMO 5.22k).",
+      "gap": "The sc4 narration is about the late-delivery model; the only Predict capture is the cold-chain experiment, and it is the same panel s5_ai uses as its title shot. No late-delivery experiment and no tracking-number feature appear on screen. The late-delivery capture that does exist, qlik_panels/predict_late_delivery.png (24 Sep, unused), would contradict the line, not support it: it shows tracking_missing, fulfillment_method, delivery_attempts and exception_code dropped for low permutation importance, leaving carrier_code alone. In the cut, the compact frame still hides the SHAP bars and the confusion matrix that its caption names. In sc3, the Answers panel still runs off the bottom of the frame under the footer text, its caption never appears, and the per-claim source chips are below the fold. The panel's own answer dates the fall to Q3 2025 but blames an amendment effective 1 October 2025, after that quarter ended. In sc5, the zoom crops the bar chart's y-axis and the chart has no 92% target line, so 69.4% cannot be read off the panel, and 88.2% has no matching figure at all. For the first 32 seconds sc1 and sc2 show the same sheet, and the MCP authoring itself is never shown.",
+      "ref": "s4_analytics#sc4:v5_predict_coldchain.png"
+    },
+    {
+      "id": "ANA-04",
+      "verdict": "partial",
+      "evidence": "Governed data products, dashboards authored in plain English, and models trained on the same trusted data.",
+      "gap": "The title lists 'governed data products' as one item in a menu. No line says the two apps read them, and neither Supply Chain Health nor Last Mile Performance is named in this video. s5_ai says only that 'the two gold data products' are what the agents operate on, not the dashboards. A viewer cannot tell the sheets from a side extract. Per the olh_live probe, they effectively are one: both apps load lib:// .qvd files, so the sc5 bullet 'Every figure traces to a governed data product' does not hold for the load path today.",
+      "ref": ""
+    },
+    {
+      "id": "ANA-05",
+      "verdict": "missed",
+      "evidence": "",
+      "gap": "No role decides anything. The Singapore answer explains a fall that has already happened (fourteen thousand customers a month, three weeks of a wrong website promise) and stops there. Nobody is named: not the APAC logistics lead, not the EU Logistics Manager, not the e-commerce team. No promise is changed, no NinjaVan conversation is opened and no outcome is reported. On screen, IRA 0.74 and NinjaVan near 69% sit there with no one acting on either.",
+      "ref": ""
+    },
+    {
+      "id": "ANA-06",
+      "verdict": "partial",
+      "evidence": "What we expect that second model to confirm is the uncomfortable part: that a missing tracking number is one of the strongest predictors of a late delivery. The data gap itself predicts the failure.",
+      "gap": "The hedge holds for one sentence. 'The data gap itself predicts the failure.' is then stated as a proven finding, and it is the line a viewer repeats. 'The same governed data' is asserted, not named: no product or table is given. The experiment captures held in qlik_panels, which are outside this cut, show training on silver QVD files (silver_iot_normalized.qvd, silver_order_delivery_timeline.qvd), not on a gold product. The late-delivery model there dropped tracking_missing for low permutation importance, so the 'expected' result runs against the model's own output. On screen, the sc4 footer says '2 experiments trained' while the narration says 'configured'.",
+      "ref": ""
+    },
+    {
+      "id": "ANA-07",
+      "verdict": "partial",
+      "evidence": "A cold-chain breach posts a card to the operations channel within five minutes. A steward's correction is picked up and handed back to the pipeline.",
+      "gap": "The analytics video itself has no automations; only story four describes the loop. There, the notification lands in 'the operations channel', not with a person. Nobody is named as receiving the cold-chain card or deciding what happens to the shipment, and the steward appears only at the correction step.",
+      "ref": ""
+    },
+    {
+      "id": "ANA-08",
+      "verdict": "missed",
+      "evidence": "",
+      "gap": "Every number in the video describes a problem: Singapore at sixty-nine percent, fourteen thousand customers a month, three weeks of a wrong promise. The on-screen numbers do the same: IRA 0.74, WISMO 5.22k, on-time 88.2% against 92%. None of them is shown moving because of the platform: no IRA gain, no promise accuracy recovered, no WISMO contacts avoided, and no dollars of the $127M, which only story four mentions, as the starting point.",
+      "ref": ""
+    },
+    {
+      "id": "ANA-09",
+      "verdict": "missed",
+      "evidence": "",
+      "gap": "The only alert in either video is story four's Discovery Agent ('seventy-two silent hours becomes an alert'), and it has no recipient. The cold-chain card goes to a channel. Neither video says who receives an alert or what they do with it at 7 a.m. Neither product owner (Henrik Jansen for Supply Chain Health, Sophie Müller for Last Mile Performance) is named as an alert recipient.",
+      "ref": ""
+    },
+    {
+      "id": "ANA-10",
+      "verdict": "partial",
+      "evidence": "What we expect that second model to confirm",
+      "gap": "The Predict expectation is labelled, then undone by the next sentence. Sheet authoring over the Qlik MCP server is preview (MCG_Agentic_Data_Engineering.md, GA vs preview status), yet it carries no preview label in the narration or on the sc1 and sc2 slides. The line stresses the opposite: 'It exposes the real tenant, not a simulation'.",
+      "ref": ""
+    }
+  ]
+}

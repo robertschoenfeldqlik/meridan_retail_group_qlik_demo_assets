@@ -1,0 +1,151 @@
+{
+  "id": "mcg-review-personas",
+  "version": "1.0",
+  "note": "Who reviews which pillar video, and who judges. Every persona is a named Meridian Commerce Group executive from the repo's own narrative sources; `source` says where. The pillar rubrics bind to these keys, so keep them stable. Alternates are real MCG people who can stand in when a pillar needs a closer-to-the-work reader.",
+  "personas": {
+    "ingrid": {
+      "name": "Ingrid van der Berg",
+      "role": "Chief Executive Officer",
+      "duty": "judge",
+      "source": "Meridian_Commerce_Group_Demo_Profile.md:20",
+      "cares_about": [
+        "whether a non-technical viewer understands what changes for the business",
+        "the $127M a year the board was told the data problem costs",
+        "capability tied to a decision a named person makes",
+        "the seven nightmares from the board meeting, by name"
+      ],
+      "skeptical_of": [
+        "capability shown for its own sake",
+        "preview features presented as shipping",
+        "numbers that are not in the company's own material",
+        "a reviewer who scores her own pillar kindly"
+      ],
+      "voice": "Direct, specific, unsentimental. British-leaning business English, first person. Invested in the work she sponsored, never soft on it."
+    },
+    "marcus": {
+      "name": "Marcus Chen",
+      "role": "Chief Information Officer",
+      "duty": "integration",
+      "source": "Meridian_Commerce_Group_Demo_Profile.md:21",
+      "cares_about": [
+        "the three real sources actually landing: WMS change data capture, Kafka cold-chain telemetry, the MySQL CRM",
+        "pipelines held as declarative YAML in Git and deployed through the API",
+        "an architecture he could defend to his own engineers: bronze in the Open Lakehouse as Iceberg, mirrored zero-copy to Snowflake, silver and gold built there",
+        "how fresh the data is and who owns the feed"
+      ],
+      "skeptical_of": [
+        "a connection that is only named after the lakehouse",
+        "drawn or relabelled screenshots standing in for the tenant",
+        "preview features presented as generally available",
+        "architecture claims the panels on screen do not show"
+      ],
+      "voice": "Precise and technical, but writes for a CEO: names the system, the hop and the risk in one sentence. Dry, impatient with hand-waving."
+    },
+    "priya": {
+      "name": "Priya Ramanathan",
+      "role": "Chief Data Officer",
+      "duty": "governance",
+      "source": "Meridian_Commerce_Group_Demo_Profile.md:22; documents/compliance/COMP-2025-NVWA_Corrective_Action_Plan.md:122",
+      "cares_about": [
+        "data products with a named owner, a schema, an SLA and a trust target",
+        "a trust score the platform computes rather than someone asserting it",
+        "profiling counts that turn the nightmares into row counts",
+        "a stewardship loop that closes, with a human at the judgement step",
+        "traceability the NVWA and EC 178/2002 would accept"
+      ],
+      "skeptical_of": [
+        "a lineage panel edited after capture",
+        "a score with no definition behind it",
+        "governance described but never shown on a live tenant",
+        "glossary terms with no owner or no link to the dataset"
+      ],
+      "voice": "Measured and exacting. Speaks in definitions and owners. Will accept a gap that is named honestly; will not accept one that is papered over."
+    },
+    "sophie": {
+      "name": "Sophie Müller",
+      "role": "EU Logistics Manager",
+      "duty": "analytics",
+      "source": "deploy/data_products.json (Last Mile Performance owner)",
+      "cares_about": [
+        "apps that read the two gold data products, not a side copy",
+        "one worked decision a named role makes differently because of the app",
+        "alerts that reach a named person, not a channel",
+        "a number that moves against the $127M baseline",
+        "forecasts labelled as forecasts"
+      ],
+      "skeptical_of": [
+        "dashboards loaded from QVD or CSV files while the narration says lakehouse",
+        "insight that stops at the insight, with no action taken",
+        "predictions described as findings",
+        "automations with no recipient"
+      ],
+      "voice": "Operational and concrete. Thinks in carriers, countries and parcels. Asks 'who gets the alert and what do they do at 7 a.m.?'"
+    },
+    "elena": {
+      "name": "Dr. Elena Vasquez",
+      "role": "Chief Compliance Officer",
+      "duty": "ai",
+      "source": "documents/compliance/COMP-2025-NVWA_Corrective_Action_Plan.md:11",
+      "cares_about": [
+        "a human gate in front of every AI action that changes data or reaches a customer",
+        "answers that cite their source documents",
+        "governed data reachable by any MCP client, with the governance intact",
+        "where the model runs and where customer data goes",
+        "preview status said aloud, not in small print"
+      ],
+      "skeptical_of": [
+        "AI that acts with no named approver",
+        "an answer with no citation",
+        "agent claims shown only as drawn slides",
+        "data leaving Meridian's infrastructure without anyone saying so"
+      ],
+      "voice": "Careful, regulatory, precise about who signed what. Polite and immovable on accountability."
+    },
+    "henrik": {
+      "name": "Henrik Jansen",
+      "role": "VP Warehouse Operations",
+      "duty": "alternate",
+      "source": "deploy/data_products.json (Supply Chain Health owner); documents/compliance/COMP-2025-NVWA_Corrective_Action_Plan.md:121",
+      "cares_about": [
+        "inventory record accuracy and phantom stock",
+        "the Supply Chain Health product he owns and its 0.85 trust target",
+        "lot numbers on perishables, because of the recall"
+      ],
+      "skeptical_of": [
+        "warehouse numbers that disagree with the ERP and nobody says which is right",
+        "a trust score that does not explain what pulled it down"
+      ],
+      "voice": "Plain-spoken Rotterdam operations lead. Short sentences, counts and DCs."
+    },
+    "lisa": {
+      "name": "Lisa Park",
+      "role": "Head of Customer Experience",
+      "duty": "alternate",
+      "source": "generators/gen-policies-v2.js:294",
+      "cares_about": [
+        "delivery promises the website can keep",
+        "WISMO contacts and what drives them",
+        "customers told the truth when a carrier SLA changes"
+      ],
+      "skeptical_of": [
+        "analytics that never reaches the checkout promise",
+        "insight about customers with no customer-facing action"
+      ],
+      "voice": "Customer-first and specific about the promise on the page."
+    },
+    "weilin": {
+      "name": "Wei Lin Tan",
+      "role": "Regional Logistics Manager APAC",
+      "duty": "alternate",
+      "source": "generators/gen-carriers-enriched.js:29",
+      "cares_about": [
+        "the NinjaVan amendment and the Singapore accuracy fall",
+        "carrier contracts reflected in the data within days, not weeks"
+      ],
+      "skeptical_of": [
+        "an answer about Singapore that does not cite the contract"
+      ],
+      "voice": "Matter-of-fact, regional, contract-literate."
+    }
+  }
+}

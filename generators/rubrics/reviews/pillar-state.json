@@ -1,0 +1,154 @@
+{
+  "pillars": {
+    "ai": {
+      "fingerprint": "94c9ee24d5f0c88f6a6fcdaf20c5f4f97bc63d27470313b0579195ff2db4b6f7",
+      "reviewed": "2026-10-24T17:42:07.866Z",
+      "rubric": "AI v1.0",
+      "persona": "elena",
+      "reviewer": "Claude Opus 5.5 (rubric-reviewer agent), scoring as Dr. Elena Vasquez",
+      "verdicts": "generators/rubrics/reviews/2026-10-24c-ai.verdicts.json",
+      "verdicts_sha256": "202192008858c1ca1f8f60dc250536fa0d61ef5fc1408f250d00fd0b9d91a286",
+      "bar": "FAIL",
+      "score": "19/27 (70%)",
+      "open_musts": [
+        "AI-02",
+        "AI-03",
+        "AI-06",
+        "AI-07"
+      ],
+      "should_missed": [],
+      "probes": {
+        "AI-01": "covered"
+      },
+      "outputs": [
+        "C:\\Claude\\MCG Demo\\documents\\reviews\\Pillar_Review_ai.md",
+        "C:\\Claude\\MCG Demo\\documents\\reviews\\Pillar_Review_ai.docx"
+      ]
+    },
+    "analytics": {
+      "fingerprint": "f34b18b6fe8bcebd32851e6a5411d0b82f5ead7a647706cee456707ceb818aa4",
+      "reviewed": "2026-10-24T17:43:57.314Z",
+      "rubric": "ANA v1.0",
+      "persona": "sophie",
+      "reviewer": "Claude Opus 5.5 (rubric-reviewer agent), scoring as Sophie Müller",
+      "verdicts": "generators/rubrics/reviews/2026-10-24c-analytics.verdicts.json",
+      "verdicts_sha256": "e43a67f81d752f6f7c7ccb67743b7f97309b01a3ace1bb99508aec41bc7ab610",
+      "bar": "FAIL",
+      "score": "14.5/26 (56%)",
+      "open_musts": [
+        "ANA-02",
+        "ANA-03",
+        "ANA-04",
+        "ANA-06"
+      ],
+      "should_missed": [
+        "ANA-08"
+      ],
+      "probes": {
+        "ANA-01": "covered",
+        "ANA-02": "missed"
+      },
+      "outputs": [
+        "C:\\Claude\\MCG Demo\\documents\\reviews\\Pillar_Review_analytics.md",
+        "C:\\Claude\\MCG Demo\\documents\\reviews\\Pillar_Review_analytics.docx"
+      ]
+    },
+    "integration": {
+      "fingerprint": "4e36a207ea73511397e8a29d5d163b497c633f225d7c330381688244371807d7",
+      "reviewed": "2026-10-24T17:42:36.249Z",
+      "rubric": "INT v1.0",
+      "persona": "marcus",
+      "reviewer": "Claude Opus 5.5 (rubric-reviewer agent), scoring as Marcus Chen",
+      "verdicts": "generators/rubrics/reviews/2026-10-24c-integration.verdicts.json",
+      "verdicts_sha256": "5cba49cd5337a85323e9863ec47fb07b59450102d8d19cde6956dcaf55ec7356",
+      "bar": "FAIL",
+      "score": "20.5/29 (71%)",
+      "open_musts": [
+        "INT-02",
+        "INT-03"
+      ],
+      "should_missed": [],
+      "probes": {
+        "INT-01": "covered",
+        "INT-02": "missed"
+      },
+      "outputs": [
+        "C:\\Claude\\MCG Demo\\documents\\reviews\\Pillar_Review_integration.md",
+        "C:\\Claude\\MCG Demo\\documents\\reviews\\Pillar_Review_integration.docx"
+      ]
+    },
+    "governance": {
+      "fingerprint": "e3e03aab2420fd4bd88709c6eb3581939bb5c33f616bc353ca0f8ecdea23498b",
+      "reviewed": "2026-10-24T17:44:08.113Z",
+      "rubric": "GOV v1.0",
+      "persona": "priya",
+      "reviewer": "Claude Opus 5.5 (rubric-reviewer agent), scoring as Priya Ramanathan",
+      "verdicts": "generators/rubrics/reviews/2026-10-24c-governance.verdicts.json",
+      "verdicts_sha256": "b99f5776327d296c0fbd8a1a9d3b33b64f936669487d651f41d5f7c1366a7418",
+      "bar": "FAIL",
+      "score": "24.5/28 (88%)",
+      "open_musts": [
+        "GOV-02"
+      ],
+      "should_missed": [],
+      "probes": {
+        "GOV-01": "covered"
+      },
+      "outputs": [
+        "C:\\Claude\\MCG Demo\\documents\\reviews\\Pillar_Review_governance.md",
+        "C:\\Claude\\MCG Demo\\documents\\reviews\\Pillar_Review_governance.docx"
+      ]
+    }
+  },
+  "checkout": "C:\\Claude\\MCG Full Stack",
+  "updated": "2026-10-24T17:50:36.651Z",
+  "ceo": {
+    "ruled": "2026-10-24T17:50:36.650Z",
+    "pillars": [
+      "integration",
+      "governance",
+      "analytics",
+      "ai"
+    ],
+    "memo": "generators/rubrics/reviews/2026-10-24c-ceo.memo.md",
+    "rulings_file": "generators/rubrics/reviews/2026-10-24c-ceo.rulings.json",
+    "rulings": [
+      {
+        "pillar": "integration",
+        "ruling": "fail",
+        "reason": "Two musts open: both apps still load QVD files rather than the gold tables in Snowflake, and on screen the connections that land the lakehouse are not the three shown a scene earlier, the Kafka feed is never seen landing and the only freshness shown is six hours old.",
+        "bar": "FAIL",
+        "score": "20.5/29 (71%)",
+        "fingerprint": "4e36a207ea73511397e8a29d5d163b497c633f225d7c330381688244371807d7"
+      },
+      {
+        "pillar": "governance",
+        "ruling": "fail",
+        "reason": "One must from the bar: the voice now gives Henrik Jansen, fifteen minutes and four and a quarter out of five, but the screen shows an empty stewardship sprint, an all-Draft glossary with no stewards, a different owner, freshness of seven hours and a profile that carries none of the counts we speak.",
+        "bar": "FAIL",
+        "score": "24.5/28 (88%)",
+        "fingerprint": "e3e03aab2420fd4bd88709c6eb3581939bb5c33f616bc353ca0f8ecdea23498b"
+      },
+      {
+        "pillar": "analytics",
+        "ruling": "fail",
+        "reason": "Four musts open: the apps load QVD files and are never said to read Supply Chain Health or Last Mile Performance, the Answers panel dates the Singapore fix to a policy release in October 2025 rather than that afternoon, the Predict scene shows cold-chain training instead of the deployed late-delivery model, and its eighty-two percent accuracy is below what calling every order on time would score.",
+        "bar": "FAIL",
+        "score": "14.5/26 (56%)",
+        "fingerprint": "f34b18b6fe8bcebd32851e6a5411d0b82f5ead7a647706cee456707ceb818aa4"
+      },
+      {
+        "pillar": "ai",
+        "ruling": "fail",
+        "reason": "Four musts open: no AI acting on our tenant is on screen, citations are asserted but never shown in this video, generated sheets, the Data Product Agent and outside MCP assistants have no named approver, and the agentic address route is labelled preview only in small print.",
+        "bar": "FAIL",
+        "score": "19/27 (70%)",
+        "fingerprint": "94c9ee24d5f0c88f6a6fcdaf20c5f4f97bc63d27470313b0579195ff2db4b6f7"
+      }
+    ],
+    "outputs": [
+      "C:\\Claude\\MCG Demo\\documents\\reviews\\CEO_Pillar_Review.md",
+      "C:\\Claude\\MCG Demo\\documents\\reviews\\CEO_Pillar_Review.docx"
+    ]
+  }
+}

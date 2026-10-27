@@ -1,0 +1,24 @@
+{
+  "rulings": [
+    {
+      "pillar": "integration",
+      "ruling": "fail",
+      "reason": "Four musts open: the apps still load QVD files instead of reading the lakehouse or Snowflake, the pipelines panel shows two empty project tiles and the catalog shows silver and gold as CSV files, PostgreSQL and MySQL are never spoken, and preview is never said."
+    },
+    {
+      "pillar": "governance",
+      "ruling": "fail",
+      "reason": "Closest to ready, but the screen does not prove what the voice says (stock semantic types under profiling, an empty stewardship sprint, an all-Draft glossary) and no owner, refresh SLA or trust target is ever given a value."
+    },
+    {
+      "pillar": "analytics",
+      "ruling": "fail",
+      "reason": "Nobody decides anything, the apps are never said to read Supply Chain Health or Last Mile Performance and in fact load QVD files, and the late-delivery claim runs ahead of a model whose own output dropped tracking_missing."
+    },
+    {
+      "pillar": "ai",
+      "ruling": "fail",
+      "reason": "Six of seven musts open: no AI surface acting on our tenant is on screen, preview is never said, the Discovery Agent's alert has no recipient, consumption-side actions have no approver, and citations and MCP are left to story three."
+    }
+  ]
+}
