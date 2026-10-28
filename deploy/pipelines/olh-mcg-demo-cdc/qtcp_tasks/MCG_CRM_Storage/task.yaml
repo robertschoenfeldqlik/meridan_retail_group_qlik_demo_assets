@@ -1,0 +1,10 @@
+properties:
+  name: MCG_CRM_Storage
+  id: mcg_crm_storage-ig4d
+  type: LAKEHOUSE_STORAGE
+settings:
+  artifactsLocation:
+    internalSchema: '{{task.mcg_crm_storage-ig4d.internalSchema}}'
+    taskSchema: '{{task.mcg_crm_storage-ig4d.taskSchema}}'
+  taskRuntime:
+    lakehouseCluster: '{{task.mcg_crm_storage-ig4d.lakehouseCluster}}'

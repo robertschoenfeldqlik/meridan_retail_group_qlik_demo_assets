@@ -1,0 +1,6 @@
+properties:
+  id: crm_products-ig4g
+  name: crm_products
+  inputDatasets:
+    - datasetId: crm_products
+      taskId: mcg_crm_lake_landing-ig4c

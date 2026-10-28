@@ -1,0 +1,150 @@
+properties:
+  id: addresses_standardized
+  name: addresses_standardized
+  inputDatasets:
+    - datasetId: crm_contacts-gpwc
+      projectId: '{{project.MCG Demo - DI$_$MCG Supply Chain Pipeline - CDC.projectId}}'
+      taskId: mcg_snowflake_mirror-9xec
+  tableDef:
+    columns:
+      - datatype:
+          type: NCLOB
+          length: 134217728
+          originalType: VARCHAR
+          originalTypeFull: VARCHAR(134217728)
+        name: CONTACT_ID
+        primaryKeyOrdinal: 1
+        id: contact_id
+      - datatype:
+          type: NCLOB
+          length: 134217728
+          originalType: VARCHAR
+          originalTypeFull: VARCHAR(134217728)
+        name: FIRST_NAME
+        nullable: true
+        id: first_name
+      - datatype:
+          type: NCLOB
+          length: 134217728
+          originalType: VARCHAR
+          originalTypeFull: VARCHAR(134217728)
+        name: LAST_NAME
+        nullable: true
+        id: last_name
+      - datatype:
+          type: NCLOB
+          length: 134217728
+          originalType: VARCHAR
+          originalTypeFull: VARCHAR(134217728)
+        name: EMAIL
+        nullable: true
+        id: email
+      - datatype:
+          type: NCLOB
+          length: 134217728
+          originalType: VARCHAR
+          originalTypeFull: VARCHAR(134217728)
+        name: PHONE
+        nullable: true
+        id: phone
+      - datatype:
+          type: NCLOB
+          length: 134217728
+          originalType: VARCHAR
+          originalTypeFull: VARCHAR(134217728)
+        name: STREET_RAW
+        nullable: true
+        id: street_raw
+      - datatype:
+          type: NCLOB
+          length: 134217728
+          originalType: VARCHAR
+          originalTypeFull: VARCHAR(134217728)
+        name: CITY
+        nullable: true
+        id: city
+      - datatype:
+          type: NCLOB
+          length: 134217728
+          originalType: VARCHAR
+          originalTypeFull: VARCHAR(134217728)
+        name: STATE_REGION
+        nullable: true
+        id: state_region
+      - datatype:
+          type: NCLOB
+          length: 134217728
+          originalType: VARCHAR
+          originalTypeFull: VARCHAR(134217728)
+        name: POSTAL_CODE
+        nullable: true
+        id: postal_code
+      - datatype:
+          type: NCLOB
+          length: 134217728
+          originalType: VARCHAR
+          originalTypeFull: VARCHAR(134217728)
+        name: COUNTRY_ISO
+        nullable: true
+        id: country_iso
+      - datatype:
+          type: NUMERIC
+          precision: 6
+          scale: 2
+          originalType: NUMBER
+          originalTypeFull: NUMBER(6,2)
+        name: ADDRESS_QUALITY_SCORE
+        id: address_quality_score
+  customDatasetSettings:
+    customSql:
+      expressionStatement: |-
+        WITH crm_contacts AS (
+          SELECT
+            "contact_id" AS contact_id,
+            "first_name" AS first_name,
+            "last_name" AS last_name,
+            "email" AS email,
+            "phone" AS phone,
+            "mailing_street" AS mailing_street,
+            "mailing_city" AS mailing_city,
+            "mailing_state" AS mailing_state,
+            "mailing_postal_code" AS mailing_postal_code,
+            "mailing_country" AS mailing_country,
+            "created_date" AS created_date,
+            "last_modified_date" AS last_modified_date
+          FROM ${crm_contacts}
+        )
+        SELECT
+          contact_id AS contact_id,
+          first_name AS first_name,
+          last_name AS last_name,
+          email AS email,
+          phone AS phone,
+          mailing_street AS street_raw,
+          CASE
+            WHEN UPPER(TRIM(mailing_city)) IN ('A''DAM', 'AMSTERDAM') THEN 'AMSTERDAM'
+            WHEN UPPER(TRIM(mailing_city)) IN ('R''DAM', 'ROTTERDAM') THEN 'ROTTERDAM'
+            ELSE UPPER(TRIM(mailing_city))
+          END AS city,
+          CASE
+            WHEN UPPER(TRIM(mailing_state)) IN ('NH', 'NOORD-HOLLAND', 'NORTH HOLLAND') THEN 'NOORD-HOLLAND'
+            WHEN UPPER(TRIM(mailing_state)) IN ('ZH', 'ZUID-HOLLAND', 'SOUTH HOLLAND') THEN 'ZUID-HOLLAND'
+            ELSE UPPER(TRIM(mailing_state))
+          END AS state_region,
+          UPPER(REPLACE(mailing_postal_code, ' ', '')) AS postal_code,
+          CASE
+            WHEN UPPER(TRIM(mailing_country)) IN ('NL', 'NETHERLANDS', 'NIEDERLANDE', 'NEDERLAND', 'THE NETHERLANDS') THEN 'NL'
+            WHEN UPPER(TRIM(mailing_country)) IN ('DE', 'GERMANY', 'DEUTSCHLAND') THEN 'DE'
+            WHEN UPPER(TRIM(mailing_country)) IN ('GB', 'UK', 'UNITED KINGDOM') THEN 'GB'
+            WHEN UPPER(TRIM(mailing_country)) IN ('US', 'USA', 'UNITED STATES') THEN 'US'
+            ELSE UPPER(TRIM(mailing_country))
+          END AS country_iso,
+          (CASE WHEN mailing_street IS NOT NULL AND TRIM(mailing_street) <> '' THEN 0.25 ELSE 0.0 END
+           + CASE WHEN mailing_city IS NOT NULL AND TRIM(mailing_city) <> '' THEN 0.25 ELSE 0.0 END
+           + CASE WHEN mailing_postal_code IS NOT NULL AND TRIM(mailing_postal_code) <> '' THEN 0.25 ELSE 0.0 END
+           + CASE WHEN mailing_country IS NOT NULL AND TRIM(mailing_country) <> '' THEN 0.25 ELSE 0.0 END
+          ) AS address_quality_score
+        FROM crm_contacts
+      alias:
+        - name: crm_contacts
+          value: '{{project.MCG Demo - DI$_$MCG Supply Chain Pipeline - CDC.projectId}}$_$mcg_snowflake_mirror-9xec$_$crm_contacts-gpwc'

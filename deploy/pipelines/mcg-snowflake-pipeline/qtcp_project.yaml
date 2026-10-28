@@ -1,0 +1,12 @@
+properties:
+  exportVersion: '1.0'
+  name: '{{projectName}}'
+  space: 'ref{project.current.spaceId}'
+  type: DATA_PIPELINE
+  description: Meridian Commerce Group silver and gold layers in Snowflake, built on the Open Lakehouse bronze Iceberg tables through the zero-copy Snowflake mirror — cleansed silver datasets and the two gold data products.
+  platformType: SNOWFLAKE
+  platformConnection: '{{platformConnection}}'
+  cloudStagingConnection: '{{cloudStagingConnection}}'
+settings:
+  artifactsNaming:
+    prefixSchema: '{{project.current.prefixSchema}}'

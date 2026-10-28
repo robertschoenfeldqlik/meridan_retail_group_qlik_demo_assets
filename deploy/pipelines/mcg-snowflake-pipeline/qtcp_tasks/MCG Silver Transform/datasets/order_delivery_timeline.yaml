@@ -1,0 +1,237 @@
+properties:
+  id: order_delivery_timeline
+  name: order_delivery_timeline
+  inputDatasets:
+    - datasetId: crm_orders-gpwd
+      projectId: '{{project.MCG Demo - DI$_$MCG Supply Chain Pipeline - CDC.projectId}}'
+      taskId: mcg_snowflake_mirror-9xec
+    - datasetId: shipments-ig5g
+      projectId: '{{project.MCG Demo - DI$_$MCG Supply Chain Pipeline - CDC.projectId}}'
+      taskId: mcg_wms_snowflake_mirror-gpwi
+  tableDef:
+    columns:
+      - datatype:
+          type: NCLOB
+          length: 134217728
+          originalType: VARCHAR
+          originalTypeFull: VARCHAR(134217728)
+        name: ORDER_ID
+        primaryKeyOrdinal: 1
+        id: order_id
+      - datatype:
+          type: NCLOB
+          length: 134217728
+          originalType: VARCHAR
+          originalTypeFull: VARCHAR(134217728)
+        name: CONTACT_ID
+        nullable: true
+        id: contact_id
+      - datatype:
+          type: DATETIME
+          precision: 6
+          originalType: TIMESTAMPLTZ
+          originalTypeFull: TIMESTAMPLTZ(6)
+        name: ORDER_DATE
+        nullable: true
+        id: order_date
+      - datatype:
+          type: NCLOB
+          length: 134217728
+          originalType: VARCHAR
+          originalTypeFull: VARCHAR(134217728)
+        name: SKU
+        nullable: true
+        id: sku
+      - datatype:
+          type: NCLOB
+          length: 134217728
+          originalType: VARCHAR
+          originalTypeFull: VARCHAR(134217728)
+        name: PRODUCT_NAME
+        nullable: true
+        id: product_name
+      - datatype:
+          type: NCLOB
+          length: 134217728
+          originalType: VARCHAR
+          originalTypeFull: VARCHAR(134217728)
+        name: FULFILLMENT_METHOD
+        nullable: true
+        id: fulfillment_method
+      - datatype:
+          type: NCLOB
+          length: 134217728
+          originalType: VARCHAR
+          originalTypeFull: VARCHAR(134217728)
+        name: CARRIER_CODE
+        nullable: true
+        id: carrier_code
+      - datatype:
+          type: NCLOB
+          length: 134217728
+          originalType: VARCHAR
+          originalTypeFull: VARCHAR(134217728)
+        name: TRACKING_NUMBER
+        nullable: true
+        id: tracking_number
+      - datatype:
+          type: NCLOB
+          length: 134217728
+          originalType: VARCHAR
+          originalTypeFull: VARCHAR(134217728)
+        name: ORDER_STATUS
+        nullable: true
+        id: order_status
+      - datatype:
+          type: DATE
+          originalType: DATE
+          originalTypeFull: DATE
+        name: PROMISED_DELIVERY
+        nullable: true
+        id: promised_delivery
+      - datatype:
+          type: DATE
+          originalType: DATE
+          originalTypeFull: DATE
+        name: ACTUAL_DELIVERY
+        nullable: true
+        id: actual_delivery
+      - datatype:
+          type: BOOLEAN
+          originalType: BOOLEAN
+          originalTypeFull: BOOLEAN
+        name: TRACKING_MISSING
+        nullable: true
+        id: tracking_missing
+      - datatype:
+          type: BOOLEAN
+          originalType: BOOLEAN
+          originalTypeFull: BOOLEAN
+        name: DELIVERED_LATE
+        nullable: true
+        id: delivered_late
+      - datatype:
+          type: NUMERIC
+          precision: 9
+          originalType: NUMBER
+          originalTypeFull: NUMBER(9,0)
+        name: DAYS_LATE
+        nullable: true
+        id: days_late
+      - datatype:
+          type: NUMERIC
+          precision: 10
+          originalType: NUMBER
+          originalTypeFull: NUMBER(10,0)
+        name: WISMO_FLAG
+        nullable: true
+        id: wismo_flag
+      - datatype:
+          type: NUMERIC
+          precision: 10
+          originalType: NUMBER
+          originalTypeFull: NUMBER(10,0)
+        name: SHIPMENT_ID
+        nullable: true
+        id: shipment_id
+      - datatype:
+          type: NCLOB
+          length: 134217728
+          originalType: VARCHAR
+          originalTypeFull: VARCHAR(134217728)
+        name: CARRIER_STATUS_RAW
+        nullable: true
+        id: carrier_status_raw
+      - datatype:
+          type: NUMERIC
+          precision: 10
+          originalType: NUMBER
+          originalTypeFull: NUMBER(10,0)
+        name: DELIVERY_ATTEMPTS
+        nullable: true
+        id: delivery_attempts
+      - datatype:
+          type: NCLOB
+          length: 134217728
+          originalType: VARCHAR
+          originalTypeFull: VARCHAR(134217728)
+        name: EXCEPTION_CODE
+        nullable: true
+        id: exception_code
+  customDatasetSettings:
+    customSql:
+      expressionStatement: |-
+        WITH crm_orders AS (
+          SELECT
+            "order_id" AS order_id,
+            "contact_id" AS contact_id,
+            "order_date" AS order_date,
+            "sku" AS sku,
+            "product_name" AS product_name,
+            "fulfillment_method" AS fulfillment_method,
+            "promised_delivery" AS promised_delivery,
+            "actual_delivery" AS actual_delivery,
+            "carrier" AS carrier,
+            "tracking_number" AS tracking_number,
+            "order_status" AS order_status,
+            "wismo_flag" AS wismo_flag,
+            "created_date" AS created_date,
+            "last_modified_date" AS last_modified_date
+          FROM ${crm_orders}
+        ),
+        shipments AS (
+          SELECT
+            "shipment_id" AS shipment_id,
+            "tracking_number" AS tracking_number,
+            "carrier_code" AS carrier_code,
+            "order_id" AS order_id,
+            "shipment_status" AS shipment_status,
+            "status_datetime" AS status_datetime,
+            "origin_facility" AS origin_facility,
+            "destination_address" AS destination_address,
+            "destination_city" AS destination_city,
+            "destination_country" AS destination_country,
+            "estimated_delivery" AS estimated_delivery,
+            "actual_delivery" AS actual_delivery,
+            "delivery_attempts" AS delivery_attempts,
+            "exception_code" AS exception_code,
+            "weight_value" AS weight_value,
+            "weight_unit" AS weight_unit,
+            "created_at" AS created_at,
+            "updated_at" AS updated_at
+          FROM ${shipments}
+        )
+        SELECT
+          o.order_id AS order_id,
+          o.contact_id AS contact_id,
+          o.order_date AS order_date,
+          o.sku AS sku,
+          o.product_name AS product_name,
+          o.fulfillment_method AS fulfillment_method,
+          o.carrier AS carrier_code,
+          o.tracking_number AS tracking_number,
+          o.order_status AS order_status,
+          o.promised_delivery AS promised_delivery,
+          o.actual_delivery AS actual_delivery,
+          CASE WHEN o.tracking_number IS NULL THEN TRUE ELSE FALSE END AS tracking_missing,
+          CASE
+            WHEN o.actual_delivery IS NOT NULL AND o.actual_delivery > o.promised_delivery THEN TRUE
+            ELSE FALSE
+          END AS delivered_late,
+          CASE
+            WHEN o.actual_delivery IS NOT NULL THEN DATEDIFF('day', o.promised_delivery, o.actual_delivery)
+            ELSE NULL
+          END AS days_late,
+          o.wismo_flag AS wismo_flag,
+          s.shipment_id,
+          s.shipment_status AS carrier_status_raw,
+          s.delivery_attempts,
+          s.exception_code
+        FROM crm_orders o
+        LEFT JOIN shipments s
+          ON o.order_id = s.order_id
+      alias:
+        - name: crm_orders
+          value: '{{project.MCG Demo - DI$_$MCG Supply Chain Pipeline - CDC.projectId}}$_$mcg_snowflake_mirror-9xec$_$crm_orders-gpwd'
+        - name: shipments
+          value: '{{project.MCG Demo - DI$_$MCG Supply Chain Pipeline - CDC.projectId}}$_$mcg_wms_snowflake_mirror-gpwi$_$shipments-ig5g'

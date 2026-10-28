@@ -1,0 +1,6 @@
+properties:
+  id: crm_orders-gpwd
+  name: crm_orders
+  inputDatasets:
+    - datasetId: crm_orders-ig4f
+      taskId: mcg_crm_storage-ig4d

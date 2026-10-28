@@ -72,7 +72,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 4g
+          memory: 16g
     environment:
       TENANT_URL: ${TENANT_URL:-your-tenant.us.qlikcloud.com}
       POSTGRES_PASSWORD: ${DMG_POSTGRES_PASSWORD:-Qlik1234}
@@ -96,6 +96,13 @@ services:
       - "${DMG_SSH_PORT:-2222}:22"
     volumes:
       - qlik-mysql-data:/var/lib/mysql
+      # The WMS database, its logical replication slot and the shipment ids the
+      # IoT feed joins on. Without a volume, any recreate (an image or memory
+      # change) brings Postgres back empty: the reseed restarts shipment_id at 1
+      # against the CRM that survived in qlik-mysql-data, and the CDC slot the
+      # gateway task resumes from is gone. entrypoint.sh runs initdb only when
+      # PG_VERSION is missing, so an empty volume initializes itself.
+      - qlik-pgsql-data:/var/lib/pgsql/15/data
       # The gateway's identity lives here. Without a volume, recreating the
       # container mints a brand-new keypair, the tenant still holds the old
       # one, and the registered gateway sits "disconnected" forever with a
@@ -126,6 +133,8 @@ services:
 
 volumes:
   qlik-mysql-data:
+    driver: local
+  qlik-pgsql-data:
     driver: local
   qlik-gateway-data:
     driver: local

@@ -1,0 +1,20 @@
+properties:
+  name: MCG Snowflake Mirror
+  id: snowflake-mirror-4401
+  type: LAKEHOUSE_MIRROR
+  description: Exposes the bronze Iceberg tables to Snowflake as external Iceberg tables, zero-copy, so silver and gold can be built in the Snowflake project.
+settings:
+  artifactsLocation:
+    internalSchema: '{{task.snowflake-mirror-4401.internalSchema}}'
+    taskSchema: '{{task.snowflake-mirror-4401.taskSchema}}'
+    databaseName: '{{task.snowflake-mirror-4401.databaseName}}'
+  taskRuntime:
+    warehouseSelection:
+      warehouseName: '{{task.snowflake-mirror-4401.warehouseName}}'
+  platformConfig:
+    platformType: SNOWFLAKE
+    connection: '{{task.snowflake-mirror-4401.mirrorConnection}}'
+    snowflakeIcebergSettings:
+      snowflakeExternalVolume: '{{task.snowflake-mirror-4401.snowflakeExternalVolume}}'
+      snowflakeCatalogIntegration: '{{task.snowflake-mirror-4401.snowflakeCatalogIntegration}}'
+      refreshMethod: QLIK_MANAGED_REFRESH

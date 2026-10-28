@@ -1,0 +1,11 @@
+sourceConnection: '{{task.mcg_wms_lake_landing-gpva.sourceConnection}}'
+explicitlySelected:
+  - name: inventory_positions
+    schema: '{{task.mcg_wms_lake_landing-gpva:null$_$public.schema}}'
+    type: TABLE
+  - name: shipments
+    schema: '{{task.mcg_wms_lake_landing-gpva:null$_$public.schema}}'
+    type: TABLE
+  - name: warehouse_events
+    schema: '{{task.mcg_wms_lake_landing-gpva:null$_$public.schema}}'
+    type: TABLE

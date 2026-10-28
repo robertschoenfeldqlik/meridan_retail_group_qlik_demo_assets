@@ -1,0 +1,18 @@
+properties:
+  name: MCG Snowflake Mirror
+  id: mcg_snowflake_mirror-9xec
+  type: LAKEHOUSE_MIRROR
+settings:
+  artifactsLocation:
+    internalSchema: '{{task.mcg_snowflake_mirror-9xec.internalSchema}}'
+    taskSchema: '{{task.mcg_snowflake_mirror-9xec.taskSchema}}'
+    databaseName: '{{task.mcg_snowflake_mirror-9xec.databaseName}}'
+  platformConfig:
+    platformType: SNOWFLAKE
+    connection: '{{task.mcg_snowflake_mirror-9xec.targetConnection}}'
+    snowflakeIcebergSettings:
+      snowflakeExternalVolume: '{{task.mcg_snowflake_mirror-9xec.snowflakeExternalVolume}}'
+      snowflakeCatalogIntegration: '{{task.mcg_snowflake_mirror-9xec.snowflakeOpenCatalog}}'
+  taskRuntime:
+    warehouseSelection:
+      warehouseName: '{{task.mcg_snowflake_mirror-9xec.warehouseName}}'

@@ -1,0 +1,13 @@
+{
+  "yaml.schemas": {
+    "schema/project.schema.json": "qtcp_project.yaml",
+    "schema/newtaskdefaults.schema.json": "**/qtcp_tasks/newTaskDefaults.yaml",
+    "schema/task.schema.json": "**/qtcp_tasks/*/task.yaml",
+    "schema/task.model.schema.json": "**/qtcp_tasks/*/model.yaml",
+    "schema/task.schedule.schema.json": "**/qtcp_tasks/*/schedule.yaml",
+    "schema/task.sourceselection.schema.json": "**/qtcp_tasks/*/sourceSelection.yaml",
+    "schema/task.transformationrules.schema.json": "**/qtcp_tasks/*/transformationRules.yaml",
+    "schema/task.dataset.schema.json": "**/qtcp_tasks/*/datasets/*.yaml",
+    "schema/task.transformationdataflow.schema.json": "**/qtcp_tasks/*/transformationDataFlows/*.yaml"
+  }
+}

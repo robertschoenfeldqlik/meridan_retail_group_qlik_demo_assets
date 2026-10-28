@@ -6,17 +6,20 @@
     "task.crm-landing-4102.sourceConnection": "",
     "task.crm-landing-4102.taskSchema": "",
     "task.crm-landing-4102:null$_$mcg_crm.schema": "",
-    "task.silver-transform-4201.internalSchema": "",
-    "task.silver-transform-4201.taskSchema": "",
-    "task.silver-transform-4201.databaseName": "",
-    "task.silver-transform-4201.warehouseName": "",
-    "task.gold-datamart-4301.internalSchema": "",
-    "task.gold-datamart-4301.taskSchema": "",
-    "task.gold-datamart-4301.databaseName": "",
-    "task.gold-datamart-4301.warehouseName": ""
+    "task.lakehouse-storage-4151.internalSchema": "",
+    "task.lakehouse-storage-4151.taskSchema": "",
+    "task.lakehouse-storage-4151.lakehouseCluster": "",
+    "task.snowflake-mirror-4401.internalSchema": "",
+    "task.snowflake-mirror-4401.taskSchema": "",
+    "task.snowflake-mirror-4401.databaseName": "",
+    "task.snowflake-mirror-4401.warehouseName": "",
+    "task.snowflake-mirror-4401.mirrorConnection": "",
+    "task.snowflake-mirror-4401.snowflakeExternalVolume": "",
+    "task.snowflake-mirror-4401.snowflakeCatalogIntegration": ""
   },
   "connectionProperties": {
     "task.wms-cdc-landing-4101.sourceConnection": {},
-    "task.crm-landing-4102.sourceConnection": {}
+    "task.crm-landing-4102.sourceConnection": {},
+    "task.snowflake-mirror-4401.mirrorConnection": {}
   }
 }

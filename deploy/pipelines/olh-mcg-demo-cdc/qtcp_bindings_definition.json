@@ -1,0 +1,48 @@
+{
+  "variables": {
+    "cloudStagingConnection": "",
+    "platformConnection": "",
+    "projectName": "",
+    "project.current.prefixSchema": "",
+    "task.mcg_crm_lake_landing-ig4c.sourceConnection": "",
+    "task.mcg_crm_lake_landing-ig4c.taskSchema": "",
+    "task.mcg_crm_lake_landing-ig4c:null$_$mcg_crm.schema": "",
+    "task.mcg_crm_storage-ig4d.internalSchema": "",
+    "task.mcg_crm_storage-ig4d.lakehouseCluster": "",
+    "task.mcg_crm_storage-ig4d.taskSchema": "",
+    "task.mcg_snowflake_mirror-9xec.databaseName": "",
+    "task.mcg_snowflake_mirror-9xec.internalSchema": "",
+    "task.mcg_snowflake_mirror-9xec.snowflakeExternalVolume": "",
+    "task.mcg_snowflake_mirror-9xec.snowflakeOpenCatalog": "",
+    "task.mcg_snowflake_mirror-9xec.targetConnection": "",
+    "task.mcg_snowflake_mirror-9xec.taskSchema": "",
+    "task.mcg_snowflake_mirror-9xec.warehouseName": "",
+    "task.mcg_wms_lake_landing-gpva.sourceConnection": "",
+    "task.mcg_wms_lake_landing-gpva.taskSchema": "",
+    "task.mcg_wms_lake_landing-gpva:null$_$public.schema": "",
+    "task.mcg_wms_snowflake_mirror-gpwi.databaseName": "",
+    "task.mcg_wms_snowflake_mirror-gpwi.internalSchema": "",
+    "task.mcg_wms_snowflake_mirror-gpwi.snowflakeExternalVolume": "",
+    "task.mcg_wms_snowflake_mirror-gpwi.snowflakeOpenCatalog": "",
+    "task.mcg_wms_snowflake_mirror-gpwi.targetConnection": "",
+    "task.mcg_wms_snowflake_mirror-gpwi.taskSchema": "",
+    "task.mcg_wms_snowflake_mirror-gpwi.warehouseName": "",
+    "task.mcg_wms_storage-gpvb.internalSchema": "",
+    "task.mcg_wms_storage-gpvb.lakehouseCluster": "",
+    "task.mcg_wms_storage-gpvb.taskSchema": ""
+  },
+  "connectionProperties": {
+    "task.mcg_crm_lake_landing-ig4c.sourceConnection": {
+      "type": "repsrc_mysql"
+    },
+    "task.mcg_snowflake_mirror-9xec.targetConnection": {
+      "type": "reptgt_qdisnowflake"
+    },
+    "task.mcg_wms_lake_landing-gpva.sourceConnection": {
+      "type": "repsrc_postgresql"
+    },
+    "task.mcg_wms_snowflake_mirror-gpwi.targetConnection": {
+      "type": "reptgt_qdisnowflake"
+    }
+  }
+}

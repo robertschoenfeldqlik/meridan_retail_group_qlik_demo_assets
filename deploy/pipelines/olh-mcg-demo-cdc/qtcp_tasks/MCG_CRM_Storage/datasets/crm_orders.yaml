@@ -1,0 +1,6 @@
+properties:
+  id: crm_orders-ig4f
+  name: crm_orders
+  inputDatasets:
+    - datasetId: crm_orders
+      taskId: mcg_crm_lake_landing-ig4c

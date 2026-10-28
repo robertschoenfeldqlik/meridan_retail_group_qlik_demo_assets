@@ -1,0 +1,156 @@
+properties:
+  id: products_harmonized
+  name: products_harmonized
+  inputDatasets:
+    - datasetId: crm_products-gpwe
+      projectId: '{{project.MCG Demo - DI$_$MCG Supply Chain Pipeline - CDC.projectId}}'
+      taskId: mcg_snowflake_mirror-9xec
+  tableDef:
+    columns:
+      - datatype:
+          type: NCLOB
+          length: 134217728
+          originalType: VARCHAR
+          originalTypeFull: VARCHAR(134217728)
+        name: SKU
+        primaryKeyOrdinal: 1
+        id: sku
+      - datatype:
+          type: NCLOB
+          length: 134217728
+          originalType: VARCHAR
+          originalTypeFull: VARCHAR(134217728)
+        name: LEGACY_SKU_AMERICAS
+        nullable: true
+        id: legacy_sku_americas
+      - datatype:
+          type: NCLOB
+          length: 134217728
+          originalType: VARCHAR
+          originalTypeFull: VARCHAR(134217728)
+        name: LEGACY_SKU_EU
+        nullable: true
+        id: legacy_sku_eu
+      - datatype:
+          type: NCLOB
+          length: 134217728
+          originalType: VARCHAR
+          originalTypeFull: VARCHAR(134217728)
+        name: PRODUCT_NAME
+        nullable: true
+        id: product_name
+      - datatype:
+          type: NCLOB
+          length: 134217728
+          originalType: VARCHAR
+          originalTypeFull: VARCHAR(134217728)
+        name: CATEGORY_L1
+        nullable: true
+        id: category_l1
+      - datatype:
+          type: NCLOB
+          length: 134217728
+          originalType: VARCHAR
+          originalTypeFull: VARCHAR(134217728)
+        name: CATEGORY_L2
+        nullable: true
+        id: category_l2
+      - datatype:
+          type: NCLOB
+          length: 134217728
+          originalType: VARCHAR
+          originalTypeFull: VARCHAR(134217728)
+        name: CATEGORY_L3
+        id: category_l3
+      - datatype:
+          type: NUMERIC
+          precision: 23
+          scale: 5
+          originalType: NUMBER
+          originalTypeFull: NUMBER(23,5)
+        name: WEIGHT_KG
+        nullable: true
+        id: weight_kg
+      - datatype:
+          type: BOOLEAN
+          originalType: BOOLEAN
+          originalTypeFull: BOOLEAN
+        name: WEIGHT_IMPUTED
+        nullable: true
+        id: weight_imputed
+      - datatype:
+          type: NCLOB
+          length: 134217728
+          originalType: VARCHAR
+          originalTypeFull: VARCHAR(134217728)
+        name: COUNTRY_OF_ORIGIN
+        nullable: true
+        id: country_of_origin
+      - datatype:
+          type: BOOLEAN
+          originalType: BOOLEAN
+          originalTypeFull: BOOLEAN
+        name: ORIGIN_MISSING_COMPLIANCE_RISK
+        nullable: true
+        id: origin_missing_compliance_risk
+      - datatype:
+          type: NCLOB
+          length: 134217728
+          originalType: VARCHAR
+          originalTypeFull: VARCHAR(134217728)
+        name: SUPPLIER_NAME_RAW
+        nullable: true
+        id: supplier_name_raw
+      - datatype:
+          type: NCLOB
+          length: 134217728
+          originalType: VARCHAR
+          originalTypeFull: VARCHAR(134217728)
+        name: SUPPLIER_CANONICAL
+        nullable: true
+        id: supplier_canonical
+  customDatasetSettings:
+    customSql:
+      expressionStatement: |-
+        WITH crm_products AS (
+          SELECT
+            "sku" AS sku,
+            "legacy_sku_americas" AS legacy_sku_americas,
+            "legacy_sku_eu" AS legacy_sku_eu,
+            "product_name" AS product_name,
+            "category_l1" AS category_l1,
+            "category_l2" AS category_l2,
+            "category_l3" AS category_l3,
+            "weight_kg" AS weight_kg,
+            "country_of_origin" AS country_of_origin,
+            "supplier_name" AS supplier_name,
+            "created_date" AS created_date,
+            "last_modified_date" AS last_modified_date
+          FROM ${crm_products}
+        )
+        SELECT
+          sku AS sku,
+          legacy_sku_americas AS legacy_sku_americas,
+          legacy_sku_eu AS legacy_sku_eu,
+          product_name AS product_name,
+          category_l1 AS category_l1,
+          category_l2 AS category_l2,
+          COALESCE(category_l3, 'UNCLASSIFIED') AS category_l3,
+          COALESCE(
+            NULLIF(weight_kg, 0),
+            AVG(NULLIF(weight_kg, 0)) OVER (PARTITION BY category_l1)
+          ) AS weight_kg,
+          CASE WHEN weight_kg IS NULL OR weight_kg = 0 THEN TRUE ELSE FALSE END AS weight_imputed,
+          country_of_origin AS country_of_origin,
+          CASE WHEN country_of_origin IS NULL AND category_l1 = 'Grocery' THEN TRUE ELSE FALSE END AS origin_missing_compliance_risk,
+          supplier_name AS supplier_name_raw,
+          CASE
+            WHEN UPPER(supplier_name) LIKE 'SAMSUNG%' THEN 'Samsung Electronics'
+            WHEN UPPER(supplier_name) LIKE 'FRESHDIRECT%' OR UPPER(supplier_name) LIKE 'FRESH DIRECT%' THEN 'FreshDirect'
+            WHEN UPPER(supplier_name) LIKE 'TRANSFRIO%' OR UPPER(supplier_name) LIKE 'TRANS FRIO%' THEN 'TransFrio'
+            ELSE TRIM(supplier_name)
+          END AS supplier_canonical
+        FROM crm_products
+      alias:
+        - name: crm_products
+          value: '{{project.MCG Demo - DI$_$MCG Supply Chain Pipeline - CDC.projectId}}$_$mcg_snowflake_mirror-9xec$_$crm_products-gpwe'

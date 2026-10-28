@@ -1,0 +1,194 @@
+properties:
+  id: inventory_reconciled
+  name: inventory_reconciled
+  inputDatasets:
+    - datasetId: inventory_positions-ig5f
+      projectId: '{{project.MCG Demo - DI$_$MCG Supply Chain Pipeline - CDC.projectId}}'
+      taskId: mcg_wms_snowflake_mirror-gpwi
+  tableDef:
+    columns:
+      - datatype:
+          type: NUMERIC
+          precision: 10
+          originalType: NUMBER
+          originalTypeFull: NUMBER(10,0)
+        name: POSITION_ID
+        primaryKeyOrdinal: 1
+        id: position_id
+      - datatype:
+          type: NCLOB
+          length: 134217728
+          originalType: VARCHAR
+          originalTypeFull: VARCHAR(134217728)
+        name: LOCATION_ID
+        nullable: true
+        id: location_id
+      - datatype:
+          type: NCLOB
+          length: 134217728
+          originalType: VARCHAR
+          originalTypeFull: VARCHAR(134217728)
+        name: SKU
+        nullable: true
+        id: sku
+      - datatype:
+          type: NCLOB
+          length: 134217728
+          originalType: VARCHAR
+          originalTypeFull: VARCHAR(134217728)
+        name: LOT_NUMBER
+        nullable: true
+        id: lot_number
+      - datatype:
+          type: NUMERIC
+          precision: 10
+          originalType: NUMBER
+          originalTypeFull: NUMBER(10,0)
+        name: QUANTITY_ON_HAND
+        nullable: true
+        id: quantity_on_hand
+      - datatype:
+          type: NUMERIC
+          precision: 10
+          originalType: NUMBER
+          originalTypeFull: NUMBER(10,0)
+        name: QUANTITY_AVAILABLE
+        nullable: true
+        id: quantity_available
+      - datatype:
+          type: NUMERIC
+          precision: 10
+          originalType: NUMBER
+          originalTypeFull: NUMBER(10,0)
+        name: QUANTITY_RESERVED
+        nullable: true
+        id: quantity_reserved
+      - datatype:
+          type: NUMERIC
+          precision: 10
+          originalType: NUMBER
+          originalTypeFull: NUMBER(10,0)
+        name: QUANTITY_IN_TRANSIT
+        nullable: true
+        id: quantity_in_transit
+      - datatype:
+          type: NCLOB
+          length: 134217728
+          originalType: VARCHAR
+          originalTypeFull: VARCHAR(134217728)
+        name: UNIT_OF_MEASURE
+        id: unit_of_measure
+      - datatype:
+          type: NCLOB
+          length: 134217728
+          originalType: VARCHAR
+          originalTypeFull: VARCHAR(134217728)
+        name: STORAGE_ZONE
+        id: storage_zone
+      - datatype:
+          type: BOOLEAN
+          originalType: BOOLEAN
+          originalTypeFull: BOOLEAN
+        name: LOGIC_ERROR
+        nullable: true
+        id: logic_error
+      - datatype:
+          type: BOOLEAN
+          originalType: BOOLEAN
+          originalTypeFull: BOOLEAN
+        name: PHANTOM_SUSPECT
+        nullable: true
+        id: phantom_suspect
+      - datatype:
+          type: BOOLEAN
+          originalType: BOOLEAN
+          originalTypeFull: BOOLEAN
+        name: LOT_MISSING
+        nullable: true
+        id: lot_missing
+      - datatype:
+          type: DATETIME
+          precision: 6
+          originalType: TIMESTAMPLTZ
+          originalTypeFull: TIMESTAMPLTZ(6)
+        name: LAST_COUNT_DATE
+        nullable: true
+        id: last_count_date
+      - datatype:
+          type: DATETIME
+          precision: 6
+          originalType: TIMESTAMPLTZ
+          originalTypeFull: TIMESTAMPLTZ(6)
+        name: SNAPSHOT_TIMESTAMP
+        nullable: true
+        id: snapshot_timestamp
+      - datatype:
+          type: NUMERIC
+          precision: 2
+          scale: 1
+          originalType: NUMBER
+          originalTypeFull: NUMBER(2,1)
+        name: TRUST_SCORE
+        id: trust_score
+  customDatasetSettings:
+    customSql:
+      expressionStatement: |-
+        WITH inventory_positions AS (
+          SELECT
+            "position_id" AS position_id,
+            "location_id" AS location_id,
+            "sku" AS sku,
+            "lot_number" AS lot_number,
+            "quantity_on_hand" AS quantity_on_hand,
+            "quantity_available" AS quantity_available,
+            "quantity_reserved" AS quantity_reserved,
+            "quantity_in_transit" AS quantity_in_transit,
+            "unit_of_measure" AS unit_of_measure,
+            "storage_zone" AS storage_zone,
+            "last_count_date" AS last_count_date,
+            "snapshot_timestamp" AS snapshot_timestamp,
+            "created_at" AS created_at,
+            "updated_at" AS updated_at
+          FROM ${inventory_positions}
+        )
+        SELECT
+          position_id,
+          location_id,
+          sku,
+          lot_number,
+          quantity_on_hand,
+          quantity_available,
+          quantity_reserved,
+          quantity_in_transit,
+          CASE
+            WHEN UPPER(unit_of_measure) IN ('EA', 'EACH', 'UNIT', 'PK') THEN 'EA'
+            WHEN UPPER(unit_of_measure) IN ('CS', 'CASE') THEN 'CS'
+            WHEN UPPER(unit_of_measure) IN ('PAL', 'PALLET', 'PLT') THEN 'PAL'
+            ELSE COALESCE(UPPER(unit_of_measure), 'UNKNOWN')
+          END AS unit_of_measure,
+          CASE
+            WHEN UPPER(storage_zone) IN ('KALT', 'FROID', 'KAELTE', 'CHILLED') THEN 'CHILLED'
+            WHEN UPPER(storage_zone) IN ('GEFRIER', 'FRZ', 'FROZEN') THEN 'FROZEN'
+            WHEN UPPER(storage_zone) IN ('AMB', 'ROOM_TEMP', 'AMBIENT') THEN 'AMBIENT'
+            ELSE COALESCE(UPPER(storage_zone), 'UNKNOWN')
+          END AS storage_zone,
+          CASE WHEN quantity_on_hand < 0 THEN TRUE ELSE FALSE END AS logic_error,
+          CASE
+            WHEN quantity_on_hand > COALESCE(quantity_available, 0) + COALESCE(quantity_reserved, 0) + COALESCE(quantity_in_transit, 0)
+            THEN TRUE ELSE FALSE
+          END AS phantom_suspect,
+          CASE WHEN lot_number IS NULL AND sku LIKE '%GRO%' THEN TRUE ELSE FALSE END AS lot_missing,
+          last_count_date,
+          snapshot_timestamp,
+          CASE
+            WHEN quantity_on_hand < 0 THEN 0.1
+            WHEN quantity_on_hand > COALESCE(quantity_available, 0) + COALESCE(quantity_reserved, 0) + COALESCE(quantity_in_transit, 0) THEN 0.3
+            WHEN UPPER(unit_of_measure) NOT IN ('EA', 'CS', 'PAL')
+              OR UPPER(storage_zone) NOT IN ('AMBIENT', 'CHILLED', 'FROZEN')
+              OR (lot_number IS NULL AND sku LIKE '%GRO%') THEN 0.7
+            ELSE 1.0
+          END AS trust_score
+        FROM inventory_positions
+      alias:
+        - name: inventory_positions
+          value: '{{project.MCG Demo - DI$_$MCG Supply Chain Pipeline - CDC.projectId}}$_$mcg_wms_snowflake_mirror-gpwi$_$inventory_positions-ig5f'

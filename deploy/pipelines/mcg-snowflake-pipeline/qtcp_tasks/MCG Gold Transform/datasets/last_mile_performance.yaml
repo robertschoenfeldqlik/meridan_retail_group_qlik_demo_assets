@@ -1,0 +1,134 @@
+properties:
+  id: last_mile_performance-zzrd
+  name: last_mile_performance
+  inputDatasets:
+    - datasetId: addresses_standardized
+      name: addresses_standardized
+      taskId: silver-transform-4201
+    - datasetId: order_delivery_timeline
+      name: order_delivery_timeline
+      taskId: silver-transform-4201
+    - datasetId: shipments_canonical
+      name: shipments_canonical
+      taskId: silver-transform-4201
+  tableDef:
+    columns:
+      - datatype:
+          type: NCLOB
+          length: 134217728
+          originalType: VARCHAR
+          originalTypeFull: VARCHAR(134217728)
+        name: CARRIER_CODE
+        primaryKeyOrdinal: 1
+        id: carrier_code
+      - datatype:
+          type: NCLOB
+          length: 134217728
+          originalType: VARCHAR
+          originalTypeFull: VARCHAR(134217728)
+        name: DESTINATION_COUNTRY
+        primaryKeyOrdinal: 1
+        id: destination_country
+      - datatype:
+          type: NUMERIC
+          precision: 18
+          originalType: NUMBER
+          originalTypeFull: NUMBER(18,0)
+        name: ORDERS
+        id: orders
+      - datatype:
+          type: NUMERIC
+          precision: 13
+          originalType: NUMBER
+          originalTypeFull: NUMBER(13,0)
+        name: DELIVERED_ORDERS
+        nullable: true
+        id: delivered_orders
+      - datatype:
+          type: NUMERIC
+          precision: 13
+          originalType: NUMBER
+          originalTypeFull: NUMBER(13,0)
+        name: LATE_DELIVERIES
+        nullable: true
+        id: late_deliveries
+      - datatype:
+          type: NUMERIC
+          precision: 22
+          scale: 3
+          originalType: NUMBER
+          originalTypeFull: NUMBER(22,3)
+        name: ON_TIME_RATE
+        nullable: true
+        id: on_time_rate
+      - datatype:
+          type: NUMERIC
+          precision: 28
+          scale: 1
+          originalType: NUMBER
+          originalTypeFull: NUMBER(28,1)
+        name: AVG_DAYS_LATE
+        nullable: true
+        id: avg_days_late
+      - datatype:
+          type: NUMERIC
+          precision: 13
+          originalType: NUMBER
+          originalTypeFull: NUMBER(13,0)
+        name: WISMO_INQUIRIES
+        nullable: true
+        id: wismo_inquiries
+      - datatype:
+          type: NUMERIC
+          precision: 21
+          scale: 3
+          originalType: NUMBER
+          originalTypeFull: NUMBER(21,3)
+        name: WISMO_RATE
+        nullable: true
+        id: wismo_rate
+      - datatype:
+          type: NUMERIC
+          precision: 13
+          originalType: NUMBER
+          originalTypeFull: NUMBER(13,0)
+        name: TRACKING_MISSING_COUNT
+        nullable: true
+        id: tracking_missing_count
+      - datatype:
+          type: NUMERIC
+          precision: 25
+          scale: 3
+          originalType: NUMBER
+          originalTypeFull: NUMBER(25,3)
+        name: AVG_ADDRESS_QUALITY
+        nullable: true
+        id: avg_address_quality
+  customDatasetSettings:
+    customSql:
+      expressionStatement: |-
+        SELECT
+          t.carrier_code,
+          COALESCE(s.destination_country, 'UNKNOWN') AS destination_country,
+          COUNT(*) AS orders,
+          SUM(CASE WHEN t.order_status = 'DELIVERED' THEN 1 ELSE 0 END) AS delivered_orders,
+          SUM(CASE WHEN t.delivered_late = TRUE THEN 1 ELSE 0 END) AS late_deliveries,
+          ROUND(1.0 - SUM(CASE WHEN t.delivered_late = TRUE THEN 1 ELSE 0 END) * 1.0
+            / NULLIF(SUM(CASE WHEN t.actual_delivery IS NOT NULL THEN 1 ELSE 0 END), 0), 3) AS on_time_rate,
+          ROUND(AVG(CASE WHEN t.days_late > 0 THEN t.days_late END), 1) AS avg_days_late,
+          SUM(CASE WHEN t.wismo_flag = TRUE THEN 1 ELSE 0 END) AS wismo_inquiries,
+          ROUND(SUM(CASE WHEN t.wismo_flag = TRUE THEN 1 ELSE 0 END) * 1.0 / COUNT(*), 3) AS wismo_rate,
+          SUM(CASE WHEN t.tracking_missing = TRUE THEN 1 ELSE 0 END) AS tracking_missing_count,
+          ROUND(AVG(a.address_quality_score), 3) AS avg_address_quality
+        FROM ${order_delivery_timeline} t
+        LEFT JOIN ${shipments_canonical} s ON t.order_id = s.order_id
+        LEFT JOIN ${addresses_standardized} a ON t.contact_id = a.contact_id
+        GROUP BY t.carrier_code, COALESCE(s.destination_country, 'UNKNOWN')
+      alias:
+        - name: order_delivery_timeline
+          value: '{{ref(project.current.projectId)}}$_$silver-transform-4201$_$order_delivery_timeline'
+        - name: shipments_canonical
+          value: '{{ref(project.current.projectId)}}$_$silver-transform-4201$_$shipments_canonical'
+        - name: addresses_standardized
+          value: '{{ref(project.current.projectId)}}$_$silver-transform-4201$_$addresses_standardized'
+  description: 'Last-mile delivery performance per carrier and destination country: orders, deliveries, late deliveries, on-time rate, WISMO rate, missing tracking and address quality.'

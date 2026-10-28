@@ -1,0 +1,6 @@
+properties:
+  id: inventory_positions-gpvc
+  name: inventory_positions
+  inputDatasets:
+    - datasetId: inventory_positions
+      taskId: mcg_wms_lake_landing-gpva

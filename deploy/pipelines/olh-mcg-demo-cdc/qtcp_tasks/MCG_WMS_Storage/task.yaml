@@ -1,0 +1,10 @@
+properties:
+  name: MCG_WMS_Storage
+  id: mcg_wms_storage-gpvb
+  type: LAKEHOUSE_STORAGE
+settings:
+  artifactsLocation:
+    internalSchema: '{{task.mcg_wms_storage-gpvb.internalSchema}}'
+    taskSchema: '{{task.mcg_wms_storage-gpvb.taskSchema}}'
+  taskRuntime:
+    lakehouseCluster: '{{task.mcg_wms_storage-gpvb.lakehouseCluster}}'

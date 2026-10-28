@@ -32,6 +32,7 @@ const { resolveEngine, composeCmd, engineEnv } = require('./container-engine');
 const stewardship = require('./stewardship');
 const automationWorkspaces = require('./automation-workspaces');
 const { parseModules, isAll, applyModuleMask, moduleForWorkspace } = require('./modules');
+const { pipelineProjectName, pipelineProjectDefs } = require('./pipeline-projects');
 const { DOCS_DIR } = require('../generators/lib/asset-paths');
 
 // ---------------------------------------------------------------------------
@@ -1994,11 +1995,16 @@ async function resolvePipelineBindings(client, cfg, log, srcDir, ctx = {}) {
     return connectionValue((dc.snowflake && dc.snowflake.name) || '');
   }
 
-  async function projectIdFor(name) {
+  async function projectIdFor(name, spaceName) {
     if (!name) return '';
     if (ctx.projectIds && ctx.projectIds[name]) return ctx.projectIds[name];
     try {
-      const p = await client.findDiProjectByName(name, ctx.spaceId);
+      let spaceId = ctx.spaceId;
+      if (spaceName) {
+        const space = await client.findSpaceByName(spaceName);
+        if (space) spaceId = space.id;
+      }
+      const p = await client.findDiProjectByName(name, spaceId);
       return p ? p.id : '';
     } catch (err) {
       log.debug(`Project lookup failed for "${name}": ${err.message}`);
@@ -2007,8 +2013,28 @@ async function resolvePipelineBindings(client, cfg, log, srcDir, ctx = {}) {
   }
 
   const resolved = {};
+  const unresolvedProjects = [];
+  ctx.upstreamProjectIds = [];
   for (const name of names) {
     // Project-level variables (no task prefix).
+    if (name === 'projectName') {
+      if (ctx.def && ctx.def.projectName) resolved[name] = ctx.def.projectName;
+      continue;
+    }
+    // A cross-project input, exported as project.<space>$_$<project>.projectId:
+    // the warehouse project reading the lakehouse project's mirrors. The import
+    // answers 400 VARIABLES-NOT-FOUND without it, so resolve it or stop here.
+    const pm = name.match(/^project\.(.+)\$_\$(.+)\.projectId$/);
+    if (pm) {
+      const id = await projectIdFor(pm[2], pm[1]);
+      if (id) {
+        resolved[name] = id;
+        ctx.upstreamProjectIds.push(id);
+      } else {
+        unresolvedProjects.push({ name, space: pm[1], project: pm[2] });
+      }
+      continue;
+    }
     if (name === 'platformConnection') {
       const v = onSnowflake ? await snowflakeConnection() : await connectionValue((ctx.def && ctx.def.platformConnection) || '');
       if (v) resolved[name] = v;
@@ -2065,6 +2091,7 @@ async function resolvePipelineBindings(client, cfg, log, srcDir, ctx = {}) {
       value = sf.catalogIntegration || '';
     } else if (prop === 'sourceProject') {
       value = await projectIdFor(pCfg.mirrorSourceProject || 'MCG Batch Pipeline');
+      if (value) ctx.upstreamProjectIds.push(value);
     }
 
     if (value) resolved[name] = value;
@@ -2072,6 +2099,13 @@ async function resolvePipelineBindings(client, cfg, log, srcDir, ctx = {}) {
 
   for (const [k, v] of Object.entries(pCfg.bindings || {})) {
     if (v !== undefined && v !== null && v !== '') resolved[k] = v;
+  }
+
+  const missing = unresolvedProjects.filter((u) => !resolved[u.name]);
+  if (missing.length > 0) {
+    throw new Error(missing.map((u) =>
+      `upstream project "${u.project}" not found in space "${u.space}" — create it first `
+      + `(list it in pipelines.projects ahead of this one) or set pipelines.bindings["${u.name}"]`).join('; '));
   }
   return resolved;
 }
@@ -2086,25 +2120,29 @@ async function waitForUpstreamMirror(client, log, upstreamProjectId, minutes) {
     log.warn('Upstream lakehouse project id unknown — preparing the warehouse project without waiting for the mirror.');
     return;
   }
-  let mirror = null;
+  let mirrors = [];
   try {
     const tasks = await client.listDiTasks(upstreamProjectId);
-    mirror = tasks.find((t) => /MIRROR/i.test(String(t.type || '')) || /mirror/i.test(String(t.name || '')));
+    mirrors = tasks.filter((t) => /MIRROR/i.test(String(t.type || '')) || /mirror/i.test(String(t.name || '')));
   } catch (err) {
     log.warn(`Could not list upstream tasks: ${err.message}`);
     return;
   }
-  if (!mirror) { log.warn('No mirror task found in the upstream lakehouse project — not waiting.'); return; }
+  if (mirrors.length === 0) { log.warn('No mirror task found in the upstream lakehouse project — not waiting.'); return; }
+  // Silver reads every mirror (CRM and WMS), so wait for each one.
   const deadline = Date.now() + minutes * 60 * 1000;
-  let last = '';
-  log.info(`Waiting up to ${minutes} min for "${mirror.name}" to run before preparing the warehouse project…`);
-  while (Date.now() < deadline) {
-    const st = await client.getDiTaskState(upstreamProjectId, mirror.id);
-    last = JSON.stringify(st).slice(0, 200);
-    if (/RUNNING|COMPLETED|SUCCEEDED/i.test(last)) { log.success(`"${mirror.name}" is ${last}`); return; }
-    await sleep(15000);
+  for (const mirror of mirrors) {
+    let last = '';
+    log.info(`Waiting up to ${minutes} min for "${mirror.name}" to run before preparing the warehouse project…`);
+    let running = false;
+    while (Date.now() < deadline) {
+      const st = await client.getDiTaskState(upstreamProjectId, mirror.id);
+      last = JSON.stringify(st).slice(0, 200);
+      if (/RUNNING|COMPLETED|SUCCEEDED/i.test(last)) { log.success(`"${mirror.name}" is ${last}`); running = true; break; }
+      await sleep(15000);
+    }
+    if (!running) log.warn(`"${mirror.name}" not running after ${minutes} min (last state ${last}) — preparing anyway.`);
   }
-  log.warn(`"${mirror.name}" not running after ${minutes} min (last state ${last}) — preparing anyway.`);
 }
 
 // ---------------------------------------------------------------------------
@@ -2359,15 +2397,7 @@ async function main() {
       process.exit(EXIT_SUCCESS);
     }
     const pCfg = cfg.pipelines || {};
-    const projectDefs = (Array.isArray(pCfg.projects) && pCfg.projects.length > 0)
-      ? pCfg.projects
-      : (pCfg.projectName || pCfg.sourceDir)
-        ? [{ projectName: pCfg.projectName || 'MCG Batch Pipeline', sourceDir: pCfg.sourceDir }]
-        : [
-            { projectName: 'MCG Batch Pipeline',        sourceDir: './pipelines/mcg-batch-pipeline' },
-            { projectName: 'MCG Streaming Pipeline',    sourceDir: './pipelines/mcg-streaming-pipeline' },
-            { projectName: 'MCG Supply Chain Pipeline', sourceDir: './pipelines/mcg-snowflake-pipeline' },
-          ];
+    const projectDefs = pipelineProjectDefs(pCfg);
     let failures = 0;
     for (const def of projectDefs) {
       try {
@@ -3241,23 +3271,15 @@ async function main() {
 
     // Project list: pipelines.projects[] (preferred), legacy single-project
     // fields, or the three repo defaults (batch + streaming on the Open
-    // Lakehouse, supply chain on Snowflake).
-    const projectDefsRaw = (Array.isArray(pCfg.projects) && pCfg.projects.length > 0)
-      ? pCfg.projects
-      : (pCfg.projectName || pCfg.sourceDir)
-        ? [{ projectName: pCfg.projectName || 'MCG Batch Pipeline', sourceDir: pCfg.sourceDir }]
-        : [
-            { projectName: 'MCG Batch Pipeline',        sourceDir: './pipelines/mcg-batch-pipeline' },
-            { projectName: 'MCG Streaming Pipeline',    sourceDir: './pipelines/mcg-streaming-pipeline' },
-            { projectName: 'MCG Supply Chain Pipeline', sourceDir: './pipelines/mcg-snowflake-pipeline' },
-          ];
+    // Lakehouse, supply chain on Snowflake), each named by its bindings.json.
+    const projectDefsRaw = pipelineProjectDefs(pCfg);
 
     // The platform comes from each project's own qtcp_project.yaml — the UI
     // writes one pipelines.platformType for every project, and a Snowflake
     // project created as QLIK_OPEN_LAKEHOUSE would reject its own tasks.
-    // Open Lakehouse projects go first: the Snowflake project reads the
-    // batch project's mirror, so that project must exist before its binding
-    // to it can resolve.
+    // Open Lakehouse projects go first: the Snowflake project reads a
+    // lakehouse project's mirrors, so that project must exist before its
+    // binding to it can resolve.
     const yamlPlatform = (def) => {
       try {
         const raw = fs.readFileSync(path.join(path.resolve(SCRIPT_DIR, def.sourceDir || '.'), 'qtcp_project.yaml'), 'utf-8');
@@ -3301,7 +3323,7 @@ async function main() {
     };
 
     for (const def of projectDefs) {
-      const projectName = def.projectName || path.basename(def.sourceDir || 'pipeline');
+      const projectName = def.projectName || pipelineProjectName(def.sourceDir) || path.basename(def.sourceDir || 'pipeline');
       const reportKey = `Pipeline: ${projectName}`;
       try {
         const srcDir = path.resolve(SCRIPT_DIR, def.sourceDir || '.');
@@ -3352,8 +3374,8 @@ async function main() {
         //    variable the project declares already has a value and otherwise answers
         //    400 VARIABLES-NOT-FOUND — "update the project's export variables using
         //    the PUT bindings API before attempting to import again".
-        const variables = await resolvePipelineBindings(client, cfg, log, srcDir,
-          { platformType: def.platformType, projectIds, spaceId, def });
+        const bindCtx = { platformType: def.platformType, projectIds, spaceId, def: Object.assign({}, def, { projectName }) };
+        const variables = await resolvePipelineBindings(client, cfg, log, srcDir, bindCtx);
         if (Object.keys(variables).length > 0) {
           await client.updateDiProjectBindings(project.id, variables);
           log.success(`Set ${Object.keys(variables).length} binding variable(s) (connections, schemas, clusters).`);
@@ -3369,8 +3391,11 @@ async function main() {
         //    A warehouse project built on the lakehouse mirror can only prepare
         //    once the mirror has tables, so give the upstream mirror a moment.
         if (pCfg.prepare === true && pCfg.run === true && def.platformType !== 'QLIK_OPEN_LAKEHOUSE') {
-          await waitForUpstreamMirror(client, log, projectIds[pCfg.mirrorSourceProject || 'MCG Batch Pipeline'],
-            Number(pCfg.upstreamWaitMinutes) || 10);
+          // The project this one's bindings read from; mirrorSourceProject only
+          // covers older definitions that use the bare sourceProject variable.
+          const upstreamId = bindCtx.upstreamProjectIds[0]
+            || projectIds[pCfg.mirrorSourceProject || 'MCG Batch Pipeline'];
+          await waitForUpstreamMirror(client, log, upstreamId, Number(pCfg.upstreamWaitMinutes) || 10);
         }
         if (pCfg.prepare === true) {
           await client.prepareDiProject(project.id);

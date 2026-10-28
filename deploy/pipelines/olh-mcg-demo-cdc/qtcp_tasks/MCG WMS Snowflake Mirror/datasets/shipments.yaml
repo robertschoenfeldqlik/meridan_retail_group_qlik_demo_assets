@@ -1,0 +1,6 @@
+properties:
+  id: shipments-ig5g
+  name: shipments
+  inputDatasets:
+    - datasetId: shipments-gpvd
+      taskId: mcg_wms_storage-gpvb

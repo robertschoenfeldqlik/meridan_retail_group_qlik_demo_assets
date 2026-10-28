@@ -1,6 +1,0 @@
-scheduling:
-  - schedulingType: EVENT_BASED
-    enabled: true
-    description: Run when any upstream landing task completes
-    eventBasedScheduling:
-      eventSchedulingType: ANY_INPUT_TASK

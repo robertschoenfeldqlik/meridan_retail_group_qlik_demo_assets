@@ -1,6 +1,0 @@
-includePatterns:
-  - tablePattern: '%'
-    sourceTask: 'silver-transform-4201'
-    type: TABLE
-excludePatterns: []
-explicitlySelected: []

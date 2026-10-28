@@ -1,0 +1,12 @@
+// Self-test fixture: reads gold from the warehouse. The old QVD read below is
+// commented out and must not count against the probe.
+LIB CONNECT TO 'MCG Snowflake';
+
+SupplyChainHealth:
+LOAD *;
+SQL SELECT location_id, sku_positions, avg_trust_score
+FROM "MCG_DEMO"."GOLD"."SUPPLY_CHAIN_HEALTH";
+
+// FROM [lib://MCG Demo - Development:MCG Open Lakehouse/gold_supply_chain_health.qvd] (qvd);
+/* FROM [lib://MCG Demo - Development:MCG Open Lakehouse/silver_inventory_reconciled.qvd] (qvd); */
+REM FROM [lib://MCG Demo - Development:MCG Open Lakehouse/silver_iot_normalized.qvd] (qvd);

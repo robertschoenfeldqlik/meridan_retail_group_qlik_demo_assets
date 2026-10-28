@@ -1,0 +1,6 @@
+properties:
+  id: warehouse_events-gpve
+  name: warehouse_events
+  inputDatasets:
+    - datasetId: warehouse_events
+      taskId: mcg_wms_lake_landing-gpva

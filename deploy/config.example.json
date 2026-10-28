@@ -179,13 +179,13 @@
         "sourceDir": "./pipelines/mcg-batch-pipeline"
       },
       {
-        "projectName": "MCG Streaming Pipeline",
+        "projectName": "MCG Supply Chain Pipeline - IoT Streaming",
         "sourceDir": "./pipelines/mcg-streaming-pipeline",
         "platformConnection": "MCG Glue Catalog",
         "cloudStagingConnection": "MCG S3 Landing Streaming"
       },
       {
-        "projectName": "MCG Supply Chain Pipeline",
+        "projectName": "MCG Supply Chain Pipeline - Transform",
         "sourceDir": "./pipelines/mcg-snowflake-pipeline"
       }
     ],
@@ -197,7 +197,7 @@
     "attachDatasets": true,
     "publishDataProducts": false,
     "bindings": {},
-    "comment_pipelines": "Declarative QTCP pipeline project (YAML) imported via the DI Projects API (preview). Bindings for connections/schemas/clusters are resolved automatically from this config; 'bindings' holds exact-key overrides. databaseName defaults to the lakehouse name. Set prepare=true to validate+prepare tasks right after import; run=true additionally starts tasks in dependency order (landing>transform>datamart). attachDatasets resolves gold catalog datasets and attaches them to the matching data products (JSON-Patch /datasetIds); publishDataProducts activates them in the marketplace. Daily schedules live in the YAML (qtcp_tasks/*/schedule.yaml). Round-trip UI edits back to the repo with: npm run deploy:export-pipeline",
+    "comment_pipelines": "Declarative QTCP pipeline project (YAML) imported via the DI Projects API (preview). Bindings for connections/schemas/clusters are resolved automatically from this config; 'bindings' holds exact-key overrides. databaseName defaults to the lakehouse name. Set prepare=true to validate+prepare tasks right after import; run=true additionally starts tasks in dependency order (landing>transform>datamart). attachDatasets resolves gold catalog datasets and attaches them to the matching data products (JSON-Patch /datasetIds); publishDataProducts activates them in the marketplace. Daily schedules live in the YAML (qtcp_tasks/*/schedule.yaml). Round-trip UI edits back to the repo with: npm run deploy:export-pipeline. The Transform project reads the mirrors of 'MCG Supply Chain Pipeline - CDC' (deploy/pipelines/olh-mcg-demo-cdc), which is built in the Qlik UI and must exist first; the deployer resolves that reference by name and stops with a clear error if it is missing. mirrorSourceProject only applies to older definitions that use the bare sourceProject variable.",
     "mirrorSourceProject": "MCG Batch Pipeline",
     "upstreamWaitMinutes": 10
   },

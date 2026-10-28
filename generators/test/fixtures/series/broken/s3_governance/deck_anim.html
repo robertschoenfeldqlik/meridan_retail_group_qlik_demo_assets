@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<title>Fixture — Governance (broken)</title>
+</head><body>
+<!-- Self-test fixture. sc1 embeds no tenant panel, sc2 is drawn in the browser
+     with QlikApp.app(), sc3 references qlik_panels/never_captured.png, which
+     does not exist. Only sc4 is a real capture. -->
+
+<div class="scene center" id="sc1"><div class="grid"></div>
+  <h1 class="rv">Governance</h1>
+  <img class="qlogo" src="../assets/brand/qlik-logo.png" alt="Qlik">
+</div>
+
+<div class="scene" id="sc2"><div class="grid"></div>
+  <h2>The score belongs to the product</h2>
+  <div class="app" id="app2"></div>
+</div>
+
+<div class="scene" id="sc3"><div class="grid"></div>
+  <h2>Lineage</h2>
+  <div class="shot zoom"><img src="../qlik_panels/never_captured.png" alt="Lineage"></div>
+</div>
+
+<div class="scene" id="sc4"><div class="grid"></div>
+  <h2>Stewardship</h2>
+  <div class="shot zoom"><img src="../qlik_panels/sprints.png" alt="Stewardship sprint"></div>
+</div>
+
+<script src="../qlikapp.js"></script>
+<script>
+const S=(id)=>document.getElementById(id);
+S('app2').innerHTML = QlikApp.app({ app: 'MCG Supply Chain Operations', sheet: 'Trust', panes: [] });
+</script></body></html>

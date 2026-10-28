@@ -1,0 +1,6 @@
+includePatterns:
+  - tablePattern: '%'
+    sourceTask: 'lakehouse-storage-4151'
+    type: TABLE
+excludePatterns: []
+explicitlySelected: []

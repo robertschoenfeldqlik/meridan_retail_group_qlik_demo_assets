@@ -1,0 +1,11 @@
+properties:
+  name: MCG Lakehouse Storage
+  id: lakehouse-storage-4151
+  type: LAKEHOUSE_STORAGE
+  description: Converts the landed WMS and CRM change data into Apache Iceberg tables in the Open Lakehouse bronze layer.
+settings:
+  artifactsLocation:
+    internalSchema: '{{task.lakehouse-storage-4151.internalSchema}}'
+    taskSchema: '{{task.lakehouse-storage-4151.taskSchema}}'
+  taskRuntime:
+    lakehouseCluster: '{{task.lakehouse-storage-4151.lakehouseCluster}}'

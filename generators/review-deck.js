@@ -196,14 +196,30 @@ function docxBody(r, B) {
 
 // ─── Dump ───────────────────────────────────────────────────────────────────
 
+// Written into every dump folder. A folder is only ever emptied when it carries
+// this marker, so `--out .` or `--out <assets root>` can never wipe real files.
+const DUMP_MARKER = '.mcg-deck-dump';
+
+/** Empty `out` for a fresh dump: only a folder that is missing, empty, or an earlier dump. */
+function prepareDumpDir(out) {
+  if (fs.existsSync(out)) {
+    const entries = fs.readdirSync(out);
+    if (entries.length > 0 && !entries.includes(DUMP_MARKER)) {
+      throw new Error(`--out ${out} is not empty and is not an earlier deck dump — refusing to clear it. Pick an empty or new folder.`);
+    }
+    fs.rmSync(out, { recursive: true, force: true });
+  }
+  fs.mkdirSync(out, { recursive: true });
+  fs.writeFileSync(path.join(out, DUMP_MARKER), 'Pictures written by generators/review-deck.js --dump. Safe to delete.\n');
+}
+
 /** The rubric's slides as a reviewer reads them; pictures are written to `out` so they can be opened. */
 async function dump(rubric, deckFile) {
   const out = path.resolve(val('--out', path.join(require('os').tmpdir(), 'mcg-deck-review', KEY)));
   const zip = await JSZip.loadAsync(fs.readFileSync(deckFile));
   const slides = await readDeck(deckFile, zip);
   const [lo, hi] = rubric.slides;
-  fs.rmSync(out, { recursive: true, force: true });
-  fs.mkdirSync(out, { recursive: true });
+  prepareDumpDir(out);
   console.log(`rubric  : ${rubric.id} v${rubric.version} — scores slides ${lo}–${hi}`);
   console.log(`deck    : ${deckFile} (${slides.length} slides, modified ${fs.statSync(deckFile).mtime.toISOString()})`);
   console.log(`pictures: ${out}`);

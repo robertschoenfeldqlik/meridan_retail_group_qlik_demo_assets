@@ -1,0 +1,72 @@
+{
+  "reviewer": "self-test fixture",
+  "persona": "priya",
+  "pillar": "governance",
+  "scope": "Self-test fixture: narration of the fixture scripts and the fixture panels.",
+  "note": "The governance story lands its owners and its score, and the stewardship loop closes on a named human. What it does not yet do is tie lot traceability to the regulation that demands it. Fix that before this goes outside the company.",
+  "verdicts": [
+    {
+      "id": "GOV-02",
+      "verdict": "covered",
+      "evidence": "The data products list shows Supply Chain Health and Last Mile Performance with their owners, active in the marketplace.",
+      "gap": "",
+      "ref": "s3_governance#sc2:dp_products_list.png"
+    },
+    {
+      "id": "GOV-03",
+      "verdict": "covered",
+      "evidence": "Supply Chain Health is a data product: owned by Henrik Jansen, with a schema, a refresh every fifteen minutes and a trust score target of zero point eight five.",
+      "gap": "",
+      "ref": ""
+    },
+    {
+      "id": "GOV-04",
+      "verdict": "covered",
+      "evidence": "The trust score is computed by the platform from validity, completeness, discoverability and usage, and recalculated as the data changes.",
+      "gap": "",
+      "ref": ""
+    },
+    {
+      "id": "GOV-05",
+      "verdict": "covered",
+      "evidence": "eight thousand two hundred products with no weight on file, and six hundred and forty addresses we could not resolve",
+      "gap": ""
+    },
+    {
+      "id": "GOV-06",
+      "verdict": "covered",
+      "evidence": "A human steward fixes them, and the correction flows back into the pipeline.",
+      "gap": ""
+    },
+    {
+      "id": "GOV-07",
+      "verdict": "partial",
+      "evidence": "A Data Quality Agent turns \"every perishable item must have a lot number\" into a rule and shows you the violations.",
+      "gap": "Said only in the AI video; the governance video never shows a rule being written from a business statement."
+    },
+    {
+      "id": "GOV-08",
+      "verdict": "covered",
+      "evidence": "Every gold field traces back through silver and bronze to the source system, and impact analysis tells you which apps you are about to break.",
+      "gap": ""
+    },
+    {
+      "id": "GOV-09",
+      "verdict": "covered",
+      "evidence": "Twenty-five business terms are governed in the glossary, each linked to the dataset that computes it.",
+      "gap": ""
+    },
+    {
+      "id": "GOV-10",
+      "verdict": "missed",
+      "evidence": "",
+      "gap": "Neither EC 178/2002 nor the NVWA citation is mentioned, so lot traceability reads as housekeeping rather than a regulatory obligation."
+    },
+    {
+      "id": "GOV-11",
+      "verdict": "covered",
+      "evidence": "It is shareable over an API and discoverable in the marketplace.",
+      "gap": ""
+    }
+  ]
+}
