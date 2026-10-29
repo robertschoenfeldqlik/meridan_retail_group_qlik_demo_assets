@@ -1,5 +1,13 @@
 properties:
+  exportVersion: '1.0'
+  name: '{{projectName}}'
+  space: 'ref{project.current.spaceId}'
   type: DATA_PIPELINE
-  platformType: QLIK_OPEN_LAKEHOUSE
-  name: MCG Streaming Pipeline
   description: Meridian Commerce Group streaming pipeline — Kafka IoT cold-chain telemetry and carrier events landed continuously to bronze and normalized to silver.
+  platformType: QLIK_OPEN_LAKEHOUSE
+  platformConnection: '{{platformConnection}}'
+  cloudStagingConnection: '{{cloudStagingConnection}}'
+  lakehouseCloudProvider: AWS
+settings:
+  artifactsNaming:
+    prefixSchema: '{{project.current.prefixSchema}}'

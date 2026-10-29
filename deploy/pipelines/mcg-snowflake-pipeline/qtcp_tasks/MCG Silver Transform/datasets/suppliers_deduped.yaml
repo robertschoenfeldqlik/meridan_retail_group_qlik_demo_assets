@@ -1,0 +1,70 @@
+properties:
+  id: suppliers_deduped
+  name: suppliers_deduped
+  inputDatasets:
+    - datasetId: crm_products-gpwe
+      projectId: '{{project.MCG Demo - DI$_$MCG Supply Chain Pipeline - CDC.projectId}}'
+      taskId: mcg_snowflake_mirror-9xec
+  tableDef:
+    columns:
+      - datatype:
+          type: NCLOB
+          length: 134217728
+          originalType: VARCHAR
+          originalTypeFull: VARCHAR(134217728)
+        name: SUPPLIER_CANONICAL
+        primaryKeyOrdinal: 1
+        id: supplier_canonical
+      - datatype:
+          type: NUMERIC
+          precision: 18
+          originalType: NUMBER
+          originalTypeFull: NUMBER(18,0)
+        name: VARIANT_COUNT
+        id: variant_count
+      - datatype:
+          type: NUMERIC
+          precision: 18
+          originalType: NUMBER
+          originalTypeFull: NUMBER(18,0)
+        name: PRODUCT_COUNT
+        id: product_count
+  customDatasetSettings:
+    customSql:
+      expressionStatement: |-
+        WITH crm_products AS (
+          SELECT
+            "sku" AS sku,
+            "legacy_sku_americas" AS legacy_sku_americas,
+            "legacy_sku_eu" AS legacy_sku_eu,
+            "product_name" AS product_name,
+            "category_l1" AS category_l1,
+            "category_l2" AS category_l2,
+            "category_l3" AS category_l3,
+            "weight_kg" AS weight_kg,
+            "country_of_origin" AS country_of_origin,
+            "supplier_name" AS supplier_name,
+            "created_date" AS created_date,
+            "last_modified_date" AS last_modified_date
+          FROM ${crm_products}
+        )
+        SELECT
+          supplier_canonical,
+          COUNT(DISTINCT supplier_name_raw) AS variant_count,
+          COUNT(*) AS product_count
+        FROM (
+          SELECT
+            supplier_name AS supplier_name_raw,
+            CASE
+              WHEN UPPER(supplier_name) LIKE 'SAMSUNG%' THEN 'Samsung Electronics'
+              WHEN UPPER(supplier_name) LIKE 'FRESHDIRECT%' OR UPPER(supplier_name) LIKE 'FRESH DIRECT%' THEN 'FreshDirect'
+              WHEN UPPER(supplier_name) LIKE 'TRANSFRIO%' OR UPPER(supplier_name) LIKE 'TRANS FRIO%' THEN 'TransFrio'
+              ELSE TRIM(supplier_name)
+            END AS supplier_canonical
+          FROM crm_products
+          WHERE supplier_name IS NOT NULL
+        ) suppliers
+        GROUP BY supplier_canonical
+      alias:
+        - name: crm_products
+          value: '{{project.MCG Demo - DI$_$MCG Supply Chain Pipeline - CDC.projectId}}$_$mcg_snowflake_mirror-9xec$_$crm_products-gpwe'

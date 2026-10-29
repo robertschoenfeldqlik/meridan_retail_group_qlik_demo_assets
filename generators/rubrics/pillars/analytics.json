@@ -1,0 +1,123 @@
+{
+  "id": "ANA",
+  "version": "1.0",
+  "pillar": "analytics",
+  "title": "Analytics pillar — video 04 talking-point and screen rubric",
+  "story": "s4_analytics",
+  "also": ["s5_ai"],
+  "persona": "sophie",
+  "module": "analytics",
+  "pass": { "must": "covered", "should_missed_max": 1 },
+  "note": "Scored by gen-ceo-video-review.js --pillar analytics. `judge_on: auto` criteria are measured by the deterministic probes in generators/lib/rubric-review.js and must not be supplied as verdicts. `screen` criteria are judged on the panels the deck embeds and need a `ref` (story#scN:panel.png). Evidence quoted only from an `also` story caps a narration verdict at partial. Keep ids stable: past verdicts bind to them.",
+  "scale": {
+    "covered": "Stated explicitly and clearly enough that a first-time viewer would take the point away.",
+    "partial": "Touched, implied, or named without enough substance to land — a viewer could miss it.",
+    "missed": "Not present in the narration at all."
+  },
+  "weights": {
+    "must": "The video fails its job without this.",
+    "should": "Expected; its absence is a real gap worth fixing before the next cut.",
+    "nice": "Strengthens the story; acceptable to trade away for time."
+  },
+  "dimensions": [
+    {
+      "id": "ANA",
+      "name": "Analytics — governed products people act on",
+      "framing": "The apps, Answers and Predict read the governed gold products, and somebody at Meridian decides something differently because of them. Insight that stops at the insight is unfinished.",
+      "criteria": [
+        {
+          "id": "ANA-01",
+          "name": "Every scene shows a real tenant capture",
+          "weight": "must",
+          "judge_on": "auto",
+          "probe": "tenant_panels",
+          "expect": "Each scene of the Analytics video embeds a qlik_panels/*.png captured from the live tenant. No drawn chart (QlikApp.app / barSvg), no missing file, no panel edited after capture.",
+          "source": "plan § E Probes; § Decisions — Videos",
+          "module": "analytics"
+        },
+        {
+          "id": "ANA-02",
+          "name": "The app load scripts read the warehouse, not files",
+          "weight": "must",
+          "judge_on": "auto",
+          "probe": "olh_live",
+          "expect": "The app load scripts read the gold and silver tables over a warehouse/lakehouse SQL connection (LIB CONNECT + SELECT FROM schema.table), not lib:// .qvd or .csv files on a connection named after the lakehouse.",
+          "source": "plan § B 'Apps read Gold from Snowflake'; deploy/apps/load-scripts/app1-supply-chain.qvs:61, app2-delivery-experience.qvs:64",
+          "module": "analytics"
+        },
+        {
+          "id": "ANA-03",
+          "name": "The panels show the live sheets and surfaces",
+          "weight": "must",
+          "judge_on": "screen",
+          "expect": "The sheets, Answers and Predict scenes show the real app sheets, the Answers response with its citation visible, and the configured Predict experiment — live captures that match the narration, not a drawn chart or a panel reused from another story.",
+          "source": "series/s4_analytics/deck_anim.html scenes 2-5",
+          "module": "analytics"
+        },
+        {
+          "id": "ANA-04",
+          "name": "The apps read the two gold data products",
+          "weight": "must",
+          "judge_on": "narration",
+          "expect": "The narration says the apps are built on the two gold data products — Supply Chain Health and Last Mile Performance — not on a separate extract.",
+          "source": "deploy/data_products.json (app, consumers)",
+          "module": "analytics"
+        },
+        {
+          "id": "ANA-05",
+          "name": "One worked decision, made by a named role",
+          "weight": "must",
+          "judge_on": "narration",
+          "expect": "At least one worked example in which a named role — the EU Logistics Manager, a DC manager, the APAC logistics lead — decides something differently because of what the app shows: the decision and the outcome, not only the insight.",
+          "source": "agentic-video-rubric.json AAX-08; 2026-09-24 CEO review",
+          "module": "analytics"
+        },
+        {
+          "id": "ANA-06",
+          "name": "Predict on governed data, honestly labelled",
+          "weight": "must",
+          "judge_on": "narration",
+          "expect": "Predict is trained on the same governed data, and its output is presented as what the model is built to find or expected to confirm — not as a finding already proven.",
+          "source": "series/s4_analytics/script.md scene 4; deploy/config.example.json (predict experiments)",
+          "module": "analytics"
+        },
+        {
+          "id": "ANA-07",
+          "name": "Automations detect, notify and correct — with a recipient",
+          "weight": "should",
+          "judge_on": "narration",
+          "expect": "An automation detects a condition, notifies a named person or role, and triggers the correction: a recipient, not just 'the operations channel'.",
+          "source": "deploy/automations; agentic-video-rubric.json AAX-05",
+          "module": "analytics"
+        },
+        {
+          "id": "ANA-08",
+          "name": "A number moves against the $127M baseline",
+          "weight": "should",
+          "judge_on": "narration",
+          "expect": "A measure moves against the baseline — inventory record accuracy, delivery promise accuracy, WISMO volume, or dollars of the $127M — a claim of value, not only of capability.",
+          "source": "documents/project_briefs/PROJ-CLARITY-2025_Business_Case.md; agentic-video-rubric.json AAX-09",
+          "module": "analytics"
+        },
+        {
+          "id": "ANA-09",
+          "name": "Alerts reach a named person",
+          "weight": "should",
+          "judge_on": "narration",
+          "expect": "A Discovery Agent or app alert reaches a named person or role who acts on it.",
+          "source": "deploy/data_products.json (owners); series/s5_ai/script.md scene 4",
+          "module": "analytics"
+        },
+        {
+          "id": "ANA-10",
+          "name": "Forward-looking and preview are labelled aloud",
+          "weight": "should",
+          "judge_on": "narration",
+          "expect": "Anything forward-looking or preview — sheet authoring over the MCP server, findings a model is expected to confirm — is labelled as such in the narration.",
+          "source": "MCG_Agentic_Data_Engineering.md § GA vs preview status; agentic-video-rubric.json AAX-10",
+          "module": "analytics"
+        }
+      ]
+    }
+  ]
+}

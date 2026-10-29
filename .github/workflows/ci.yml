@@ -34,8 +34,13 @@ jobs:
       # lint:syntax walks every tracked .js (including generators/lib, which the
       # old generators/*.js glob skipped); lint:app-fields proves every app
       # measure names a field a load script actually creates.
-      - name: Lint — syntax + app field references
+      - name: Lint — syntax + local requires + app field references
         run: npm run lint
+
+      # The video review gate and the pillar listener, against the fixtures in
+      # generators/test/fixtures only: no series folder, no tenant, no API call.
+      - name: Review gate self-test
+        run: npm run review:selftest
 
       - name: Validate JSON configs
         run: |
@@ -50,19 +55,25 @@ jobs:
             echo "  $f"
             node -e "JSON.parse(require('fs').readFileSync('$f','utf-8'))"
           done
+          # Every folder holding a qtcp_project.yaml, so a new project is covered
+          # without editing this list.
           echo "Checking pipeline bindings..."
-          for p in mcg-batch-pipeline mcg-streaming-pipeline; do
-            echo "  $p"
-            node -e "JSON.parse(require('fs').readFileSync('deploy/pipelines/$p/qtcp_bindings_definition.json','utf-8'))"
+          for d in deploy/pipelines/*/; do
+            [ -f "$d/qtcp_project.yaml" ] || continue
+            echo "  $d"
+            node -e "JSON.parse(require('fs').readFileSync('${d}qtcp_bindings_definition.json','utf-8'))"
+            node -e "JSON.parse(require('fs').readFileSync('${d}bindings.json','utf-8'))"
           done
 
       - name: Pipeline project ZIP round-trip
         run: |
-          for p in mcg-batch-pipeline mcg-streaming-pipeline; do
+          for d in deploy/pipelines/*/; do
+            [ -f "$d/qtcp_project.yaml" ] || continue
+            p=$(basename "$d")
             echo "  $p"
             node -e "
               const { zipDirectory, unzipBuffer } = require('./deploy/zip-utils');
-              const zip = zipDirectory('deploy/pipelines/$p', { exclude: ['README.md','schema','.vscode','.github','.gitignore','CLAUDE.md'] });
+              const zip = zipDirectory('deploy/pipelines/$p', { exclude: ['README.md','schema','.vscode','.github','.gitignore','CLAUDE.md','staging-olh'] });
               const files = unzipBuffer(zip);
               if (files.length < 5) { console.error('Expected >=5 entries, got ' + files.length); process.exit(1); }
               console.log('$p ZIP round-trip OK: ' + files.length + ' entries, ' + zip.length + ' bytes');

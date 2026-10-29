@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<title>Fixture — Governance (good)</title>
+<link rel="stylesheet" href="../deckbase.css">
+</head><body>
+<!-- Self-test fixture: every scene embeds a real qlik_panels PNG; sc3 uses the
+     relabelled dp_lineage.png, which the marker in qlik_shots/ flags as edited. -->
+
+<!-- 1 title -->
+<div class="scene center" id="sc1"><div class="grid"></div>
+  <h1 class="rv">Governance</h1>
+  <div class="shot zoom" id="shot_sc1"><img src="../qlik_panels/v3_catalog.png" alt="Qlik Cloud"></div>
+</div>
+
+<!-- 2 data products -->
+<div class="scene" id="sc2"><div class="grid"></div>
+  <h2>Not a table. A product, with a score.</h2>
+  <div class="shot zoom" id="shot2"><img src="../qlik_panels/dp_products_list.png" alt="Data products"></div>
+</div>
+
+<!-- 3 lineage -->
+<div class="scene" id="sc3"><div class="grid"></div>
+  <h2>Which node turned red?</h2>
+  <div class="shot zoom" id="shot3"><img src="../qlik_panels/dp_lineage.png" alt="Lineage"></div>
+</div>
+
+<!-- 4 stewardship -->
+<div class="scene" id="sc4"><div class="grid"></div>
+  <h2>The last mile of data quality is a human one</h2>
+  <div class="shot zoom" id="shot4"><img src="../qlik_panels/sprints.png" alt="Stewardship sprint"></div>
+</div>
+
+<script src="../qlikapp.js"></script>
+<script>
+/* Panels come from qlik_panels/. Nothing is drawn here. */
+const S=(id)=>document.getElementById(id);
+function show(id,t){ setTimeout(()=>S(id).classList.add('on'), t*1000); }
+show('sc1',0); show('sc2',6.1); show('sc3',24.4); show('sc4',41.8);
+</script></body></html>

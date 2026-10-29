@@ -1,0 +1,6 @@
+properties:
+  id: crm_products-gpwe
+  name: crm_products
+  inputDatasets:
+    - datasetId: crm_products-ig4g
+      taskId: mcg_crm_storage-ig4d

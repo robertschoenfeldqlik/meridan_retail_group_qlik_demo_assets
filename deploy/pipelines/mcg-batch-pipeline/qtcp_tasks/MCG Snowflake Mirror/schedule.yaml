@@ -1,0 +1,6 @@
+scheduling:
+  - schedulingType: EVENT_BASED
+    enabled: true
+    description: Refresh the Snowflake mirror whenever the Iceberg storage task completes
+    eventBasedScheduling:
+      eventSchedulingType: ANY_INPUT_TASK

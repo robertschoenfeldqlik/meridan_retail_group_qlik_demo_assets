@@ -1,0 +1,7 @@
+includePatterns:
+  - sourceProject: '{{project.MCG Demo - DI$_$MCG Supply Chain Pipeline - CDC.projectId}}'
+    sourceTask: mcg_snowflake_mirror-9xec
+    tablePattern: '%'
+  - sourceProject: '{{project.MCG Demo - DI$_$MCG Supply Chain Pipeline - CDC.projectId}}'
+    sourceTask: mcg_wms_snowflake_mirror-gpwi
+    tablePattern: '%'

@@ -1,0 +1,10 @@
+explicitlySelected:
+  - sourceTask: mcg_crm_storage-ig4d
+    name: crm_contacts
+    sourceTableId: crm_contacts-ig4e
+  - sourceTask: mcg_crm_storage-ig4d
+    name: crm_orders
+    sourceTableId: crm_orders-ig4f
+  - sourceTask: mcg_crm_storage-ig4d
+    name: crm_products
+    sourceTableId: crm_products-ig4g

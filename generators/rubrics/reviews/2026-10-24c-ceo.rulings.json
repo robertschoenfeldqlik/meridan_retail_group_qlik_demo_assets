@@ -1,0 +1,24 @@
+{
+  "rulings": [
+    {
+      "pillar": "integration",
+      "ruling": "fail",
+      "reason": "Two musts open: both apps still load QVD files rather than the gold tables in Snowflake, and on screen the connections that land the lakehouse are not the three shown a scene earlier, the Kafka feed is never seen landing and the only freshness shown is six hours old."
+    },
+    {
+      "pillar": "governance",
+      "ruling": "fail",
+      "reason": "One must from the bar: the voice now gives Henrik Jansen, fifteen minutes and four and a quarter out of five, but the screen shows an empty stewardship sprint, an all-Draft glossary with no stewards, a different owner, freshness of seven hours and a profile that carries none of the counts we speak."
+    },
+    {
+      "pillar": "analytics",
+      "ruling": "fail",
+      "reason": "Four musts open: the apps load QVD files and are never said to read Supply Chain Health or Last Mile Performance, the Answers panel dates the Singapore fix to a policy release in October 2025 rather than that afternoon, the Predict scene shows cold-chain training instead of the deployed late-delivery model, and its eighty-two percent accuracy is below what calling every order on time would score."
+    },
+    {
+      "pillar": "ai",
+      "ruling": "fail",
+      "reason": "Four musts open: no AI acting on our tenant is on screen, citations are asserted but never shown in this video, generated sheets, the Data Product Agent and outside MCP assistants have no named approver, and the agentic address route is labelled preview only in small print."
+    }
+  ]
+}

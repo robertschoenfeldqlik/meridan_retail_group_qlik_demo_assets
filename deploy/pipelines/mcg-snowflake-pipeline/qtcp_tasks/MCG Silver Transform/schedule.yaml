@@ -1,0 +1,12 @@
+scheduling:
+  - enabled: true
+    schedulingType: EVENT_BASED
+    timeBasedScheduling:
+      schedule: []
+      fullloadInterval: 0
+    eventBasedScheduling:
+      eventSchedulingType: ANY_INPUT_TASK
+      triggerApps: []
+    runOnReconnect: ONSCHEDULED
+    description: Run when the Snowflake mirror of the Open Lakehouse bronze tables refreshes
+    version: '1'

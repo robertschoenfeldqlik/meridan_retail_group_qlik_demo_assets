@@ -1,0 +1,8 @@
+properties:
+  name: MCG_CRM_Lake_landing
+  id: mcg_crm_lake_landing-ig4c
+  type: LAKE_LANDING
+settings:
+  landingDwSettings:
+    landingArtifactsLocation:
+      dataAssetSchema: '{{task.mcg_crm_lake_landing-ig4c.taskSchema}}'

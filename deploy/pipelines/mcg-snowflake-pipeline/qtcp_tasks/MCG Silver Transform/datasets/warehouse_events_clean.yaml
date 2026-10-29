@@ -1,0 +1,174 @@
+properties:
+  id: warehouse_events_clean
+  name: warehouse_events_clean
+  inputDatasets:
+    - datasetId: warehouse_events-ig5h
+      projectId: '{{project.MCG Demo - DI$_$MCG Supply Chain Pipeline - CDC.projectId}}'
+      taskId: mcg_wms_snowflake_mirror-gpwi
+  tableDef:
+    columns:
+      - datatype:
+          type: NUMERIC
+          precision: 10
+          originalType: NUMBER
+          originalTypeFull: NUMBER(10,0)
+        name: EVENT_ID
+        primaryKeyOrdinal: 1
+        id: event_id
+      - datatype:
+          type: NCLOB
+          length: 134217728
+          originalType: VARCHAR
+          originalTypeFull: VARCHAR(134217728)
+        name: WAREHOUSE_ID
+        nullable: true
+        id: warehouse_id
+      - datatype:
+          type: NCLOB
+          length: 134217728
+          originalType: VARCHAR
+          originalTypeFull: VARCHAR(134217728)
+        name: EVENT_TYPE
+        nullable: true
+        id: event_type
+      - datatype:
+          type: NCLOB
+          length: 134217728
+          originalType: VARCHAR
+          originalTypeFull: VARCHAR(134217728)
+        name: SKU
+        nullable: true
+        id: sku
+      - datatype:
+          type: NUMERIC
+          precision: 10
+          originalType: NUMBER
+          originalTypeFull: NUMBER(10,0)
+        name: QUANTITY
+        nullable: true
+        id: quantity
+      - datatype:
+          type: NCLOB
+          length: 134217728
+          originalType: VARCHAR
+          originalTypeFull: VARCHAR(134217728)
+        name: LOT_NUMBER
+        nullable: true
+        id: lot_number
+      - datatype:
+          type: NCLOB
+          length: 134217728
+          originalType: VARCHAR
+          originalTypeFull: VARCHAR(134217728)
+        name: LOCATION_BIN
+        nullable: true
+        id: location_bin
+      - datatype:
+          type: NCLOB
+          length: 134217728
+          originalType: VARCHAR
+          originalTypeFull: VARCHAR(134217728)
+        name: ORDER_ID
+        nullable: true
+        id: order_id
+      - datatype:
+          type: NCLOB
+          length: 134217728
+          originalType: VARCHAR
+          originalTypeFull: VARCHAR(134217728)
+        name: WORKER_ID
+        nullable: true
+        id: worker_id
+      - datatype:
+          type: NUMERIC
+          precision: 10
+          originalType: NUMBER
+          originalTypeFull: NUMBER(10,0)
+        name: CYCLE_COUNT_VARIANCE
+        nullable: true
+        id: cycle_count_variance
+      - datatype:
+          type: DATETIME
+          precision: 6
+          originalType: TIMESTAMPLTZ
+          originalTypeFull: TIMESTAMPLTZ(6)
+        name: EVENT_TIMESTAMP
+        nullable: true
+        id: event_timestamp
+      - datatype:
+          type: NUMERIC
+          precision: 1
+          originalType: NUMBER
+          originalTypeFull: NUMBER(1,0)
+        name: TZ_OFFSET_HOURS
+        id: tz_offset_hours
+      - datatype:
+          type: DATETIME
+          precision: 9
+          originalType: TIMESTAMPLTZ
+          originalTypeFull: TIMESTAMPLTZ(9)
+        name: EVENT_TIMESTAMP_UTC
+        nullable: true
+        id: event_timestamp_utc
+  customDatasetSettings:
+    customSql:
+      expressionStatement: |-
+        WITH warehouse_events AS (
+          SELECT
+            "event_id" AS event_id,
+            "warehouse_id" AS warehouse_id,
+            "event_type" AS event_type,
+            "sku" AS sku,
+            "quantity" AS quantity,
+            "lot_number" AS lot_number,
+            "location_bin" AS location_bin,
+            "order_id" AS order_id,
+            "worker_id" AS worker_id,
+            "cycle_count_variance" AS cycle_count_variance,
+            "event_timestamp" AS event_timestamp,
+            "created_at" AS created_at
+          FROM ${warehouse_events}
+        )
+        SELECT
+          event_id,
+          warehouse_id,
+          CASE
+            WHEN UPPER(event_type) IN ('RECEIVE', 'RCV', 'INBOUND_RECEIPT') THEN 'RECEIVE'
+            WHEN UPPER(event_type) IN ('PICK', 'PCK', 'OUTBOUND_PICK') THEN 'PICK'
+            WHEN UPPER(event_type) IN ('ADJUST', 'ADJ', 'ADJUSTMENT') THEN 'ADJUST'
+            WHEN UPPER(event_type) IN ('CYCLE_COUNT', 'CC', 'COUNT') THEN 'CYCLE_COUNT'
+            WHEN UPPER(event_type) IN ('SHIP', 'SHP', 'OUTBOUND_SHIP') THEN 'SHIP'
+            ELSE UPPER(event_type)
+          END AS event_type,
+          sku,
+          quantity,
+          lot_number,
+          REPLACE(REPLACE(location_bin, '/', '-'), '.', '-') AS location_bin,
+          order_id,
+          worker_id,
+          cycle_count_variance,
+          event_timestamp,
+          CASE
+            WHEN warehouse_id IN ('DC-RTD-01', 'DC-MUN-01', 'DC-LOS-01') THEN 1
+            WHEN warehouse_id = 'DC-LON-01' THEN 0
+            WHEN warehouse_id = 'DC-ATL-01' THEN -5
+            WHEN warehouse_id = 'DC-CHI-01' THEN -6
+            WHEN warehouse_id = 'DC-SIN-01' THEN 8
+            WHEN warehouse_id = 'DC-TYO-01' THEN 9
+            WHEN warehouse_id = 'DC-GRU-01' THEN -3
+            ELSE 0
+          END AS tz_offset_hours,
+          event_timestamp - (CASE
+            WHEN warehouse_id IN ('DC-RTD-01', 'DC-MUN-01', 'DC-LOS-01') THEN 1
+            WHEN warehouse_id = 'DC-LON-01' THEN 0
+            WHEN warehouse_id = 'DC-ATL-01' THEN -5
+            WHEN warehouse_id = 'DC-CHI-01' THEN -6
+            WHEN warehouse_id = 'DC-SIN-01' THEN 8
+            WHEN warehouse_id = 'DC-TYO-01' THEN 9
+            WHEN warehouse_id = 'DC-GRU-01' THEN -3
+            ELSE 0
+          END) * INTERVAL '1' HOUR AS event_timestamp_utc
+        FROM warehouse_events
+      alias:
+        - name: warehouse_events
+          value: '{{project.MCG Demo - DI$_$MCG Supply Chain Pipeline - CDC.projectId}}$_$mcg_wms_snowflake_mirror-gpwi$_$warehouse_events-ig5h'

@@ -19,7 +19,7 @@ const fs = require('fs');
 const path = require('path');
 
 const PIPELINES_DIR = __dirname;
-const PROJECTS = ['mcg-batch-pipeline', 'mcg-streaming-pipeline'];
+const PROJECTS = ['mcg-batch-pipeline', 'mcg-streaming-pipeline', 'mcg-snowflake-pipeline'];
 const TOOLING = [
   '.vscode/settings.json',
   '.vscode/extensions.json',

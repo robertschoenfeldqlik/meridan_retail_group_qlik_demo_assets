@@ -1,0 +1,64 @@
+{
+  "reviewer": "Claude Opus 5.5 (rubric-reviewer agent), scoring as Marcus Chen",
+  "persona": "marcus",
+  "pillar": "integration",
+  "scope": "Narration: the five spoken scenes of s2_integration/script.md (CEO voice en-US-AvaMultilingualNeural; scene 4 rewritten 2026-10-23). Screen: the five scenes of s2_integration/deck_anim.html and the five qlik_panels they embed (dp_products_list, v2_spaces, v2_connections, v2_pipelines, v3_catalog), checked against frames of the finished 02_MCG_Integrations_1080p.mp4 (1:39) with the narration timed from its audio track. Not read: s5_ai, the rubric's also story, which was being re-rendered and was excluded by the caller, so no also-story credit is given.",
+  "note": "Ingrid, the script now gets the architecture right: change data capture into the Open Lakehouse as Iceberg, a zero-copy mirror to Snowflake, and silver and gold built there. The screen doesn't back that up. The pipelines panel is two project tiles with no tasks in them. The diagram beneath it draws silver and gold flowing into the lakehouse. The closing catalog shows silver and gold as CSV files in the Development space, next to an app that 'lands' them into a connection named after the lakehouse, and the olh_live probe says that is still what the apps read. Nobody says 'preview' aloud about a preview capability, so I would not put this in front of engineers until sc4 and sc5 are recaptured and that word is in the script.",
+  "verdicts": [
+    {
+      "id": "INT-03",
+      "verdict": "partial",
+      "evidence": "Connections list filtered to the MCG Demo - DI space showing exactly three sources: MCG WMS Database (PostgreSQL, Database, via gateway MCG_Data_Move...), MCG CRM Database (MySQL, Database, same gateway) and MCG IoT Telemetry (Apache Kafka Data Stream, Streaming). That matches the feeds narration over it.",
+      "gap": "Only the feeds panel (and the spaces panel) match their claims. sc4 v2_pipelines.png is a cropped strip of two project tiles: 'MCG Supply Chain Pipeline' with a Snowflake logo and 'olh_mcg_demo_cdc' with a lakehouse logo. It shows no landing, storage or mirror task, so the CDC to Iceberg to zero-copy mirror to Snowflake claim spoken over it is not visible. In the finished video the panel only fades in about 11 s into the scene's narration, so 'And these two projects are the interesting part' plays over a half-drawn diagram with no project on screen. The drawn chain also runs Source, Bronze, Silver Transform, Gold Transform, then 'Target - Qlik Open Lakehouse', which puts silver and gold upstream of the lakehouse, the opposite of the narration. sc5 v3_catalog.png (a 21 Sep capture) shows silver_*.csv, gold_*.csv and gold_supply_chain_health_monthly.qvd in MCG Demo - Development. It also shows an app, 'MCG Open Lakehouse Ingest', described as 'Lands the bronze, silver and gold lakehouse tables into the MCG Open Lakehouse connection'. That is file datasets on a connection named after the lakehouse, shown under 'one governed target', and it contradicts 'silver and gold are built' in Snowflake. Separately, the sc3 slide card labels the CRM 'Batch - every 15 min' while sc4 narration says change data capture from the CRM.",
+      "ref": "s2_integration#sc3:v2_connections.png"
+    },
+    {
+      "id": "INT-04",
+      "verdict": "partial",
+      "evidence": "The warehouse management database, streaming change data capture through a data movement gateway. Cold-chain telemetry off Kafka. And the Meridian CRM database, for contacts, orders and the product master.",
+      "gap": "The three sources and two of the routes land. The database engines are never spoken: 'a warehouse database' and 'the Meridian CRM database' never become PostgreSQL and MySQL, so a CIO cannot tell the CRM is a database the gateway reads rather than a SaaS CRM. The feeds scene also never says how the CRM lands. That only arrives folded into scene 4 ('Change data capture from the warehouse and the CRM'), and the slide under scene 3 says 'Batch - every 15 min'."
+    },
+    {
+      "id": "INT-05",
+      "verdict": "covered",
+      "evidence": "Both are declarative pipelines — plain YAML in version control, moved in and out of the tenant through the platform API.",
+      "gap": "Lands, with 'All of it expressed as code you can review, diff and roll back' straight after. The contrast with clicking pipelines together in the browser is now only in the slide title ('Not clicked together - committed'), not spoken."
+    },
+    {
+      "id": "INT-06",
+      "verdict": "covered",
+      "evidence": "Change data capture from the warehouse and the CRM lands in the Qlik Open Lakehouse as Iceberg tables on object storage, then a zero-copy mirror hands it to Snowflake, where silver and gold are built.",
+      "gap": "The spoken architecture is right and explicit. Two things blur it: the word 'bronze' is never said, and the close calls it 'one governed target' without saying which. On screen, the sc4 diagram puts silver and gold before a 'Target - Qlik Open Lakehouse' stage, and the sc5 catalog shows silver and gold as CSV files. Both push a viewer back towards silver and gold living in the lakehouse (scored under INT-03)."
+    },
+    {
+      "id": "INT-07",
+      "verdict": "missed",
+      "evidence": "",
+      "gap": "The word 'preview' is never spoken. Declarative pipelines are presented as shipping, and scene 2 promises 'running on a live tenant'. A viewer will assume pipelines-as-code is generally available and plan on it. The 2026-09-24 review raised the same gap and it is still open."
+    },
+    {
+      "id": "INT-08",
+      "verdict": "missed",
+      "evidence": "",
+      "gap": "The integration narration never mentions Talend or the mcg_crm_address_validate_bulk job that validates, repairs and geocodes CRM addresses on the way in. A viewer leaves with three feeds and two pipeline projects, and does not know a Talend batch is part of the same estate. The s5_ai narration (the also story) was not read for this review, so any credit it might carry, capped at partial, is not given here."
+    },
+    {
+      "id": "INT-09",
+      "verdict": "missed",
+      "evidence": "",
+      "gap": "Nothing says the same YAML can be edited in the Qlik Talend Cloud UI, in an IDE, or by a coding agent. A viewer hears 'plain YAML in version control' and concludes that pipelines-as-code means giving up the visual designer, rather than one definition with one schema and one Git history, authored three ways. The also story was not read for this review."
+    },
+    {
+      "id": "INT-10",
+      "verdict": "partial",
+      "evidence": "streaming change data capture through a data movement gateway",
+      "gap": "Freshness is stated for the warehouse only. 'Cold-chain telemetry off Kafka' implies streaming but never says the readings arrive in real time. The CRM's latency is contradictory: change data capture in the scene 4 narration, 'Batch - every 15 min' on the scene 3 slide. The products' refresh SLAs (Supply Chain Health every 15 minutes, Last Mile Performance every 30) are never stated, so a viewer cannot say how old the numbers in the products are."
+    },
+    {
+      "id": "INT-11",
+      "verdict": "partial",
+      "evidence": "Meridian runs on three sources that never spoke to each other: a warehouse database, cold-chain sensors, and a CRM.",
+      "gap": "Silos are named, but no consequence is. The video never says what it costs that they did not speak: phantom inventory where WMS and ERP disagree, the seventy-two silent hours at Rotterdam when the cold-chain feed went unseen, or the $127M. The integration work is still shown mostly for its own sake."
+    }
+  ]
+}

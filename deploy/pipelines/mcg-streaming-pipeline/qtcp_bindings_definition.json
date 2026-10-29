@@ -1,12 +1,19 @@
 {
   "variables": {
-    "task.iot-streaming-landing-4103.sourceConnection": "",
+    "cloudStagingConnection": "",
+    "platformConnection": "",
+    "projectName": "",
+    "project.current.prefixSchema": "",
     "task.iot-streaming-landing-4103.lakehouseCluster": "",
+    "task.iot-streaming-landing-4103.sourceConnection": "",
     "task.iot-streaming-transform-4202.internalSchema": "",
-    "task.iot-streaming-transform-4202.taskSchema": "",
-    "task.iot-streaming-transform-4202.lakehouseCluster": ""
+    "task.iot-streaming-transform-4202.lakehouseCluster": "",
+    "task.iot-streaming-transform-4202.taskSchema": ""
   },
   "connectionProperties": {
-    "task.iot-streaming-landing-4103.sourceConnection": {}
+    "task.iot-streaming-landing-4103.sourceConnection": {
+      "type": "external_data_provider",
+      "kindId": "sourcestreaming:apache-kafka"
+    }
   }
 }

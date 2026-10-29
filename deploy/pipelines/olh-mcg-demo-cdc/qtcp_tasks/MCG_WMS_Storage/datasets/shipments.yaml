@@ -1,0 +1,6 @@
+properties:
+  id: shipments-gpvd
+  name: shipments
+  inputDatasets:
+    - datasetId: shipments
+      taskId: mcg_wms_lake_landing-gpva

@@ -1,0 +1,115 @@
+properties:
+  id: supply_chain_health-cypz
+  name: supply_chain_health
+  inputDatasets:
+    - datasetId: inventory_reconciled
+      name: inventory_reconciled
+      taskId: silver-transform-4201
+    - datasetId: warehouse_events_clean
+      name: warehouse_events_clean
+      taskId: silver-transform-4201
+  tableDef:
+    columns:
+      - datatype:
+          type: NCLOB
+          length: 134217728
+          originalType: VARCHAR
+          originalTypeFull: VARCHAR(134217728)
+        name: LOCATION_ID
+        primaryKeyOrdinal: 1
+        id: location_id
+      - datatype:
+          type: NUMERIC
+          precision: 18
+          originalType: NUMBER
+          originalTypeFull: NUMBER(18,0)
+        name: SKU_POSITIONS
+        id: sku_positions
+      - datatype:
+          type: NUMERIC
+          precision: 22
+          originalType: NUMBER
+          originalTypeFull: NUMBER(22,0)
+        name: TOTAL_ON_HAND
+        nullable: true
+        id: total_on_hand
+      - datatype:
+          type: NUMERIC
+          precision: 13
+          originalType: NUMBER
+          originalTypeFull: NUMBER(13,0)
+        name: PHANTOM_SUSPECT_COUNT
+        nullable: true
+        id: phantom_suspect_count
+      - datatype:
+          type: NUMERIC
+          precision: 13
+          originalType: NUMBER
+          originalTypeFull: NUMBER(13,0)
+        name: NEGATIVE_QTY_COUNT
+        nullable: true
+        id: negative_qty_count
+      - datatype:
+          type: NUMERIC
+          precision: 13
+          originalType: NUMBER
+          originalTypeFull: NUMBER(13,0)
+        name: LOT_MISSING_COUNT
+        nullable: true
+        id: lot_missing_count
+      - datatype:
+          type: NUMERIC
+          precision: 21
+          scale: 3
+          originalType: NUMBER
+          originalTypeFull: NUMBER(21,3)
+        name: AVG_TRUST_SCORE
+        nullable: true
+        id: avg_trust_score
+      - datatype:
+          type: NUMERIC
+          precision: 18
+          originalType: NUMBER
+          originalTypeFull: NUMBER(18,0)
+        name: CYCLE_COUNT_EVENTS
+        nullable: true
+        id: cycle_count_events
+      - datatype:
+          type: NUMERIC
+          precision: 29
+          scale: 2
+          originalType: NUMBER
+          originalTypeFull: NUMBER(29,2)
+        name: AVG_CYCLE_COUNT_VARIANCE
+        nullable: true
+        id: avg_cycle_count_variance
+  customDatasetSettings:
+    customSql:
+      expressionStatement: |-
+        SELECT
+          i.location_id,
+          COUNT(*) AS sku_positions,
+          SUM(i.quantity_on_hand) AS total_on_hand,
+          SUM(CASE WHEN i.phantom_suspect = TRUE THEN 1 ELSE 0 END) AS phantom_suspect_count,
+          SUM(CASE WHEN i.logic_error = TRUE THEN 1 ELSE 0 END) AS negative_qty_count,
+          SUM(CASE WHEN i.lot_missing = TRUE THEN 1 ELSE 0 END) AS lot_missing_count,
+          ROUND(AVG(i.trust_score), 3) AS avg_trust_score,
+          MAX(e.cycle_count_events) AS cycle_count_events,
+          MAX(e.avg_cycle_count_variance) AS avg_cycle_count_variance
+        FROM ${inventory_reconciled} i
+        LEFT JOIN (
+          SELECT
+            warehouse_id,
+            COUNT(*) AS cycle_count_events,
+            ROUND(AVG(ABS(cycle_count_variance)), 2) AS avg_cycle_count_variance
+          FROM ${warehouse_events_clean}
+          WHERE event_type = 'CYCLE_COUNT'
+          GROUP BY warehouse_id
+        ) e ON i.location_id = e.warehouse_id
+        GROUP BY i.location_id
+      alias:
+        - name: inventory_reconciled
+          value: '{{ref(project.current.projectId)}}$_$silver-transform-4201$_$inventory_reconciled'
+        - name: warehouse_events_clean
+          value: '{{ref(project.current.projectId)}}$_$silver-transform-4201$_$warehouse_events_clean'
+  description: 'Inventory health per distribution centre: positions, on-hand, phantom/negative/lot-missing counts, average trust score and cycle-count variance.'

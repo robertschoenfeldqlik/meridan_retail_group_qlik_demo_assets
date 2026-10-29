@@ -10,6 +10,7 @@
 //    node deploy/deploy-to-qlik.js --verbose             # extra logging
 //    node deploy/deploy-to-qlik.js --export-pipeline     # pull the tenant's declarative
 //                                                        # pipeline project back into the repo
+//    node deploy/deploy-to-qlik.js --module governance   # one module (see deploy/modules.js)
 //
 //  Environment variable overrides (take precedence over config.json):
 //    QLIK_TENANT_HOST   — tenant hostname  (e.g. "my-tenant")
@@ -30,6 +31,8 @@ const { request, sleep } = require('./http-client');
 const { resolveEngine, composeCmd, engineEnv } = require('./container-engine');
 const stewardship = require('./stewardship');
 const automationWorkspaces = require('./automation-workspaces');
+const { parseModules, isAll, applyModuleMask, moduleForWorkspace } = require('./modules');
+const { pipelineProjectName, pipelineProjectDefs } = require('./pipeline-projects');
 const { DOCS_DIR } = require('../generators/lib/asset-paths');
 
 // ---------------------------------------------------------------------------
@@ -53,7 +56,7 @@ const EXIT_FAILURE = 1;
 // ---------------------------------------------------------------------------
 
 function parseArgs(argv) {
-  const args = { configPath: DEFAULT_CONFIG_PATH, dryRun: false, verbose: false, cleanupDataProducts: false, exportPipeline: false };
+  const args = { configPath: DEFAULT_CONFIG_PATH, dryRun: false, verbose: false, cleanupDataProducts: false, exportPipeline: false, modules: parseModules('all') };
   for (let i = 2; i < argv.length; i++) {
     switch (argv[i]) {
       case '--config':
@@ -79,6 +82,15 @@ function parseArgs(argv) {
         break;
       case '--export-pipeline':
         args.exportPipeline = true;
+        break;
+      case '--module':
+        if (i + 1 >= argv.length) { console.error('--module requires integration, governance, analytics, ai or all'); process.exit(EXIT_FAILURE); }
+        try {
+          args.modules = parseModules(argv[++i]);
+        } catch (err) {
+          console.error(err.message);
+          process.exit(EXIT_FAILURE);
+        }
         break;
       case '--help':
         printUsage();
@@ -109,6 +121,12 @@ Options:
   --cleanup-dataproducts    Delete all data products from tenant, then exit
   --export-pipeline         Export the tenant's declarative pipeline project (YAML)
                             into deploy/pipelines/, then exit
+  --module <list|all>       Deploy only these modules (comma list). Default: all.
+                            integration = connections, Open Lakehouse + Snowflake pipelines
+                            governance  = glossary, data products, stewardship
+                            analytics   = theme, automations, Predict, webhooks, reload tasks
+                            ai          = knowledge base, Qlik Answers assistant
+                            Spaces are always resolved (find-or-create).
   --help                    Show this message
 `);
 }
@@ -1303,7 +1321,11 @@ class QlikClient {
       this.log.info(`DRY RUN: Would create ML deployment "${name}" (modelId=${modelId})`);
       return { id: 'dry-run-deployment-id', name };
     }
-    const res = await this._post('/api/v1/ml/deployments', { data: { type: 'deployment', attributes: { name, spaceId, modelId, enablePredictions: enablePredictions !== false, description: description || '' } } });
+    // An empty description is rejected (400 AML-400 bad_argument /data/attributes/description),
+    // so the field is only sent when there is something to say.
+    const attributes = { name, spaceId, modelId, enablePredictions: enablePredictions !== false };
+    if (description) attributes.description = description;
+    const res = await this._post('/api/v1/ml/deployments', { data: { type: 'deployment', attributes } });
     if (res.statusCode === 200 || res.statusCode === 201) {
       const d = this._mlFlatten(res.body.data || res.body);
       this.log.success(`Created ML deployment "${name}" (${d.id})`);
@@ -1429,7 +1451,18 @@ class QlikClient {
     }
   }
 
-  async createDiProject({ name, description, spaceId, platformType }) {
+  /** Lakehouse cluster id by name — bindings take the id; a bare name is stored as null. */
+  async findLakehouseClusterId(name) {
+    if (!name) return '';
+    const res = await this._get('/api/v1/lakehouse-clusters');
+    const list = Array.isArray(res.body) ? res.body : ((res.body && res.body.data) || []);
+    const hit = list.find((c) => c.name === name);
+    return hit ? hit.id : '';
+  }
+
+  // platformConnection / cloudStagingConnection can only be set here: on an
+  // existing Open Lakehouse project the bindings API accepts them and stores null.
+  async createDiProject({ name, description, spaceId, platformType, platformConnection, cloudStagingConnection }) {
     const existing = await this.findDiProjectByName(name, spaceId);
     if (existing) {
       this.log.success(`DI project already exists: "${name}" (${existing.id}) — reusing.`);
@@ -1446,6 +1479,8 @@ class QlikClient {
       description: description || '',
     };
     if (spaceId) payload.space = spaceId;
+    if (platformConnection) payload.platformConnection = platformConnection;
+    if (cloudStagingConnection) payload.cloudStagingConnection = cloudStagingConnection;
     const res = await this._post('/api/v1/di-projects', payload);
     if (res.statusCode === 200 || res.statusCode === 201) {
       this.log.success(`Created DI project "${name}" (${res.body.id})`);
@@ -1914,7 +1949,7 @@ function buildAthenaProperties(/* cfg */) {
  * connection IDs on the tenant; schemas/clusters/warehouse come from config
  * conventions. cfg.pipelines.bindings entries override any computed value.
  */
-async function resolvePipelineBindings(client, cfg, log, srcDir) {
+async function resolvePipelineBindings(client, cfg, log, srcDir, ctx = {}) {
   const bindingsPath = path.join(srcDir, 'qtcp_bindings_definition.json');
   if (!fs.existsSync(bindingsPath)) {
     log.warn('No qtcp_bindings_definition.json found — skipping binding resolution.');
@@ -1925,7 +1960,9 @@ async function resolvePipelineBindings(client, cfg, log, srcDir) {
   const pCfg = cfg.pipelines || {};
   const dc = cfg.dataConnections || {};
   const clusters = cfg.clusters || {};
+  const sf = cfg.snowflake || {};
   const lakehouseName = (cfg.lakehouse && cfg.lakehouse.name) || '';
+  const onSnowflake = ctx.platformType === 'SNOWFLAKE';
 
   const connIdCache = {};
   async function connectionValue(connName) {
@@ -1944,15 +1981,70 @@ async function resolvePipelineBindings(client, cfg, log, srcDir) {
   }
 
   // Medallion tier by task reference: datamarts → gold, transforms → silver,
-  // landings (everything else) → bronze.
+  // CDC landings → landing (raw CSV; the Iceberg storage task needs its own
+  // schema because it produces the same table names), storage, mirror and
+  // streaming landings → bronze.
   function schemaForTask(taskRef) {
     if (/gold|datamart/.test(taskRef)) return 'gold';
     if (/transform/.test(taskRef)) return 'silver';
+    if (/landing/.test(taskRef) && !/stream/.test(taskRef)) return 'landing';
     return 'bronze';
   }
 
+  async function snowflakeConnection() {
+    return connectionValue((dc.snowflake && dc.snowflake.name) || '');
+  }
+
+  async function projectIdFor(name, spaceName) {
+    if (!name) return '';
+    if (ctx.projectIds && ctx.projectIds[name]) return ctx.projectIds[name];
+    try {
+      let spaceId = ctx.spaceId;
+      if (spaceName) {
+        const space = await client.findSpaceByName(spaceName);
+        if (space) spaceId = space.id;
+      }
+      const p = await client.findDiProjectByName(name, spaceId);
+      return p ? p.id : '';
+    } catch (err) {
+      log.debug(`Project lookup failed for "${name}": ${err.message}`);
+      return '';
+    }
+  }
+
   const resolved = {};
+  const unresolvedProjects = [];
+  ctx.upstreamProjectIds = [];
   for (const name of names) {
+    // Project-level variables (no task prefix).
+    if (name === 'projectName') {
+      if (ctx.def && ctx.def.projectName) resolved[name] = ctx.def.projectName;
+      continue;
+    }
+    // A cross-project input, exported as project.<space>$_$<project>.projectId:
+    // the warehouse project reading the lakehouse project's mirrors. The import
+    // answers 400 VARIABLES-NOT-FOUND without it, so resolve it or stop here.
+    const pm = name.match(/^project\.(.+)\$_\$(.+)\.projectId$/);
+    if (pm) {
+      const id = await projectIdFor(pm[2], pm[1]);
+      if (id) {
+        resolved[name] = id;
+        ctx.upstreamProjectIds.push(id);
+      } else {
+        unresolvedProjects.push({ name, space: pm[1], project: pm[2] });
+      }
+      continue;
+    }
+    if (name === 'platformConnection') {
+      const v = onSnowflake ? await snowflakeConnection() : await connectionValue((ctx.def && ctx.def.platformConnection) || '');
+      if (v) resolved[name] = v;
+      continue;
+    }
+    if (name === 'cloudStagingConnection') {
+      const v = await connectionValue((ctx.def && ctx.def.cloudStagingConnection) || '');
+      if (v) resolved[name] = v;
+      continue;
+    }
     const m = name.match(/^task\.([^.]+)\.(.+)$/);
     if (!m) continue;
     const [, taskRefRaw, prop] = m;
@@ -1968,17 +2060,38 @@ async function resolvePipelineBindings(client, cfg, log, srcDir) {
       else if (/crm|mysql/.test(taskRef))        connName = (dc.mysql && dc.mysql.name) || '';
       else if (/iot|kafka|stream/.test(taskRef))  connName = (dc.kafka && dc.kafka.name) || '';
       value = await connectionValue(connName);
+    } else if (/Connection$/.test(prop)) {
+      // Any other connection variable (the mirror's target) is the Snowflake
+      // connection — the only warehouse connection the pipelines use.
+      value = await snowflakeConnection();
     } else if (prop === 'taskSchema') {
       value = schemaForTask(taskRef);
     } else if (prop === 'internalSchema') {
       value = `${schemaForTask(taskRef)}__internal`;
     } else if (prop === 'databaseName') {
-      value = pCfg.databaseName || lakehouseName;
+      value = (onSnowflake || /mirror/.test(taskRef))
+        ? (sf.database || pCfg.databaseName || '')
+        : (pCfg.databaseName || lakehouseName);
     } else if (prop === 'warehouseName') {
-      value = pCfg.warehouseName || '';
+      value = (onSnowflake || /mirror/.test(taskRef))
+        ? (sf.warehouse || pCfg.warehouseName || '')
+        : (pCfg.warehouseName || '');
     } else if (prop === 'lakehouseCluster') {
       const cluster = /iot|stream/.test(taskRef) ? clusters.streaming : clusters.cdc;
-      value = (cluster && cluster.name) || '';
+      const clusterName = (cluster && cluster.name) || '';
+      try {
+        value = (await client.findLakehouseClusterId(clusterName)) || '';
+        if (clusterName && !value) log.warn(`Lakehouse cluster "${clusterName}" not found on tenant — ${name} left unset.`);
+      } catch (err) {
+        log.warn(`Lakehouse cluster lookup failed for "${clusterName}": ${err.message}`);
+      }
+    } else if (prop === 'snowflakeExternalVolume') {
+      value = /mirror/.test(taskRef) ? (sf.mirrorExternalVolume || '') : (sf.icebergExternalVolume || '');
+    } else if (prop === 'snowflakeCatalogIntegration') {
+      value = sf.catalogIntegration || '';
+    } else if (prop === 'sourceProject') {
+      value = await projectIdFor(pCfg.mirrorSourceProject || 'MCG Batch Pipeline');
+      if (value) ctx.upstreamProjectIds.push(value);
     }
 
     if (value) resolved[name] = value;
@@ -1987,7 +2100,49 @@ async function resolvePipelineBindings(client, cfg, log, srcDir) {
   for (const [k, v] of Object.entries(pCfg.bindings || {})) {
     if (v !== undefined && v !== null && v !== '') resolved[k] = v;
   }
+
+  const missing = unresolvedProjects.filter((u) => !resolved[u.name]);
+  if (missing.length > 0) {
+    throw new Error(missing.map((u) =>
+      `upstream project "${u.project}" not found in space "${u.space}" — create it first `
+      + `(list it in pipelines.projects ahead of this one) or set pipelines.bindings["${u.name}"]`).join('; '));
+  }
   return resolved;
+}
+
+/**
+ * Soft wait for the Open Lakehouse mirror task to be running (or done) before
+ * a downstream warehouse project prepares against it. Never throws: it logs
+ * the last raw state it saw and lets the deploy continue.
+ */
+async function waitForUpstreamMirror(client, log, upstreamProjectId, minutes) {
+  if (!upstreamProjectId) {
+    log.warn('Upstream lakehouse project id unknown — preparing the warehouse project without waiting for the mirror.');
+    return;
+  }
+  let mirrors = [];
+  try {
+    const tasks = await client.listDiTasks(upstreamProjectId);
+    mirrors = tasks.filter((t) => /MIRROR/i.test(String(t.type || '')) || /mirror/i.test(String(t.name || '')));
+  } catch (err) {
+    log.warn(`Could not list upstream tasks: ${err.message}`);
+    return;
+  }
+  if (mirrors.length === 0) { log.warn('No mirror task found in the upstream lakehouse project — not waiting.'); return; }
+  // Silver reads every mirror (CRM and WMS), so wait for each one.
+  const deadline = Date.now() + minutes * 60 * 1000;
+  for (const mirror of mirrors) {
+    let last = '';
+    log.info(`Waiting up to ${minutes} min for "${mirror.name}" to run before preparing the warehouse project…`);
+    let running = false;
+    while (Date.now() < deadline) {
+      const st = await client.getDiTaskState(upstreamProjectId, mirror.id);
+      last = JSON.stringify(st).slice(0, 200);
+      if (/RUNNING|COMPLETED|SUCCEEDED/i.test(last)) { log.success(`"${mirror.name}" is ${last}`); running = true; break; }
+      await sleep(15000);
+    }
+    if (!running) log.warn(`"${mirror.name}" not running after ${minutes} min (last state ${last}) — preparing anyway.`);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -2034,7 +2189,7 @@ class DeploymentReport {
 //  Post-deployment checklist
 // ---------------------------------------------------------------------------
 
-function printChecklist(report, enabled, log) {
+function printChecklist(report, enabled, log, modules) {
   log.section('POST-DEPLOYMENT CHECKLIST');
 
   const okSteps = new Set(report.steps.filter((s) => s.status === 'OK').map((s) => s.step.toLowerCase()));
@@ -2090,15 +2245,17 @@ function printChecklist(report, enabled, log) {
     ],
   };
 
+  // [label, description, module] — filtered to the modules in this run.
   const alwaysManual = [
-    ['Open Lakehouse',     'Configure Bronze/Silver/Gold layers in Qlik Cloud UI (see creation_guide.md §1)'],
-    ['Data Flows',         'Build 8 transformation flows + Talend address validation job (see creation_guide.md §1.3)'],
-    ['Table Recipes',      'Create 7 Gold-layer table recipes from Silver tables (see creation_guide.md §1.4)'],
-    ['Qlik Predict',       'Create AutoML experiments for Spoilage Risk & SLA Prediction (see creation_guide.md §4)'],
-    ['Stewardship',        'Address Cleanup sprint is automated (node deploy/stewardship.js); create any additional sprints per demo_checklist.md Phase 8'],
-    ['Discovery Agent',    'Enable Discovery Agent on data products and set alert thresholds'],
-    ['MCP Server',         'Install and configure Qlik MCP server (see setup_guide.md §13)'],
-  ];
+    ['Snowflake',          'Create the "MCG Snowflake" connection in MCG Demo - DI, the database + XSMALL warehouse, and the EXTERNAL VOLUME + CATALOG INTEGRATION the lakehouse mirror needs (Setup Guide §7)', 'integration'],
+    ['Kafka connection',   'Create "MCG IoT Telemetry" (Apache Kafka) on the broker reachable from the rgs-olh-mcg network integration — the streaming cluster cannot reach a laptop broker', 'integration'],
+    ['Talend job',         'Build and publish the address-validation Studio job (npm run module:integration:build)', 'integration'],
+    ['Trust & DQ agent',   'Compute trust scores and enable the Data Quality agent on the gold datasets (catalog UI, or the Qlik MCP dataset-quality tools)', 'governance'],
+    ['Stewardship',        'Address Cleanup sprint is automated (node deploy/stewardship.js); create any additional sprints per demo_checklist.md Phase 8', 'governance'],
+    ['Qlik Predict',       'Create AutoML experiments for Spoilage Risk & SLA Prediction (see creation_guide.md §4)', 'analytics'],
+    ['Discovery Agent',    'Enable Discovery Agent on data products and set alert thresholds', 'ai'],
+    ['MCP Server',         'Install and configure Qlik MCP server (Setup Guide §17)', 'ai'],
+  ].filter(([, , mod]) => !modules || modules.includes(mod));
 
   const components = [
     ['spaces',       'Create Spaces (shared + managed)'],
@@ -2191,9 +2348,14 @@ async function main() {
   const continueOnError = cfg.options && cfg.options.continueOnError;
   if (cfg.options && cfg.options.verbose) log.verbose = true;
 
-  const enabled = cfg.enabledComponents || {};
+  const enabled = applyModuleMask(cfg.enabledComponents || {}, args.modules);
+  const allModules = isAll(args.modules);
+  // Dataset attachment belongs to Governance. In a full run it keeps its old
+  // behaviour of following the pipelines toggle.
+  const attachEnabled = enabled.attach === false ? false : (allModules ? enabled.pipelines !== false : true);
   const client = new QlikClient(cfg, log, dryRun);
   log.info(`Target: ${client.baseUrl}`);
+  if (!allModules) log.info(`Modules: ${args.modules.join(', ')} (other steps skipped)`);
   if (dryRun) log.warn('DRY RUN MODE — no changes will be made to Qlik Cloud.');
 
   // ---- Authenticate -------------------------------------------------------
@@ -2235,14 +2397,7 @@ async function main() {
       process.exit(EXIT_SUCCESS);
     }
     const pCfg = cfg.pipelines || {};
-    const projectDefs = (Array.isArray(pCfg.projects) && pCfg.projects.length > 0)
-      ? pCfg.projects
-      : (pCfg.projectName || pCfg.sourceDir)
-        ? [{ projectName: pCfg.projectName || 'MCG Batch Pipeline', sourceDir: pCfg.sourceDir }]
-        : [
-            { projectName: 'MCG Batch Pipeline',     sourceDir: './pipelines/mcg-batch-pipeline' },
-            { projectName: 'MCG Streaming Pipeline', sourceDir: './pipelines/mcg-streaming-pipeline' },
-          ];
+    const projectDefs = pipelineProjectDefs(pCfg);
     let failures = 0;
     for (const def of projectDefs) {
       try {
@@ -2435,9 +2590,29 @@ async function main() {
     report.record('Spaces', 'SKIP', 'disabled');
   }
 
-  // Set by the connections step, read by the pipelines step: which data
-  // path this run uses. Declared here so both steps see the same value.
-  let deployMode = 'qvd';
+  // A module run (or a run with spaces disabled) still needs the space ids
+  // the later steps read. Look them up without creating anything.
+  for (const [kind, fallback] of [['shared', 'MCG Demo - Development'], ['managed', 'MCG Demo - Published'], ['data', 'MCG Demo - DI']]) {
+    const current = kind === 'shared' ? sharedSpace : kind === 'managed' ? managedSpace : dataSpace;
+    if (current) continue;
+    const name = (cfg.spaces && cfg.spaces[kind]) || fallback;
+    try {
+      const found = await client.findSpaceByName(name);
+      if (found) {
+        if (kind === 'shared') sharedSpace = found;
+        else if (kind === 'managed') managedSpace = found;
+        else dataSpace = found;
+        log.debug(`Space (${kind}) resolved by name: "${name}" (${found.id})`);
+      }
+    } catch (err) {
+      log.debug(`Space lookup failed for "${name}": ${err.message}`);
+    }
+  }
+
+  // Which data path this run uses, read by the connections and pipelines
+  // steps. Resolved up front so the pipelines step sees the right mode even
+  // when the connections step is not part of this run.
+  const deployMode = resolveDeployMode(cfg, log);
 
 
   // ---- Create Data Connections --------------------------------------------
@@ -2475,7 +2650,6 @@ async function main() {
     // mode is the honest fallback, so it is the default. In qvd mode the
     // gateway-bound connections are not attempted at all — reporting them as
     // failures would be noise, since nothing in that mode reads them.
-    deployMode = resolveDeployMode(cfg, log);
     const connectionDefs = [
       { key: 'postgresql', label: 'PostgreSQL (MCG WMS)', gatewaySource: true,
         dataSourceId: 'repsrc_postgresql', buildGateway: buildPostgresGatewaySource,
@@ -2654,9 +2828,14 @@ async function main() {
         ? path.resolve(SCRIPT_DIR, cfg.documents.sourceDir)
         : DOCS_DIR;
       // documents/reviews/ holds reviews OF the demo (gen-ceo-video-review.js),
-      // not MCG documents, so it never goes to the knowledge base.
+      // not MCG documents, so it never goes to the knowledge base. Neither does
+      // documents/modules/: the per-module packs are subsets of the combined
+      // guides and scripts, and would only add duplicate chunks.
       const allDocxFiles = findFiles(docsDir, '.docx')
-        .filter((f) => !path.relative(docsDir, f).replace(/\\/g, '/').startsWith('reviews/'));
+        .filter((f) => {
+          const rel = path.relative(docsDir, f).replace(/\\/g, '/');
+          return !rel.startsWith('reviews/') && !rel.startsWith('modules/');
+        });
 
       // EVERY .docx is uploaded, because the knowledge base has a second
       // datasource ("MCG Documents — Demo & Guides") that reads the demo
@@ -2740,7 +2919,13 @@ async function main() {
       const assistant = await client.createAssistant({
         name: astCfg.name || 'MCG Operations Assistant',
         description: astCfg.description || 'AI assistant for Meridian Commerce Group operations.',
-        knowledgeBaseId: knowledgeBase ? knowledgeBase.id : undefined,
+        knowledgeBaseId: knowledgeBase ? knowledgeBase.id : await (async () => {
+          // AI module run with the KB step already done earlier: find it by name.
+          const kbName = (cfg.knowledgeBase && cfg.knowledgeBase.name) || 'MCG Operations Knowledge Base';
+          const kb = await client.findKnowledgeBaseByName(kbName).catch(() => null);
+          if (!kb) log.warn(`Assistant: knowledge base "${kbName}" not found — creating the assistant without one.`);
+          return kb ? kb.id : undefined;
+        })(),
         spaceId: astSpace ? astSpace.id : undefined,
       });
       let starterCount = 0;
@@ -2765,6 +2950,9 @@ async function main() {
   }
 
   // ---- Create Automations -------------------------------------------------
+  // Workspace keys already pushed with their block graph, so Step 15 doesn't
+  // push them a second time.
+  const pushedWorkspaces = new Set();
   if (enabled.automations !== false) {
     log.section('Step 8: Create Automations');
 
@@ -2805,7 +2993,31 @@ async function main() {
       }
     }
 
+    // Automations with an authored block graph (automation-workspaces.js) are
+    // pushed whole — never as empty shells. Governance-owned graphs are pushed
+    // by Step 15, which also creates the API-key connection they need.
+    const authoredByName = {};
+    for (const [key, spec] of Object.entries(automationWorkspaces.WORKSPACES)) {
+      if (moduleForWorkspace(key) !== 'governance') authoredByName[spec.automationName] = key;
+    }
+    const pushAuthored = async (key, label) => {
+      const r = await automationWorkspaces.pushWorkspace(cfg, key, { spaceId, dryRun });
+      if (r.success) {
+        pushedWorkspaces.add(key);
+        report.record(`Automation: ${label}`, 'OK', r.dryRun ? `dry run (${r.blocks} blocks)` : `${r.action} with ${r.blocks} blocks`);
+      } else {
+        log.error(`Automation "${label}": ${r.error}`);
+        report.record(`Automation: ${label}`, 'FAIL', String(r.error).slice(0, 120));
+        if (!continueOnError) { report.print(log); process.exit(EXIT_FAILURE); }
+      }
+    };
+    const governanceNames = new Set(Object.entries(automationWorkspaces.WORKSPACES)
+      .filter(([key]) => moduleForWorkspace(key) === 'governance')
+      .map(([, spec]) => spec.automationName));
+
     for (const [autoName, autoDesc] of automationDefs) {
+      if (authoredByName[autoName]) { await pushAuthored(authoredByName[autoName], autoName); continue; }
+      if (governanceNames.has(autoName)) continue;
       try {
         await client.createAutomation(autoName, autoDesc, spaceId);
         report.record(`Automation: ${autoName}`, 'OK', 'Created (disabled)');
@@ -2815,7 +3027,11 @@ async function main() {
         if (!continueOnError) { report.print(log); process.exit(EXIT_FAILURE); }
       }
     }
-    log.info('Automations created in DISABLED state — configure triggers in Qlik Cloud console.');
+    // Authored analytics graphs with no template of their own.
+    for (const [name, key] of Object.entries(authoredByName)) {
+      if (!pushedWorkspaces.has(key)) await pushAuthored(key, name);
+    }
+    log.info('Automations without an authored graph are created DISABLED — configure triggers in the Qlik Cloud console.');
   } else {
     log.section('Step 8: Create Automations');
     log.info('Skipped (disabled).');
@@ -3054,15 +3270,28 @@ async function main() {
     const pCfg = cfg.pipelines || {};
 
     // Project list: pipelines.projects[] (preferred), legacy single-project
-    // fields, or the two repo defaults (batch + streaming).
-    const projectDefs = (Array.isArray(pCfg.projects) && pCfg.projects.length > 0)
-      ? pCfg.projects
-      : (pCfg.projectName || pCfg.sourceDir)
-        ? [{ projectName: pCfg.projectName || 'MCG Batch Pipeline', sourceDir: pCfg.sourceDir }]
-        : [
-            { projectName: 'MCG Batch Pipeline',     sourceDir: './pipelines/mcg-batch-pipeline' },
-            { projectName: 'MCG Streaming Pipeline', sourceDir: './pipelines/mcg-streaming-pipeline' },
-          ];
+    // fields, or the three repo defaults (batch + streaming on the Open
+    // Lakehouse, supply chain on Snowflake), each named by its bindings.json.
+    const projectDefsRaw = pipelineProjectDefs(pCfg);
+
+    // The platform comes from each project's own qtcp_project.yaml — the UI
+    // writes one pipelines.platformType for every project, and a Snowflake
+    // project created as QLIK_OPEN_LAKEHOUSE would reject its own tasks.
+    // Open Lakehouse projects go first: the Snowflake project reads a
+    // lakehouse project's mirrors, so that project must exist before its
+    // binding to it can resolve.
+    const yamlPlatform = (def) => {
+      try {
+        const raw = fs.readFileSync(path.join(path.resolve(SCRIPT_DIR, def.sourceDir || '.'), 'qtcp_project.yaml'), 'utf-8');
+        const m = raw.match(/^\s*platformType:\s*['"]?([A-Z_]+)['"]?\s*$/m);
+        return m ? m[1] : '';
+      } catch (_) { return ''; }
+    };
+    const projectDefs = projectDefsRaw
+      .map((def, i) => ({ def, i, platform: def.platformType || yamlPlatform(def) || pCfg.platformType || 'QLIK_OPEN_LAKEHOUSE' }))
+      .sort((a, b) => ((a.platform === 'QLIK_OPEN_LAKEHOUSE' ? 0 : 1) - (b.platform === 'QLIK_OPEN_LAKEHOUSE' ? 0 : 1)) || (a.i - b.i))
+      .map(({ def, platform }) => Object.assign({}, def, { platformType: platform }));
+    const projectIds = {};
 
     // Resolve the target space once for all projects + dataset attachment.
     // DI projects belong in a DATA space, like the stewardship sprint below: the
@@ -3094,7 +3323,7 @@ async function main() {
     };
 
     for (const def of projectDefs) {
-      const projectName = def.projectName || path.basename(def.sourceDir || 'pipeline');
+      const projectName = def.projectName || pipelineProjectName(def.sourceDir) || path.basename(def.sourceDir || 'pipeline');
       const reportKey = `Pipeline: ${projectName}`;
       try {
         const srcDir = path.resolve(SCRIPT_DIR, def.sourceDir || '.');
@@ -3127,20 +3356,26 @@ async function main() {
           log.success(`"${projectName}" definitions validated.`);
         }
 
-        // 2. Create (or reuse) the DI project in the data space
+        // 2. Create (or reuse) the DI project in the data space. An Open Lakehouse
+        //    project's catalog and landing connections are fixed at creation.
+        const connId = async (n) => { if (!n) return ''; const c = await client.findDataConnectionByName(n); return c ? c.id : ''; };
         const project = await client.createDiProject({
           name: projectName,
           description: def.description || `MCG declarative pipeline — imported from ${path.basename(srcDir)} YAML definitions.`,
           spaceId,
-          platformType: def.platformType || pCfg.platformType || 'QLIK_OPEN_LAKEHOUSE',
+          platformType: def.platformType,
+          platformConnection: def.platformType === 'QLIK_OPEN_LAKEHOUSE' ? await connId(def.platformConnection) : '',
+          cloudStagingConnection: def.platformType === 'QLIK_OPEN_LAKEHOUSE' ? await connId(def.cloudStagingConnection) : '',
         });
+        projectIds[projectName] = project.id;
 
         // 3. Resolve binding variables against this tenant and push them.
         //    This MUST happen before the import: the import API validates that every
         //    variable the project declares already has a value and otherwise answers
         //    400 VARIABLES-NOT-FOUND — "update the project's export variables using
         //    the PUT bindings API before attempting to import again".
-        const variables = await resolvePipelineBindings(client, cfg, log, srcDir);
+        const bindCtx = { platformType: def.platformType, projectIds, spaceId, def: Object.assign({}, def, { projectName }) };
+        const variables = await resolvePipelineBindings(client, cfg, log, srcDir, bindCtx);
         if (Object.keys(variables).length > 0) {
           await client.updateDiProjectBindings(project.id, variables);
           log.success(`Set ${Object.keys(variables).length} binding variable(s) (connections, schemas, clusters).`);
@@ -3152,7 +3387,16 @@ async function main() {
         await client.importDiProject(project.id, zipBuf);
         log.success(`Imported definitions into "${projectName}" (${project.id}).`);
 
-        // 5. Optionally prepare (creates physical artifacts on the platform)
+        // 5. Optionally prepare (creates physical artifacts on the platform).
+        //    A warehouse project built on the lakehouse mirror can only prepare
+        //    once the mirror has tables, so give the upstream mirror a moment.
+        if (pCfg.prepare === true && pCfg.run === true && def.platformType !== 'QLIK_OPEN_LAKEHOUSE') {
+          // The project this one's bindings read from; mirrorSourceProject only
+          // covers older definitions that use the bare sourceProject variable.
+          const upstreamId = bindCtx.upstreamProjectIds[0]
+            || projectIds[pCfg.mirrorSourceProject || 'MCG Batch Pipeline'];
+          await waitForUpstreamMirror(client, log, upstreamId, Number(pCfg.upstreamWaitMinutes) || 10);
+        }
         if (pCfg.prepare === true) {
           await client.prepareDiProject(project.id);
           log.success(`"${projectName}" prepared — tasks are ready to run.`);
@@ -3316,8 +3560,13 @@ async function main() {
         // Re-apply the env overrides — the file on disk may carry a stale API key,
         // and a raw read would hand the workspaces credentials we deliberately overrode.
         const freshCfg = applyEnvOverrides(JSON.parse(fs.readFileSync(args.configPath, 'utf-8')));
-        for (const key of Object.keys(automationWorkspaces.WORKSPACES)) {
-          const r = await automationWorkspaces.pushWorkspace(freshCfg, key);
+        // Governance graphs always; in a full run also any analytics graph
+        // Step 8 didn't push (legacy behaviour when automations are disabled).
+        const stepKeys = Object.keys(automationWorkspaces.WORKSPACES).filter((key) =>
+          !pushedWorkspaces.has(key) && (moduleForWorkspace(key) === 'governance' || allModules));
+        for (const key of stepKeys) {
+          const r = await automationWorkspaces.pushWorkspace(freshCfg, key,
+            { spaceId: sharedSpace ? sharedSpace.id : undefined });
           if (r.success) {
             log.success(`Automation workspace ${r.action}: "${r.name}" (${r.blocks} blocks)`);
             report.record(`Automation workspace: ${r.name}`, 'OK', `${r.blocks} blocks`);
@@ -3345,7 +3594,7 @@ async function main() {
   // are soft — re-deploy after the first pipeline run to attach any stragglers.
   {
     const pCfg = cfg.pipelines || {};
-    if (enabled.pipelines !== false && pCfg.attachDatasets !== false) {
+    if (attachEnabled && pCfg.attachDatasets !== false) {
       // Resolve the target space (shared space, with a lookup fallback).
       let spaceId = sharedSpace ? sharedSpace.id : undefined;
       if (!spaceId && !dryRun && cfg.spaces && cfg.spaces.shared) {
@@ -3372,7 +3621,13 @@ async function main() {
               const datasetIds = [];
               for (const table of tables) {
                 const bare = String(table).replace(/^(gold|silver|bronze)\./, '');
-                const ds = await client.findDatasetByName(bare, spaceId);
+                // The live pipelines catalogue their gold datasets in the data
+                // space; the QVD fallback path puts them in the shared space.
+                let ds = null;
+                for (const sid of [dataSpace && dataSpace.id, spaceId].filter(Boolean)) {
+                  ds = await client.findDatasetByName(bare, sid);
+                  if (ds) break;
+                }
                 if (ds) datasetIds.push(ds.id);
                 else { missing++; log.warn(`  Dataset "${bare}" not in catalog yet (pipeline not run?) — skipping for "${product.name}".`); }
               }
@@ -3412,7 +3667,7 @@ async function main() {
   const failures = report.print(log);
 
   // ---- Post-Deployment Checklist ------------------------------------------
-  printChecklist(report, enabled, log);
+  printChecklist(report, enabled, log, args.modules);
 
   if (failures > 0) {
     log.warn(`Deployment completed with ${failures} failure(s). Review the log above.`);

@@ -1,0 +1,8 @@
+properties:
+  name: MCG_WMS_Lake_landing
+  id: mcg_wms_lake_landing-gpva
+  type: LAKE_LANDING
+settings:
+  landingDwSettings:
+    landingArtifactsLocation:
+      dataAssetSchema: '{{task.mcg_wms_lake_landing-gpva.taskSchema}}'

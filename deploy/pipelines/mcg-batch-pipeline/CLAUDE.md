@@ -10,7 +10,7 @@ schema/ai-instructions.md
 
 ## This project — MCG Batch Pipeline
 
-Meridian Commerce Group's declarative Open Lakehouse batch pipeline: PostgreSQL WMS CDC and Meridian CRM landed to `bronze`, cleansed to `silver` (7 datasets), and served as two gold data products. Four tasks: `MCG WMS CDC Landing` (LAKE_LANDING), `MCG CRM Landing` (LAKE_LANDING), `MCG Silver Transform` (TRANSFORM), `MCG Gold Datamart` (DATAMART).
+Meridian Commerce Group's declarative Open Lakehouse batch pipeline: PostgreSQL WMS CDC and Meridian CRM landed to `landing`, stored as Apache Iceberg in `bronze`, and mirrored zero-copy into Snowflake. Four tasks: `MCG WMS CDC Landing` (LAKE_LANDING), `MCG CRM Landing` (LAKE_LANDING), `MCG Lakehouse Storage` (LAKEHOUSE_STORAGE), `MCG Snowflake Mirror` (LAKEHOUSE_MIRROR). An Open Lakehouse project cannot hold TRANSFORM or DATAMART tasks — silver and gold live in `../mcg-snowflake-pipeline` (MCG Supply Chain Pipeline), which reads this project's mirror.
 
 Editing rules: delta-only YAML, no comments, never change an existing task `id`, and declare any new `{{variable}}` in both `qtcp_bindings_definition.json` and `bindings.json`. Folder names must equal task names. See `../README.md` for the full task map, bindings, and deploy flow.
 

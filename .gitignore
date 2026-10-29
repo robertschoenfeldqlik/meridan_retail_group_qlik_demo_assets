@@ -70,3 +70,12 @@ generators/.chrome-profile/
 /MCG_*.pptx
 /documents/**/*.docx
 /documents/**/*.xlsx
+
+# Pillar review listener (generators/review-pillars.js --hook): per-session hook
+# memory and the off switch are local. pillar-state.json beside them is tracked.
+generators/rubrics/reviews/.listener.json
+generators/rubrics/reviews/.listener-off
+
+# MirrorMaker 2 SASL secret (infrastructure/kafka/mirror/mm2.properties)
+infrastructure/kafka/mirror/secret.properties
+infrastructure/kafka/mirror/qlik-password.txt

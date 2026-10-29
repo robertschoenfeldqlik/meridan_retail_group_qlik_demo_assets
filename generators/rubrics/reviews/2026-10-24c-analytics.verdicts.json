@@ -1,0 +1,65 @@
+{
+  "reviewer": "Claude Opus 5.5 (rubric-reviewer agent), scoring as Sophie Müller",
+  "persona": "sophie",
+  "pillar": "analytics",
+  "scope": "Re-review of the 2026-10-24 re-voice. Narration: the spoken > lines of s4_analytics/script.md as re-voiced today (sc2 MCP preview label, sc3 APAC logistics lead decision, sc4 deployed late-delivery model replacing the tracking-number claim), with s5_ai/script.md quoted as context only, which caps a verdict at partial. Screen: the five deck_anim.html scenes of s4_analytics and the four qlik_panels they embed, unchanged since the last review (v4_sheet_inventory.png in sc1 and sc2, v4_answers.png in sc3, v5_predict_coldchain.png in sc4, v4_sheet_lastmile.png in sc5). Each panel was opened and inspected, then checked against frames pulled from the finished C:/Claude/MCG Demo/04_MCG_Analytics_1080p.mp4 (2:10 with the end card, rendered 2026-10-24). ANA-01 and ANA-02 are measured by the tenant_panels and olh_live probes.",
+  "note": "Ingrid, this cut finally has someone doing something: the APAC logistics lead changes the Singapore promise and goes to NinjaVan with the amendment in hand, and the MCP preview and the Predict hedge are now said aloud. It still fails on what I would be asked at 7 a.m.: the dashboards load QVD files and never name Supply Chain Health or Last Mile, nothing measurable moves after the fix (the close still shows NinjaVan at 69.4%), and the Answers panel on screen says the promise was fixed by a policy release in October 2025, not that afternoon. And nobody should repeat 'eighty-two percent accuracy' to a customer: with 88% of our orders on time, a model that says 'on time' to every order beats it.",
+  "verdicts": [
+    {
+      "id": "ANA-03",
+      "verdict": "partial",
+      "evidence": "v5_predict_coldchain.png is a live Qlik Predict model-training page for the cold-chain experiment (target alert_flag) only. It shows the model list (best model v03_LOGC_01_00, F1 0.144), SHAP importance led by route_id, warehouse_id and battery_level_pct, an ROC curve, and a confusion matrix of 46 true positives against 489 false positives. It does not show a deployment or any scored orders. In the sc4 compact frame, only the model table, the SHAP and ROC headings and the top corner of the ROC curve are visible. The other scenes are live tenant captures too: v4_sheet_inventory.png (Inventory Health Overview: IRA 0.74, trust 0.84, 11.73k phantom suspect positions, twelve DCs), v4_answers.png (the Singapore answer with superscript citations 1-4 and the View source pane) and v4_sheet_lastmile.png (on-time rate by carrier with NinjaVan near 0.69, WISMO 5.22k).",
+      "gap": "sc4 now narrates the deployed late-delivery model (twenty thousand orders scored, about 82% accuracy), and nothing on screen shows it: no late-delivery experiment, no deployment, no scored orders and no 82%. Those figures exist only as slide text above a cold-chain training page with an F1 of 0.144. That page is also the panel s5_ai uses as its title shot, and the compact frame still crops the SHAP bars and confusion matrix its caption names. In sc3 the panel now contradicts the new line. Its own conclusion says the promise 'was corrected on October 20, 2025 with the release of MCG-POL-020 v2.1', and the View source pane dates the question 21 September 2026. So the screen shows a policy fix made long before the question was asked, not the APAC logistics lead changing the promise that afternoon. The same answer still dates the fall to Q3 2025 but blames an amendment effective 1 October 2025. The Answers panel runs off the bottom of the frame, its caption never appears, the footer text prints over it, and the slide's citation chips are dim green on blue. In sc5 the zoom crops the y-axis, the chart has no 92% target line, 88.2% appears nowhere on the panel, and NinjaVan still sits at 69.4% after the fix the narration has just reported. sc1 and sc2 show the same sheet for about 33 seconds, and the MCP authoring itself is never shown.",
+      "ref": "s4_analytics#sc4:v5_predict_coldchain.png"
+    },
+    {
+      "id": "ANA-04",
+      "verdict": "partial",
+      "evidence": "Governed data products, dashboards authored in plain English, and models trained on the same trusted data.",
+      "gap": "Unchanged in this cut. The title lists 'governed data products' as one item in a menu. No line says the two apps read them, and neither Supply Chain Health nor Last Mile Performance is named in the analytics video. s5_ai now names both products and their owners, but as what the Discovery Agent watches, not what the dashboards load. The narration draft held this line back on purpose: per the olh_live probe, both apps load lib:// .qvd files, so the sc5 bullet 'Every figure traces to a governed data product' still overstates the load path, and a viewer cannot tell the sheets from a side extract.",
+      "ref": ""
+    },
+    {
+      "id": "ANA-05",
+      "verdict": "covered",
+      "evidence": "So the APAC logistics lead changed the Singapore promise on the website to three days that afternoon, and opened the carrier conversation with the amendment in hand.",
+      "gap": "A named role now makes a decision and acts on it. Three weaknesses remain. The decision comes from a contract document that Answers retrieved, not from a figure in either app, so the dashboards themselves still change nobody's mind. The outcome stops at the action: no promise accuracy is recovered and no WISMO contacts are avoided. On screen, the story is undercut twice: the Answers panel credits the fix to the MCG-POL-020 v2.1 release on 20 October 2025, and the close still shows NinjaVan at 69.4%.",
+      "ref": ""
+    },
+    {
+      "id": "ANA-06",
+      "verdict": "partial",
+      "evidence": "That second model is deployed: twenty thousand orders scored for late-delivery risk, at about eighty-two percent accuracy — a starting point to test hunches against, not a verdict.",
+      "gap": "The overclaim is gone and the label is right, but the one number offered is not honest support. The video's own close puts on-time delivery at 88.2%, and 11.8% of the orders in deploy/mockdata/out/silver_order_delivery_timeline.csv are late. A model that called every order on time would therefore score about 88%. 'About eighty-two percent accuracy' is below that, yet it is offered as a credential, with no precision or recall on late orders to show whether the model finds any. Twenty thousand is the whole historical order table, every order with a known outcome, so 'scored' reads as re-scoring history, not forecasting open orders. 'The same governed data' is asserted but never named. The only late-delivery capture we hold (24 Sep, unused) trained on silver_order_delivery_timeline.qvd, which is a file, not a gold product.",
+      "ref": ""
+    },
+    {
+      "id": "ANA-07",
+      "verdict": "partial",
+      "evidence": "A cold-chain breach posts a card to the operations channel within five minutes. A steward's correction is picked up and handed back to the pipeline.",
+      "gap": "Unchanged. The analytics video has no automation; only story four describes the loop, and its notification still lands in 'the operations channel'. s5 now names recipients (Henrik Jansen and Sophie Müller), but they receive the Discovery Agent's alerts, and that agent corrects nothing. The automation that does trigger a correction still has nobody named to receive the cold-chain card or to decide what happens to the shipment.",
+      "ref": ""
+    },
+    {
+      "id": "ANA-08",
+      "verdict": "missed",
+      "evidence": "",
+      "gap": "The new Singapore decision is the obvious place for a number to move, and none does. Promise accuracy does not recover from 69% toward the 92% target, the 52% WISMO share the Answers panel cites does not drop, and none of the fourteen thousand customers a month are spared. The new Predict line adds capability figures (twenty thousand scored, about 82%), not value. The $127M appears only in story four, as the starting point, and the close of this video still shows NinjaVan at 69.4%.",
+      "ref": ""
+    },
+    {
+      "id": "ANA-09",
+      "verdict": "partial",
+      "evidence": "and the alert goes to the product's owner: Henrik Jansen for Supply Chain Health, Sophie Müller for Last Mile",
+      "gap": "Story four now names the recipients, so this rises to the cap and no further. The analytics video itself has no alert: the APAC logistics lead acts on a question the lead asked, not on an alert. Nobody is shown acting on an alert, and the narration never says what the Last Mile owner does at 7 a.m. when its trust score drops below 3.5. 'A Discovery Agent can watch them' describes a capability; it does not say a watch is running.",
+      "ref": ""
+    },
+    {
+      "id": "ANA-10",
+      "verdict": "covered",
+      "evidence": "through the Qlik MCP server — in preview today",
+      "gap": "Both of the rubric's examples are now labelled aloud: the MCP authoring as preview, and the Predict output as 'a starting point to test hunches against, not a verdict'. On screen, the sc1 caption ('ten sheets, authored conversationally') and the sc2 bullets carry no preview label, and the sc2 footer states '10 sheets authored' as settled fact. The GA-vs-preview table asks for the MCP disclaimer to stay on the decks.",
+      "ref": ""
+    }
+  ]
+}

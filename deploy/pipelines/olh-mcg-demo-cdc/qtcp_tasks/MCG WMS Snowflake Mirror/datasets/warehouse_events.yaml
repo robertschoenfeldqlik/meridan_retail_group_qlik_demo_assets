@@ -1,0 +1,6 @@
+properties:
+  id: warehouse_events-ig5h
+  name: warehouse_events
+  inputDatasets:
+    - datasetId: warehouse_events-gpve
+      taskId: mcg_wms_storage-gpvb

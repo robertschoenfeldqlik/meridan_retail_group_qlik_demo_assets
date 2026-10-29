@@ -1,18 +1,20 @@
 {
   "variables": {
     "task.wms-cdc-landing-4101.sourceConnection": "{{id(connection, MCG Demo - DI.MCG WMS Database)}}",
-    "task.wms-cdc-landing-4101.taskSchema": "bronze",
+    "task.wms-cdc-landing-4101.taskSchema": "landing",
     "task.wms-cdc-landing-4101:null$_$public.schema": "public",
     "task.crm-landing-4102.sourceConnection": "{{id(connection, MCG Demo - DI.MCG CRM Database)}}",
-    "task.crm-landing-4102.taskSchema": "bronze",
+    "task.crm-landing-4102.taskSchema": "landing",
     "task.crm-landing-4102:null$_$mcg_crm.schema": "mcg_crm",
-    "task.silver-transform-4201.internalSchema": "silver__internal",
-    "task.silver-transform-4201.taskSchema": "silver",
-    "task.silver-transform-4201.databaseName": "",
-    "task.silver-transform-4201.warehouseName": "",
-    "task.gold-datamart-4301.internalSchema": "gold__internal",
-    "task.gold-datamart-4301.taskSchema": "gold",
-    "task.gold-datamart-4301.databaseName": "",
-    "task.gold-datamart-4301.warehouseName": ""
+    "task.lakehouse-storage-4151.internalSchema": "bronze__internal",
+    "task.lakehouse-storage-4151.taskSchema": "bronze",
+    "task.lakehouse-storage-4151.lakehouseCluster": "",
+    "task.snowflake-mirror-4401.internalSchema": "bronze__internal",
+    "task.snowflake-mirror-4401.taskSchema": "bronze",
+    "task.snowflake-mirror-4401.databaseName": "",
+    "task.snowflake-mirror-4401.warehouseName": "",
+    "task.snowflake-mirror-4401.mirrorConnection": "{{id(connection, MCG Demo - DI.MCG Snowflake)}}",
+    "task.snowflake-mirror-4401.snowflakeExternalVolume": "",
+    "task.snowflake-mirror-4401.snowflakeCatalogIntegration": ""
   }
 }

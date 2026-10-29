@@ -1,0 +1,8 @@
+// Self-test fixture: a load script that only pretends to read the lakehouse.
+LIB CONNECT TO 'MCG Snowflake';
+
+SupplyChainHealth:
+LOAD *
+// FROM gold.supply_chain_health;
+FROM [lib://MCG Demo - Development:MCG Open Lakehouse/gold_supply_chain_health.qvd]
+(qvd);

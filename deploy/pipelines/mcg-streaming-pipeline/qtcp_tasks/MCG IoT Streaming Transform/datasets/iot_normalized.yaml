@@ -1,36 +1,438 @@
 properties:
+  id: iot_cold_chain-h5uv
   name: iot_normalized
-  id: iot_normalized
   inputDatasets:
     - datasetId: iot_cold_chain
+      name: iot_cold_chain
       taskId: iot-streaming-landing-4103
-transformations:
-  columnTransformations:
-    - action: ADD
-      columnName: temperature_c
-      newDataType:
-        type: REAL8
-      expression:
-        expressionStatement: |-
-          CASE WHEN UPPER(${temperature_unit}) = 'F' THEN ROUND((${temperature_value} - 32) * 5.0 / 9.0, 2) ELSE ${temperature_value} END
-    - action: ADD
-      columnName: gps_gap
-      newDataType:
-        type: BOOLEAN
-      expression:
-        expressionStatement: |-
-          CASE WHEN ${gps_latitude} IS NULL OR ${gps_longitude} IS NULL THEN TRUE ELSE FALSE END
-    - action: ADD
-      columnName: sensor_unregistered
-      newDataType:
-        type: BOOLEAN
-      expression:
-        expressionStatement: |-
-          CASE WHEN ${shipment_id} IS NULL THEN TRUE ELSE FALSE END
-    - action: ADD
-      columnName: battery_low
-      newDataType:
-        type: BOOLEAN
-      expression:
-        expressionStatement: |-
-          CASE WHEN ${battery_level_pct} < 10 THEN TRUE ELSE FALSE END
+  tableDef:
+    columns:
+      - datatype:
+          type: STRING
+          length: 2147483647
+        name: sensor_id
+        nullable: true
+        expression:
+          expressionStatement: ${sensor_id}
+          alias:
+            - name: sensor_id
+              value: sensor_id
+        id: sensor_id
+        properties:
+          streamingProperties:
+            nesting: TOPLEVEL
+            childrenIds:
+              - sensor_id
+            hash: false
+      - datatype:
+          type: STRING
+          length: 2147483647
+        name: shipment_id
+        nullable: true
+        expression:
+          expressionStatement: ${shipment_id}
+          alias:
+            - name: shipment_id
+              value: shipment_id
+        id: shipment_id
+        properties:
+          streamingProperties:
+            nesting: TOPLEVEL
+            childrenIds:
+              - shipment_id
+            hash: false
+      - datatype:
+          type: STRING
+          length: 2147483647
+        name: route_id
+        nullable: true
+        expression:
+          expressionStatement: ${route_id}
+          alias:
+            - name: route_id
+              value: route_id
+        id: route_id
+        properties:
+          streamingProperties:
+            nesting: TOPLEVEL
+            childrenIds:
+              - route_id
+            hash: false
+      - datatype:
+          type: STRING
+          length: 2147483647
+        name: warehouse_id
+        nullable: true
+        expression:
+          expressionStatement: ${warehouse_id}
+          alias:
+            - name: warehouse_id
+              value: warehouse_id
+        id: warehouse_id
+        properties:
+          streamingProperties:
+            nesting: TOPLEVEL
+            childrenIds:
+              - warehouse_id
+            hash: false
+      - datatype:
+          type: STRING
+          length: 2147483647
+        name: carrier
+        nullable: true
+        expression:
+          expressionStatement: ${carrier}
+          alias:
+            - name: carrier
+              value: carrier
+        id: carrier
+        properties:
+          streamingProperties:
+            nesting: TOPLEVEL
+            childrenIds:
+              - carrier
+            hash: false
+      - datatype:
+          type: STRING
+          length: 2147483647
+        name: product_type
+        nullable: true
+        expression:
+          expressionStatement: ${product_type}
+          alias:
+            - name: product_type
+              value: product_type
+        id: product_type
+        properties:
+          streamingProperties:
+            nesting: TOPLEVEL
+            childrenIds:
+              - product_type
+            hash: false
+      - datatype:
+          type: REAL8
+        name: temperature_value
+        nullable: true
+        expression:
+          expressionStatement: ${temperature_value}
+          alias:
+            - name: temperature_value
+              value: temperature_value
+        id: temperature_value
+        properties:
+          streamingProperties:
+            nesting: TOPLEVEL
+            childrenIds:
+              - temperature_value
+            hash: false
+      - datatype:
+          type: STRING
+          length: 2147483647
+        name: temperature_unit
+        nullable: true
+        expression:
+          expressionStatement: ${temperature_unit}
+          alias:
+            - name: temperature_unit
+              value: temperature_unit
+        id: temperature_unit
+        properties:
+          streamingProperties:
+            nesting: TOPLEVEL
+            childrenIds:
+              - temperature_unit
+            hash: false
+      - datatype:
+          type: REAL8
+        name: humidity_pct
+        nullable: true
+        expression:
+          expressionStatement: ${humidity_pct}
+          alias:
+            - name: humidity_pct
+              value: humidity_pct
+        id: humidity_pct
+        properties:
+          streamingProperties:
+            nesting: TOPLEVEL
+            childrenIds:
+              - humidity_pct
+            hash: false
+      - datatype:
+          type: BOOLEAN
+        name: light_exposure
+        nullable: true
+        expression:
+          expressionStatement: ${light_exposure}
+          alias:
+            - name: light_exposure
+              value: light_exposure
+        id: light_exposure
+        properties:
+          streamingProperties:
+            nesting: TOPLEVEL
+            childrenIds:
+              - light_exposure
+            hash: false
+      - datatype:
+          type: BOOLEAN
+        name: shock_detected
+        nullable: true
+        expression:
+          expressionStatement: ${shock_detected}
+          alias:
+            - name: shock_detected
+              value: shock_detected
+        id: shock_detected
+        properties:
+          streamingProperties:
+            nesting: TOPLEVEL
+            childrenIds:
+              - shock_detected
+            hash: false
+      - datatype:
+          type: STRING
+          length: 2147483647
+        name: timestamp
+        nullable: true
+        expression:
+          expressionStatement: ${"timestamp"}
+          alias:
+            - name: '"timestamp"'
+              value: '"timestamp"'
+        id: '"timestamp"'
+        properties:
+          streamingProperties:
+            nesting: TOPLEVEL
+            childrenIds:
+              - timestamp
+            hash: false
+      - datatype:
+          type: REAL8
+        name: gps_latitude
+        nullable: true
+        expression:
+          expressionStatement: ${gps_latitude}
+          alias:
+            - name: gps_latitude
+              value: gps_latitude
+        id: gps_latitude
+        properties:
+          streamingProperties:
+            nesting: TOPLEVEL
+            childrenIds:
+              - gps_latitude
+            hash: false
+      - datatype:
+          type: REAL8
+        name: gps_longitude
+        nullable: true
+        expression:
+          expressionStatement: ${gps_longitude}
+          alias:
+            - name: gps_longitude
+              value: gps_longitude
+        id: gps_longitude
+        properties:
+          streamingProperties:
+            nesting: TOPLEVEL
+            childrenIds:
+              - gps_longitude
+            hash: false
+      - datatype:
+          type: INT8
+        name: battery_level_pct
+        nullable: true
+        expression:
+          expressionStatement: ${battery_level_pct}
+          alias:
+            - name: battery_level_pct
+              value: battery_level_pct
+        id: battery_level_pct
+        properties:
+          streamingProperties:
+            nesting: TOPLEVEL
+            childrenIds:
+              - battery_level_pct
+            hash: false
+      - datatype:
+          type: BOOLEAN
+        name: alert_flag
+        nullable: true
+        expression:
+          expressionStatement: ${alert_flag}
+          alias:
+            - name: alert_flag
+              value: alert_flag
+        id: alert_flag
+        properties:
+          streamingProperties:
+            nesting: TOPLEVEL
+            childrenIds:
+              - alert_flag
+            hash: false
+      - datatype:
+          type: BOOLEAN
+        name: gps_gap
+        nullable: true
+        expression:
+          expressionStatement: CASE WHEN ${gps_latitude} IS NULL OR ${gps_longitude} IS NULL THEN TRUE ELSE FALSE END
+          alias:
+            - name: gps_latitude
+              value: gps_latitude
+            - name: gps_longitude
+              value: gps_longitude
+        id: gps_gap-5e17
+      - datatype:
+          type: BOOLEAN
+        name: sensor_unregistered
+        nullable: true
+        expression:
+          expressionStatement: CASE WHEN ${shipment_id} IS NULL THEN TRUE ELSE FALSE END
+          alias:
+            - name: shipment_id
+              value: shipment_id
+        id: sensor_unregistered-e295
+      - datatype:
+          type: BOOLEAN
+        name: battery_low
+        nullable: true
+        expression:
+          expressionStatement: CASE WHEN ${battery_level_pct} < 10 THEN TRUE ELSE FALSE END
+          alias:
+            - name: battery_level_pct
+              value: battery_level_pct
+        id: battery_low-534b
+      - datatype:
+          type: REAL8
+        name: temperature_c
+        nullable: true
+        expression:
+          expressionStatement: CASE WHEN UPPER(${temperature_unit}) = 'F' THEN ROUND((${temperature_value} - 32) * 5.0 / 9.0, 2) ELSE ${temperature_value} END
+          alias:
+            - name: temperature_unit
+              value: temperature_unit
+            - name: temperature_value
+              value: temperature_value
+        id: temperature_c-6939
+  icebergTransformDatasetSettings:
+    mappings:
+      - sourceDataEntityKey:
+          type: NONE
+          entityId: iot_cold_chain
+          name: iot_cold_chain
+          projectId: '6ae0f991fa558e20911f94eb'
+          dataAppId: iot-streaming-landing-4103
+        mappingFields:
+          - toColName: sensor_id
+            mappingType: EXPRESSION
+            expression:
+              expressionStatement: ${sensor_id}
+              alias:
+                - name: sensor_id
+                  value: sensor_id
+          - toColName: shipment_id
+            mappingType: EXPRESSION
+            expression:
+              expressionStatement: ${shipment_id}
+              alias:
+                - name: shipment_id
+                  value: shipment_id
+          - toColName: route_id
+            mappingType: EXPRESSION
+            expression:
+              expressionStatement: ${route_id}
+              alias:
+                - name: route_id
+                  value: route_id
+          - toColName: warehouse_id
+            mappingType: EXPRESSION
+            expression:
+              expressionStatement: ${warehouse_id}
+              alias:
+                - name: warehouse_id
+                  value: warehouse_id
+          - toColName: carrier
+            mappingType: EXPRESSION
+            expression:
+              expressionStatement: ${carrier}
+              alias:
+                - name: carrier
+                  value: carrier
+          - toColName: product_type
+            mappingType: EXPRESSION
+            expression:
+              expressionStatement: ${product_type}
+              alias:
+                - name: product_type
+                  value: product_type
+          - toColName: temperature_value
+            mappingType: EXPRESSION
+            expression:
+              expressionStatement: ${temperature_value}
+              alias:
+                - name: temperature_value
+                  value: temperature_value
+          - toColName: temperature_unit
+            mappingType: EXPRESSION
+            expression:
+              expressionStatement: ${temperature_unit}
+              alias:
+                - name: temperature_unit
+                  value: temperature_unit
+          - toColName: humidity_pct
+            mappingType: EXPRESSION
+            expression:
+              expressionStatement: ${humidity_pct}
+              alias:
+                - name: humidity_pct
+                  value: humidity_pct
+          - toColName: light_exposure
+            mappingType: EXPRESSION
+            expression:
+              expressionStatement: ${light_exposure}
+              alias:
+                - name: light_exposure
+                  value: light_exposure
+          - toColName: shock_detected
+            mappingType: EXPRESSION
+            expression:
+              expressionStatement: ${shock_detected}
+              alias:
+                - name: shock_detected
+                  value: shock_detected
+          - toColName: timestamp
+            mappingType: EXPRESSION
+            expression:
+              expressionStatement: ${"timestamp"}
+              alias:
+                - name: '"timestamp"'
+                  value: '"timestamp"'
+          - toColName: gps_latitude
+            mappingType: EXPRESSION
+            expression:
+              expressionStatement: ${gps_latitude}
+              alias:
+                - name: gps_latitude
+                  value: gps_latitude
+          - toColName: gps_longitude
+            mappingType: EXPRESSION
+            expression:
+              expressionStatement: ${gps_longitude}
+              alias:
+                - name: gps_longitude
+                  value: gps_longitude
+          - toColName: battery_level_pct
+            mappingType: EXPRESSION
+            expression:
+              expressionStatement: ${battery_level_pct}
+              alias:
+                - name: battery_level_pct
+                  value: battery_level_pct
+          - toColName: alert_flag
+            mappingType: EXPRESSION
+            expression:
+              expressionStatement: ${alert_flag}
+              alias:
+                - name: alert_flag
+                  value: alert_flag

@@ -1,0 +1,15 @@
+properties:
+  name: MCG Gold Transform
+  id: mcg_gold_transform-cfkl
+  description: 'Business-ready gold layer: supply chain health and last-mile performance, aggregated from the silver datasets. Feeds the MCG data products and analytics apps.'
+  type: TRANSFORM
+settings:
+  artifactsLocation:
+    internalSchema: '{{task.mcg_gold_transform-cfkl.internalSchema}}'
+    taskSchema: '{{task.mcg_gold_transform-cfkl.taskSchema}}'
+    databaseName: '{{task.mcg_gold_transform-cfkl.databaseName}}'
+  taskRuntime:
+    warehouseSelection:
+      warehouseName: '{{task.mcg_gold_transform-cfkl.warehouseName}}'
+  catalogIntegration:
+    publishDatasets: true

@@ -1,0 +1,132 @@
+{
+  "id": "INT",
+  "version": "1.0",
+  "pillar": "integration",
+  "title": "Integration pillar — video 02 talking-point and screen rubric",
+  "story": "s2_integration",
+  "also": ["s5_ai"],
+  "persona": "marcus",
+  "module": "integration",
+  "pass": { "must": "covered", "should_missed_max": 1 },
+  "note": "Scored by gen-ceo-video-review.js --pillar integration. `judge_on: auto` criteria are measured by the deterministic probes in generators/lib/rubric-review.js and must not be supplied as verdicts. `screen` criteria are judged on the panels the deck embeds and need a `ref` (story#scN:panel.png). Evidence quoted only from an `also` story caps a narration verdict at partial. Keep ids stable: past verdicts bind to them.",
+  "scale": {
+    "covered": "Stated explicitly and clearly enough that a first-time viewer would take the point away.",
+    "partial": "Touched, implied, or named without enough substance to land — a viewer could miss it.",
+    "missed": "Not present in the narration at all."
+  },
+  "weights": {
+    "must": "The video fails its job without this.",
+    "should": "Expected; its absence is a real gap worth fixing before the next cut.",
+    "nice": "Strengthens the story; acceptable to trade away for time."
+  },
+  "dimensions": [
+    {
+      "id": "INT",
+      "name": "Integration — data landed as code, live on the Open Lakehouse",
+      "framing": "Three real Meridian sources landing on the Qlik Open Lakehouse through pipelines held as code. The viewer should leave knowing what lands, how, where it goes next, and that what they saw was the live tenant.",
+      "criteria": [
+        {
+          "id": "INT-01",
+          "name": "Every scene shows a real tenant capture",
+          "weight": "must",
+          "judge_on": "auto",
+          "probe": "tenant_panels",
+          "expect": "Each scene of the Integration video embeds a qlik_panels/*.png captured from the live tenant. No drawn chart (QlikApp.app / barSvg), no missing file, no panel edited after capture.",
+          "source": "plan glimmering-yawning-falcon § E Probes; § Decisions — Videos (every panel is a live tenant capture)",
+          "module": "integration"
+        },
+        {
+          "id": "INT-02",
+          "name": "The apps read live lakehouse or warehouse data",
+          "weight": "must",
+          "judge_on": "auto",
+          "probe": "olh_live",
+          "expect": "The analytics load scripts read the silver and gold tables over a warehouse/lakehouse SQL connection (LIB CONNECT + SELECT FROM schema.table), with no active lib:// .qvd or .csv reads on a connection that is only named after the lakehouse.",
+          "source": "plan § Context — 'Open Lakehouse in the demo is partly fake today' (deploy/apps/load-scripts/app1-supply-chain.qvs:61)",
+          "module": "integration"
+        },
+        {
+          "id": "INT-03",
+          "name": "Each panel matches the claim made over it",
+          "weight": "must",
+          "judge_on": "screen",
+          "expect": "The panel on screen shows what the narration claims at that moment: the feeds scene shows the three source connections, the pipelines scene shows projects with landing, storage and mirror tasks in them (not empty projects), and nothing on screen belongs to another demo.",
+          "source": "plan § Context 4 (videos show drawn or old panels and empty pipeline projects)",
+          "module": "integration"
+        },
+        {
+          "id": "INT-04",
+          "name": "Three real sources, and how each one lands",
+          "weight": "must",
+          "judge_on": "narration",
+          "expect": "The narration names the three sources and how each lands: the PostgreSQL warehouse management database by change data capture through the Data Movement gateway, cold-chain telemetry off Kafka, and the MySQL Meridian CRM (contacts, orders, product master).",
+          "source": "series/s2_integration/script.md scene 3; deploy/pipelines/mcg-batch-pipeline; memory mysql-crm-source",
+          "module": "integration"
+        },
+        {
+          "id": "INT-05",
+          "name": "Pipelines are declarative YAML in Git, imported through the API",
+          "weight": "must",
+          "judge_on": "narration",
+          "expect": "The pipelines are declarative YAML held in version control — reviewable, diffable, revertable — and imported through the platform API, not clicked together in the browser.",
+          "source": "MCG_Agentic_Data_Engineering.md § six capabilities #1",
+          "module": "integration"
+        },
+        {
+          "id": "INT-06",
+          "name": "Bronze in the Open Lakehouse, mirrored zero-copy to Snowflake",
+          "weight": "must",
+          "judge_on": "narration",
+          "expect": "Bronze lands in the Qlik Open Lakehouse as Iceberg tables and is mirrored zero-copy to Snowflake, where silver and gold are built. A viewer must not come away thinking the CDC silver and gold layers are built inside the Open Lakehouse; only the streaming transform runs there.",
+          "source": "plan § Decisions — Warehouse: Snowflake; tenant error DATA-APP-DESIGN-IMPORT-PROJECT-NOT-SUPPORTED-APP; § B Correct OLH pipeline shape",
+          "module": "integration"
+        },
+        {
+          "id": "INT-07",
+          "name": "Preview is said aloud",
+          "weight": "must",
+          "judge_on": "narration",
+          "expect": "Declarative pipelines are a preview capability and the narration says so. On-screen small print does not count.",
+          "source": "MCG_Agentic_Data_Engineering.md § GA vs preview status; '\"Preview, and we say so.\"'",
+          "module": "integration"
+        },
+        {
+          "id": "INT-08",
+          "name": "The Talend Studio job is part of the integration estate",
+          "weight": "should",
+          "judge_on": "narration",
+          "expect": "The Talend Studio job mcg_crm_address_validate_bulk is named as the batch that validates, repairs and geocodes CRM addresses on its way into the lakehouse — Talend is part of the same integration story, not a separate product pitch.",
+          "source": "deploy/build-talend-job.js; deploy/config.example.json (talend job name)",
+          "module": "integration"
+        },
+        {
+          "id": "INT-09",
+          "name": "One definition, three authoring paths",
+          "weight": "should",
+          "judge_on": "narration",
+          "expect": "The same YAML is editable in the Qlik Talend Cloud UI, in an IDE, or by a coding agent: one definition, one schema, one Git history, whichever the engineer prefers.",
+          "source": "MCG_Agentic_Data_Engineering.md § six capabilities #1; agentic-video-rubric.json ADE-02",
+          "module": "integration"
+        },
+        {
+          "id": "INT-10",
+          "name": "How fresh the data is",
+          "weight": "should",
+          "judge_on": "narration",
+          "expect": "Freshness is stated, not implied: change data capture from the warehouse, streaming for the cold chain, and the products' refresh SLAs (Supply Chain Health every 15 minutes, Last Mile Performance every 30).",
+          "source": "deploy/data_products.json sla.refreshFrequency",
+          "module": "integration"
+        },
+        {
+          "id": "INT-11",
+          "name": "Tied to a Meridian problem",
+          "weight": "should",
+          "judge_on": "narration",
+          "expect": "The integration work is tied to a named Meridian problem — phantom inventory from WMS and ERP disagreeing, the seventy-two silent hours at Rotterdam, or the $127M — rather than shown for its own sake.",
+          "source": "Meridian_Commerce_Group_Demo_Profile.md § 2; documents/project_briefs/PROJ-CLARITY-2025_Business_Case.md",
+          "module": "integration"
+        }
+      ]
+    }
+  ]
+}

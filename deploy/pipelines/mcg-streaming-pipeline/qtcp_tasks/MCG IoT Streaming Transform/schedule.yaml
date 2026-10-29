@@ -1,6 +1,12 @@
 scheduling:
-  - schedulingType: EVENT_BASED
-    enabled: true
-    description: Run when the streaming landing task delivers new data
+  - enabled: true
+    schedulingType: EVENT_BASED
+    timeBasedScheduling:
+      schedule: []
+      fullloadInterval: 0
     eventBasedScheduling:
       eventSchedulingType: ANY_INPUT_TASK
+      triggerApps: []
+    runOnReconnect: ONSCHEDULED
+    description: Run when the streaming landing task delivers new data
+    version: '1'

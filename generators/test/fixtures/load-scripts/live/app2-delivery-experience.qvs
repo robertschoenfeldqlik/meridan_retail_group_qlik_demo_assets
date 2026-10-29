@@ -1,0 +1,7 @@
+// Self-test fixture: reads gold from the warehouse.
+LIB CONNECT TO 'MCG Snowflake';
+
+LastMile:
+LOAD *;
+SQL SELECT carrier, destination_country, on_time_pct
+FROM MCG_DEMO.GOLD.LAST_MILE_PERFORMANCE;

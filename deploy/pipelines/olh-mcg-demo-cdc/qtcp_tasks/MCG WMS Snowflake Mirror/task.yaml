@@ -1,0 +1,18 @@
+properties:
+  name: MCG WMS Snowflake Mirror
+  id: mcg_wms_snowflake_mirror-gpwi
+  type: LAKEHOUSE_MIRROR
+settings:
+  artifactsLocation:
+    internalSchema: '{{task.mcg_wms_snowflake_mirror-gpwi.internalSchema}}'
+    taskSchema: '{{task.mcg_wms_snowflake_mirror-gpwi.taskSchema}}'
+    databaseName: '{{task.mcg_wms_snowflake_mirror-gpwi.databaseName}}'
+  platformConfig:
+    platformType: SNOWFLAKE
+    connection: '{{task.mcg_wms_snowflake_mirror-gpwi.targetConnection}}'
+    snowflakeIcebergSettings:
+      snowflakeExternalVolume: '{{task.mcg_wms_snowflake_mirror-gpwi.snowflakeExternalVolume}}'
+      snowflakeCatalogIntegration: '{{task.mcg_wms_snowflake_mirror-gpwi.snowflakeOpenCatalog}}'
+  taskRuntime:
+    warehouseSelection:
+      warehouseName: '{{task.mcg_wms_snowflake_mirror-gpwi.warehouseName}}'

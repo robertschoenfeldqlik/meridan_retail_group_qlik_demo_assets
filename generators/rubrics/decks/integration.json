@@ -1,0 +1,201 @@
+{
+  "id": "DINT",
+  "version": "1.1",
+  "changes": "1.1 (2026-10-26): DINT-17 accepts an object opened in the tool the step names. The CRM address job is a Talend Studio job (deploy/talend/mcg_crm_address_validate_bulk.zip), not a Qlik Cloud object, so 'in the tenant' could never be met for it.",
+  "pillar": "integration",
+  "title": "Integration pillar — slide deck rubric (DI section of the four-stories overview)",
+  "deck": "MCG_Demo_Overview_Four_Stories.pptx",
+  "generator": "generators/gen-demo-overview.js",
+  "slides": [
+    5,
+    22
+  ],
+  "persona": "marcus",
+  "module": "integration",
+  "pass": {
+    "must": "covered",
+    "should_missed_max": 1
+  },
+  "note": "Scored by generators/review-deck.js from a verdicts file. `slide` criteria are judged on the text printed on the slides: quote it in double quotes in `evidence` and name the slide(s) in `ref` (deck#s6, or deck#s19,s22); every quote must appear on a referenced slide. `screen` criteria are judged on the tenant captures the slides embed and need a `ref` to slides that carry a picture. The lakehouse clusters run only in test windows (AWS cost guard), so storage and mirror captures can predate the latest landing activity: do not score their timestamps. Keep ids stable: past verdicts bind to them.",
+  "scale": {
+    "covered": "On the slide, explicit and correct — a first-time reader would take the point away.",
+    "partial": "Touched, implied, or stated with an error a careful reader would catch.",
+    "missed": "Not on the slides, or contradicted by the deck itself or by the tenant."
+  },
+  "weights": {
+    "must": "The deck fails its job without this.",
+    "should": "Expected; its absence is a real gap worth fixing before the deck is presented.",
+    "nice": "Strengthens the deck; acceptable to trade away."
+  },
+  "dimensions": [
+    {
+      "id": "DINT",
+      "name": "Integration — sources landed as code, Open Lakehouse to Snowflake, proven on the live tenant",
+      "framing": "A presenter walks a CIO through how Meridian's data lands: three real sources, the gateway, the Open Lakehouse and its Snowflake mirror, silver and gold, all held as code — with a tenant capture behind every claim that matters. The reader should leave knowing what lands, how, where it goes next, and that what they saw is deployed.",
+      "criteria": [
+        {
+          "id": "DINT-01",
+          "name": "Every proof slide is a real, clean tenant capture",
+          "weight": "must",
+          "judge_on": "screen",
+          "expect": "Each 'Live:' or 'Deployed:' slide embeds a capture from the live tenant: no drawn UI, no error or failed state, no browser chrome or cursor, nothing from another demo. Blank margins may be trimmed; an image assembled from more than one capture says so on the slide.",
+          "source": "memory no-error-screenshots; personas.json marcus.skeptical_of (drawn or relabelled screenshots)",
+          "module": "integration"
+        },
+        {
+          "id": "DINT-02",
+          "name": "Each capture matches the title and caption over it",
+          "weight": "must",
+          "judge_on": "screen",
+          "expect": "Every state, count and name the title, subtitle or caption claims is visible in the capture beneath it (Running, changes applied, datasets in error, latency, table names, task names).",
+          "source": "pillars/integration.json INT-03",
+          "module": "integration"
+        },
+        {
+          "id": "DINT-03",
+          "name": "Three real sources, and how each one lands",
+          "weight": "must",
+          "judge_on": "slide",
+          "expect": "The slides name the three sources and how each lands: the PostgreSQL warehouse management database by change data capture through the Data Movement gateway, the MySQL Meridian CRM by change data capture through the same gateway, and cold-chain and carrier telemetry streamed from Kafka — with the tables or topics each one brings.",
+          "source": "pillars/integration.json INT-04; memory mysql-crm-source",
+          "module": "integration"
+        },
+        {
+          "id": "DINT-04",
+          "name": "The gateway: what it does and how a source is connected",
+          "weight": "must",
+          "judge_on": "slide",
+          "expect": "The Data Movement gateway is explained as the path from local databases to Qlik Cloud: registration, the per-source connection, and the limit that the REST API cannot create a gateway connection.",
+          "source": "deploy/deploy-to-qlik.js gateway handling; memory dmg-fresh-gateway-fix",
+          "module": "integration"
+        },
+        {
+          "id": "DINT-05",
+          "name": "Bronze in the Open Lakehouse, mirrored zero-copy to Snowflake, silver and gold built there",
+          "weight": "must",
+          "judge_on": "slide",
+          "expect": "Bronze lands in the Qlik Open Lakehouse as Iceberg tables and is mirrored zero-copy to Snowflake, where silver and gold are built. A reader must not come away thinking the CDC silver and gold layers are built inside the Open Lakehouse; only the streaming transform runs there.",
+          "source": "pillars/integration.json INT-06; memory olh-silver-gold-in-warehouse",
+          "module": "integration"
+        },
+        {
+          "id": "DINT-06",
+          "name": "Pipelines are declarative YAML in Git, imported through the API",
+          "weight": "must",
+          "judge_on": "slide",
+          "expect": "The pipelines are declarative YAML held in version control — reviewable, diffable, revertable — and imported through the platform API, not clicked together in the browser.",
+          "source": "pillars/integration.json INT-05; deploy/pipelines/README.md",
+          "module": "integration"
+        },
+        {
+          "id": "DINT-07",
+          "name": "Preview is printed where the preview capability is shown",
+          "weight": "must",
+          "judge_on": "slide",
+          "expect": "Declarative pipelines (and the MCP tooling, where it appears) are labelled preview on the slide that presents them, not only in speaker notes or another slide.",
+          "source": "pillars/integration.json INT-07",
+          "module": "integration"
+        },
+        {
+          "id": "DINT-08",
+          "name": "What the deck says is deployed is what the tenant runs",
+          "weight": "must",
+          "judge_on": "slide",
+          "expect": "The projects, task counts and pipeline legs the slides describe as deployed exist in the tenant under the names a presenter will open: no project, task or feed claimed as running that the tenant does not have.",
+          "source": "GET /api/v1/di-projects and /di-tasks on qppqtcenterprise",
+          "module": "integration"
+        },
+        {
+          "id": "DINT-09",
+          "name": "Numbers agree across slides and with the captures",
+          "weight": "must",
+          "judge_on": "slide",
+          "expect": "Counts, latencies and schedules stated on one slide agree with every other slide and with the tenant captures (projects, tasks, tables, latency, how often each feed lands).",
+          "source": "personas.json marcus.skeptical_of (architecture claims the panels on screen do not show)",
+          "module": "integration"
+        },
+        {
+          "id": "DINT-10",
+          "name": "Silver and gold shown being built",
+          "weight": "should",
+          "judge_on": "screen",
+          "expect": "Captures of the silver and gold transform runs, with the silver datasets and the two gold tables named and completed without error.",
+          "source": "deploy/pipelines/mcg-snowflake-pipeline",
+          "module": "integration"
+        },
+        {
+          "id": "DINT-11",
+          "name": "Every source shown landing",
+          "weight": "should",
+          "judge_on": "screen",
+          "expect": "A tenant capture shows each of the three sources landing: the PostgreSQL WMS feed, the MySQL CRM feed and the Kafka telemetry stream.",
+          "source": "personas.json marcus.cares_about (the three real sources actually landing)",
+          "module": "integration"
+        },
+        {
+          "id": "DINT-12",
+          "name": "Why the Open Lakehouse, with claims labelled",
+          "weight": "should",
+          "judge_on": "slide",
+          "expect": "The case for a managed Open Lakehouse over DIY Iceberg (optimizer, ingestion economics, one copy for many engines), with vendor performance and cost figures labelled as Qlik claims and GA, preview and roadmap status stated.",
+          "source": "qlik-olh-kmd-playbook; memory olh-snowflake-mirror",
+          "module": "integration"
+        },
+        {
+          "id": "DINT-13",
+          "name": "How fresh the data is",
+          "weight": "should",
+          "judge_on": "slide",
+          "expect": "Freshness is stated and correct: change data capture latency as measured, how often each feed lands, and the products' refresh SLAs (Supply Chain Health every 15 minutes, Last Mile Performance every 30).",
+          "source": "pillars/integration.json INT-10; deploy/data_products.json sla.refreshFrequency",
+          "module": "integration"
+        },
+        {
+          "id": "DINT-14",
+          "name": "Tied to a Meridian problem",
+          "weight": "should",
+          "judge_on": "slide",
+          "expect": "The integration work is tied to named Meridian problems — the seven data-quality nightmares, phantom inventory, Rotterdam, the $127M — rather than shown for its own sake.",
+          "source": "pillars/integration.json INT-11",
+          "module": "integration"
+        },
+        {
+          "id": "DINT-15",
+          "name": "The Talend job is part of the integration estate",
+          "weight": "should",
+          "judge_on": "slide",
+          "expect": "The Talend Studio CRM address job is presented as the batch that validates, repairs and geocodes CRM addresses on the way in, with the stewardship hand-off for what it cannot resolve.",
+          "source": "pillars/integration.json INT-08; deploy/build-talend-job.js",
+          "module": "integration"
+        },
+        {
+          "id": "DINT-16",
+          "name": "One definition, three authoring paths",
+          "weight": "should",
+          "judge_on": "slide",
+          "expect": "The same YAML is editable in the Qlik Talend Cloud UI, in an IDE, or by a coding agent: one definition, one schema, one Git history.",
+          "source": "pillars/integration.json INT-09",
+          "module": "integration"
+        },
+        {
+          "id": "DINT-17",
+          "name": "The demo steps run against the deployed tenant",
+          "weight": "should",
+          "judge_on": "slide",
+          "expect": "Each 'what to show' step names an object the presenter can open as deployed today — in the tenant, or in the tool the step names (Talend Studio for the Studio job) — so the script can be followed without improvising.",
+          "source": "slide 22 'What to Show in the Demo'; GET /api/v1/di-projects",
+          "module": "integration"
+        },
+        {
+          "id": "DINT-18",
+          "name": "Presenter notes on the proof slides",
+          "weight": "nice",
+          "judge_on": "slide",
+          "expect": "Each proof slide carries speaker notes telling the presenter what to point at in the capture and what it proves.",
+          "source": "generators/gen-architecture.js notes() — the convention another deck already follows",
+          "module": "integration"
+        }
+      ]
+    }
+  ]
+}

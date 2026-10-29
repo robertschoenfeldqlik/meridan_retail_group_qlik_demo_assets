@@ -1,0 +1,10 @@
+explicitlySelected:
+  - sourceTask: mcg_wms_storage-gpvb
+    name: inventory_positions
+    sourceTableId: inventory_positions-gpvc
+  - sourceTask: mcg_wms_storage-gpvb
+    name: shipments
+    sourceTableId: shipments-gpvd
+  - sourceTask: mcg_wms_storage-gpvb
+    name: warehouse_events
+    sourceTableId: warehouse_events-gpve

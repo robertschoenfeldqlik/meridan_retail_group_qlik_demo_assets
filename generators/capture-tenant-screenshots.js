@@ -150,6 +150,10 @@ async function waitForRender(page, cfg) {
  * PNG of a flat page is a good enough proxy — a real Qlik screen is 60 KB+,
  * a spinner is under 15 KB.
  */
+// Text Qlik Cloud shows on a page that failed: a missing or restricted item,
+// a crashed micro-frontend, an unknown route.
+const ERROR_PAGE_RE = /Content restricted or unavailable|Something went wrong|Page not found/i;
+
 function looksBlank(pngFile, cfg) {
   try {
     const bytes = fs.statSync(pngFile).size;
@@ -283,16 +287,30 @@ function looksBlank(pngFile, cfg) {
           break;   // every other shot will fail the same way
         }
 
-        const out = pngPath(shot.slug);
-        await page.screenshot({ path: out, fullPage: false });
-
-        if (looksBlank(out, manifest)) {
-          // Don't leave a spinner frame on disk for the generators to embed.
-          try { fs.unlinkSync(out); } catch (_) {}
-          console.log('  [blank] ' + shot.slug + ' - page never finished rendering; discarded');
+        // Qlik's error pages render fully and pass the size check, and a deck
+        // must never show one, so they count as a failed capture.
+        const bodyText = await page.evaluate(() => (document.body && document.body.innerText) || '').catch(() => '');
+        const errorPage = (bodyText.match(ERROR_PAGE_RE) || [])[0];
+        if (errorPage) {
+          console.log('  [error] ' + shot.slug + ' - page shows "' + errorPage + '"; previous capture kept');
           failed++;
           continue;
         }
+
+        // Shoot to a side file and only replace the existing capture once the
+        // new one passes. A spinner frame used to overwrite the good PNG and
+        // then get deleted, leaving the decks with nothing.
+        const out = pngPath(shot.slug);
+        const next = out.replace(/\.png$/, '.new.png');
+        await page.screenshot({ path: next, fullPage: false });
+
+        if (looksBlank(next, manifest)) {
+          try { fs.unlinkSync(next); } catch (_) {}
+          console.log('  [blank] ' + shot.slug + ' - page never finished rendering; discarded, previous capture kept');
+          failed++;
+          continue;
+        }
+        fs.renameSync(next, out);
         console.log('  [ok]   ' + shot.slug + '  (' + (fs.statSync(out).size / 1024).toFixed(0) + ' KB)');
         ok++;
       } catch (e) {

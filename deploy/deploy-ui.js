@@ -17,6 +17,7 @@ const { spawn } = require('child_process');
 const { resolveEngine, composeCmd, engineCmd, engineEnv } = require('./container-engine');
 const stewardship = require('./stewardship');
 const automationWorkspaces = require('./automation-workspaces');
+const { pipelineProjectName, pipelineProjectDefs } = require('./pipeline-projects');
 const { DOCS_DIR } = require('../generators/lib/asset-paths');
 
 const SCRIPT_DIR  = __dirname;
@@ -93,7 +94,7 @@ function discoverFiles() {
 
   // The built .docx live in the assets root, the same folder deploy-to-qlik.js
   // uploads from. repo/documents holds only the hand-written .md sources.
-  // reviews/ is skipped here for the same reason the deployer skips it.
+  // reviews/ and modules/ are skipped here for the same reasons the deployer skips them.
   const docsDir = DOCS_DIR;
   if (fs.existsSync(docsDir)) {
     result.documents = findFilesRecursive(docsDir, '.docx')
@@ -102,7 +103,7 @@ function discoverFiles() {
         const rel = path.relative(docsDir, f).replace(/\\/g, '/');
         return { name: path.basename(f), folder: path.dirname(rel) === '.' ? '' : path.dirname(rel), rel, path: f, size: fs.statSync(f).size };
       })
-      .filter(d => !d.rel.startsWith('reviews/'));
+      .filter(d => !d.rel.startsWith('reviews/') && !d.rel.startsWith('modules/'));
   }
 
   const appsDir = path.join(SCRIPT_DIR, 'apps');
@@ -165,12 +166,9 @@ function discoverFiles() {
     : [];
   for (const projDir of projectDirs) {
     const pipeDir = path.join(pipelinesRoot, projDir);
-    const proj = { dir: projDir, name: projDir, tasks: [] };
-    try {
-      const projRaw = fs.readFileSync(path.join(pipeDir, 'qtcp_project.yaml'), 'utf-8');
-      const nm = projRaw.match(/^\s*name:\s*(.+?)\s*$/m);
-      if (nm) proj.name = nm[1];
-    } catch (_) {}
+    // An exported project's qtcp_project.yaml says name: '{{projectName}}';
+    // its real name is in bindings.json.
+    const proj = { dir: projDir, name: pipelineProjectName('./pipelines/' + projDir) || projDir, tasks: [] };
     const tasksDir = path.join(pipeDir, 'qtcp_tasks');
     if (fs.existsSync(tasksDir)) {
       const rank = (t) => {
@@ -264,6 +262,50 @@ function loadConfig() {
 function saveConfig(cfg) {
   const cfgPath = path.join(SCRIPT_DIR, 'config.json');
   fs.writeFileSync(cfgPath, JSON.stringify(cfg, null, 2), 'utf-8');
+}
+
+// The form only owns a fixed set of config keys (buildConfig). Anything else
+// already in config.json — clusters, snowflake, lakehouse, stewardship.sprintId,
+// webhooks, pipeline bindings set by hand — would be dropped on every save or
+// deploy, so carry it over from the stored file. Form values always win for
+// the keys the form does write.
+const MERGED_SUBKEYS = ['pipelines', 'dataConnections', 'enabledComponents', 'stewardship'];
+function preserveUnownedKeys(incoming, existing) {
+  if (!incoming || typeof incoming !== 'object') return incoming;
+  if (!existing || typeof existing !== 'object' || existing.error) return keepPipelineProjects(incoming, null);
+  return keepPipelineProjects(mergeUnownedKeys(incoming, existing), existing);
+}
+
+// The form has no editor for the pipeline project list. It used to send every
+// folder under pipelines/ (UI-built ones included), without their catalog and
+// staging connections, so the saved list — or the deployer's defaults when
+// there is none — is the one that stays.
+function keepPipelineProjects(cfg, existing) {
+  if (!cfg.pipelines || typeof cfg.pipelines !== 'object') return cfg;
+  const saved = existing && existing.pipelines && Array.isArray(existing.pipelines.projects)
+    && existing.pipelines.projects.length > 0 ? existing.pipelines.projects : null;
+  return Object.assign({}, cfg, { pipelines: Object.assign({}, cfg.pipelines, { projects: saved || pipelineProjectDefs({}) }) });
+}
+
+function mergeUnownedKeys(incoming, existing) {
+  const out = Object.assign({}, incoming);
+  for (const [k, v] of Object.entries(existing)) {
+    if (!(k in out)) out[k] = v;
+  }
+  for (const k of MERGED_SUBKEYS) {
+    const a = out[k], b = existing[k];
+    if (a && typeof a === 'object' && !Array.isArray(a) && b && typeof b === 'object' && !Array.isArray(b)) {
+      const merged = Object.assign({}, a);
+      for (const [sk, sv] of Object.entries(b)) if (!(sk in merged)) merged[sk] = sv;
+      out[k] = merged;
+    }
+  }
+  const pIn = out.pipelines, pOld = existing.pipelines;
+  if (pIn && pOld && pOld.bindings && Object.keys(pOld.bindings).length
+      && (!pIn.bindings || Object.keys(pIn.bindings).length === 0)) {
+    out.pipelines = Object.assign({}, pIn, { bindings: pOld.bindings });
+  }
+  return out;
 }
 
 // ---------------------------------------------------------------------------
@@ -1215,7 +1257,9 @@ function runDeploy(res, options) {
   let tempConfig = null;
   if (options.config) {
     try {
-      // Save to config.json so form selections persist across reloads
+      // Save to config.json so form selections persist across reloads, keeping
+      // the keys the form does not own (clusters, snowflake, sprint id, …).
+      options.config = preserveUnownedKeys(options.config, loadConfig() || {});
       const mainConfig = path.join(SCRIPT_DIR, 'config.json');
       fs.writeFileSync(mainConfig, JSON.stringify(options.config, null, 2));
       // Also write temp copy for the deploy process
@@ -5012,7 +5056,8 @@ const server = http.createServer((req, res) => {
       try {
         // Restore any masked secrets from the stored config before saving, so an
         // untouched (masked) field is never persisted over a real secret.
-        const cfg = unredactSecrets(JSON.parse(body), loadConfig() || {});
+        const stored = loadConfig() || {};
+        const cfg = preserveUnownedKeys(unredactSecrets(JSON.parse(body), stored), stored);
         saveConfig(cfg);
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ ok: true }));

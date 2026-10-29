@@ -1,0 +1,11 @@
+sourceConnection: '{{task.mcg_crm_lake_landing-ig4c.sourceConnection}}'
+explicitlySelected:
+  - name: crm_contacts
+    schema: '{{task.mcg_crm_lake_landing-ig4c:null$_$mcg_crm.schema}}'
+    type: TABLE
+  - name: crm_orders
+    schema: '{{task.mcg_crm_lake_landing-ig4c:null$_$mcg_crm.schema}}'
+    type: TABLE
+  - name: crm_products
+    schema: '{{task.mcg_crm_lake_landing-ig4c:null$_$mcg_crm.schema}}'
+    type: TABLE

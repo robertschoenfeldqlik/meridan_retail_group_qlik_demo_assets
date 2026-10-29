@@ -1,0 +1,131 @@
+{
+  "id": "GOV",
+  "version": "1.0",
+  "pillar": "governance",
+  "title": "Governance pillar — video 03 talking-point and screen rubric",
+  "story": "s3_governance",
+  "also": ["s5_ai"],
+  "persona": "priya",
+  "module": "governance",
+  "pass": { "must": "covered", "should_missed_max": 1 },
+  "note": "Scored by gen-ceo-video-review.js --pillar governance. `judge_on: auto` criteria are measured by the deterministic probes in generators/lib/rubric-review.js and must not be supplied as verdicts. `screen` criteria are judged on the panels the deck embeds and need a `ref` (story#scN:panel.png). Evidence quoted only from an `also` story caps a narration verdict at partial. Keep ids stable: past verdicts bind to them.",
+  "scale": {
+    "covered": "Stated explicitly and clearly enough that a first-time viewer would take the point away.",
+    "partial": "Touched, implied, or named without enough substance to land — a viewer could miss it.",
+    "missed": "Not present in the narration at all."
+  },
+  "weights": {
+    "must": "The video fails its job without this.",
+    "should": "Expected; its absence is a real gap worth fixing before the next cut.",
+    "nice": "Strengthens the story; acceptable to trade away for time."
+  },
+  "dimensions": [
+    {
+      "id": "GOV",
+      "name": "Governance — products people can find, trust and fix",
+      "framing": "Landed data becomes governed data products with owners, scores the platform computes, lineage it resolves and a stewardship loop that closes. The viewer should see each of those on the live tenant and know who is accountable.",
+      "criteria": [
+        {
+          "id": "GOV-01",
+          "name": "Every scene shows a real tenant capture",
+          "weight": "must",
+          "judge_on": "auto",
+          "probe": "tenant_panels",
+          "expect": "Each scene of the Governance video embeds a qlik_panels/*.png captured from the live tenant. No drawn chart, no missing file, and no panel edited after capture — the relabelled dp_lineage.png scores partial at best.",
+          "source": "plan § E Probes; § Context 4 (dp_lineage.png has an OLH label painted on after capture)",
+          "module": "governance"
+        },
+        {
+          "id": "GOV-02",
+          "name": "The panels show governance on the live tenant",
+          "weight": "must",
+          "judge_on": "screen",
+          "expect": "The data product, profiling, trust score, lineage, stewardship and glossary scenes each show that object on the live tenant, and the panel agrees with the narration: the trust score spoken is the one on screen, lineage is resolved by the platform rather than painted, the sprint shown is the one described.",
+          "source": "series/s3_governance/deck_anim.html scenes 2-9",
+          "module": "governance"
+        },
+        {
+          "id": "GOV-03",
+          "name": "A data product with an owner, schema, SLA and trust target",
+          "weight": "must",
+          "judge_on": "narration",
+          "expect": "At least one data product is described with a named owner, a schema, a refresh SLA and a trust-score target: Supply Chain Health — Henrik Jansen, target 0.85; Last Mile Performance — Sophie Müller.",
+          "source": "deploy/data_products.json (owner, sla.refreshFrequency, sla.trustScoreTarget)",
+          "module": "governance"
+        },
+        {
+          "id": "GOV-04",
+          "name": "The trust score is computed, not asserted",
+          "weight": "must",
+          "judge_on": "narration",
+          "expect": "The trust score is computed by the platform from validity, completeness, discoverability and usage and recalculated as the data changes — not a figure someone typed into a wiki or a dashboard.",
+          "source": "series/s3_governance/script.md scenes 2 and 4",
+          "module": "governance"
+        },
+        {
+          "id": "GOV-05",
+          "name": "Profiling turns the nightmares into row counts",
+          "weight": "must",
+          "judge_on": "narration",
+          "expect": "Profiling output is spoken as counts tied to the nightmares: products with no weight on file, addresses that cannot be resolved, perishable positions with no lot number.",
+          "source": "series/s3_governance/script.md scene 3; Meridian_Commerce_Group_Demo_Profile.md § 2",
+          "module": "governance"
+        },
+        {
+          "id": "GOV-06",
+          "name": "The stewardship loop closes",
+          "weight": "must",
+          "judge_on": "narration",
+          "expect": "Records automation cannot fix land in a stewardship sprint, a human steward corrects them, and the correction flows back into the pipeline: detect, notify, review, correct, validate, with the human at the judgement step.",
+          "source": "deploy/stewardship.js; series/s3_governance/script.md scene 7",
+          "module": "governance"
+        },
+        {
+          "id": "GOV-07",
+          "name": "A Data Quality Agent writes the rule",
+          "weight": "should",
+          "judge_on": "narration",
+          "expect": "A Data Quality Agent turns a business rule — 'every perishable item must have a lot number' — into a quality rule and shows the violations.",
+          "source": "MCG_Agentic_Data_Engineering.md § six capabilities; agentic-video-rubric.json ADE-05",
+          "module": "governance"
+        },
+        {
+          "id": "GOV-08",
+          "name": "Lineage and impact analysis",
+          "weight": "should",
+          "judge_on": "narration",
+          "expect": "Every gold field traces back through silver and bronze to the source system, and impact analysis shows which products, apps and models a source change would break.",
+          "source": "series/s3_governance/script.md scene 5",
+          "module": "governance"
+        },
+        {
+          "id": "GOV-09",
+          "name": "A governed business glossary",
+          "weight": "should",
+          "judge_on": "narration",
+          "expect": "Business terms are governed — owned, statused and linked to the dataset that computes them — so two teams read the same number.",
+          "source": "deploy/glossary_terms.json",
+          "module": "governance"
+        },
+        {
+          "id": "GOV-10",
+          "name": "Traceability the regulator demands",
+          "weight": "should",
+          "judge_on": "narration",
+          "expect": "Lot-level traceability is tied to the regulation behind it: EC 178/2002 'one step back, one step forward' and the NVWA citation that followed the lettuce recall.",
+          "source": "documents/compliance/COMP-2025-NVWA_Corrective_Action_Plan.md:18; documents/recall_notices/RCL-2025-003_Lettuce_Recall.md",
+          "module": "governance"
+        },
+        {
+          "id": "GOV-11",
+          "name": "Shareable over an API and in the marketplace",
+          "weight": "should",
+          "judge_on": "narration",
+          "expect": "The data products are shareable over an API and discoverable in the marketplace, so the next team does not rebuild them.",
+          "source": "deploy/data_products.json (apiSharing, consumers)",
+          "module": "governance"
+        }
+      ]
+    }
+  ]
+}

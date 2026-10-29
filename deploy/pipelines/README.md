@@ -1,26 +1,51 @@
 # Declarative Data Pipelines (QTCP Preview)
 
-The MCG bronze → silver → gold flow, defined as **declarative YAML** (Qlik Talend Cloud Pipelines internal preview) in **two Open Lakehouse projects**, deployed automatically as **Step 13** of `npm run deploy`.
+The MCG bronze → silver → gold flow, defined as **declarative YAML** (Qlik Talend Cloud Pipelines internal preview) in **three projects**, deployed automatically as **Step 13** of `npm run deploy` (or `npm run deploy:integration`).
 
 ## What gets deployed
 
-Both projects are `DATA_PIPELINE` / platform `QLIK_OPEN_LAKEHOUSE`. They are independent — no cross-project references.
+All three are `DATA_PIPELINE` projects. Two run on Qlik Open Lakehouse, one on Snowflake. An Open Lakehouse project can only hold landing, storage and mirror tasks for CDC sources. The tenant rejects TRANSFORM and DATAMART there (`DATA-APP-DESIGN-IMPORT-PROJECT-NOT-SUPPORTED-APP`). So silver and gold live in a Snowflake project that reads the lakehouse through a zero-copy mirror. Streaming is the exception: its transform runs inside the lakehouse.
 
-### `mcg-batch-pipeline/` — MCG Batch Pipeline (4 tasks)
+The deployer imports the Open Lakehouse projects first. The Snowflake project reads the mirrors of **MCG Supply Chain Pipeline - CDC** (`olh-mcg-demo-cdc/`, built in the UI) through the binding `project.MCG Demo - DI$_$MCG Supply Chain Pipeline - CDC.projectId`; the deployer looks that project up by name in that space and stops before the import, with the name it could not find, if it does not exist. Each project deploys under the `projectName` in its `bindings.json` unless `config.json → pipelines.projects` names it.
+
+### `mcg-batch-pipeline/`: MCG Batch Pipeline, Open Lakehouse (4 tasks)
 
 | Task | Type | Source → Target | Schedule (one per task) |
 |---|---|---|---|
-| MCG WMS CDC Landing | `LAKE_LANDING` | PostgreSQL CDC (3 tables) → `bronze` | Continuous CDC (started, not scheduled) |
-| MCG CRM Landing | `LAKE_LANDING` | MySQL CDC (crm_contacts, crm_orders, crm_products) → `bronze` | Every 15 min |
-| MCG Silver Transform | `TRANSFORM` | bronze WMS + CRM → `silver` (7 datasets) | Event: any input task |
-| MCG Gold Datamart | `DATAMART` | silver → `gold` (2 datasets) | Daily 06:00 UTC |
+| MCG WMS CDC Landing | `LAKE_LANDING` | PostgreSQL CDC (3 tables) → `landing` (CSV on the S3 landing bucket) | Continuous CDC (started, not scheduled) |
+| MCG CRM Landing | `LAKE_LANDING` | MySQL CDC (crm_contacts, crm_orders, crm_products) → `landing` | Every 15 min |
+| MCG Lakehouse Storage | `LAKEHOUSE_STORAGE` | landing → `bronze` as Apache Iceberg, on the CDC cluster | Started by the deployer (mini-batches every minute) |
+| MCG Snowflake Mirror | `LAKEHOUSE_MIRROR` | bronze Iceberg → Snowflake external Iceberg tables (zero-copy) | Event: any input task |
 
-### `mcg-streaming-pipeline/` — MCG Streaming Pipeline (2 tasks)
+### `mcg-snowflake-pipeline/`: MCG Supply Chain Pipeline - Transform, Snowflake (2 tasks)
+
+| Task | Type | Source → Target | Schedule (one per task) |
+|---|---|---|---|
+| MCG Silver Transform | `TRANSFORM` | the CRM and WMS mirrors in `MCG Supply Chain Pipeline - CDC` (cross-project) → `silver` (7 datasets) | Event: any input task |
+| MCG Gold Transform | `TRANSFORM` | silver → `gold` (2 SQL datasets, published to the catalog) | On demand (no schedule) |
+
+### `mcg-streaming-pipeline/`: MCG Streaming Pipeline, Open Lakehouse (2 tasks)
 
 | Task | Type | Source → Target | Schedule (one per task) |
 |---|---|---|---|
 | MCG IoT Streaming Landing | `STREAMING_LAKE_LANDING` | Kafka `mcg.iot.*` topics → `bronze` | Streaming (started, not scheduled) |
-| MCG IoT Streaming Transform | `STREAMING_TRANSFORM` | bronze IoT → `silver` (1 dataset) | Event: any input task |
+| MCG IoT Streaming Transform | `STREAMING_TRANSFORM` | bronze IoT → `silver` (1 dataset) as Iceberg, on the Streaming cluster | Event: any input task |
+
+The Kafka brokers must be reachable from the VPC of the network integration that runs the streaming cluster. A broker on a laptop is not.
+
+### Schemas
+
+| Layer | Where | Schema |
+|---|---|---|
+| Raw landed CSV | S3 landing bucket | `landing` |
+| Bronze | Open Lakehouse, Iceberg | `bronze` |
+| Bronze (mirror) | Snowflake | `bronze` |
+| Silver / Gold | Snowflake | `silver` / `gold` |
+
+The deployer sets each binding variable from `config.json`:
+- connections: `dataConnections.*`, including `dataConnections.snowflake`;
+- clusters: `clusters.cdc` and `clusters.streaming`;
+- Snowflake objects: `snowflake.database`, `warehouse`, `mirrorExternalVolume`, `catalogIntegration` and `icebergExternalVolume`.
 
 ### Conformance (validated against the preview schema kit)
 
@@ -64,8 +89,6 @@ The silver/gold logic from the creation guide is encoded declaratively in each t
 | `iot_normalized` | iot-streaming-transform | Column expressions | °F → °C conversion, GPS-gap / unregistered-sensor / low-battery flags (streaming-safe, no custom SQL) |
 | `supply_chain_health` | gold-datamart | `CUSTOM` SQL | Per-DC inventory accuracy KPIs + cycle-count variance |
 | `last_mile_performance` | gold-datamart | `CUSTOM` SQL | Per-carrier/country SLA, on-time rate, WISMO rate, address quality |
-
-The CRM landing additionally carries a `transformationRules.yaml` that renames CRM tables to the documented bronze names (`Contact` → `crm_contacts`, `crm_orders` → `crm_orders`, `crm_products` → `crm_products`).
 
 SQL is written as portable ANSI (CASE/COALESCE/window functions); the lakehouse engine compiles it at prepare time. If an expression needs dialect tweaks, fix it in the QTCP UI and run `npm run deploy:export-pipeline` to round-trip the correction back here.
 
@@ -124,6 +147,17 @@ Format ground rules (from the preview tester's guide):
 - Every `{{variable}}` used anywhere must be declared in `qtcp_bindings_definition.json` (blank value is fine — the deployer fills it)
 - Task IDs are `<name>-<4 digits>` and are referenced by `sourceTask` in downstream `sourceSelection.yaml` files as plain strings (no `{{ref(...)}}`)
 - No comments in project YAML/JSON files
+
+## Separate project: `olh-mcg-demo-cdc/` (built in the UI, not deployed by Step 13)
+
+`MCG Supply Chain Pipeline - CDC` (first exported as `olh_mcg_demo_cdc`, then renamed on the tenant) is an Open Lakehouse CDC project built in the Qlik Cloud UI (space `MCG Demo - DI`, project id `6adbc27420721cca309f1fb1`) and exported here unchanged. It is kept apart from the three projects above: it is not in `config.json → pipelines.projects`, so `npm run deploy` does not import it and `npm run deploy:export-pipeline` does not overwrite it. The Snowflake project depends on it, so on a new tenant build it first.
+
+| Flow | Landing (`LAKE_LANDING`) | Storage (`LAKEHOUSE_STORAGE`) | Mirror (`LAKEHOUSE_MIRROR`) |
+|---|---|---|---|
+| CRM | `MCG_CRM_Lake_landing`: MySQL `rgs_olh_mcg_mysql`, `mcg_crm` (crm_contacts, crm_orders, crm_products) | `MCG_CRM_Storage` | `MCG Snowflake Mirror` → `RGS_E2E_DEMO_DB` |
+| WMS | `MCG_WMS_Lake_landing`: PostgreSQL `rgs_olh_mcg_postgres`, `public` (inventory_positions, shipments, warehouse_events) | `MCG_WMS_Storage` | `MCG WMS Snowflake Mirror` → `RGS_E2E_DEMO_DB` |
+
+Its bindings are the tenant's own export: connections are `{{id(connection, <Space>.<Connection>)}}`, the cluster is `{{id(lakehouseCluster, <Space>.<Cluster>)}}`, and the project's space is `ref{project.current.spaceId}`. To refresh it from the tenant, call `POST /api/v1/di-projects/6adbc27420721cca309f1fb1/actions/export` with `{"mode":"MINIMAL","includeBindings":true}` and unzip the result into this folder.
 
 ## Caveats
 
